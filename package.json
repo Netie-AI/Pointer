@@ -7,11 +7,12 @@
   "scripts": {
     "start": "electron electron/main.js",
     "dev": "electron electron/main.js",
-    "test": "node test/ecosystem.test.js && node test/vault.test.js && node test/intent.test.js && node test/zen.test.js",
+    "test": "node test/ecosystem.test.js && node test/vault.test.js && node test/intent.test.js && node test/zen.test.js && node test/followup.test.js",
     "test:ecosystem": "node test/ecosystem.test.js",
     "test:vault": "node test/vault.test.js",
     "test:intent": "node test/intent.test.js",
-    "test:zen": "node test/zen.test.js"
+    "test:zen": "node test/zen.test.js",
+    "test:followup": "node test/followup.test.js"
   },
   "devDependencies": {
     "electron": "^35.0.0"

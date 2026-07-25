@@ -125,6 +125,11 @@ window.netieClick.onState((payload) => {
   if (payload?.hotkey) {
     hotkeyLabel.textContent = String(payload.hotkey).replace("Control", "Ctrl");
   }
+  if (payload?.aborted) {
+    setStatus("Stopped — Esc / hotkey abort");
+    setBanner("Plan aborted.", "warn");
+    return;
+  }
   if (payload?.state === "SELECTING") setStatus("Drag on screen to frame a region…");
   else if (payload?.state === "ARMED") setStatus("Armed — drag a frame or Esc");
 });

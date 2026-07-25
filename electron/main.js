@@ -25,6 +25,8 @@ const { NetieEcosystem } = require("./netie/ecosystem");
 const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
+const { ensureActionCoords } = require("./netie/targeting");
+const crypto = require("crypto");
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -61,10 +63,26 @@ let lastCapture = null; // { path, dataUrl, region }
 let tickTimer = null;
 let state = "IDLE"; // IDLE | ARMED | SELECTING | ACTIVE
 let abortPlan = false;
+let planRunning = false;
 let pendingPlan = null; // last planActions result for approve UI
 const driver = new InputDriver({
   dryRun: process.env.NETIE_CLICK_DRY_RUN === "1",
 });
+
+function pngFingerprint(dataUrlOrPath) {
+  try {
+    if (dataUrlOrPath && String(dataUrlOrPath).startsWith("data:")) {
+      const b64 = String(dataUrlOrPath).split(",")[1] || "";
+      return crypto.createHash("sha256").update(Buffer.from(b64, "base64")).digest("hex");
+    }
+    if (dataUrlOrPath && fs.existsSync(dataUrlOrPath)) {
+      return crypto.createHash("sha256").update(fs.readFileSync(dataUrlOrPath)).digest("hex");
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
 
 function ensureTemp() {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
@@ -288,7 +306,6 @@ async function askBuddy({ message, dataUrl }) {
   const r = await eco.visionChat({ message, dataUrl, hotContext });
   if (r.ok && message) {
     try {
-      // Local encrypted memory only — redacted one-liner, never the screenshot.
       brain.remember(`Asked: ${message.slice(0, 120)} → ${String(r.text || "").slice(0, 160)}`, {
         kind: "vision",
         tags: ["chat"],
@@ -300,16 +317,27 @@ async function askBuddy({ message, dataUrl }) {
   return r;
 }
 
+function plannerContext() {
+  let mem = "";
+  try {
+    mem = brain.contextForLlm();
+  } catch {
+    mem = "";
+  }
+  return [hot.summaryText(), mem ? `Personal memory:\n${mem}` : ""].filter(Boolean).join("\n");
+}
+
 /**
  * Execute only actions the human already approved.
  * Real Windows driver via PowerShell SendInput (or dry-run when NETIE_CLICK_DRY_RUN=1).
  */
 async function executeApproved(actions) {
   abortPlan = false;
+  planRunning = true;
   const results = [];
   const region = (lastCapture && lastCapture.region) || { x: 0, y: 0, width: 0, height: 0 };
+  const dataUrl = (lastCapture && lastCapture.dataUrl) || null;
 
-  // Get the panel out of the way so clicks hit the real UI (idiot-proof).
   try {
     if (panelWindow && !panelWindow.isDestroyed()) panelWindow.hide();
     await new Promise((r) => setTimeout(r, 280));
@@ -317,71 +345,113 @@ async function executeApproved(actions) {
     /* ok */
   }
 
-  for (const action of actions) {
-    if (abortPlan) {
-      results.push({ action, ok: false, skipped: "aborted" });
-      break;
-    }
-    const d = action.safety && action.safety.disposition;
-    if (d === "refuse") {
-      results.push({ action, ok: false, skipped: "refused" });
-      continue;
-    }
-    if (d === "custody") {
-      await eco.audit("clicks.custody.requested", { target: action.target || action.field });
-      results.push({ action, ok: false, skipped: "custody — do this yourself (OpenVault)" });
-      continue;
-    }
-    if (d === "approve" && !action._approved) {
-      results.push({ action, ok: false, skipped: "not-approved" });
-      continue;
-    }
-
-    const started = Date.now();
-    let outcome;
-    try {
-      outcome = await driver.perform(action, { region });
-    } catch (err) {
-      outcome = { ok: false, error: String(err.message || err) };
-    }
-
-    await eco.audit("clicks.action.executed", {
-      type: action.type,
-      disposition: d,
-      ok: Boolean(outcome.ok),
-      dryRun: driver.dryRun,
-    });
-    try {
-      brain.telemetry.enqueueOutcome({
-        action_type: action.type,
-        safety_tier: action.safety && action.safety.tierName,
-        approved: d === "approve",
-        succeeded: Boolean(outcome.ok),
-        latency_ms: Date.now() - started,
-        app_class: "unknown",
-        irreversible: Boolean(action.safety && action.safety.irreversible),
-      });
-    } catch {
-      /* fleet paused */
-    }
-
-    const message = outcome.ok
-      ? `${action.type}${outcome.x != null ? ` @ (${Math.round(outcome.x)},${Math.round(outcome.y)})` : ""}${
-          driver.dryRun ? " [dry-run]" : ""
-        }`
-      : `failed: ${outcome.error || outcome.skipped || "unknown"}`;
-    results.push({ action, ...outcome, message });
-    if (!outcome.ok && !outcome.noop) {
-      // Stop the chain on hard failure — safer than continuing blind.
-      break;
-    }
-    await new Promise((r) => setTimeout(r, 120));
-  }
-
   try {
-    showPanel();
-  } catch {
-    /* ok */
+    for (const action of actions) {
+      if (abortPlan) {
+        results.push({ action, ok: false, skipped: "aborted" });
+        break;
+      }
+      const d = action.safety && action.safety.disposition;
+      if (d === "refuse") {
+        results.push({ action, ok: false, skipped: "refused" });
+        continue;
+      }
+      if (d === "custody") {
+        const custody = await eco.requestCustody({
+          field: action.field,
+          target: action.target,
+        });
+        results.push({
+          action,
+          ok: false,
+          skipped: "custody",
+          message: custody.message,
+        });
+        continue;
+      }
+      if (d === "approve" && !action._approved) {
+        results.push({ action, ok: false, skipped: "not-approved" });
+        continue;
+      }
+
+      const started = Date.now();
+      const enriched = await ensureActionCoords(action, { dataUrl, eco });
+      const beforeFp =
+        ["click", "doubleclick", "rightclick", "type", "fill"].includes(
+          String(enriched.type || "").toLowerCase()
+        ) && region.width
+          ? pngFingerprint(lastCapture && lastCapture.dataUrl)
+          : null;
+
+      let outcome;
+      try {
+        outcome = await driver.perform(enriched, { region });
+      } catch (err) {
+        outcome = { ok: false, error: String(err.message || err) };
+      }
+
+      // Post-step verify: consequential actions should change the region (soft check).
+      if (outcome.ok && beforeFp && !driver.dryRun) {
+        try {
+          await new Promise((r) => setTimeout(r, 200));
+          const after = await captureDisplayCrop(region);
+          const afterFp = pngFingerprint(after.dataUrl);
+          if (afterFp && afterFp === beforeFp) {
+            outcome = {
+              ...outcome,
+              ok: false,
+              error: "no visible change after action — stopped",
+              verified: false,
+            };
+          } else {
+            outcome.verified = true;
+            lastCapture = after;
+          }
+        } catch {
+          outcome.verified = null;
+        }
+      } else if (driver.dryRun) {
+        outcome.verified = "dry-run";
+      }
+
+      await eco.audit("clicks.action.executed", {
+        type: enriched.type,
+        disposition: d,
+        ok: Boolean(outcome.ok),
+        dryRun: driver.dryRun,
+        targeted: Boolean(enriched._targeted),
+        verified: outcome.verified,
+      });
+      try {
+        brain.telemetry.enqueueOutcome({
+          action_type: enriched.type,
+          safety_tier: action.safety && action.safety.tierName,
+          approved: d === "approve",
+          succeeded: Boolean(outcome.ok),
+          latency_ms: Date.now() - started,
+          app_class: "unknown",
+          irreversible: Boolean(action.safety && action.safety.irreversible),
+        });
+      } catch {
+        /* fleet paused */
+      }
+
+      const message = outcome.ok
+        ? `${enriched.type}${outcome.x != null ? ` @ (${Math.round(outcome.x)},${Math.round(outcome.y)})` : ""}${
+            enriched._targeted ? " [aimed]" : ""
+          }${driver.dryRun ? " [dry-run]" : ""}`
+        : `failed: ${outcome.error || outcome.skipped || "unknown"}`;
+      results.push({ action: enriched, ...outcome, message });
+      if (!outcome.ok && !outcome.noop) break;
+      await new Promise((r) => setTimeout(r, 120));
+    }
+  } finally {
+    planRunning = false;
+    try {
+      showPanel();
+    } catch {
+      /* ok */
+    }
   }
   return results;
 }
@@ -437,17 +507,37 @@ function createTray() {
 function registerHotkey() {
   globalShortcut.unregisterAll();
   const ok = globalShortcut.register(HOTKEY, () => {
+    // Kill switch while a plan runs — abort, don't disarm.
+    if (planRunning) {
+      abortPlan = true;
+      sendToPanel("clicks:state", { state, hotkey: HOTKEY, aborted: true });
+      return;
+    }
     if (state === "IDLE") armSession();
     else if (state === "SELECTING") {
       /* ignore while dragging */
     } else {
-      // Toggle off if already armed without region
       disarmSession();
     }
   });
-  if (!ok) {
-    console.error("Failed to register hotkey", HOTKEY);
-  }
+  if (!ok) console.error("Failed to register hotkey", HOTKEY);
+
+  // Esc always aborts an in-flight plan (documented kill switch).
+  const escOk = globalShortcut.register("Escape", () => {
+    if (planRunning) {
+      abortPlan = true;
+      sendToPanel("clicks:state", { state, hotkey: HOTKEY, aborted: true });
+      return;
+    }
+    if (state === "SELECTING") {
+      closeOverlay();
+      state = "ARMED";
+      sendToPanel("clicks:state", { state, hotkey: HOTKEY });
+    } else if (state !== "IDLE") {
+      disarmSession();
+    }
+  });
+  if (!escOk) console.error("Failed to register Escape kill switch");
 }
 
 ipcMain.handle("clicks:getAppInfo", async () => {
@@ -564,6 +654,7 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
       instruction: message,
       screenText: (payload && payload.screenText) || "",
       dataUrl,
+      hotContext: plannerContext(),
     });
     pendingPlan = plan;
     if (plan.ok) {
@@ -593,6 +684,7 @@ ipcMain.handle("clicks:planActions", async (_e, payload) => {
       instruction,
       screenText: (payload && payload.screenText) || "",
       dataUrl,
+      hotContext: plannerContext(),
     });
     pendingPlan = plan;
     return plan;
