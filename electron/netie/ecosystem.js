@@ -250,9 +250,13 @@ class NetieEcosystem {
   async _llmPlan({ safeInstruction, dataUrl }) {
     const system = [
       "You convert a user instruction about the current screen into a MINIMAL list of UI actions.",
-      "Output ONLY a JSON array. Each item: {\"type\": one of",
-      "  observe|read|hover|scroll|movecursor|click|doubleclick|rightclick|type|press|navigate,",
-      "  \"target\": short human description of the element, \"value\": text to type (type only)}.",
+      "Output ONLY a JSON array. Each item:",
+      "  {\"type\": one of observe|read|hover|scroll|movecursor|click|doubleclick|rightclick|type|press,",
+      "   \"target\": short human description,",
+      "   \"value\": text to type or key name (type/press only),",
+      "   \"xPct\": 0-100 horizontal percent within the screenshot,",
+      "   \"yPct\": 0-100 vertical percent within the screenshot }.",
+      "For click/hover/movecursor ALWAYS include xPct and yPct aiming at the control center.",
       "Never propose typing passwords, card numbers, OTPs, or secrets — leave those to the user.",
       "Prefer the fewest steps. If the instruction is unclear, return [] and nothing else.",
     ].join("\n");

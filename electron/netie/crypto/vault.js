@@ -131,10 +131,15 @@ class Vault {
         }
       } else if (stored.method === "aes-machine-fallback") {
         this._root = fileUnprotect(stored);
-      } else if (stored.method === "test-plain" && stored.root_b64) {
+      } else if (
+        stored.method === "test-plain" &&
+        stored.root_b64 &&
+        process.env.NETIE_VAULT_ALLOW_TEST_PLAIN === "1"
+      ) {
+        // Explicit test-only escape hatch — never accepted in production.
         this._root = Buffer.from(stored.root_b64, "base64");
       } else {
-        throw new Error("Unknown vault seal method: " + stored.method);
+        throw new Error("Unknown or disallowed vault seal method: " + stored.method);
       }
     } else {
       this._root = crypto.randomBytes(KEY_LEN);

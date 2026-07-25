@@ -23,6 +23,19 @@ const DEFAULT_CONSENT = Object.freeze({
   updated_at: null,
 });
 
+/** Strict bool: only true/1/"true"/"1"/"yes"/"on" count as true. Strings like "false" are false. */
+function coerceBool(v, fallback = false) {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return v === 1;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (["true", "1", "yes", "on"].includes(s)) return true;
+    if (["false", "0", "no", "off", ""].includes(s)) return false;
+  }
+  if (v == null) return fallback;
+  return Boolean(v) && v !== "false";
+}
+
 function redactOutcome(raw) {
   return {
     tier: "A",
@@ -68,9 +81,9 @@ class ConsentStore {
     try {
       const j = JSON.parse(fs.readFileSync(this.path, "utf8"));
       return {
-        outcome_telemetry: j.outcome_telemetry !== false,
-        training_feedback: j.training_feedback !== false,
-        session_sketches: j.session_sketches !== false,
+        outcome_telemetry: coerceBool(j.outcome_telemetry, DEFAULT_CONSENT.outcome_telemetry),
+        training_feedback: coerceBool(j.training_feedback, DEFAULT_CONSENT.training_feedback),
+        session_sketches: coerceBool(j.session_sketches, DEFAULT_CONSENT.session_sketches),
         updated_at: j.updated_at || null,
       };
     } catch {
@@ -82,12 +95,17 @@ class ConsentStore {
     const cur = this.read();
     const next = {
       ...cur,
-      ...partial,
       updated_at: new Date().toISOString(),
     };
-    next.outcome_telemetry = Boolean(next.outcome_telemetry);
-    next.training_feedback = Boolean(next.training_feedback);
-    next.session_sketches = Boolean(next.session_sketches);
+    if (Object.prototype.hasOwnProperty.call(partial, "outcome_telemetry")) {
+      next.outcome_telemetry = coerceBool(partial.outcome_telemetry, cur.outcome_telemetry);
+    }
+    if (Object.prototype.hasOwnProperty.call(partial, "training_feedback")) {
+      next.training_feedback = coerceBool(partial.training_feedback, cur.training_feedback);
+    }
+    if (Object.prototype.hasOwnProperty.call(partial, "session_sketches")) {
+      next.session_sketches = coerceBool(partial.session_sketches, cur.session_sketches);
+    }
     fs.mkdirSync(path.dirname(this.path), { recursive: true });
     fs.writeFileSync(this.path, JSON.stringify(next, null, 2), { mode: 0o600 });
     return next;
@@ -195,9 +213,10 @@ class TelemetryQueue {
       return `${payload.action_type} · ${payload.succeeded ? "ok" : "fail"} · ${payload.app_class}`;
     }
     if (kind === "sketch") {
-      return `sketch · ${payload.app_class} · ${(payload.labels || []).slice(0, 3).join(",")}`;
+      return `sketch · ${payload.app_class} · ${payload.labels?.length || 0} labels`;
     }
-    return `feedback:${payload.sentiment} · ${(payload.note || "").slice(0, 40)}`;
+    // Never put raw user notes in the visible index — length only.
+    return `feedback:${payload.sentiment} · note_chars=${(payload.note || "").length}`;
   }
 
   list() {
@@ -312,6 +331,13 @@ class TelemetryQueue {
         } catch {
           user_verified = false;
         }
+        // Never ship an envelope the local user KEK cannot open (blocks netie-only / tampered).
+        if (!user_verified) {
+          item.status = "verify-failed";
+          item.last_error = "user-kek-open-failed";
+          errors.push({ id: item.id, error: item.last_error });
+          continue;
+        }
 
         const res = await this._fetch(url, {
           method: "POST",
@@ -321,7 +347,7 @@ class TelemetryQueue {
             lineage_id: item.lineage_id,
             kind: item.kind,
             envelope: sealed,
-            user_verified,
+            user_verified: true,
             flush_reason: reason,
           }),
         });
@@ -350,6 +376,7 @@ module.exports = {
   redactOutcome,
   redactFeedback,
   redactSessionSketch,
+  coerceBool,
   TELEMETRY_PATH,
   REGISTER_PATH,
   DEFAULT_CONSENT,

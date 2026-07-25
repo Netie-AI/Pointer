@@ -24,6 +24,7 @@ const { HotMemory } = require("./hotMemory");
 const { NetieEcosystem } = require("./netie/ecosystem");
 const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
+const { InputDriver } = require("./netie/driver");
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -61,6 +62,9 @@ let tickTimer = null;
 let state = "IDLE"; // IDLE | ARMED | SELECTING | ACTIVE
 let abortPlan = false;
 let pendingPlan = null; // last planActions result for approve UI
+const driver = new InputDriver({
+  dryRun: process.env.NETIE_CLICK_DRY_RUN === "1",
+});
 
 function ensureTemp() {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
@@ -298,11 +302,21 @@ async function askBuddy({ message, dataUrl }) {
 
 /**
  * Execute only actions the human already approved.
- * Click/type driver is a stub until nut-js lands — we still enforce safety gates.
+ * Real Windows driver via PowerShell SendInput (or dry-run when NETIE_CLICK_DRY_RUN=1).
  */
 async function executeApproved(actions) {
   abortPlan = false;
   const results = [];
+  const region = (lastCapture && lastCapture.region) || { x: 0, y: 0, width: 0, height: 0 };
+
+  // Get the panel out of the way so clicks hit the real UI (idiot-proof).
+  try {
+    if (panelWindow && !panelWindow.isDestroyed()) panelWindow.hide();
+    await new Promise((r) => setTimeout(r, 280));
+  } catch {
+    /* ok */
+  }
+
   for (const action of actions) {
     if (abortPlan) {
       results.push({ action, ok: false, skipped: "aborted" });
@@ -322,32 +336,52 @@ async function executeApproved(actions) {
       results.push({ action, ok: false, skipped: "not-approved" });
       continue;
     }
-    // READ/auto and approved consequential: driver stub
+
     const started = Date.now();
-    const stub = {
-      ok: true,
-      stub: true,
-      message: `Would ${action.type} → ${action.target || ""}${action.value ? ` = ${action.value}` : ""} (driver next)`,
-    };
+    let outcome;
+    try {
+      outcome = await driver.perform(action, { region });
+    } catch (err) {
+      outcome = { ok: false, error: String(err.message || err) };
+    }
+
     await eco.audit("clicks.action.executed", {
       type: action.type,
       disposition: d,
-      stub: true,
+      ok: Boolean(outcome.ok),
+      dryRun: driver.dryRun,
     });
     try {
       brain.telemetry.enqueueOutcome({
         action_type: action.type,
         safety_tier: action.safety && action.safety.tierName,
         approved: d === "approve",
-        succeeded: true,
+        succeeded: Boolean(outcome.ok),
         latency_ms: Date.now() - started,
         app_class: "unknown",
         irreversible: Boolean(action.safety && action.safety.irreversible),
       });
     } catch {
-      /* consent may be off */
+      /* fleet paused */
     }
-    results.push({ action, ...stub });
+
+    const message = outcome.ok
+      ? `${action.type}${outcome.x != null ? ` @ (${Math.round(outcome.x)},${Math.round(outcome.y)})` : ""}${
+          driver.dryRun ? " [dry-run]" : ""
+        }`
+      : `failed: ${outcome.error || outcome.skipped || "unknown"}`;
+    results.push({ action, ...outcome, message });
+    if (!outcome.ok && !outcome.noop) {
+      // Stop the chain on hard failure — safer than continuing blind.
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 120));
+  }
+
+  try {
+    showPanel();
+  } catch {
+    /* ok */
   }
   return results;
 }

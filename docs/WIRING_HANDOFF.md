@@ -1,22 +1,32 @@
 # Netie Clicks — wiring status
 
-Branch `netie-ecosystem-contracts` — **complete for this slice.**
+Branch `netie-ecosystem-contracts`.
 
-| Surface | Status |
-|---|---|
-| Cortex gate + OpenVault vision | ✅ |
-| One-tap **Go** (intent ask/act) | ✅ `clicks:go` + `intent.js` |
-| Plan review + Run safe steps | ✅ |
-| `executeApproved` | ✅ safety-gated; click/type **driver stub** (nut-js next) |
-| Dual-envelope vault + personal brain | ✅ |
-| Fleet Dual Brain learning (default ON) | ✅ `/v1/telemetry` + update-check hook |
-| Netie fleet KEK auto-seed | ✅ `vault.ensureFleetKek()` |
-| Idiot-proof panel | ✅ Go / Dual Brain badge / silent memory |
-| Tests | `npm test` → 32 passed |
+## Zen scorecard
 
-## Still open (next slices)
+| Surface | Status | Notes |
+|---|---|---|
+| Cortex gate + OpenVault vision | ✅ | fail-closed on act |
+| One-tap **Go** | ✅ | intent ask/act |
+| Plan review + Run | ✅ | irreversible unchecked |
+| **Real input driver** | ✅ | Win32 SendInput via PowerShell; `NETIE_CLICK_DRY_RUN=1` for safe tests |
+| Dual-envelope vault | ✅ | DPAPI; test-plain blocked unless env |
+| Fleet Dual Brain (default ON) | ✅ | `/v1/telemetry` only; skip if user-kek verify fails |
+| Consent truthiness | ✅ | `coerceBool` — `"false"` is false |
+| Personal brain | ✅ | silent remember + habits |
+| Tests | ✅ | `npm test` (ecosystem+vault+intent+zen) |
 
-1. Real input driver behind `executeApproved` (`nut-js`).
-2. Cortex `/v1/telemetry` + `/v1/telemetry/register` (HQ Final Boss KEK issue) — Cortex lane.
-3. OpenVault custody inject for secret fields.
-4. Live smoke with Cortex + OpenVault up.
+## Still open (not blocking local zen)
+
+1. Cortex `/v1/telemetry` + `/register` live endpoints (Cortex lane).
+2. OpenVault custody inject for secret fields.
+3. Live multi-monitor coordinate mapping polish.
+4. Optional: swap PowerShell driver for nut-js later if latency matters.
+
+## Ops
+
+```powershell
+npm test
+$env:NETIE_CLICK_DRY_RUN=1; npm start   # no real clicks
+npm start                               # real clicks after Approve
+```
