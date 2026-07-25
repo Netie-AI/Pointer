@@ -4,90 +4,90 @@
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; connect-src 'self' http://127.0.0.1:5000; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'"
+      content="default-src 'self'; connect-src 'self' http://127.0.0.1:5000 http://127.0.0.1:8010; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Netie Click</title>
     <style>
       :root {
         color-scheme: dark;
-        --bg: #121214;
-        --surface: #1c1c20;
-        --border: #2e2e36;
-        --text: #f2f2f5;
-        --muted: #9b9ba8;
-        --accent: #6ea8ff;
+        --bg: #0e0f12;
+        --surface: #181a1f;
+        --border: #2a2d36;
+        --text: #f3f4f7;
+        --muted: #8b90a0;
+        --accent: #5b8cff;
+        --accent-2: #3dd68c;
         --danger: #ff6b6b;
+        --warn: #f0b429;
       }
-
-      * {
-        box-sizing: border-box;
-      }
-
+      * { box-sizing: border-box; }
       body {
         margin: 0;
         font-family: "Segoe UI", system-ui, sans-serif;
-        background: var(--bg);
+        background:
+          radial-gradient(1200px 500px at 10% -10%, #1a2440 0%, transparent 55%),
+          radial-gradient(900px 400px at 100% 0%, #14261c 0%, transparent 50%),
+          var(--bg);
         color: var(--text);
         font-size: 13px;
         user-select: none;
         -webkit-app-region: drag;
       }
-
       .panel {
         display: flex;
         flex-direction: column;
         gap: 10px;
-        padding: 12px;
+        padding: 14px;
         height: 100vh;
       }
-
       header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
       }
-
       header h1 {
         margin: 0;
-        font-size: 14px;
-        font-weight: 600;
-        letter-spacing: 0.02em;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
       }
-
-      .hotkey {
-        color: var(--muted);
-        font-size: 11px;
+      .hotkey { color: var(--muted); font-size: 11px; }
+      .badge {
+        font-size: 10px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--accent-2);
+        background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+        -webkit-app-region: no-drag;
       }
-
+      .badge.off { color: var(--muted); background: transparent; }
       .thumb-wrap {
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: 10px;
         background: var(--surface);
         overflow: hidden;
-        min-height: 120px;
+        min-height: 110px;
         display: flex;
         align-items: center;
         justify-content: center;
         -webkit-app-region: no-drag;
       }
-
       .thumb-wrap img {
         display: block;
         width: 100%;
-        max-height: 160px;
+        max-height: 150px;
         object-fit: contain;
         background: #000;
       }
-
       .thumb-placeholder {
         color: var(--muted);
-        padding: 24px;
+        padding: 22px;
         text-align: center;
-        line-height: 1.4;
+        line-height: 1.45;
       }
-
       label {
         display: block;
         margin-bottom: 4px;
@@ -96,115 +96,162 @@
         text-transform: uppercase;
         letter-spacing: 0.06em;
       }
-
-      textarea,
-      button {
-        -webkit-app-region: no-drag;
-      }
-
+      textarea, button, input, .plan, .reply, .footer-row { -webkit-app-region: no-drag; }
       textarea {
         width: 100%;
         min-height: 72px;
         resize: vertical;
-        border-radius: 8px;
+        border-radius: 10px;
         border: 1px solid var(--border);
         background: var(--surface);
         color: var(--text);
-        padding: 8px 10px;
+        padding: 10px 12px;
         font: inherit;
         line-height: 1.4;
       }
-
       textarea:focus {
-        outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent);
+        outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
         border-color: var(--accent);
       }
-
-      .actions {
-        display: flex;
-        gap: 8px;
-      }
-
+      .actions { display: flex; gap: 8px; }
       button {
         flex: 1;
         border: none;
-        border-radius: 8px;
-        padding: 8px 12px;
+        border-radius: 10px;
+        padding: 10px 12px;
         font: inherit;
-        font-weight: 600;
+        font-weight: 700;
         cursor: pointer;
         background: var(--accent);
-        color: #0b1220;
+        color: #081018;
       }
-
       button.secondary {
         background: var(--surface);
         color: var(--text);
         border: 1px solid var(--border);
+        font-weight: 600;
       }
-
-      button:disabled {
-        opacity: 0.55;
-        cursor: not-allowed;
+      button.danger {
+        background: transparent;
+        color: var(--danger);
+        border: 1px solid var(--danger);
       }
-
-      .reply {
-        flex: 1;
+      button.go { flex: 2.2; font-size: 14px; letter-spacing: 0.02em; }
+      button:disabled { opacity: 0.55; cursor: not-allowed; }
+      .reply, .plan {
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: 10px;
         background: var(--surface);
         padding: 10px;
         overflow: auto;
         line-height: 1.5;
         white-space: pre-wrap;
         word-break: break-word;
-        -webkit-app-region: no-drag;
-        min-height: 80px;
+        min-height: 64px;
+        max-height: 170px;
       }
-
-      .status {
+      .plan { display: none; }
+      .plan.visible { display: block; }
+      .plan-step {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--border);
+        white-space: normal;
+      }
+      .plan-step:last-child { border-bottom: none; }
+      .plan-step.irreversible { color: var(--danger); }
+      .plan-step.custody { color: var(--warn); }
+      .plan-step.refuse { color: var(--muted); text-decoration: line-through; }
+      .banner {
+        display: none;
+        font-size: 11px;
+        padding: 7px 9px;
+        border-radius: 8px;
+        background: #2a2418;
+        color: var(--warn);
+        -webkit-app-region: no-drag;
+      }
+      .banner.visible { display: block; }
+      .banner.blocked { background: #2a1818; color: var(--danger); }
+      .footer-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
         font-size: 11px;
         color: var(--muted);
-        min-height: 16px;
       }
-
-      .status.error {
-        color: var(--danger);
+      .footer-row label.inline {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        text-transform: none;
+        letter-spacing: 0;
+        margin: 0;
+        cursor: pointer;
+        color: var(--muted);
       }
+      .status { font-size: 11px; color: var(--muted); min-height: 16px; }
+      .status.error { color: var(--danger); }
     </style>
   </head>
   <body>
     <div class="panel">
       <header>
         <h1>Netie Click</h1>
-        <span class="hotkey" id="hotkey-label">Ctrl+Space</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge" id="brain-badge">Dual Brain · on</span>
+          <span class="hotkey" id="hotkey-label">Ctrl+Space</span>
+        </div>
       </header>
+
+      <div class="banner" id="banner"></div>
 
       <section class="thumb-wrap" id="thumb-wrap">
         <p class="thumb-placeholder" id="thumb-placeholder">
-          Ctrl+Space → drag a frame on your screen → ask Netie.
+          Ctrl+Space → frame it → say what you want → Go.<br />
+          We handle the hard parts.
         </p>
-        <img id="thumb" alt="Screenshot thumbnail" hidden />
+        <img id="thumb" alt="" hidden />
       </section>
 
       <section>
-        <label for="message">Ask about your screen</label>
+        <label for="message">What do you want?</label>
         <textarea
           id="message"
-          placeholder="What should I help with on this screen?"
+          placeholder="What is this?  ·  Click Save  ·  Fill name with Ada"
           rows="3"
         ></textarea>
       </section>
 
       <div class="actions">
         <button type="button" class="secondary" id="recapture-btn">Recapture</button>
-        <button type="button" id="send-btn">Ask buddy</button>
+        <button type="button" class="go" id="go-btn">Go</button>
       </div>
 
-      <section>
-        <label for="reply">Reply</label>
-        <div id="reply" class="reply">Waiting for a question…</div>
+      <section id="plan-section" class="plan" aria-live="polite">
+        <label>I'll do this — tap Run if it looks right</label>
+        <div id="plan-steps"></div>
+        <div class="actions" style="margin-top: 8px">
+          <button type="button" class="danger" id="abort-btn">Stop</button>
+          <button type="button" id="approve-btn">Run safe steps</button>
+        </div>
       </section>
+
+      <section>
+        <label for="reply">Netie</label>
+        <div id="reply" class="reply">Ready when you are.</div>
+      </section>
+
+      <div class="footer-row">
+        <label class="inline" title="Fleet learning for Cortex dual brain. Personal memory always stays on your PC.">
+          <input type="checkbox" id="help-improve" checked />
+          Dual Brain learning
+        </label>
+        <span id="mem-count">Memory · 0</span>
+      </div>
 
       <p class="status" id="status"></p>
     </div>

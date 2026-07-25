@@ -25,9 +25,17 @@ npm start
 
 ## Docs
 
+- `ECOSYSTEM.md` — peers (Cortex + OpenVault)
+- `docs/SAFETY.md` / `docs/CONTRACTS.md` / `docs/DATA_GOVERNANCE.md` — threat model + learning rules
 - `FULL_PLAN.md` — product + Redis schema + week cut
 - `ARCHITECTURE.md` — Clicky → Electron map
 - `NOTICE` — MIT attribution
+
+## Tests
+
+```powershell
+npm test
+```
 
 ## Env
 
@@ -35,4 +43,14 @@ npm start
 |---|---|
 | `NETIE_CLICK_HOTKEY` | `Control+Space` |
 | `NETIE_CLICK_MODEL` | `gpt-4o-mini` |
+| `NETIE_OPENVAULT_URL` | `http://127.0.0.1:5000` |
+| `NETIE_CORTEX_URL` | `http://127.0.0.1:8010` |
+| `NETIE_CORTEX_KEY` | empty — scoped Cortex role key (not a provider key) |
 | `OPENVAULT_REDIS_URL` | unset → in-process 60s ring only |
+
+## Privacy (defaults that protect *capability*)
+
+- **Personal brain** encrypted on device (dual-envelope). Always yours to export/delete.
+- **Dual Brain learning** is ON by default so Cortex gets stronger — pause anytime in the panel.
+- Fleet uploads go to Cortex `/v1/telemetry` only (may run alongside update checks; never inside update binaries).
+- Netie Final Boss / fleet KEK unlocks learning envelopes for HQ dual-brain training.

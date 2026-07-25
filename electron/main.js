@@ -1,6 +1,7 @@
 /**
- * Netie Clicks — Windows screen buddy (standalone).
- * Ctrl+Space → frame drag → chat with OpenVault :5000 vision.
+ * Netie Clicks — Windows screen buddy in the Netie Ecosystem.
+ * Ctrl+Space → frame drag → Cortex gate → OpenVault vision / planned actions.
+ * Personal memory + learning telemetry: dual-envelope crypto (see electron/netie/).
  */
 
 const {
@@ -20,6 +21,9 @@ const os = require("os");
 const path = require("path");
 const { execFile } = require("child_process");
 const { HotMemory } = require("./hotMemory");
+const { NetieEcosystem } = require("./netie/ecosystem");
+const { PersonalBrain } = require("./netie/brain");
+const { classifyIntent } = require("./netie/intent");
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -29,12 +33,25 @@ if (!gotTheLock) {
 
 const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
 const API_HOST = "127.0.0.1";
-const API_PORT = 5000;
-const API_CHAT_URL = `http://${API_HOST}:${API_PORT}/v1/chat/completions`;
+const OPENVAULT_PORT = 5000;
+const CORTEX_PORT = 8010;
+const API_CHAT_URL = `http://${API_HOST}:${OPENVAULT_PORT}/v1/chat/completions`;
 const HOTKEY = process.env.NETIE_CLICK_HOTKEY || "Control+Space";
 
 const TEMP_DIR = path.join(os.tmpdir(), "netie-clicks");
 const hot = new HotMemory();
+const eco = new NetieEcosystem({ deviceId: `netie-clicks:${hot.deviceId}` });
+const brain = new PersonalBrain({
+  deviceId: `netie-clicks:${hot.deviceId}`,
+  cortexUrl: process.env.NETIE_CORTEX_URL || `http://${API_HOST}:${CORTEX_PORT}`,
+  cortexKey: process.env.NETIE_CORTEX_KEY || "",
+});
+try {
+  brain.unlock();
+  brain.startAutoSync();
+} catch (err) {
+  console.error("Vault unlock failed:", err.message || err);
+}
 
 let tray = null;
 let panelWindow = null;
@@ -42,6 +59,8 @@ let overlayWindow = null;
 let lastCapture = null; // { path, dataUrl, region }
 let tickTimer = null;
 let state = "IDLE"; // IDLE | ARMED | SELECTING | ACTIVE
+let abortPlan = false;
+let pendingPlan = null; // last planActions result for approve UI
 
 function ensureTemp() {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
@@ -60,7 +79,7 @@ function setupCsp() {
       "base-uri 'self'",
       "object-src 'none'",
       "frame-ancestors 'none'",
-      `connect-src 'self' http://${API_HOST}:${API_PORT}`,
+      `connect-src 'self' http://${API_HOST}:${OPENVAULT_PORT} http://${API_HOST}:${CORTEX_PORT}`,
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
@@ -250,58 +269,87 @@ async function captureDisplayCrop(regionLogical) {
   return lastCapture;
 }
 
-async function askOpenVault({ message, dataUrl }) {
-  const hotCtx = hot.summaryText();
-  const system = [
-    "You are Netie Click, a Windows screen companion.",
-    "Use the screenshot and the short-term activity log to help the user.",
-    "Be concrete about UI elements you see. If unsure, say so.",
-    "",
-    "Last ~60s activity (hot memory):",
-    hotCtx,
-  ].join("\n");
+async function askBuddy({ message, dataUrl }) {
+  const memCtx = (() => {
+    try {
+      return brain.contextForLlm();
+    } catch {
+      return "";
+    }
+  })();
+  const hotContext = [hot.summaryText(), memCtx ? `\nPersonal memory:\n${memCtx}` : ""]
+    .filter(Boolean)
+    .join("\n");
 
-  const content = [{ type: "text", text: message || "What am I looking at?" }];
-  if (dataUrl) {
-    content.push({
-      type: "image_url",
-      image_url: { url: dataUrl },
+  const r = await eco.visionChat({ message, dataUrl, hotContext });
+  if (r.ok && message) {
+    try {
+      // Local encrypted memory only — redacted one-liner, never the screenshot.
+      brain.remember(`Asked: ${message.slice(0, 120)} → ${String(r.text || "").slice(0, 160)}`, {
+        kind: "vision",
+        tags: ["chat"],
+      });
+    } catch {
+      /* vault optional */
+    }
+  }
+  return r;
+}
+
+/**
+ * Execute only actions the human already approved.
+ * Click/type driver is a stub until nut-js lands — we still enforce safety gates.
+ */
+async function executeApproved(actions) {
+  abortPlan = false;
+  const results = [];
+  for (const action of actions) {
+    if (abortPlan) {
+      results.push({ action, ok: false, skipped: "aborted" });
+      break;
+    }
+    const d = action.safety && action.safety.disposition;
+    if (d === "refuse") {
+      results.push({ action, ok: false, skipped: "refused" });
+      continue;
+    }
+    if (d === "custody") {
+      await eco.audit("clicks.custody.requested", { target: action.target || action.field });
+      results.push({ action, ok: false, skipped: "custody — do this yourself (OpenVault)" });
+      continue;
+    }
+    if (d === "approve" && !action._approved) {
+      results.push({ action, ok: false, skipped: "not-approved" });
+      continue;
+    }
+    // READ/auto and approved consequential: driver stub
+    const started = Date.now();
+    const stub = {
+      ok: true,
+      stub: true,
+      message: `Would ${action.type} → ${action.target || ""}${action.value ? ` = ${action.value}` : ""} (driver next)`,
+    };
+    await eco.audit("clicks.action.executed", {
+      type: action.type,
+      disposition: d,
+      stub: true,
     });
+    try {
+      brain.telemetry.enqueueOutcome({
+        action_type: action.type,
+        safety_tier: action.safety && action.safety.tierName,
+        approved: d === "approve",
+        succeeded: true,
+        latency_ms: Date.now() - started,
+        app_class: "unknown",
+        irreversible: Boolean(action.safety && action.safety.irreversible),
+      });
+    } catch {
+      /* consent may be off */
+    }
+    results.push({ action, ...stub });
   }
-
-  const body = {
-    model: process.env.NETIE_CLICK_MODEL || "gpt-4o-mini",
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content },
-    ],
-    max_tokens: 800,
-  };
-
-  const res = await fetch(API_CHAT_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "x-openfree-identity": `netie-clicks:${hot.deviceId}`,
-    },
-    body: JSON.stringify(body),
-  });
-  const text = await res.text();
-  let json;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    throw new Error(`OpenVault non-JSON ${res.status}: ${text.slice(0, 200)}`);
-  }
-  if (!res.ok) {
-    throw new Error(json.detail || json.error?.message || `HTTP ${res.status}`);
-  }
-  const reply =
-    json.choices?.[0]?.message?.content ||
-    json.message?.content ||
-    JSON.stringify(json).slice(0, 500);
-  return String(reply);
+  return results;
 }
 
 function armSession() {
@@ -313,6 +361,12 @@ function armSession() {
 }
 
 function disarmSession() {
+  try {
+    brain.absorbHotSummary(hot.summaryText());
+    brain.syncFleet("session-end").catch(() => {});
+  } catch {
+    /* ok */
+  }
   state = "IDLE";
   stopTicks();
   closeOverlay();
@@ -362,13 +416,24 @@ function registerHotkey() {
   }
 }
 
-ipcMain.handle("clicks:getAppInfo", async () => ({
-  deviceId: hot.deviceId,
-  state,
-  hotkey: HOTKEY,
-  api: API_CHAT_URL,
-  ticks: hot.snapshot().length,
-}));
+ipcMain.handle("clicks:getAppInfo", async () => {
+  let brainStatus = null;
+  try {
+    brainStatus = brain.status();
+  } catch {
+    /* vault may be locked */
+  }
+  return {
+    deviceId: hot.deviceId,
+    state,
+    hotkey: HOTKEY,
+    api: API_CHAT_URL,
+    cortex: process.env.NETIE_CORTEX_URL || `http://${API_HOST}:${CORTEX_PORT}`,
+    ticks: hot.snapshot().length,
+    cortexOnline: eco.cortexOnline,
+    brain: brainStatus,
+  };
+});
 
 ipcMain.handle("click:getAppInfo", async () => ({
   deviceId: hot.deviceId,
@@ -417,8 +482,178 @@ ipcMain.handle("click:askBuddy", async (_e, payload) => {
   const dataUrl =
     (payload && payload.dataUrl) || (lastCapture && lastCapture.dataUrl) || null;
   try {
-    const reply = await askOpenVault({ message, dataUrl });
-    return { ok: true, reply };
+    const r = await askBuddy({ message, dataUrl });
+    if (!r.ok) {
+      return {
+        ok: false,
+        error: r.text || "Ask failed",
+        blocked: Boolean(r.blocked),
+        degraded: Boolean(r.degraded),
+      };
+    }
+    return {
+      ok: true,
+      reply: r.text,
+      degraded: Boolean(r.degraded),
+    };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
+/** One-tap Go: we pick ask vs act. Users don't choose modes. */
+ipcMain.handle("clicks:go", async (_e, payload) => {
+  const message = (payload && payload.message) || "";
+  const dataUrl =
+    (payload && payload.dataUrl) || (lastCapture && lastCapture.dataUrl) || null;
+  const intent = classifyIntent(message);
+  if (intent === "ask") {
+    try {
+      const r = await askBuddy({ message, dataUrl });
+      if (!r.ok) {
+        return {
+          ok: false,
+          mode: "ask",
+          error: r.text || "Ask failed",
+          blocked: Boolean(r.blocked),
+          degraded: Boolean(r.degraded),
+        };
+      }
+      return { ok: true, mode: "ask", reply: r.text, degraded: Boolean(r.degraded) };
+    } catch (err) {
+      return { ok: false, mode: "ask", error: String(err.message || err) };
+    }
+  }
+
+  try {
+    const plan = await eco.planActions({
+      instruction: message,
+      screenText: (payload && payload.screenText) || "",
+      dataUrl,
+    });
+    pendingPlan = plan;
+    if (plan.ok) {
+      try {
+        brain.telemetry.enqueueSessionSketch({
+          app_class: "unknown",
+          labels: (plan.actions || []).map((a) => `${a.type}:${a.target || ""}`).slice(0, 20),
+          intent: message.slice(0, 120),
+          outcome: plan.needsApproval ? "needs-approval" : "auto-ok",
+        });
+      } catch {
+        /* fleet may be paused */
+      }
+    }
+    return { ...plan, mode: "act", intent };
+  } catch (err) {
+    return { ok: false, mode: "act", reason: String(err.message || err), actions: [] };
+  }
+});
+
+ipcMain.handle("clicks:planActions", async (_e, payload) => {
+  const instruction = (payload && payload.instruction) || "";
+  const dataUrl =
+    (payload && payload.dataUrl) || (lastCapture && lastCapture.dataUrl) || null;
+  try {
+    const plan = await eco.planActions({
+      instruction,
+      screenText: (payload && payload.screenText) || "",
+      dataUrl,
+    });
+    pendingPlan = plan;
+    return plan;
+  } catch (err) {
+    return { ok: false, blocked: false, reason: String(err.message || err), actions: [] };
+  }
+});
+
+ipcMain.handle("clicks:approvePlan", async (_e, payload) => {
+  const approvedIds = new Set((payload && payload.approvedIndexes) || []);
+  const approveAllSafe = Boolean(payload && payload.approveAllSafe);
+  const actions = (pendingPlan && pendingPlan.actions) || [];
+  const toRun = actions.map((a, i) => {
+    const copy = { ...a };
+    if (a.safety && a.safety.disposition === "auto") {
+      copy._approved = true;
+    } else if (a.safety && a.safety.disposition === "approve") {
+      if (approveAllSafe && !a.safety.irreversible) copy._approved = true;
+      else if (approvedIds.has(i)) copy._approved = true;
+    }
+    return copy;
+  });
+  for (const a of toRun) {
+    if (a._approved && a.safety && a.safety.disposition === "approve") {
+      await eco.audit("clicks.action.approved", { type: a.type, target: a.target });
+    }
+  }
+  const results = await executeApproved(toRun);
+  try {
+    brain.remember(
+      `Did: ${(results || [])
+        .filter((r) => r.ok)
+        .map((r) => r.action && r.action.type)
+        .filter(Boolean)
+        .join(", ") || "plan"}`,
+      { kind: "action", tags: ["plan"] }
+    );
+  } catch {
+    /* ok */
+  }
+  return { ok: true, results };
+});
+
+ipcMain.handle("clicks:abortPlan", async () => {
+  abortPlan = true;
+  return { ok: true };
+});
+
+ipcMain.handle("clicks:brainStatus", async () => {
+  try {
+    return { ok: true, ...brain.status() };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
+ipcMain.handle("clicks:setConsent", async (_e, partial) => {
+  try {
+    const consent = brain.telemetry.setConsent(partial || {});
+    return { ok: true, consent, fleetOn: brain.status().fleetOn };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
+ipcMain.handle("clicks:flushTelemetry", async (_e, payload) => {
+  try {
+    const reason = (payload && payload.reason) || "manual";
+    return { ok: true, ...(await brain.syncFleet(reason)) };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
+/** Call from update-check wake-up — same phone-home moment, separate telemetry path. */
+ipcMain.handle("clicks:onUpdateCheck", async () => {
+  try {
+    return { ok: true, ...(await brain.syncFleet("update-check")) };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
+ipcMain.handle("clicks:exportMemory", async () => {
+  try {
+    return { ok: true, export: brain.memory.exportAll() };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
+ipcMain.handle("clicks:feedback", async (_e, payload) => {
+  try {
+    const r = brain.telemetry.enqueueFeedback(payload || {});
+    return r;
   } catch (err) {
     return { ok: false, error: String(err.message || err) };
   }
@@ -435,6 +670,12 @@ app.whenReady().then(() => {
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   stopTicks();
+  try {
+    brain.stopAutoSync();
+    brain.syncFleet("quit").catch(() => {});
+  } catch {
+    /* ok */
+  }
 });
 
 app.on("second-instance", () => {
