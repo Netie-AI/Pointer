@@ -26,6 +26,7 @@ const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
 const { ensureActionCoords } = require("./netie/targeting");
+const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const crypto = require("crypto");
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -59,6 +60,7 @@ try {
 let tray = null;
 let panelWindow = null;
 let overlayWindow = null;
+let overlayDisplayBounds = null; // bounds of the display the overlay covers
 let lastCapture = null; // { path, dataUrl, region }
 let tickTimer = null;
 let state = "IDLE"; // IDLE | ARMED | SELECTING | ACTIVE
@@ -67,6 +69,8 @@ let planRunning = false;
 let pendingPlan = null; // last planActions result for approve UI
 const driver = new InputDriver({
   dryRun: process.env.NETIE_CLICK_DRY_RUN === "1",
+  // Worker is per-monitor DPI aware → feed it physical pixels, not DIPs.
+  toPhysical: (pt) => screen.dipToScreenPoint(pt),
 });
 
 function pngFingerprint(dataUrlOrPath) {
@@ -158,7 +162,9 @@ function closeOverlay() {
 
 function openOverlay() {
   closeOverlay();
-  const display = screen.getPrimaryDisplay();
+  // Frame where the user is working, not just the primary monitor.
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  overlayDisplayBounds = { ...display.bounds };
   const { x, y, width, height } = display.bounds;
   overlayWindow = new BrowserWindow({
     x,
@@ -184,6 +190,7 @@ function openOverlay() {
   overlayWindow.setAlwaysOnTop(true, "screen-saver");
   overlayWindow.setIgnoreMouseEvents(false);
   overlayWindow.loadFile(path.join(__dirname, "overlay.html"));
+  overlayWindow.focus(); // so the overlay's own Esc handler works immediately
   overlayWindow.on("closed", () => {
     overlayWindow = null;
     if (state === "SELECTING") state = "ARMED";
@@ -191,8 +198,19 @@ function openOverlay() {
   state = "SELECTING";
 }
 
-/** Foreground window title/process via PowerShell (no native addon in week 1). */
+/**
+ * Foreground window title/process. Normal path rides the driver's persistent
+ * worker (no process spawn per tick); the execFile fallback only runs in
+ * dry-run mode, where the driver deliberately makes no OS calls.
+ */
 function sampleForeground(cb) {
+  if (!driver.dryRun) {
+    driver
+      .foreground()
+      .then((fg) => cb(fg))
+      .catch(() => cb({ title: "?", proc: "?" }));
+    return;
+  }
   const script =
     "$w = Add-Type -MemberDefinition '[DllImport(\"user32.dll\")] public static extern IntPtr GetForegroundWindow(); [DllImport(\"user32.dll\")] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);' -Name U -PassThru; " +
     "$h = $w::GetForegroundWindow(); $sb = New-Object System.Text.StringBuilder 512; [void]$w::GetWindowText($h, $sb, $sb.Capacity); " +
@@ -240,7 +258,18 @@ function stopTicks() {
 
 async function captureDisplayCrop(regionLogical) {
   ensureTemp();
-  const display = screen.getPrimaryDisplay();
+  const hasRegion =
+    regionLogical && regionLogical.width > 0 && regionLogical.height > 0;
+  // Capture the display the region lives on (or the one the cursor is on),
+  // not blindly the primary — regions are global DIP coords now.
+  const display = hasRegion
+    ? screen.getDisplayMatching({
+        x: Math.round(regionLogical.x),
+        y: Math.round(regionLogical.y),
+        width: Math.round(regionLogical.width),
+        height: Math.round(regionLogical.height),
+      })
+    : screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   const scale = display.scaleFactor || 1;
   const sources = await desktopCapturer.getSources({
     types: ["screen"],
@@ -249,25 +278,16 @@ async function captureDisplayCrop(regionLogical) {
       height: Math.round(display.size.height * scale),
     },
   });
-  const primaryId = String(display.id);
+  const displayId = String(display.id);
   let source =
-    sources.find((s) => s.display_id && String(s.display_id) === primaryId) ||
+    sources.find((s) => s.display_id && String(s.display_id) === displayId) ||
     sources[0];
   if (!source) throw new Error("No screen source");
 
   let image = source.thumbnail;
-  if (regionLogical && regionLogical.width > 0 && regionLogical.height > 0) {
-    const crop = {
-      x: Math.max(0, Math.round(regionLogical.x * scale)),
-      y: Math.max(0, Math.round(regionLogical.y * scale)),
-      width: Math.round(regionLogical.width * scale),
-      height: Math.round(regionLogical.height * scale),
-    };
-    // Clamp
-    const sz = image.getSize();
-    crop.width = Math.min(crop.width, sz.width - crop.x);
-    crop.height = Math.min(crop.height, sz.height - crop.y);
-    if (crop.width > 0 && crop.height > 0) {
+  if (hasRegion) {
+    const crop = regionToDisplayCrop(regionLogical, display, image.getSize());
+    if (crop) {
       image = image.crop(crop);
     }
   }
@@ -328,12 +348,35 @@ function plannerContext() {
 }
 
 /**
+ * Kill switch, scoped to plan execution only. Registering Escape globally for
+ * the app's whole lifetime would steal Esc from every other app on the system,
+ * so we grab it right before actions run and release it right after. The
+ * selection overlay handles its own Esc via a window-level keydown.
+ */
+function grabKillSwitch() {
+  const ok = globalShortcut.register("Escape", () => {
+    abortPlan = true;
+    sendToPanel("clicks:state", { state, hotkey: HOTKEY, aborted: true });
+  });
+  if (!ok) console.error("Kill switch: could not grab Esc (owned elsewhere) — hotkey still aborts");
+}
+
+function releaseKillSwitch() {
+  try {
+    globalShortcut.unregister("Escape");
+  } catch {
+    /* already gone */
+  }
+}
+
+/**
  * Execute only actions the human already approved.
  * Real Windows driver via PowerShell SendInput (or dry-run when NETIE_CLICK_DRY_RUN=1).
  */
 async function executeApproved(actions) {
   abortPlan = false;
   planRunning = true;
+  grabKillSwitch();
   const results = [];
   const region = (lastCapture && lastCapture.region) || { x: 0, y: 0, width: 0, height: 0 };
   const dataUrl = (lastCapture && lastCapture.dataUrl) || null;
@@ -376,12 +419,20 @@ async function executeApproved(actions) {
 
       const started = Date.now();
       const enriched = await ensureActionCoords(action, { dataUrl, eco });
-      const beforeFp =
+      const needsVerify =
         ["click", "doubleclick", "rightclick", "type", "fill"].includes(
           String(enriched.type || "").toLowerCase()
-        ) && region.width
-          ? pngFingerprint(lastCapture && lastCapture.dataUrl)
-          : null;
+        ) && Boolean(region.width);
+      // Fresh capture right before the action — comparing against the stale
+      // plan-time screenshot would let unrelated screen changes fake a "verified".
+      let beforeFp = null;
+      if (needsVerify && !driver.dryRun) {
+        try {
+          beforeFp = pngFingerprint((await captureDisplayCrop(region)).dataUrl);
+        } catch {
+          beforeFp = pngFingerprint(lastCapture && lastCapture.dataUrl);
+        }
+      }
 
       let outcome;
       try {
@@ -447,6 +498,7 @@ async function executeApproved(actions) {
     }
   } finally {
     planRunning = false;
+    releaseKillSwitch();
     try {
       showPanel();
     } catch {
@@ -477,9 +529,31 @@ function disarmSession() {
   sendToPanel("clicks:state", { state, hotkey: HOTKEY });
 }
 
+/** 16×16 tray dot drawn in-process — an empty image is invisible in the Windows tray. */
+function trayIcon() {
+  const size = 16;
+  const buf = Buffer.alloc(size * size * 4); // BGRA
+  const cx = 7.5;
+  const cy = 7.5;
+  const r = 6.5;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const d = Math.hypot(x - cx, y - cy);
+      if (d > r) continue;
+      const i = (y * size + x) * 4;
+      const alpha = d > r - 1 ? Math.round((r - d) * 255) : 255;
+      const inner = d <= 2.4; // white "click" core on the accent-blue dot
+      buf[i] = 255; // B
+      buf[i + 1] = inner ? 255 : 168; // G
+      buf[i + 2] = inner ? 255 : 110; // R
+      buf[i + 3] = alpha;
+    }
+  }
+  return nativeImage.createFromBitmap(buf, { width: size, height: size });
+}
+
 function createTray() {
-  const icon = nativeImage.createEmpty();
-  tray = new Tray(icon);
+  tray = new Tray(trayIcon());
   tray.setToolTip("Netie Clicks");
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -521,23 +595,8 @@ function registerHotkey() {
     }
   });
   if (!ok) console.error("Failed to register hotkey", HOTKEY);
-
-  // Esc always aborts an in-flight plan (documented kill switch).
-  const escOk = globalShortcut.register("Escape", () => {
-    if (planRunning) {
-      abortPlan = true;
-      sendToPanel("clicks:state", { state, hotkey: HOTKEY, aborted: true });
-      return;
-    }
-    if (state === "SELECTING") {
-      closeOverlay();
-      state = "ARMED";
-      sendToPanel("clicks:state", { state, hotkey: HOTKEY });
-    } else if (state !== "IDLE") {
-      disarmSession();
-    }
-  });
-  if (!escOk) console.error("Failed to register Escape kill switch");
+  // Esc kill switch is grabbed only while a plan runs (see grabKillSwitch) —
+  // a lifetime global Escape would swallow Esc in every other app.
 }
 
 ipcMain.handle("clicks:getAppInfo", async () => {
@@ -576,17 +635,21 @@ ipcMain.handle("click:captureNow", async () => {
 });
 
 ipcMain.handle("clicks:commitRegion", async (_e, region) => {
+  // Overlay coords are local to its display — offset into global DIP space so
+  // capture + driver agree on multi-monitor setups.
+  const bounds = overlayDisplayBounds || screen.getPrimaryDisplay().bounds;
+  const screenRegion = overlayRegionToScreen(region, bounds);
   closeOverlay();
   state = "ACTIVE";
   try {
-    const cap = await captureDisplayCrop(region);
+    const cap = await captureDisplayCrop(screenRegion);
     showPanel();
     sendToPanel("click:onHotkeyFired", {
       dataUrl: cap.dataUrl,
       path: cap.path,
-      region,
+      region: screenRegion,
     });
-    sendToPanel("clicks:state", { state, region, hotkey: HOTKEY });
+    sendToPanel("clicks:state", { state, region: screenRegion, hotkey: HOTKEY });
     return { ok: true };
   } catch (err) {
     sendToPanel("clicks:error", { message: String(err.message || err) });
@@ -796,6 +859,7 @@ app.whenReady().then(() => {
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   stopTicks();
+  driver.dispose();
   try {
     brain.stopAutoSync();
     brain.syncFleet("quit").catch(() => {});

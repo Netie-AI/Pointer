@@ -77,7 +77,13 @@ async function ensureActionCoords(action, { dataUrl, eco }) {
     type === "doubleclick" ||
     type === "rightclick" ||
     type === "hover" ||
-    type === "movecursor";
+    type === "movecursor" ||
+    // Typing benefits too: with coords the driver clicks the field first, so
+    // text can't land in whatever window happens to hold focus.
+    type === "type" ||
+    type === "fill" ||
+    type === "paste" ||
+    type === "setvalue";
   if (!needs) return action;
   if (action.xPct != null && action.yPct != null) return action;
   if (action.screenX != null && action.screenY != null) return action;

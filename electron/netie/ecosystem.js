@@ -258,6 +258,8 @@ class NetieEcosystem {
       "   \"xPct\": 0-100 horizontal percent within the screenshot,",
       "   \"yPct\": 0-100 vertical percent within the screenshot }.",
       "For click/hover/movecursor ALWAYS include xPct and yPct aiming at the control center.",
+      "For type/fill ALSO include xPct and yPct of the input field so it can be focused first.",
+      "For scroll you may include deltaY (negative scrolls down, one notch = 120) and xPct/yPct over the area to scroll.",
       "Never propose typing passwords, card numbers, OTPs, or secrets — leave those to the user.",
       "Prefer the fewest steps. If the instruction is unclear, return [] and nothing else.",
       hotContext ? `\nPersonal/hot context (trusted device memory, not on-screen):\n${hotContext}` : "",

@@ -3,16 +3,28 @@
  * Windows input driver for Netie Clicks.
  * Uses PowerShell + user32 SendInput — no native Electron addon rebuild.
  *
- * Coordinates are logical screen pixels (same space as Electron screen API).
- * Set dryRun:true in tests to skip OS calls.
+ * v2: one persistent PowerShell worker instead of a fresh powershell.exe +
+ * Add-Type compile per action. Commands stream over a JSON-lines stdin/stdout
+ * protocol, so per-action latency drops from seconds to milliseconds. The same
+ * worker also answers foreground-window queries (hot-memory ticks) so armed
+ * sessions stop spawning 4 processes per second.
+ *
+ * Coordinates are logical (DIP) screen pixels — the same space as Electron's
+ * screen API. When opts.toPhysical is injected (main passes
+ * screen.dipToScreenPoint) the worker receives physical pixels and declares
+ * per-monitor DPI awareness, so clicks land correctly on 125%/150% scaled
+ * displays. Without a converter, coordinates pass through unchanged (v1
+ * behaviour, and what unit tests assert).
+ *
+ * Set dryRun:true in tests to skip OS calls entirely.
  */
 
-const { execFile } = require("child_process");
-const { promisify } = require("util");
-const execFileAsync = promisify(execFile);
+const { spawn } = require("child_process");
 
-const PS_HELPER = `
+// C# helper + command loop. Compiled once per worker lifetime.
+const WORKER_SCRIPT = `
 $ErrorActionPreference='Stop'
+$ProgressPreference='SilentlyContinue'
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
@@ -36,10 +48,19 @@ public class NetieInput {
   public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
   [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] public static extern IntPtr SetProcessDpiAwarenessContext(IntPtr value);
   public const uint INPUT_MOUSE=0; public const uint INPUT_KEYBOARD=1;
   public const uint MOUSEEVENTF_LEFTDOWN=0x0002; public const uint MOUSEEVENTF_LEFTUP=0x0004;
   public const uint MOUSEEVENTF_RIGHTDOWN=0x0008; public const uint MOUSEEVENTF_RIGHTUP=0x0010;
+  public const uint MOUSEEVENTF_WHEEL=0x0800;
   public const uint KEYEVENTF_KEYUP=0x0002; public const uint KEYEVENTF_UNICODE=0x0004;
+  public static void Init() {
+    // Per-monitor DPI aware v2 — SetCursorPos/SendInput take physical pixels.
+    try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch {}
+  }
   public static void Click(int x, int y, bool right) {
     SetCursorPos(x,y);
     INPUT[] a = new INPUT[2];
@@ -48,6 +69,13 @@ public class NetieInput {
     uint up = right?MOUSEEVENTF_RIGHTUP:MOUSEEVENTF_LEFTUP;
     a[0].mkhi.mi.dwFlags=down; a[1].mkhi.mi.dwFlags=up;
     SendInput(2,a,Marshal.SizeOf(typeof(INPUT)));
+  }
+  public static void Wheel(int delta) {
+    INPUT[] a = new INPUT[1];
+    a[0].type=INPUT_MOUSE;
+    a[0].mkhi.mi.dwFlags=MOUSEEVENTF_WHEEL;
+    a[0].mkhi.mi.mouseData=unchecked((uint)delta);
+    SendInput(1,a,Marshal.SizeOf(typeof(INPUT)));
   }
   public static void TypeUnicode(string s) {
     foreach (char c in s) {
@@ -62,8 +90,56 @@ public class NetieInput {
     keybd_event(vk,0,0,UIntPtr.Zero);
     keybd_event(vk,0,KEYEVENTF_KEYUP,UIntPtr.Zero);
   }
+  public static void Combo(byte[] mods, byte vk) {
+    foreach (byte m in mods) keybd_event(m,0,0,UIntPtr.Zero);
+    keybd_event(vk,0,0,UIntPtr.Zero);
+    keybd_event(vk,0,KEYEVENTF_KEYUP,UIntPtr.Zero);
+    for (int i=mods.Length-1; i>=0; i--) keybd_event(mods[i],0,KEYEVENTF_KEYUP,UIntPtr.Zero);
+  }
+  public static string FgInfo() {
+    IntPtr h = GetForegroundWindow();
+    var sb = new System.Text.StringBuilder(512);
+    GetWindowText(h, sb, sb.Capacity);
+    uint pid = 0; GetWindowThreadProcessId(h, out pid);
+    return pid.ToString() + "|" + sb.ToString();
+  }
 }
 "@
+[NetieInput]::Init()
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
+[Console]::Out.WriteLine('{"ready":true}')
+$done = $false
+while (-not $done) {
+  $line = [Console]::In.ReadLine()
+  if ($null -eq $line) { break }
+  if (-not $line.Trim()) { continue }
+  $r = @{ id = $null; ok = $true }
+  try {
+    $m = $line | ConvertFrom-Json
+    $r.id = $m.id
+    switch ($m.op) {
+      'move'  { [NetieInput]::SetCursorPos([int]$m.x, [int]$m.y) | Out-Null }
+      'click' { [NetieInput]::Click([int]$m.x, [int]$m.y, [bool]$m.right) }
+      'wheel' {
+        if ($m.move) { [NetieInput]::SetCursorPos([int]$m.x, [int]$m.y) | Out-Null }
+        [NetieInput]::Wheel([int]$m.delta)
+      }
+      'type'  { [NetieInput]::TypeUnicode([System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($m.b64))) }
+      'tap'   { [NetieInput]::TapVk([byte]$m.vk) }
+      'combo' { [NetieInput]::Combo([byte[]]$m.mods, [byte]$m.vk) }
+      'fg'    {
+        $info = [NetieInput]::FgInfo()
+        $parts = $info -split '\\|', 2
+        $pname = '?'
+        try { $pname = (Get-Process -Id ([int]$parts[0]) -ErrorAction Stop).ProcessName } catch {}
+        $r.title = $parts[1]; $r.proc = $pname
+      }
+      'exit'  { $done = $true }
+      default { $r.ok = $false; $r.error = "unknown op: $($m.op)" }
+    }
+  } catch { $r.ok = $false; $r.error = "$_" }
+  [Console]::Out.WriteLine((ConvertTo-Json $r -Compress))
+}
 `;
 
 const VK = {
@@ -78,7 +154,58 @@ const VK = {
   down: 0x28,
   left: 0x25,
   right: 0x27,
+  home: 0x24,
+  end: 0x23,
+  pageup: 0x21,
+  pagedown: 0x22,
+  insert: 0x2d,
+  f1: 0x70, f2: 0x71, f3: 0x72, f4: 0x73, f5: 0x74, f6: 0x75,
+  f7: 0x76, f8: 0x77, f9: 0x78, f10: 0x79, f11: 0x7a, f12: 0x7b,
 };
+
+const MOD_VK = {
+  ctrl: 0x11,
+  control: 0x11,
+  shift: 0x10,
+  alt: 0x12,
+  win: 0x5b,
+  meta: 0x5b,
+};
+
+/** VK code for a single key name/char, or null. */
+function vkOf(key) {
+  const k = String(key || "").toLowerCase();
+  if (VK[k] != null) return VK[k];
+  if (k.length === 1) {
+    const c = k.charCodeAt(0);
+    if (c >= 0x61 && c <= 0x7a) return c - 0x20; // a-z → 0x41-0x5A
+    if (c >= 0x30 && c <= 0x39) return c; // 0-9
+  }
+  return null;
+}
+
+/**
+ * Parse "s", "enter", or "ctrl+shift+s" into { mods:[vk], vk, key }.
+ * Returns null when any part is unknown.
+ */
+function parseKeyCombo(input) {
+  const parts = String(input || "")
+    .toLowerCase()
+    .split("+")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!parts.length) return null;
+  const key = parts.pop();
+  const vk = vkOf(key);
+  if (vk == null) return null;
+  const mods = [];
+  for (const p of parts) {
+    const mv = MOD_VK[p];
+    if (mv == null) return null;
+    mods.push(mv);
+  }
+  return { mods, vk, key };
+}
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -87,26 +214,174 @@ function sleep(ms) {
 class InputDriver {
   /**
    * @param {object} [opts]
-   * @param {boolean} [opts.dryRun]  skip OS calls (unit tests)
-   * @param {function} [opts.exec]   inject execFileAsync
+   * @param {boolean} [opts.dryRun]      skip OS calls (unit tests)
+   * @param {function} [opts.toPhysical] DIP → physical px converter ({x,y} → {x,y})
+   * @param {function} [opts.spawnImpl]  inject child_process.spawn (tests)
+   * @param {number} [opts.opTimeoutMs]  per-op timeout (default 8000)
    */
   constructor(opts = {}) {
     this.dryRun = Boolean(opts.dryRun);
-    this._exec = opts.exec || execFileAsync;
+    this.toPhysical = opts.toPhysical || null;
+    this._spawn = opts.spawnImpl || spawn;
+    this._opTimeoutMs = opts.opTimeoutMs || 8000;
+    this._startTimeoutMs = opts.startTimeoutMs || 15000;
     this.last = null;
+    this._worker = null;
+    this._ready = null;
+    this._pending = new Map(); // id → { resolve, reject, timer }
+    this._seq = 0;
+    this._buf = "";
   }
 
-  async _ps(scriptBody) {
-    if (this.dryRun) {
-      this.last = { ps: scriptBody.slice(0, 200) };
-      return { stdout: "ok", stderr: "" };
+  _phys(x, y) {
+    const xi = Math.round(Number(x));
+    const yi = Math.round(Number(y));
+    if (!this.toPhysical) return { x: xi, y: yi };
+    try {
+      const p = this.toPhysical({ x: xi, y: yi });
+      return { x: Math.round(p.x), y: Math.round(p.y) };
+    } catch {
+      return { x: xi, y: yi };
     }
-    const full = `${PS_HELPER}\n${scriptBody}`;
-    return this._exec("powershell.exe", ["-NoProfile", "-Command", full], {
-      timeout: 8000,
-      windowsHide: true,
-      encoding: "utf8",
+  }
+
+  _failAll(message) {
+    for (const [, p] of this._pending) {
+      clearTimeout(p.timer);
+      p.reject(new Error(message));
+    }
+    this._pending.clear();
+  }
+
+  _killWorker(reason) {
+    const w = this._worker;
+    this._worker = null;
+    this._ready = null;
+    this._failAll(`input worker killed: ${reason}`);
+    if (w) {
+      try {
+        w.kill();
+      } catch {
+        /* already gone */
+      }
+    }
+  }
+
+  _ensureWorker() {
+    if (this._worker) return this._worker;
+    const encoded = Buffer.from(WORKER_SCRIPT, "utf16le").toString("base64");
+    const child = this._spawn(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded],
+      { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] }
+    );
+    this._worker = child;
+    this._buf = "";
+
+    let readyResolve, readyReject;
+    this._ready = new Promise((res, rej) => {
+      readyResolve = res;
+      readyReject = rej;
     });
+    this._ready.catch(() => {}); // observed later per-send
+    const readyTimer = setTimeout(
+      () => readyReject(new Error("input worker failed to start")),
+      this._startTimeoutMs
+    );
+    if (readyTimer.unref) readyTimer.unref();
+
+    if (child.stdout.setEncoding) child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      this._buf += chunk;
+      let nl;
+      while ((nl = this._buf.indexOf("\n")) >= 0) {
+        const line = this._buf.slice(0, nl).trim();
+        this._buf = this._buf.slice(nl + 1);
+        if (!line.startsWith("{")) continue; // Add-Type chatter etc.
+        let obj;
+        try {
+          obj = JSON.parse(line);
+        } catch {
+          continue;
+        }
+        if (obj.ready) {
+          clearTimeout(readyTimer);
+          readyResolve();
+          continue;
+        }
+        const p = this._pending.get(obj.id);
+        if (!p) continue;
+        this._pending.delete(obj.id);
+        clearTimeout(p.timer);
+        if (obj.ok === false) p.reject(new Error(obj.error || "input op failed"));
+        else p.resolve(obj);
+      }
+    });
+    if (child.stderr) child.stderr.on("data", () => {});
+    const onGone = () => {
+      clearTimeout(readyTimer);
+      if (this._worker === child) {
+        this._worker = null;
+        this._ready = null;
+      }
+      this._failAll("input worker exited");
+    };
+    child.on("exit", onGone);
+    child.on("error", onGone);
+    return child;
+  }
+
+  async _send(cmd, { timeoutMs } = {}) {
+    if (this.dryRun) return { ok: true, dryRun: true };
+    const worker = this._ensureWorker();
+    await this._ready;
+    const id = ++this._seq;
+    const line = `${JSON.stringify({ ...cmd, id })}\n`;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this._pending.delete(id);
+        this._killWorker(`op timeout (${cmd.op})`);
+        reject(new Error(`input worker timeout on ${cmd.op}`));
+      }, timeoutMs || this._opTimeoutMs);
+      this._pending.set(id, { resolve, reject, timer });
+      try {
+        worker.stdin.write(line);
+      } catch (err) {
+        this._pending.delete(id);
+        clearTimeout(timer);
+        reject(err);
+      }
+    });
+  }
+
+  /** Graceful worker shutdown (call on app quit). */
+  dispose() {
+    const w = this._worker;
+    this._worker = null;
+    this._ready = null;
+    this._failAll("driver disposed");
+    if (w) {
+      try {
+        w.stdin.write('{"op":"exit","id":0}\n');
+      } catch {
+        /* gone */
+      }
+      const t = setTimeout(() => {
+        try {
+          w.kill();
+        } catch {
+          /* gone */
+        }
+      }, 400);
+      if (t.unref) t.unref();
+    }
+  }
+
+  /** Foreground window { title, proc } via the same worker — no process spawn per tick. */
+  async foreground() {
+    if (this.dryRun) return { title: "?", proc: "?" };
+    const r = await this._send({ op: "fg" }, { timeoutMs: 2500 });
+    return { title: r.title || "?", proc: r.proc || "?" };
   }
 
   async moveTo(x, y) {
@@ -114,9 +389,8 @@ class InputDriver {
     const yi = Math.round(Number(y));
     this.last = { op: "move", x: xi, y: yi };
     if (this.dryRun) return this.last;
-    await this._ps(
-      `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point(${xi},${yi})`
-    );
+    const p = this._phys(xi, yi);
+    await this._send({ op: "move", x: p.x, y: p.y });
     return this.last;
   }
 
@@ -126,8 +400,12 @@ class InputDriver {
     const right = button === "right";
     this.last = { op: double ? "doubleclick" : "click", x: xi, y: yi, button };
     if (this.dryRun) return this.last;
-    const once = `[NetieInput]::Click(${xi},${yi},$${right})`;
-    await this._ps(double ? `${once}; Start-Sleep -Milliseconds 80; ${once}` : once);
+    const p = this._phys(xi, yi);
+    await this._send({ op: "click", x: p.x, y: p.y, right });
+    if (double) {
+      await sleep(80);
+      await this._send({ op: "click", x: p.x, y: p.y, right });
+    }
     return this.last;
   }
 
@@ -135,28 +413,37 @@ class InputDriver {
     const s = String(text ?? "");
     this.last = { op: "type", len: s.length };
     if (this.dryRun) return this.last;
-    // Escape for PowerShell single-quoted string
-    const lit = s.replace(/'/g, "''");
-    await this._ps(`[NetieInput]::TypeUnicode('${lit}')`);
+    await this._send({ op: "type", b64: Buffer.from(s, "utf8").toString("base64") });
     return this.last;
   }
 
   async press(key) {
     const name = String(key || "").toLowerCase();
-    const vk = VK[name];
-    this.last = { op: "press", key: name, vk: vk || null };
-    if (!vk) throw new Error(`Unsupported key: ${key}`);
+    const combo = parseKeyCombo(name);
+    if (!combo) throw new Error(`Unsupported key: ${key}`);
+    this.last = { op: "press", key: name, vk: combo.vk, mods: combo.mods };
     if (this.dryRun) return this.last;
-    await this._ps(`[NetieInput]::TapVk(${vk})`);
+    if (combo.mods.length) await this._send({ op: "combo", mods: combo.mods, vk: combo.vk });
+    else await this._send({ op: "tap", vk: combo.vk });
     return this.last;
   }
 
-  async scroll(deltaY = -120) {
-    this.last = { op: "scroll", deltaY };
+  /**
+   * Real mouse-wheel scroll. Negative deltaY scrolls down (one notch = 120).
+   * Optional at:{x,y} moves the cursor over the scroll target first.
+   */
+  async scroll(deltaY = -120, at = null) {
+    const delta = Math.round(Number(deltaY)) || -120;
+    this.last = { op: "scroll", deltaY: delta, at: at || null };
     if (this.dryRun) return this.last;
-    // mouse_event wheel via Forms is awkward; use SendKeys PgUp/PgDn as soft scroll
-    if (deltaY < 0) await this.press("down");
-    else await this.press("up");
+    const cmd = { op: "wheel", delta, move: false };
+    if (at && at.x != null && at.y != null) {
+      const p = this._phys(at.x, at.y);
+      cmd.move = true;
+      cmd.x = p.x;
+      cmd.y = p.y;
+    }
+    await this._send(cmd);
     return this.last;
   }
 
@@ -214,18 +501,34 @@ class InputDriver {
       case "type":
       case "fill":
       case "paste":
-      case "setvalue":
+      case "setvalue": {
+        // Click the field first when we know where it is — typing into the
+        // wrong window is the classic blind-agent failure.
+        let focused = false;
+        if (sx != null && sy != null) {
+          await this.clickAt(sx, sy, { button: "left" });
+          if (!this.dryRun) await sleep(120);
+          focused = true;
+        }
         await this.typeText(action.value ?? "");
-        return { ok: true, type, typed: String(action.value ?? "").length };
+        const out = { ok: true, type, typed: String(action.value ?? "").length, focused };
+        if (focused) {
+          out.x = sx;
+          out.y = sy;
+        }
+        return out;
+      }
 
       case "press":
       case "keypress":
         await this.press(action.value || action.key || action.target);
         return { ok: true, type };
 
-      case "scroll":
-        await this.scroll(action.deltaY ?? -120);
-        return { ok: true, type };
+      case "scroll": {
+        const at = sx != null && sy != null ? { x: sx, y: sy } : null;
+        await this.scroll(action.deltaY ?? -120, at);
+        return { ok: true, type, ...(at || {}) };
+      }
 
       case "navigate":
       case "open":
@@ -238,4 +541,4 @@ class InputDriver {
   }
 }
 
-module.exports = { InputDriver, VK };
+module.exports = { InputDriver, VK, MOD_VK, parseKeyCombo, vkOf };

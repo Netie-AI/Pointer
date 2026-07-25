@@ -1,0 +1,189 @@
+"use strict";
+/**
+ * Driver v2 — persistent worker protocol, key combos, wheel scroll,
+ * click-to-focus typing, DIP→physical conversion. All against a fake
+ * PowerShell worker (no OS calls).
+ * Run: node test/driver.test.js
+ */
+
+const assert = require("assert");
+const { EventEmitter } = require("events");
+const { PassThrough } = require("stream");
+const { InputDriver, VK, MOD_VK, parseKeyCombo, vkOf } = require("../electron/netie/driver");
+
+let pass = 0;
+const fails = [];
+const tests = [];
+function test(name, fn) {
+  tests.push({ name, fn });
+}
+
+/**
+ * Fake powershell worker: answers the JSON-lines protocol in-process.
+ * handler(msg) → extra fields for the ok:true reply (or {__error} to fail the op).
+ */
+function fakeSpawn(handler, state = {}) {
+  state.spawned = 0;
+  state.ops = [];
+  const impl = () => {
+    state.spawned += 1;
+    const child = new EventEmitter();
+    child.stdin = new PassThrough();
+    child.stdout = new PassThrough();
+    child.stderr = new PassThrough();
+    child.kill = () => child.emit("exit", 0);
+    child.stdin.on("data", (chunk) => {
+      for (const line of String(chunk).split("\n")) {
+        if (!line.trim()) continue;
+        const m = JSON.parse(line);
+        if (m.op === "exit") return;
+        state.ops.push(m);
+        const extra = handler ? handler(m) : null;
+        if (extra && extra.__error) {
+          child.stdout.write(`${JSON.stringify({ id: m.id, ok: false, error: extra.__error })}\n`);
+        } else {
+          child.stdout.write(`${JSON.stringify({ id: m.id, ok: true, ...(extra || {}) })}\n`);
+        }
+      }
+    });
+    setImmediate(() => child.stdout.write('{"ready":true}\n'));
+    return child;
+  };
+  return impl;
+}
+
+test("parseKeyCombo: plain keys, combos, rejects unknown", () => {
+  assert.deepStrictEqual(parseKeyCombo("enter"), { mods: [], vk: VK.enter, key: "enter" });
+  assert.deepStrictEqual(parseKeyCombo("s"), { mods: [], vk: 0x53, key: "s" });
+  assert.deepStrictEqual(parseKeyCombo("ctrl+s"), { mods: [MOD_VK.ctrl], vk: 0x53, key: "s" });
+  assert.deepStrictEqual(parseKeyCombo("Ctrl+Shift+P"), {
+    mods: [MOD_VK.ctrl, MOD_VK.shift],
+    vk: 0x50,
+    key: "p",
+  });
+  assert.strictEqual(parseKeyCombo("bogus"), null);
+  assert.strictEqual(parseKeyCombo("ctrl+bogus"), null);
+  assert.strictEqual(parseKeyCombo("wat+s"), null);
+  assert.strictEqual(vkOf("f5"), 0x74);
+  assert.strictEqual(vkOf("7"), 0x37);
+});
+
+test("dry-run keeps v1 contract: xPct math, type without coords, missing coords fail", async () => {
+  const d = new InputDriver({ dryRun: true });
+  const click = await d.perform(
+    { type: "click", xPct: 50, yPct: 50 },
+    { region: { x: 100, y: 200, width: 400, height: 300 } }
+  );
+  assert.strictEqual(click.ok, true);
+  assert.strictEqual(Math.round(click.x), 300);
+  assert.strictEqual(Math.round(click.y), 350);
+
+  const typed = await d.perform({ type: "type", value: "hello" });
+  assert.strictEqual(typed.ok, true);
+  assert.strictEqual(typed.typed, 5);
+  assert.strictEqual(typed.focused, false);
+
+  const miss = await d.perform(
+    { type: "click", target: "Save" },
+    { region: { x: 0, y: 0, width: 0, height: 0 } }
+  );
+  assert.strictEqual(miss.ok, false);
+});
+
+test("one persistent worker serves many ops; coords go through toPhysical", async () => {
+  const state = {};
+  const d = new InputDriver({
+    spawnImpl: fakeSpawn(null, state),
+    toPhysical: (pt) => ({ x: pt.x * 2, y: pt.y * 2 }), // fake 200% display
+  });
+  await d.clickAt(10, 20);
+  await d.moveTo(5, 5);
+  await d.typeText("héllo");
+  await d.press("ctrl+s");
+  await d.scroll(-240, { x: 50, y: 60 });
+
+  assert.strictEqual(state.spawned, 1, "worker must be reused across ops");
+  const [click, move, type, combo, wheel] = state.ops;
+  assert.deepStrictEqual(
+    { op: click.op, x: click.x, y: click.y, right: click.right },
+    { op: "click", x: 20, y: 40, right: false }
+  );
+  assert.deepStrictEqual({ op: move.op, x: move.x, y: move.y }, { op: "move", x: 10, y: 10 });
+  assert.strictEqual(type.op, "type");
+  assert.strictEqual(Buffer.from(type.b64, "base64").toString("utf8"), "héllo");
+  assert.deepStrictEqual(
+    { op: combo.op, mods: combo.mods, vk: combo.vk },
+    { op: "combo", mods: [MOD_VK.ctrl], vk: 0x53 }
+  );
+  assert.deepStrictEqual(
+    { op: wheel.op, delta: wheel.delta, move: wheel.move, x: wheel.x, y: wheel.y },
+    { op: "wheel", delta: -240, move: true, x: 100, y: 120 }
+  );
+  d.dispose();
+});
+
+test("type with coords clicks the field first (focus), then types", async () => {
+  const state = {};
+  const d = new InputDriver({ spawnImpl: fakeSpawn(null, state) });
+  const out = await d.perform(
+    { type: "fill", target: "Name", value: "Ada", xPct: 25, yPct: 50 },
+    { region: { x: 0, y: 0, width: 400, height: 200 } }
+  );
+  assert.strictEqual(out.ok, true);
+  assert.strictEqual(out.focused, true);
+  assert.strictEqual(out.typed, 3);
+  assert.strictEqual(state.ops[0].op, "click");
+  assert.strictEqual(state.ops[0].x, 100);
+  assert.strictEqual(state.ops[1].op, "type");
+  d.dispose();
+});
+
+test("foreground rides the worker; dry-run stays offline", async () => {
+  const state = {};
+  const d = new InputDriver({
+    spawnImpl: fakeSpawn((m) => (m.op === "fg" ? { title: "Notepad — todo", proc: "notepad" } : null), state),
+  });
+  const fg = await d.foreground();
+  assert.deepStrictEqual(fg, { title: "Notepad — todo", proc: "notepad" });
+  d.dispose();
+
+  const dry = new InputDriver({ dryRun: true });
+  assert.deepStrictEqual(await dry.foreground(), { title: "?", proc: "?" });
+});
+
+test("worker op error rejects; worker death fails pending and respawns next op", async () => {
+  const state = {};
+  const d = new InputDriver({
+    spawnImpl: fakeSpawn((m) => (m.op === "tap" ? { __error: "boom" } : null), state),
+  });
+  await assert.rejects(() => d.press("enter"), /boom/);
+
+  // Kill the worker; the next op should spawn a fresh one and succeed.
+  d._worker.kill();
+  await d.clickAt(1, 2);
+  assert.strictEqual(state.spawned, 2);
+  d.dispose();
+});
+
+test("press rejects unsupported keys without touching the worker", async () => {
+  const state = {};
+  const d = new InputDriver({ spawnImpl: fakeSpawn(null, state) });
+  await assert.rejects(() => d.press("hyper+q"), /Unsupported key/);
+  assert.strictEqual(state.spawned, 0);
+  assert.strictEqual(state.ops.length, 0);
+});
+
+(async () => {
+  for (const { name, fn } of tests) {
+    try {
+      await fn();
+      pass += 1;
+      console.log("PASS " + name);
+    } catch (err) {
+      fails.push(`${name} — ${err.message}`);
+      console.log("FAIL " + name + " — " + err.stack);
+    }
+  }
+  console.log(`\n${pass} passed, ${fails.length} failed`);
+  process.exit(fails.length ? 1 : 0);
+})();
