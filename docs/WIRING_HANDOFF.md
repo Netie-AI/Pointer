@@ -9,12 +9,13 @@ Branch `netie-ecosystem-contracts`.
 | Cortex gate + OpenVault vision | ✅ | fail-closed on act |
 | One-tap **Go** | ✅ | intent ask/act |
 | Plan review + Run | ✅ | irreversible unchecked |
-| **Real input driver** | ✅ | Win32 SendInput via PowerShell; `NETIE_CLICK_DRY_RUN=1` for safe tests |
-| Dual-envelope vault | ✅ | DPAPI; test-plain blocked unless env |
-| Fleet Dual Brain (default ON) | ✅ | `/v1/telemetry` only; skip if user-kek verify fails |
-| Consent truthiness | ✅ | `coerceBool` — `"false"` is false |
-| Personal brain | ✅ | silent remember + habits |
-| Tests | ✅ | `npm test` (ecosystem+vault+intent+zen) |
+| **Real input driver** | ✅ | Win32 SendInput; dry-run env |
+| Vision targeting | ✅ | `targeting.js` fills xPct/yPct when missing |
+| Kill switch | ✅ | Esc + Ctrl+Space abort mid-plan |
+| Memory-aware plans | ✅ | hot + personal brain into `_llmPlan` |
+| Post-step verify | ✅ | region fingerprint; stop on no change |
+| Custody client | ✅ | `requestCustody` → `/v1/custody/inject` (soft-fail until OV ships) |
+| Tests | ✅ | 42 passed (`npm test`) |
 
 ## Still open (not blocking local zen)
 
