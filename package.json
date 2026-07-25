@@ -1,0 +1,17 @@
+{
+  "name": "netie-clicks",
+  "version": "0.1.0",
+  "description": "Netie Clicks — Windows screen buddy (Ctrl+Space → frame → chat via OpenVault)",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron electron/main.js",
+    "dev": "electron electron/main.js"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0"
+  },
+  "optionalDependencies": {
+    "ioredis": "^5.6.1"
+  }
+}

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Netie frame</title>
+    <style>
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.25);
+        cursor: crosshair;
+        user-select: none;
+      }
+      #hint {
+        position: fixed;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(12, 12, 16, 0.85);
+        color: #f2f2f5;
+        font: 13px "Segoe UI", system-ui, sans-serif;
+        pointer-events: none;
+        z-index: 2;
+      }
+      #box {
+        position: fixed;
+        border: 2px solid #6ea8ff;
+        background: rgba(110, 168, 255, 0.12);
+        display: none;
+        z-index: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hint">Drag to frame a region · Esc cancel · release to capture</div>
+    <div id="box"></div>
+    <script>
+      const box = document.getElementById("box");
+      let start = null;
+
+      function toScreen(e) {
+        // Overlay is fullscreen on primary; coords are CSS pixels relative to overlay.
+        return { x: e.screenX, y: e.screenY, lx: e.clientX, ly: e.clientY };
+      }
+
+      window.addEventListener("mousedown", (e) => {
+        if (e.button !== 0) return;
+        start = toScreen(e);
+        box.style.display = "block";
+        box.style.left = e.clientX + "px";
+        box.style.top = e.clientY + "px";
+        box.style.width = "0px";
+        box.style.height = "0px";
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (!start) return;
+        const x = Math.min(start.lx, e.clientX);
+        const y = Math.min(start.ly, e.clientY);
+        const w = Math.abs(e.clientX - start.lx);
+        const h = Math.abs(e.clientY - start.ly);
+        box.style.left = x + "px";
+        box.style.top = y + "px";
+        box.style.width = w + "px";
+        box.style.height = h + "px";
+      });
+
+      window.addEventListener("mouseup", (e) => {
+        if (!start || e.button !== 0) return;
+        const x = Math.min(start.lx, e.clientX);
+        const y = Math.min(start.ly, e.clientY);
+        const w = Math.abs(e.clientX - start.lx);
+        const h = Math.abs(e.clientY - start.ly);
+        start = null;
+        box.style.display = "none";
+        if (w < 8 || h < 8) {
+          window.netieOverlay.cancel();
+          return;
+        }
+        // Pass logical rect relative to this display's origin (0,0 of overlay).
+        window.netieOverlay.commitRegion({ x, y, width: w, height: h });
+      });
+
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") window.netieOverlay.cancel();
+      });
+    </script>
+  </body>
+</html>

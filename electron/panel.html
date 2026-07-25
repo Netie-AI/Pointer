@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; connect-src 'self' http://127.0.0.1:5000; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Netie Click</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #121214;
+        --surface: #1c1c20;
+        --border: #2e2e36;
+        --text: #f2f2f5;
+        --muted: #9b9ba8;
+        --accent: #6ea8ff;
+        --danger: #ff6b6b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 13px;
+        user-select: none;
+        -webkit-app-region: drag;
+      }
+
+      .panel {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+        height: 100vh;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
+      .hotkey {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .thumb-wrap {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        overflow: hidden;
+        min-height: 120px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-app-region: no-drag;
+      }
+
+      .thumb-wrap img {
+        display: block;
+        width: 100%;
+        max-height: 160px;
+        object-fit: contain;
+        background: #000;
+      }
+
+      .thumb-placeholder {
+        color: var(--muted);
+        padding: 24px;
+        text-align: center;
+        line-height: 1.4;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      textarea,
+      button {
+        -webkit-app-region: no-drag;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 72px;
+        resize: vertical;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        padding: 8px 10px;
+        font: inherit;
+        line-height: 1.4;
+      }
+
+      textarea:focus {
+        outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent);
+        border-color: var(--accent);
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      button {
+        flex: 1;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        background: var(--accent);
+        color: #0b1220;
+      }
+
+      button.secondary {
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      .reply {
+        flex: 1;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        padding: 10px;
+        overflow: auto;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+        -webkit-app-region: no-drag;
+        min-height: 80px;
+      }
+
+      .status {
+        font-size: 11px;
+        color: var(--muted);
+        min-height: 16px;
+      }
+
+      .status.error {
+        color: var(--danger);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="panel">
+      <header>
+        <h1>Netie Click</h1>
+        <span class="hotkey" id="hotkey-label">Ctrl+Space</span>
+      </header>
+
+      <section class="thumb-wrap" id="thumb-wrap">
+        <p class="thumb-placeholder" id="thumb-placeholder">
+          Ctrl+Space → drag a frame on your screen → ask Netie.
+        </p>
+        <img id="thumb" alt="Screenshot thumbnail" hidden />
+      </section>
+
+      <section>
+        <label for="message">Ask about your screen</label>
+        <textarea
+          id="message"
+          placeholder="What should I help with on this screen?"
+          rows="3"
+        ></textarea>
+      </section>
+
+      <div class="actions">
+        <button type="button" class="secondary" id="recapture-btn">Recapture</button>
+        <button type="button" id="send-btn">Ask buddy</button>
+      </div>
+
+      <section>
+        <label for="reply">Reply</label>
+        <div id="reply" class="reply">Waiting for a question…</div>
+      </section>
+
+      <p class="status" id="status"></p>
+    </div>
+
+    <script src="panel.js"></script>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+Netie Clicks includes ideas and architecture patterns from Clicky:
+
+  https://github.com/farzaa/clicky
+
+Copyright (c) 2026 Farza — MIT License (see vendor copy under OpenVault/vendor/clicky/LICENSE).
+
+Netie Clicks Windows Electron implementation is separate code.
