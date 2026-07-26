@@ -19,6 +19,12 @@ const VALID_INVOKE = [
   "clicks:onUpdateCheck",
   "clicks:exportMemory",
   "clicks:feedback",
+  "clicks:setStageLayout",
+  "clicks:saveConversation",
+  "clicks:listConversations",
+  "clicks:readConversation",
+  "clicks:revealConversations",
+  "clicks:openInSpace",
 ];
 const VALID_RECEIVE = ["click:onHotkeyFired", "clicks:state", "clicks:error"];
 
@@ -50,6 +56,12 @@ contextBridge.exposeInMainWorld("netieClick", {
   onUpdateCheck: () => safeInvoke("clicks:onUpdateCheck"),
   exportMemory: () => safeInvoke("clicks:exportMemory"),
   feedback: (payload) => safeInvoke("clicks:feedback", payload),
+  setStageLayout: (mode) => safeInvoke("clicks:setStageLayout", mode),
+  saveConversation: (payload) => safeInvoke("clicks:saveConversation", payload),
+  listConversations: () => safeInvoke("clicks:listConversations"),
+  readConversation: (id) => safeInvoke("clicks:readConversation", id),
+  revealConversations: (file) => safeInvoke("clicks:revealConversations", file),
+  openInSpace: () => safeInvoke("clicks:openInSpace"),
   onHotkeyFired: (callback) => safeOn("click:onHotkeyFired", callback),
   onState: (callback) => safeOn("clicks:state", callback),
   onError: (callback) => safeOn("clicks:error", callback),

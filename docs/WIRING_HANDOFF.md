@@ -18,7 +18,10 @@ Branch `netie-ecosystem-contracts`.
 | Post-step verify | ✅ | fresh pre-action fingerprint (not plan-time stale); stop on no change |
 | Custody client | ✅ | `requestCustody` → `/v1/custody/inject` (soft-fail until OV ships) |
 | Hot ticks | ✅ | foreground sampling rides the driver worker — no powershell spawn per tick |
-| Tests | ✅ | 56 passed (`npm test`) |
+| Cluely stage (bubbles + subtitles) | ✅ | `stage.html` — `setContentProtection(true)` (capture-hidden); layout right/below |
+| Soft sounds + cute orb | ✅ | Web Audio beeps; spinning mascot while thinking |
+| Clicky conversations | ✅ | per-session `.md` under `%APPDATA%/NetieClicks/conversations`; Explorer + Space open |
+| Tests | ✅ | 58+ passed (`npm test`) |
 
 ## Still open (not blocking local zen)
 
@@ -33,3 +36,6 @@ npm test
 $env:NETIE_CLICK_DRY_RUN=1; npm start   # no real clicks
 npm start                               # real clicks after Approve
 ```
+
+Conversations folder (Explorer / Netie Space):
+`%APPDATA%\NetieClicks\conversations\`

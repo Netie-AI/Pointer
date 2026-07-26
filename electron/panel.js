@@ -14,9 +14,21 @@ const planSteps = document.getElementById("plan-steps");
 const helpImprove = document.getElementById("help-improve");
 const memCount = document.getElementById("mem-count");
 const brainBadge = document.getElementById("brain-badge");
+const mascot = document.getElementById("mascot");
+const layoutBtn = document.getElementById("layout-btn");
+const saveBtn = document.getElementById("save-btn");
+const folderBtn = document.getElementById("folder-btn");
+const spaceBtn = document.getElementById("space-btn");
+const chatsEl = document.getElementById("chats");
 
 let lastDataUrl = null;
 let lastPlan = null;
+let bubbleMode = "right";
+
+function setBusy(on) {
+  if (mascot) mascot.classList.toggle("busy", !!on);
+  if (on && window.NetieSound) NetieSound.think();
+}
 
 function setStatus(text, isError) {
   statusEl.textContent = text || "";
@@ -151,6 +163,7 @@ async function runGo() {
     return;
   }
   goBtn.disabled = true;
+  setBusy(true);
   setStatus("On it…");
   setBanner("");
   replyEl.textContent = "…";
@@ -161,21 +174,23 @@ async function runGo() {
       if (!res.ok) {
         replyEl.textContent = "";
         setStatus(res.error || "Failed", true);
+        if (window.NetieSound) NetieSound.warn();
         if (res.blocked) setBanner(res.error || "Blocked", "blocked");
         else if (res.degraded) setBanner("Answered without Cortex gate.", "warn");
       } else {
         replyEl.textContent = res.reply || "";
         setStatus("Done");
+        if (window.NetieSound) NetieSound.ok();
         if (res.degraded) setBanner("Degraded mode — Cortex was unreachable.", "warn");
       }
       return;
     }
 
-    // act mode
     if (!res.ok) {
       setStatus(res.reason || "Plan blocked", true);
       setBanner(res.reason || "Blocked", "blocked");
       replyEl.textContent = res.reason || "";
+      if (window.NetieSound) NetieSound.warn();
       return;
     }
     renderPlan(res);
@@ -186,26 +201,12 @@ async function runGo() {
         : "Looks safe. Hit Run safe steps when ready."
       : "Only read steps — Run to finish.";
     setStatus(`${(res.actions || []).length} step(s) ready`);
-
-    // Idiot-proof: if everything is auto or non-irreversible approve, one less click.
-    const allSafe =
-      res.ok &&
-      (res.actions || []).every(
-        (a) =>
-          a.safety &&
-          (a.safety.disposition === "auto" ||
-            a.safety.disposition === "refuse" ||
-            a.safety.disposition === "custody" ||
-            (a.safety.disposition === "approve" && !a.safety.irreversible))
-      ) &&
-      (res.actions || []).some((a) => a.safety && a.safety.disposition === "approve");
-    if (allSafe && !irreversible) {
-      // Pre-checked already — user still taps Run (one confirmation for consequential).
-    }
+    if (window.NetieSound) NetieSound.pop();
   } catch (e) {
     setStatus(String(e.message || e), true);
   } finally {
     goBtn.disabled = false;
+    setBusy(false);
     refreshInfo();
   }
 }
@@ -271,5 +272,61 @@ helpImprove.addEventListener("change", async () => {
   if (on) window.netieClick.flushTelemetry({ reason: "consent-on" }).catch(() => {});
 });
 
+async function refreshChats() {
+  try {
+    const res = await window.netieClick.listConversations();
+    if (!res.ok || !res.items || !res.items.length) {
+      chatsEl.classList.remove("visible");
+      chatsEl.innerHTML = "";
+      return;
+    }
+    chatsEl.classList.add("visible");
+    chatsEl.innerHTML = "";
+    res.items.slice(0, 8).forEach((item) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = `${item.title} · ${item.turns || 0} turns`;
+      b.title = item.file;
+      b.addEventListener("click", async () => {
+        await window.netieClick.revealConversations(item.file);
+        setStatus("Opened in Explorer");
+      });
+      chatsEl.appendChild(b);
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
+layoutBtn.addEventListener("click", async () => {
+  bubbleMode = bubbleMode === "right" ? "below" : "right";
+  await window.netieClick.setStageLayout(bubbleMode);
+  layoutBtn.textContent = bubbleMode === "below" ? "Bubbles↓" : "Bubbles→";
+  setStatus(bubbleMode === "below" ? "Bubbles under the subtitle" : "Bubbles on the right");
+  if (window.NetieSound) NetieSound.pop();
+});
+
+saveBtn.addEventListener("click", async () => {
+  const res = await window.netieClick.saveConversation({});
+  if (!res.ok) {
+    setStatus(res.error || "Nothing to save", true);
+    return;
+  }
+  setStatus(`Saved ${res.id}.md`);
+  if (window.NetieSound) NetieSound.ok();
+  refreshChats();
+});
+
+folderBtn.addEventListener("click", async () => {
+  await window.netieClick.revealConversations();
+  setStatus("Conversations folder in Explorer");
+});
+
+spaceBtn.addEventListener("click", async () => {
+  const res = await window.netieClick.openInSpace();
+  setStatus(res.ok ? "Folder ready for Netie Space" : res.error || "Failed", !res.ok);
+});
+
 refreshInfo();
+refreshChats();
 setStatus("Press Ctrl+Space, frame a region, then Go");

@@ -19,9 +19,11 @@ npm start
 
 ## Use
 
-1. **Ctrl+Space** — arm session (starts 60s hot-memory ticks)
-2. **Drag** a rectangle on the dimmed overlay — region screenshot
-3. Type an instruction (“click Save”, “what is this dialog?”) → **Ask buddy**
+1. **Ctrl+Space** — arm session (hot ticks + capture-hidden stage)
+2. **Drag** a rectangle — region screenshot
+3. Type what you want → **Go** (ask or act — we decide)
+4. Watch **bubbles + bottom subtitles** (hidden from screen capture)
+5. **Save chat** / **Folder** / **Space** — markdown under `%APPDATA%\NetieClicks\conversations`
 
 ## Docs
 

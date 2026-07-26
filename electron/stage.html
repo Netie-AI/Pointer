@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    />
+    <title>Netie Stage</title>
+    <style>
+      :root {
+        --ink: #f7f8fc;
+        --soft: rgba(20, 22, 30, 0.55);
+        --accent: #7eb6ff;
+        --glow: rgba(126, 182, 255, 0.45);
+      }
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        color: var(--ink);
+        user-select: none;
+        -webkit-app-region: no-drag;
+      }
+      .stage {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      /* Bottom subtitle strip — Cluely-style, content-protected by the BrowserWindow */
+      .subs {
+        position: absolute;
+        left: 50%;
+        bottom: 28px;
+        transform: translateX(-50%);
+        max-width: min(920px, 86vw);
+        min-width: 280px;
+        padding: 14px 22px;
+        border-radius: 16px;
+        background: var(--soft);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+        text-align: center;
+        font-size: 18px;
+        line-height: 1.45;
+        letter-spacing: 0.01em;
+        opacity: 0;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+        pointer-events: none;
+      }
+      .subs.visible {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      .subs.hidden-empty { opacity: 0; }
+
+      /* Right-side chat bubbles */
+      .bubbles {
+        position: absolute;
+        right: 18px;
+        top: 12%;
+        bottom: 120px;
+        width: min(340px, 32vw);
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        gap: 10px;
+        pointer-events: none;
+      }
+      .bubble {
+        align-self: flex-end;
+        max-width: 100%;
+        padding: 10px 14px;
+        border-radius: 16px 16px 4px 16px;
+        background: rgba(18, 22, 34, 0.72);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        font-size: 13px;
+        line-height: 1.4;
+        white-space: pre-wrap;
+        word-break: break-word;
+        animation: popIn 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      }
+      .bubble.user {
+        align-self: flex-end;
+        background: rgba(91, 140, 255, 0.35);
+        border-radius: 16px 16px 16px 4px;
+      }
+      .bubble.netie {
+        border-color: rgba(126, 182, 255, 0.35);
+      }
+      @keyframes popIn {
+        from { opacity: 0; transform: translateX(18px) scale(0.92); }
+        to { opacity: 1; transform: translateX(0) scale(1); }
+      }
+
+      /* Cute Netie orb — blinks / spins while thinking */
+      .orb-wrap {
+        position: absolute;
+        right: 28px;
+        bottom: 110px;
+        width: 56px;
+        height: 56px;
+        pointer-events: none;
+      }
+      .orb {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 30% 28%, #fff 0 8%, transparent 9%),
+          radial-gradient(circle at 70% 28%, #fff 0 8%, transparent 9%),
+          radial-gradient(circle at 50% 55%, #1a2030 0 12%, transparent 13%),
+          linear-gradient(145deg, #9ec5ff, #6ea8ff 45%, #4f8fff);
+        box-shadow: 0 0 0 0 var(--glow), 0 10px 28px rgba(0, 0, 0, 0.35);
+        animation: idle 2.8s ease-in-out infinite;
+      }
+      .orb.thinking {
+        animation: spinBlink 0.9s linear infinite;
+      }
+      .orb.talking {
+        animation: talk 0.45s ease-in-out infinite;
+      }
+      @keyframes idle {
+        0%, 100% { transform: translateY(0); box-shadow: 0 0 0 0 var(--glow); }
+        50% { transform: translateY(-4px); box-shadow: 0 0 18px 4px var(--glow); }
+      }
+      @keyframes spinBlink {
+        0% { transform: rotate(0deg) scale(1); filter: brightness(1); }
+        40% { filter: brightness(1.25); }
+        50% { transform: rotate(180deg) scale(1.06); }
+        100% { transform: rotate(360deg) scale(1); }
+      }
+      @keyframes talk {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.08); }
+      }
+      .layout-below .bubbles {
+        left: 50%;
+        right: auto;
+        top: auto;
+        bottom: 110px;
+        width: min(640px, 70vw);
+        transform: translateX(-50%);
+        align-items: center;
+      }
+      .layout-below .bubble {
+        align-self: center;
+        border-radius: 16px;
+      }
+      .layout-below .orb-wrap {
+        right: 50%;
+        transform: translateX(50%);
+        bottom: 100px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage" id="stage">
+      <div class="bubbles" id="bubbles"></div>
+      <div class="orb-wrap"><div class="orb" id="orb" title="Netie"></div></div>
+      <div class="subs hidden-empty" id="subs"></div>
+    </div>
+    <script src="netie-sound.js"></script>
+    <script src="stage.js"></script>
+  </body>
+</html>

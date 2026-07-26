@@ -15,6 +15,7 @@ const {
   screen,
   session,
   ipcMain,
+  shell,
 } = require("electron");
 const fs = require("fs");
 const os = require("os");
@@ -27,6 +28,7 @@ const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
 const { ensureActionCoords } = require("./netie/targeting");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
+const { ConversationStore } = require("./netie/conversations");
 const crypto = require("crypto");
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -60,6 +62,7 @@ try {
 let tray = null;
 let panelWindow = null;
 let overlayWindow = null;
+let stageWindow = null;
 let overlayDisplayBounds = null; // bounds of the display the overlay covers
 let lastCapture = null; // { path, dataUrl, region }
 let tickTimer = null;
@@ -67,6 +70,10 @@ let state = "IDLE"; // IDLE | ARMED | SELECTING | ACTIVE
 let abortPlan = false;
 let planRunning = false;
 let pendingPlan = null; // last planActions result for approve UI
+let stageLayout = process.env.NETIE_STAGE_LAYOUT === "below" ? "below" : "right";
+const chats = new ConversationStore();
+/** @type {Array<{role:string,text:string,ts:number}>} */
+let sessionTurns = [];
 const driver = new InputDriver({
   dryRun: process.env.NETIE_CLICK_DRY_RUN === "1",
   // Worker is per-monitor DPI aware → feed it physical pixels, not DIPs.
@@ -98,6 +105,84 @@ function sendToPanel(channel, data) {
   }
 }
 
+function sendStage(event) {
+  if (stageWindow && !stageWindow.isDestroyed()) {
+    stageWindow.webContents.send("stage:event", event);
+  }
+}
+
+function createStage() {
+  if (stageWindow && !stageWindow.isDestroyed()) return stageWindow;
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  const { x, y, width, height } = display.bounds;
+  stageWindow = new BrowserWindow({
+    x,
+    y,
+    width,
+    height,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    hasShadow: false,
+    focusable: false,
+    show: false,
+    backgroundColor: "#00000000",
+    webPreferences: {
+      preload: path.join(__dirname, "stage-preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  stageWindow.setAlwaysOnTop(true, "screen-saver");
+  stageWindow.setIgnoreMouseEvents(true, { forward: true });
+  // Cluely-style: excluded from screen capture / desktopCapturer.
+  try {
+    stageWindow.setContentProtection(true);
+  } catch {
+    /* older Electron */
+  }
+  stageWindow.loadFile(path.join(__dirname, "stage.html"));
+  stageWindow.on("closed", () => {
+    stageWindow = null;
+  });
+  return stageWindow;
+}
+
+function showStage() {
+  const win = createStage();
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  const { x, y, width, height } = display.bounds;
+  win.setBounds({ x, y, width, height });
+  win.showInactive();
+  sendStage({ type: "layout", mode: stageLayout });
+}
+
+function hideStage() {
+  if (stageWindow && !stageWindow.isDestroyed()) stageWindow.hide();
+}
+
+function pushTurn(role, text) {
+  const t = String(text || "").trim();
+  if (!t) return;
+  sessionTurns.push({ role, text: t, ts: Date.now() });
+  if (sessionTurns.length > 80) sessionTurns = sessionTurns.slice(-80);
+}
+
+function saveCurrentConversation(title) {
+  if (!sessionTurns.length) return { ok: false, error: "nothing to save" };
+  const firstUser = sessionTurns.find((x) => x.role === "user");
+  const res = chats.save({
+    title: title || (firstUser && firstUser.text.slice(0, 60)) || "Netie Click session",
+    turns: sessionTurns,
+    meta: { deviceId: hot.deviceId },
+  });
+  return res;
+}
+
 function setupCsp() {
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const csp = [
@@ -123,7 +208,7 @@ function createPanel() {
   if (panelWindow && !panelWindow.isDestroyed()) return panelWindow;
   panelWindow = new BrowserWindow({
     width: 420,
-    height: 560,
+    height: 620,
     show: false,
     frame: false,
     resizable: true,
@@ -137,6 +222,11 @@ function createPanel() {
       sandbox: true,
     },
   });
+  try {
+    panelWindow.setContentProtection(true);
+  } catch {
+    /* ok */
+  }
   panelWindow.loadFile(path.join(__dirname, "panel.html"));
   panelWindow.on("closed", () => {
     panelWindow = null;
@@ -323,8 +413,21 @@ async function askBuddy({ message, dataUrl }) {
     .filter(Boolean)
     .join("\n");
 
+  showStage();
+  pushTurn("user", message);
+  sendStage({ type: "bubble", role: "user", text: message });
+  sendStage({ type: "mood", mood: "thinking" });
+  sendStage({ type: "subtitle", text: "Looking…", ms: 2000, sound: false });
+
   const r = await eco.visionChat({ message, dataUrl, hotContext });
   if (r.ok && message) {
+    pushTurn("assistant", r.text);
+    sendStage({ type: "bubble", role: "netie", text: String(r.text || "").slice(0, 280) });
+    sendStage({
+      type: "subtitle",
+      text: String(r.text || "").slice(0, 180),
+      ms: 6000,
+    });
     try {
       brain.remember(`Asked: ${message.slice(0, 120)} → ${String(r.text || "").slice(0, 160)}`, {
         kind: "vision",
@@ -333,6 +436,9 @@ async function askBuddy({ message, dataUrl }) {
     } catch {
       /* vault optional */
     }
+  } else {
+    sendStage({ type: "mood", mood: "idle" });
+    sendStage({ type: "subtitle", text: r.text || "Couldn't answer", ms: 3500 });
   }
   return r;
 }
@@ -419,6 +525,13 @@ async function executeApproved(actions) {
 
       const started = Date.now();
       const enriched = await ensureActionCoords(action, { dataUrl, eco });
+      sendStage({
+        type: "subtitle",
+        text: `${enriched.type}${enriched.target ? ` · ${enriched.target}` : ""}`,
+        ms: 1800,
+        sound: false,
+      });
+      sendStage({ type: "mood", mood: "talking" });
       const needsVerify =
         ["click", "doubleclick", "rightclick", "type", "fill"].includes(
           String(enriched.type || "").toLowerCase()
@@ -512,12 +625,15 @@ function armSession() {
   state = "ARMED";
   startTicks();
   showPanel();
+  showStage();
+  sendStage({ type: "mood", mood: "idle" });
   sendToPanel("clicks:state", { state, hotkey: HOTKEY });
   openOverlay();
 }
 
 function disarmSession() {
   try {
+    if (sessionTurns.length) saveCurrentConversation();
     brain.absorbHotSummary(hot.summaryText());
     brain.syncFleet("session-end").catch(() => {});
   } catch {
@@ -526,6 +642,7 @@ function disarmSession() {
   state = "IDLE";
   stopTicks();
   closeOverlay();
+  hideStage();
   sendToPanel("clicks:state", { state, hotkey: HOTKEY });
 }
 
@@ -564,6 +681,23 @@ function createTray() {
       {
         label: "Show panel",
         click: () => showPanel(),
+      },
+      {
+        label: "Show stage (bubbles)",
+        click: () => showStage(),
+      },
+      { type: "separator" },
+      {
+        label: "Open conversations folder",
+        click: () => chats.reveal(),
+      },
+      {
+        label: stageLayout === "below" ? "Bubbles: right side" : "Bubbles: below",
+        click: () => {
+          stageLayout = stageLayout === "below" ? "right" : "below";
+          sendStage({ type: "layout", mode: stageLayout });
+          createTray(); // refresh label
+        },
       },
       { type: "separator" },
       {
@@ -713,6 +847,11 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
   }
 
   try {
+    showStage();
+    pushTurn("user", message);
+    sendStage({ type: "bubble", role: "user", text: message });
+    sendStage({ type: "mood", mood: "thinking" });
+    sendStage({ type: "subtitle", text: "Planning safely…", ms: 2500, sound: false });
     const plan = await eco.planActions({
       instruction: message,
       screenText: (payload && payload.screenText) || "",
@@ -721,6 +860,10 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
     });
     pendingPlan = plan;
     if (plan.ok) {
+      const summary = `${(plan.actions || []).length} step(s) ready — review in panel`;
+      pushTurn("assistant", summary);
+      sendStage({ type: "bubble", role: "netie", text: summary });
+      sendStage({ type: "subtitle", text: summary, ms: 4500 });
       try {
         brain.telemetry.enqueueSessionSketch({
           app_class: "unknown",
@@ -731,6 +874,8 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
       } catch {
         /* fleet may be paused */
       }
+    } else {
+      sendStage({ type: "subtitle", text: plan.reason || "Blocked", ms: 4000 });
     }
     return { ...plan, mode: "act", intent };
   } catch (err) {
@@ -848,11 +993,77 @@ ipcMain.handle("clicks:feedback", async (_e, payload) => {
   }
 });
 
+ipcMain.handle("stage:ready", async () => {
+  sendStage({ type: "layout", mode: stageLayout });
+  return { ok: true, layout: stageLayout };
+});
+
+ipcMain.handle("stage:dismiss", async () => {
+  hideStage();
+  return { ok: true };
+});
+
+ipcMain.handle("clicks:setStageLayout", async (_e, mode) => {
+  stageLayout = mode === "below" ? "below" : "right";
+  showStage();
+  sendStage({ type: "layout", mode: stageLayout });
+  return { ok: true, layout: stageLayout };
+});
+
+ipcMain.handle("clicks:saveConversation", async (_e, payload) => {
+  try {
+    const res = saveCurrentConversation(payload && payload.title);
+    if (res.ok) sessionTurns = [];
+    return res;
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
+ipcMain.handle("clicks:listConversations", async () => {
+  try {
+    return { ok: true, items: chats.list(), folder: chats.root };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
+ipcMain.handle("clicks:readConversation", async (_e, id) => {
+  try {
+    const rec = chats.read(id);
+    if (!rec) return { ok: false, error: "not found" };
+    return { ok: true, ...rec };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
+ipcMain.handle("clicks:revealConversations", async (_e, file) => {
+  try {
+    return chats.reveal(file || null);
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
+ipcMain.handle("clicks:openInSpace", async () => {
+  // Soft hand-off: open the folder; Netie Space can index it when pointed here.
+  try {
+    chats.ensure();
+    await shell.openPath(chats.root);
+    return { ok: true, folder: chats.root, hint: "Add this folder as a Netie Space to browse chats." };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
 app.whenReady().then(() => {
   ensureTemp();
   setupCsp();
+  chats.ensure();
   createTray();
   createPanel();
+  createStage();
   registerHotkey();
 });
 

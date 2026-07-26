@@ -7,7 +7,8 @@
   "scripts": {
     "start": "electron electron/main.js",
     "dev": "electron electron/main.js",
-    "test": "node test/ecosystem.test.js && node test/vault.test.js && node test/intent.test.js && node test/zen.test.js && node test/followup.test.js && node test/driver.test.js && node test/geometry.test.js",
+    "test": "node test/ecosystem.test.js && node test/vault.test.js && node test/intent.test.js && node test/zen.test.js && node test/followup.test.js && node test/driver.test.js && node test/geometry.test.js && node test/conversations.test.js",
+    "test:conversations": "node test/conversations.test.js",
     "test:ecosystem": "node test/ecosystem.test.js",
     "test:vault": "node test/vault.test.js",
     "test:intent": "node test/intent.test.js",
