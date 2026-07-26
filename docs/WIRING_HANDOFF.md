@@ -20,16 +20,22 @@ Branch `netie-ecosystem-contracts`.
 | Hot ticks | ✅ | foreground sampling rides the driver worker — no powershell spawn per tick |
 | Cluely HUD | ✅ | Top bar + Live insights + AI response + cute FAB (`hud.html`, content-protected) |
 | Ctrl+Space default | ✅ | Full-screen capture immediately; **Frame** for optional region |
-| Live mic STT | ✅ | Chromium SpeechRecognition in HUD |
-| System audio STT | ✅ contract | Sidecar `NETIE_STT_URL` — see `docs/TRANSCRIPTION.md` (Hearsay / RealtimeSTT) |
+| Live mic capture | ✅ | `getUserMedia` → 16 kHz worklet → main (`hud-audio.js`) |
+| **System audio capture** | ✅ | Native Electron WASAPI **loopback** — no sidecar. Verified track label `"System audio"` |
+| Utterance gating | ✅ | `netie/audio.js` adaptive floor + hangover; `minMs` counts voiced audio only |
+| STT engine chain | ✅ | local whisper.cpp → OpenVault `/v1/audio/transcriptions` → sidecar → honest "none" |
 | Ask + Do it | ✅ | HUD Ask AI / Do it → same Cortex-gated paths |
-| Tests | ✅ | includes `stt.test.js` |
+| Tests | ✅ | 83 passing incl. `audio.test.js`, `transcriber.test.js` |
+
+### Removed on purpose: Chromium SpeechRecognition
+
+Probed on Electron 35.7.5 — reaches `audiostart`, then **`error: "network"`** at ~3.8 s (Electron ships no Google Speech key), and the old `onend` handler restarted it forever. It is also **cloud**, not on-device, which contradicts our governance. Replaced by the local engine chain above; see `docs/TRANSCRIPTION.md`.
 
 ## Still open (not blocking local zen)
 
 1. Cortex `/v1/telemetry` + `/register` live endpoints (Cortex lane).
 2. OpenVault custody inject for secret fields.
-3. Ship bundled RealtimeSTT/Hearsay sidecar for system-audio (optional install).
+3. **Install a local STT engine to hear anything**: set `NETIE_WHISPER_BIN` + `NETIE_WHISPER_MODEL`, or run OpenVault with `/v1/audio/transcriptions`. Capture is done; the engine is BYO by design.
 
 ## Ops
 

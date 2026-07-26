@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; media-src 'self'; connect-src 'self' http://127.0.0.1:*"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:; worker-src 'self' blob:; connect-src 'self' http://127.0.0.1:*"
     />
     <title>Netie HUD</title>
     <style>
@@ -80,6 +80,8 @@
       .wave.live i:nth-child(2) { animation-delay: 0.1s; }
       .wave.live i:nth-child(3) { animation-delay: 0.2s; }
       .wave.live i:nth-child(4) { animation-delay: 0.05s; }
+      /* Utterance captured, engine is transcribing it. */
+      .wave.thinking i { animation-duration: 0.35s; background: var(--good, #7ee0a8); }
       @keyframes wave {
         0%, 100% { height: 4px; }
         50% { height: 14px; }
@@ -303,6 +305,7 @@
       </div>
     </div>
     <script src="netie-sound.js"></script>
+    <script src="hud-audio.js"></script>
     <script src="hud.js"></script>
   </body>
 </html>

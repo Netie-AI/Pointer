@@ -30,6 +30,8 @@ const { ensureActionCoords } = require("./netie/targeting");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
+const { Segmenter } = require("./netie/audio");
+const { Transcriber } = require("./netie/transcriber");
 const crypto = require("crypto");
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -75,6 +77,10 @@ let pendingPlan = null; // last planActions result for approve UI
 let stageLayout = process.env.NETIE_STAGE_LAYOUT === "below" ? "below" : "right";
 const chats = new ConversationStore();
 const stt = new SttBridge();
+const transcriber = new Transcriber({ sidecarUrl: process.env.NETIE_STT_URL || "" });
+/** One segmenter per audio source so mic and system speech never interleave. */
+const segmenters = new Map();
+let sttBusy = 0;
 /** @type {Array<{role:string,text:string,ts:number}>} */
 let sessionTurns = [];
 let listenMic = true;
@@ -260,6 +266,9 @@ function setupCsp() {
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
+      // AudioWorklet module + captured mic/loopback streams.
+      "worker-src 'self' blob:",
+      "media-src 'self' blob: mediastream:",
     ].join("; ");
     callback({
       responseHeaders: {
@@ -1200,36 +1209,124 @@ ipcMain.handle("hud:frameRegion", async () => {
 
 ipcMain.handle("hud:toggleListen", async (_e, payload) => {
   listenMic = Boolean(payload && payload.on);
+  if (!listenMic) flushSource("mic");
+  const d = transcriber.describe();
   return {
     ok: true,
-    message: listenMic
-      ? "Mic listening (on-device SpeechRecognition)"
-      : "Mic paused",
+    engine: d.engine,
+    message: listenMic ? `Mic on — ${d.label}` : "Mic paused",
   };
 });
 
 ipcMain.handle("hud:toggleSystemAudio", async (_e, payload) => {
   listenSystem = Boolean(payload && payload.on);
   if (!listenSystem) {
-    await stt.stop();
+    flushSource("system");
     return { ok: true, message: "System audio off" };
   }
-  const r = await stt.start("both");
-  if (!r.ok) {
-    listenSystem = false;
-    return {
-      ok: false,
-      message:
-        "System audio needs a local STT sidecar (Hearsay / RealtimeSTT). See docs/TRANSCRIPTION.md. Mic still works.",
-    };
-  }
-  return { ok: true, message: "System audio sidecar started" };
+  // Capture itself is native Electron loopback; only the engine can be missing.
+  const d = transcriber.describe();
+  return { ok: true, engine: d.engine, message: `System audio on — ${d.label}` };
 });
+
+/** Renderer hands us 20 ms mono frames; gating + transcription live here. */
+ipcMain.on("hud:audioFrame", (_e, payload) => {
+  if (!payload || hudPaused) return;
+  const source = payload.source === "system" ? "system" : "mic";
+  if (source === "mic" && !listenMic) return;
+  if (source === "system" && !listenSystem) return;
+  const samples = payload.samples instanceof Float32Array
+    ? payload.samples
+    : new Float32Array(payload.samples || []);
+  if (!samples.length) return;
+  handleUtterance(source, segmenterFor(source).push(samples));
+});
+
+ipcMain.handle("hud:sttStatus", async (_e, payload) => {
+  await transcriber.probe(Boolean(payload && payload.force));
+  return transcriber.describe();
+});
+
+ipcMain.handle("hud:captureFailed", async (_e, payload) => {
+  const src = (payload && payload.source) || "mic";
+  if (src === "mic") listenMic = false;
+  else listenSystem = false;
+  return { ok: true };
+});
+
+function segmenterFor(source) {
+  if (!segmenters.has(source)) segmenters.set(source, new Segmenter());
+  return segmenters.get(source);
+}
+
+/** Close an open utterance when a source stops, so the last words aren't lost. */
+function flushSource(source) {
+  const seg = segmenters.get(source);
+  if (seg) handleUtterance(source, seg.end());
+}
+
+function handleUtterance(source, utt) {
+  if (!utt) return;
+  // Bound concurrency: a slow CPU engine must not build an unbounded backlog.
+  if (sttBusy >= 2) return;
+  sttBusy += 1;
+  sendHud({ type: "stt-busy", busy: true, source });
+  transcriber
+    .transcribe(utt.pcm)
+    .then((res) => {
+      if (res.ok && res.text) {
+        sendHud({ type: "transcript", text: res.text, source, engine: res.engine });
+        pushTurn(source === "system" ? "heard" : "user", res.text);
+        void hot.pushTick({ t: Date.now(), heard: res.text.slice(0, 160), src: source });
+      } else if (!res.ok) {
+        sendHud({
+          type: "stt-error",
+          source,
+          error: res.error || "transcription failed",
+          hint: transcriber.describe().hint || "",
+        });
+      }
+    })
+    .catch(() => {})
+    .finally(() => {
+      sttBusy -= 1;
+      sendHud({ type: "stt-busy", busy: sttBusy > 0, source });
+    });
+}
 
 ipcMain.handle("hud:setPaused", async (_e, payload) => {
   hudPaused = Boolean(payload && payload.paused);
   return { ok: true, paused: hudPaused };
 });
+
+/**
+ * Windows system-audio capture. Electron answers getDisplayMedia itself with
+ * `audio: 'loopback'` — real WASAPI loopback of what the speakers play, so no
+ * Hearsay/RealtimeSTT sidecar is needed for the capture half.
+ */
+function setupMediaCapture() {
+  const ses = session.defaultSession;
+  if (typeof ses.setDisplayMediaRequestHandler === "function") {
+    ses.setDisplayMediaRequestHandler(
+      async (_request, callback) => {
+        try {
+          const sources = await desktopCapturer.getSources({ types: ["screen"] });
+          callback({ video: sources[0], audio: "loopback" });
+        } catch {
+          callback({});
+        }
+      },
+      { useSystemPicker: false }
+    );
+  }
+  // Only our own windows may take mic/loopback; anything else is denied.
+  ses.setPermissionRequestHandler((wc, permission, callback) => {
+    const ours = [hudWindow, panelWindow].some(
+      (w) => w && !w.isDestroyed() && w.webContents.id === wc.id
+    );
+    callback(ours && (permission === "media" || permission === "audioCapture"));
+  });
+}
 
 app.whenReady().then(() => {
   ensureTemp();
@@ -1239,8 +1336,10 @@ app.whenReady().then(() => {
   createPanel();
   createStage();
   createHud();
+  setupMediaCapture();
   registerHotkey();
   stt.ping().catch(() => {});
+  transcriber.probe().then((e) => console.log("STT engine:", e));
 });
 
 app.on("will-quit", () => {

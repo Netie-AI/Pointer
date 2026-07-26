@@ -16,8 +16,12 @@ let listening = true;
 let systemAudio = false;
 let paused = false;
 let startedAt = Date.now();
-let recognition = null;
 let finalBits = [];
+let sttEngine = null;
+
+const capture = new window.NetieCapture.LiveCapture((source, samples, rate) => {
+  window.netieHud.sendFrame(source, samples, rate);
+});
 
 function setTranscript(text, partial = false) {
   const t = String(text || "").trim();
@@ -36,67 +40,43 @@ function tickTimer() {
 }
 setInterval(tickTimer, 500);
 
-function startBrowserSpeech() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    setTranscript("(SpeechRecognition unavailable — type instead)");
-    return;
-  }
-  stopBrowserSpeech();
-  recognition = new SR();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = "en-US";
-  recognition.onresult = (ev) => {
-    let interim = "";
-    for (let i = ev.resultIndex; i < ev.results.length; i++) {
-      const r = ev.results[i];
-      if (r.isFinal) finalBits.push(r[0].transcript.trim());
-      else interim += r[0].transcript;
-    }
-    const line = [...finalBits, interim].filter(Boolean).join(" ");
-    setTranscript(line, !ev.results[ev.results.length - 1].isFinal);
-    if (interim && askBubble.classList.contains("open") && !askInput.value) {
-      askInput.placeholder = interim;
-    }
-    // Auto-fill ask box with latest final utterance
-    if (finalBits.length) askInput.value = finalBits[finalBits.length - 1];
-  };
-  recognition.onerror = () => {
-    wave.classList.remove("live");
-    fab.classList.remove("listening");
-  };
-  recognition.onend = () => {
-    if (listening && !paused) {
-      try {
-        recognition.start();
-      } catch {
-        /* already started */
-      }
-    }
-  };
-  try {
-    recognition.start();
-    wave.classList.add("live");
-    fab.classList.add("listening");
-    if (window.NetieSound) NetieSound.soft();
-  } catch {
-    /* permission */
-  }
+function setLive(on) {
+  wave.classList.toggle("live", on);
+  fab.classList.toggle("listening", on);
 }
 
-function stopBrowserSpeech() {
-  if (recognition) {
-    try {
-      recognition.onend = null;
-      recognition.stop();
-    } catch {
-      /* ok */
-    }
+/** Show what is actually transcribing, so the HUD never fakes "listening". */
+async function refreshEngine(force = false) {
+  sttEngine = await window.netieHud.invoke("hud:sttStatus", { force });
+  if (sttEngine.engine === "none") {
+    answerMeta.textContent = sttEngine.label;
+    setTranscript("");
+    liveTranscript.textContent = sttEngine.hint || sttEngine.label;
   }
-  recognition = null;
-  wave.classList.remove("live");
-  fab.classList.remove("listening");
+  return sttEngine;
+}
+
+async function startMic() {
+  const res = await capture.start("mic");
+  if (!res.ok) {
+    setLive(false);
+    listening = false;
+    btnListen.classList.remove("active");
+    await window.netieHud.invoke("hud:captureFailed", { source: "mic" });
+    answerMeta.textContent = /NotAllowed/i.test(res.error || "")
+      ? "Mic blocked — allow microphone access in Windows settings"
+      : `Mic unavailable (${res.error || "unknown"})`;
+    if (window.NetieSound) NetieSound.warn();
+    return false;
+  }
+  setLive(true);
+  if (window.NetieSound) NetieSound.soft();
+  return true;
+}
+
+function stopMic() {
+  capture.stop("mic");
+  setLive(capture.active("system"));
 }
 
 fab.addEventListener("click", () => {
@@ -166,25 +146,48 @@ btnListen.addEventListener("click", async () => {
   listening = !listening;
   btnListen.classList.toggle("active", listening);
   const res = await window.netieHud.invoke("hud:toggleListen", { on: listening });
-  if (listening) startBrowserSpeech();
-  else stopBrowserSpeech();
-  answerMeta.textContent = res.message || (listening ? "Mic on" : "Mic off");
+  if (listening) {
+    if (await startMic()) answerMeta.textContent = res.message || "Mic on";
+  } else {
+    stopMic();
+    answerMeta.textContent = "Mic off";
+  }
 });
 
 btnSystem.addEventListener("click", async () => {
   systemAudio = !systemAudio;
   btnSystem.classList.toggle("warn-on", systemAudio);
   const res = await window.netieHud.invoke("hud:toggleSystemAudio", { on: systemAudio });
-  answerMeta.textContent = res.message || (systemAudio ? "System audio requested" : "System audio off");
-  if (!res.ok && window.NetieSound) NetieSound.warn();
+  if (!systemAudio) {
+    capture.stop("system");
+    setLive(capture.active("mic"));
+    answerMeta.textContent = "System audio off";
+    return;
+  }
+  const cap = await capture.start("system");
+  if (!cap.ok) {
+    systemAudio = false;
+    btnSystem.classList.remove("warn-on");
+    await window.netieHud.invoke("hud:toggleSystemAudio", { on: false });
+    answerMeta.textContent = `System audio unavailable (${cap.error || "denied"})`;
+    if (window.NetieSound) NetieSound.warn();
+    return;
+  }
+  setLive(true);
+  answerMeta.textContent = res.message || "System audio on";
 });
 
 btnPause.addEventListener("click", async () => {
   paused = !paused;
   btnPause.textContent = paused ? "Resume" : "Pause";
   await window.netieHud.invoke("hud:setPaused", { paused });
-  if (paused) stopBrowserSpeech();
-  else if (listening) startBrowserSpeech();
+  if (paused) {
+    capture.stopAll();
+    setLive(false);
+    return;
+  }
+  if (listening) await startMic();
+  if (systemAudio) await capture.start("system");
 });
 
 document.getElementById("btn-hide").addEventListener("click", () => {
@@ -197,7 +200,18 @@ document.getElementById("btn-frame").addEventListener("click", () => {
 
 window.netieHud.on((ev) => {
   if (!ev || !ev.type) return;
-  if (ev.type === "transcript") setTranscript(ev.text, ev.partial);
+  if (ev.type === "transcript") {
+    // Utterances arrive whole from the engine; accumulate them into the line.
+    finalBits.push(ev.text);
+    if (finalBits.length > 12) finalBits = finalBits.slice(-12);
+    setTranscript(finalBits.join(" "));
+    askInput.value = ev.text;
+    if (ev.engine && sttEngine) sttEngine.engine = ev.engine;
+  }
+  if (ev.type === "stt-busy") wave.classList.toggle("thinking", Boolean(ev.busy));
+  if (ev.type === "stt-error") {
+    answerMeta.textContent = ev.hint ? `${ev.error} — ${ev.hint}` : ev.error;
+  }
   if (ev.type === "answer") {
     answerMeta.textContent = ev.meta || "AI response";
     answerBody.textContent = ev.text || "";
@@ -211,6 +225,12 @@ window.netieHud.on((ev) => {
   if (ev.type === "reset-timer") startedAt = Date.now();
 });
 
-window.netieHud.invoke("hud:ready").then((info) => {
-  if (info && info.listen !== false) startBrowserSpeech();
+window.netieHud.invoke("hud:ready").then(async (info) => {
+  await refreshEngine();
+  if (info && info.listen !== false) await startMic();
+});
+
+// Releasing the devices when hidden keeps the mic indicator honest.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) capture.stopAll();
 });

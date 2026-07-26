@@ -14,9 +14,34 @@ Topic page: [github.com/topics/real-time-transcription](https://github.com/topic
 
 ## What Netie Clicks ships now
 
-1. **Instant mic** — Chromium `SpeechRecognition` / `webkitSpeechRecognition` in the HUD (OS speech, CPU-side, zero model download). Good for “speak to ask”.
-2. **Optional sidecar** — `NETIE_STT_URL` (default `http://127.0.0.1:8766`) JSON/SSE bridge for RealtimeSTT or Hearsay-style workers; system-audio toggle calls `/start?source=system|mic|both`.
-3. **Fallback** — if neither works, HUD still accepts typed Ask / Act.
+**Capture is solved natively; only the engine is pluggable.**
+
+1. **Mic + Windows system audio, no sidecar.** `electron/hud-audio.js` takes the mic via `getUserMedia` and speaker output via `getDisplayMedia` — Electron's `setDisplayMediaRequestHandler` answers with `audio: 'loopback'`, which is real WASAPI loopback. Verified on Electron 35.7.5: the track comes back labelled `"System audio"`.
+2. **16 kHz mono pipeline.** `AudioContext({ sampleRate: 16000 })` lets Chromium resample in native code; `electron/audio-worklet.js` emits 20 ms mono frames to the main process.
+3. **Gating in `netie/audio.js`.** Adaptive noise floor + hangover so a mid-sentence pause doesn't shatter one thought into five engine calls, with `minMs` measured on *voiced* audio only.
+4. **Engine chain in `netie/transcriber.js`**, ordered by privacy — local whisper.cpp → OpenVault `/v1/audio/transcriptions` → sidecar → honest "no engine".
+5. **Fallback** — with no engine, the HUD says so plainly and typed Ask / Act still work.
+
+### Why Chromium `SpeechRecognition` is NOT used
+
+It looks free but is unusable here, on two counts we verified rather than assumed:
+
+- **It does not work in Electron.** Probing Electron 35.7.5, it reaches `audiostart` then dies at ~3.8 s with `error: "network"`. Electron ships no Google Speech API key. The HUD's old `onend` handler restarted it on failure, producing an invisible infinite mic-open/fail/retry loop.
+- **It is not on-device.** In Chrome it streams microphone audio to Google's servers. For a product whose governance is "personal brain on device, dual-envelope crypto, users never manage keys", silently shipping the user's microphone off-box is disqualifying regardless of whether it functions.
+
+Reproduce: `node test/audio.test.js`, and the probes under `docs/` history.
+
+## Local engine (fully offline, recommended)
+
+Point Netie at a whisper.cpp build and a model; it is then preferred over everything else:
+
+```powershell
+$env:NETIE_WHISPER_BIN   = "C:\tools\whisper\whisper-cli.exe"
+$env:NETIE_WHISPER_MODEL = "C:\tools\whisper\ggml-base.en.bin"
+npm start
+```
+
+`ggml-tiny.en` (~75 MB) is enough for command phrasing; `base.en` (~142 MB) is noticeably better on accents. Both run on CPU.
 
 ## Recommended sidecar (later install)
 
@@ -25,4 +50,4 @@ pip install RealtimeSTT faster-whisper
 # then run a thin FastAPI/Flask that POSTs partials to Netie, or expose NETIE_STT_URL
 ```
 
-For **system audio on Windows**, prefer Hearsay’s WASAPI loopback or LoKal’s C# capture — browser APIs cannot capture speaker output safely.
+For **system audio on Windows**, a sidecar is *not* required: Electron's own `setDisplayMediaRequestHandler({ audio: 'loopback' })` is WASAPI loopback and is what Clicks now uses. Hearsay / LoKal remain useful only if you want their *engines* (faster-whisper) rather than their capture — wire either behind `NETIE_STT_URL` and it slots into the chain as the `sidecar` engine.
