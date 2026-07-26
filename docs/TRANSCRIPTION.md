@@ -19,8 +19,19 @@ Topic page: [github.com/topics/real-time-transcription](https://github.com/topic
 1. **Mic + Windows system audio, no sidecar.** `electron/hud-audio.js` takes the mic via `getUserMedia` and speaker output via `getDisplayMedia` — Electron's `setDisplayMediaRequestHandler` answers with `audio: 'loopback'`, which is real WASAPI loopback. Verified on Electron 35.7.5: the track comes back labelled `"System audio"`.
 2. **16 kHz mono pipeline.** `AudioContext({ sampleRate: 16000 })` lets Chromium resample in native code; `electron/audio-worklet.js` emits 20 ms mono frames to the main process.
 3. **Gating in `netie/audio.js`.** Adaptive noise floor + hangover so a mid-sentence pause doesn't shatter one thought into five engine calls, with `minMs` measured on *voiced* audio only.
-4. **Engine chain in `netie/transcriber.js`**, ordered by privacy — local whisper.cpp → OpenVault `/v1/audio/transcriptions` → sidecar → honest "no engine".
-5. **Fallback** — with no engine, the HUD says so plainly and typed Ask / Act still work.
+4. **Engine chain in `netie/transcriber.js`**, ordered by privacy — every link is on-device:
+
+   | # | Engine | Install | Notes |
+   |---|--------|---------|-------|
+   | 1 | `whisper-cli` | whisper.cpp binary + model | Best accuracy, fully offline. Preferred whenever present. |
+   | 2 | `openvault` | OpenVault on :5000 | OpenAI-shaped `/v1/audio/transcriptions`, same gateway as chat. |
+   | 3 | `sidecar` | `NETIE_STT_URL` | RealtimeSTT / Hearsay bridge. |
+   | 4 | `windows-speech` | **none** | `System.Speech` offline dictation — works out of the box, but rough. |
+   | 5 | `none` | — | Says so plainly; typed Ask / Act still work. |
+
+5. **Zero-install floor.** `netie/winspeech.js` runs Windows' own offline recognizer behind a persistent PowerShell worker (same pattern as `netie/driver.js`, because constructing the recognizer costs ~1.5 s and per-utterance spawning would be unusable). Measured warm: 158–559 ms per utterance.
+
+   Accuracy is genuinely limited — round-tripping Windows TTS through it gave "open the settings window" → *"Although settings window"* (confidence 0.54), while "scroll down" and "what is on my screen" came back exact. Anything under 0.75 confidence is returned with `rough: true` and the HUD renders it in italic with "check the text before Do it". Install Whisper for real accuracy.
 
 ### Why Chromium `SpeechRecognition` is NOT used
 

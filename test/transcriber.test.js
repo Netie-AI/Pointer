@@ -52,6 +52,7 @@ test("half-installed whisper (binary but no model) is not used", async () => {
     fsImpl: fakeFs(["C:\\w\\main.exe"]),
     openvaultUrl: "",
     sidecarUrl: "",
+    allowWindowsSpeech: false,
   });
   assert.strictEqual(t.hasLocalWhisper(), false);
   assert.strictEqual(await t.probe(), "none");
@@ -98,6 +99,7 @@ test("no engine anywhere → honest failure, never a fake transcript", async () 
     fsImpl: fakeFs(),
     openvaultUrl: "http://127.0.0.1:5000/v1/audio/transcriptions",
     sidecarUrl: "",
+    allowWindowsSpeech: false, // non-Windows, or dictation unavailable
     fetchImpl: async () => {
       throw new Error("ECONNREFUSED");
     },
@@ -112,9 +114,56 @@ test("no engine anywhere → honest failure, never a fake transcript", async () 
   assert.ok(d.hint.includes("NETIE_WHISPER_BIN"));
 });
 
+test("Windows dictation is the floor, never preferred over a real engine", async () => {
+  const recognized = [];
+  const winStub = {
+    recognizeFile: async (p) => {
+      recognized.push(p);
+      return { text: "open the settings window", confidence: 0.55 };
+    },
+  };
+  // Nothing else available → falls through to Windows dictation.
+  const t = new Transcriber({
+    fsImpl: fakeFs(),
+    openvaultUrl: "",
+    sidecarUrl: "",
+    allowWindowsSpeech: true,
+    winSpeechImpl: winStub,
+  });
+  assert.strictEqual(await t.probe(), "windows-speech");
+  const out = await t.transcribe(pcm());
+  assert.strictEqual(out.text, "open the settings window");
+  assert.strictEqual(out.rough, true, "0.55 confidence must be flagged rough");
+  assert.ok(recognized[0].endsWith(".wav"));
+
+  // But a real engine outranks it.
+  const better = new Transcriber({
+    fsImpl: fakeFs(["C:\\w\\m.exe", "C:\\w\\g.bin"]),
+    whisperBin: "C:\\w\\m.exe",
+    whisperModel: "C:\\w\\g.bin",
+    allowWindowsSpeech: true,
+    winSpeechImpl: winStub,
+    execFileImpl: (_b, _a, _o, cb) => cb(null, "open the settings window"),
+  });
+  assert.strictEqual(await better.probe(), "whisper-cli");
+});
+
+test("high-confidence Windows dictation is not flagged rough", async () => {
+  const t = new Transcriber({
+    fsImpl: fakeFs(),
+    openvaultUrl: "",
+    sidecarUrl: "",
+    allowWindowsSpeech: true,
+    winSpeechImpl: { recognizeFile: async () => ({ text: "scroll down", confidence: 0.92 }) },
+  });
+  const out = await t.transcribe(pcm());
+  assert.strictEqual(out.rough, false);
+  assert.strictEqual(out.confidence, 0.92);
+});
+
 test("every engine in the chain is local-only (governance)", async () => {
   const t = new Transcriber({ fsImpl: fakeFs() });
-  for (const e of ["whisper-cli", "openvault", "sidecar", "none"]) {
+  for (const e of ["whisper-cli", "openvault", "sidecar", "windows-speech", "none"]) {
     t.engine = e;
     assert.strictEqual(t.describe().local, true, `${e} must be on-device`);
   }

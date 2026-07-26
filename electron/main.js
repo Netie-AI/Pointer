@@ -1275,7 +1275,14 @@ function handleUtterance(source, utt) {
     .transcribe(utt.pcm)
     .then((res) => {
       if (res.ok && res.text) {
-        sendHud({ type: "transcript", text: res.text, source, engine: res.engine });
+        sendHud({
+          type: "transcript",
+          text: res.text,
+          source,
+          engine: res.engine,
+          rough: Boolean(res.rough),
+          confidence: res.confidence,
+        });
         pushTurn(source === "system" ? "heard" : "user", res.text);
         void hot.pushTick({ t: Date.now(), heard: res.text.slice(0, 160), src: source });
       } else if (!res.ok) {
@@ -1346,6 +1353,7 @@ app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   stopTicks();
   driver.dispose();
+  transcriber.dispose();
   try {
     brain.stopAutoSync();
     brain.syncFleet("quit").catch(() => {});

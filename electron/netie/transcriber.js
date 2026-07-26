@@ -5,10 +5,11 @@
  * Ordered by privacy, not convenience — the first engine that is actually
  * present wins, and every one of them is on this machine:
  *
- *   1. whisper-cli   — whisper.cpp binary, fully offline CPU (NETIE_WHISPER_BIN + _MODEL)
- *   2. openvault     — local OpenAI-shaped /v1/audio/transcriptions on :5000
- *   3. sidecar       — RealtimeSTT / Hearsay bridge on NETIE_STT_URL
- *   4. none          — say so out loud; never pretend to be listening
+ *   1. whisper-cli     — whisper.cpp binary, fully offline CPU (NETIE_WHISPER_BIN + _MODEL)
+ *   2. openvault       — local OpenAI-shaped /v1/audio/transcriptions on :5000
+ *   3. sidecar         — RealtimeSTT / Hearsay bridge on NETIE_STT_URL
+ *   4. windows-speech  — System.Speech offline dictation; zero install, rough
+ *   5. none            — say so out loud; never pretend to be listening
  *
  * Deliberately NOT in the chain: Chromium SpeechRecognition. It ships no engine
  * in Electron (dies `error: network`) and routes microphone audio to Google,
@@ -20,6 +21,7 @@ const os = require("os");
 const path = require("path");
 const { execFile } = require("child_process");
 const { encodeWav16, floatToPcm16 } = require("./audio");
+const { WinSpeech } = require("./winspeech");
 
 const DEFAULT_OPENVAULT = "http://127.0.0.1:5000/v1/audio/transcriptions";
 
@@ -34,8 +36,18 @@ class Transcriber {
     this._fetch = opts.fetchImpl || ((...a) => globalThis.fetch(...a));
     this._exec = opts.execFileImpl || execFile;
     this._fs = opts.fsImpl || fs;
+    // Windows dictation is the floor: available on any Windows box, so the
+    // chain only reports "none" when even this is missing or disabled.
+    this.allowWindowsSpeech = opts.allowWindowsSpeech !== false && process.platform === "win32";
+    this._win = opts.winSpeechImpl || null;
     this.engine = null; // resolved on first probe
     this.lastError = null;
+    this.lastConfidence = null;
+  }
+
+  _winSpeech() {
+    if (!this._win) this._win = new WinSpeech();
+    return this._win;
   }
 
   /** True when a local whisper.cpp binary AND model are both on disk. */
@@ -107,8 +119,29 @@ class Transcriber {
         /* not up — try next */
       }
     }
+    if (this.allowWindowsSpeech) {
+      this.engine = "windows-speech";
+      return this.engine;
+    }
     this.engine = "none";
     return this.engine;
+  }
+
+  /** Write a wav to the temp dir and hand back its path plus a cleanup fn. */
+  _tempWav(wav) {
+    this._fs.mkdirSync(this.tempDir, { recursive: true });
+    const p = path.join(this.tempDir, `u-${process.pid}-${Date.now()}.wav`);
+    this._fs.writeFileSync(p, wav);
+    return {
+      path: p,
+      cleanup: () => {
+        try {
+          this._fs.unlinkSync(p);
+        } catch {
+          /* best effort */
+        }
+      },
+    };
   }
 
   /** Run whisper.cpp on a wav file, return its stdout text. */
@@ -140,18 +173,29 @@ class Transcriber {
 
     try {
       if (engine === "whisper-cli") {
-        this._fs.mkdirSync(this.tempDir, { recursive: true });
-        const wavPath = path.join(this.tempDir, `u-${process.pid}-${Date.now()}.wav`);
-        this._fs.writeFileSync(wavPath, wav);
+        const tmp = this._tempWav(wav);
         try {
-          const text = await this._runWhisperCli(wavPath);
-          return { ok: true, text: cleanup(text), engine };
+          return { ok: true, text: cleanup(await this._runWhisperCli(tmp.path)), engine };
         } finally {
-          try {
-            this._fs.unlinkSync(wavPath);
-          } catch {
-            /* best effort */
-          }
+          tmp.cleanup();
+        }
+      }
+      if (engine === "windows-speech") {
+        const tmp = this._tempWav(wav);
+        try {
+          const r = await this._winSpeech().recognizeFile(tmp.path);
+          this.lastConfidence = r.confidence;
+          return {
+            ok: true,
+            text: cleanup(r.text),
+            engine,
+            confidence: r.confidence,
+            // Windows dictation misreads often enough that the HUD should show
+            // this as provisional rather than as a settled transcript.
+            rough: r.confidence < 0.75,
+          };
+        } finally {
+          tmp.cleanup();
         }
       }
       if (engine === "openvault") {
@@ -182,6 +226,13 @@ class Transcriber {
         return { engine: this.engine, label: "OpenVault STT (127.0.0.1)", local: true };
       case "sidecar":
         return { engine: this.engine, label: "STT sidecar (127.0.0.1)", local: true };
+      case "windows-speech":
+        return {
+          engine: this.engine,
+          label: "Windows dictation (offline, rough)",
+          local: true,
+          hint: "Set NETIE_WHISPER_BIN + NETIE_WHISPER_MODEL for far better accuracy.",
+        };
       case "none":
         return {
           engine: "none",
@@ -192,6 +243,12 @@ class Transcriber {
       default:
         return { engine: "unknown", label: "Checking for a local STT engine…", local: true };
     }
+  }
+
+  /** Release the Windows dictation worker (called on app quit). */
+  dispose() {
+    if (this._win && typeof this._win.dispose === "function") this._win.dispose();
+    this._win = null;
   }
 }
 

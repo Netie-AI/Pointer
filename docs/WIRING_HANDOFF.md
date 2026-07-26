@@ -23,7 +23,8 @@ Branch `netie-ecosystem-contracts`.
 | Live mic capture | ✅ | `getUserMedia` → 16 kHz worklet → main (`hud-audio.js`) |
 | **System audio capture** | ✅ | Native Electron WASAPI **loopback** — no sidecar. Verified track label `"System audio"` |
 | Utterance gating | ✅ | `netie/audio.js` adaptive floor + hangover; `minMs` counts voiced audio only |
-| STT engine chain | ✅ | local whisper.cpp → OpenVault `/v1/audio/transcriptions` → sidecar → honest "none" |
+| STT engine chain | ✅ | whisper.cpp → OpenVault `/v1/audio/transcriptions` → sidecar → **Windows dictation (zero install)** → honest "none" |
+| Works out of the box | ✅ | `netie/winspeech.js` persistent worker; 158–559 ms warm. Rough output flagged `rough` and shown italic |
 | Ask + Do it | ✅ | HUD Ask AI / Do it → same Cortex-gated paths |
 | Tests | ✅ | 83 passing incl. `audio.test.js`, `transcriber.test.js` |
 
@@ -35,7 +36,7 @@ Probed on Electron 35.7.5 — reaches `audiostart`, then **`error: "network"`** 
 
 1. Cortex `/v1/telemetry` + `/register` live endpoints (Cortex lane).
 2. OpenVault custody inject for secret fields.
-3. **Install a local STT engine to hear anything**: set `NETIE_WHISPER_BIN` + `NETIE_WHISPER_MODEL`, or run OpenVault with `/v1/audio/transcriptions`. Capture is done; the engine is BYO by design.
+3. **Better STT accuracy is opt-in**: Windows dictation works with zero install but mishears (~0.5 confidence typical). Set `NETIE_WHISPER_BIN` + `NETIE_WHISPER_MODEL` for a real jump — see `docs/TRANSCRIPTION.md`.
 
 ## Ops
 

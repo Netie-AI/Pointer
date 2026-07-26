@@ -207,6 +207,12 @@ window.netieHud.on((ev) => {
     setTranscript(finalBits.join(" "));
     askInput.value = ev.text;
     if (ev.engine && sttEngine) sttEngine.engine = ev.engine;
+    // A rough engine (Windows dictation) mishears often — say so, and never let
+    // it read as a settled transcript before the user hits Ask or Do it.
+    liveTranscript.classList.toggle("rough", Boolean(ev.rough));
+    if (ev.rough) {
+      answerMeta.textContent = "Heard roughly — check the text before Do it";
+    }
   }
   if (ev.type === "stt-busy") wave.classList.toggle("thinking", Boolean(ev.busy));
   if (ev.type === "stt-error") {
