@@ -29,6 +29,7 @@ const { InputDriver } = require("./netie/driver");
 const { ensureActionCoords } = require("./netie/targeting");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const { ConversationStore } = require("./netie/conversations");
+const { SttBridge } = require("./netie/stt");
 const crypto = require("crypto");
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -63,6 +64,7 @@ let tray = null;
 let panelWindow = null;
 let overlayWindow = null;
 let stageWindow = null;
+let hudWindow = null;
 let overlayDisplayBounds = null; // bounds of the display the overlay covers
 let lastCapture = null; // { path, dataUrl, region }
 let tickTimer = null;
@@ -72,8 +74,12 @@ let planRunning = false;
 let pendingPlan = null; // last planActions result for approve UI
 let stageLayout = process.env.NETIE_STAGE_LAYOUT === "below" ? "below" : "right";
 const chats = new ConversationStore();
+const stt = new SttBridge();
 /** @type {Array<{role:string,text:string,ts:number}>} */
 let sessionTurns = [];
+let listenMic = true;
+let listenSystem = false;
+let hudPaused = false;
 const driver = new InputDriver({
   dryRun: process.env.NETIE_CLICK_DRY_RUN === "1",
   // Worker is per-monitor DPI aware → feed it physical pixels, not DIPs.
@@ -109,6 +115,66 @@ function sendStage(event) {
   if (stageWindow && !stageWindow.isDestroyed()) {
     stageWindow.webContents.send("stage:event", event);
   }
+}
+
+function sendHud(event) {
+  if (hudWindow && !hudWindow.isDestroyed()) {
+    hudWindow.webContents.send("hud:event", event);
+  }
+}
+
+function createHud() {
+  if (hudWindow && !hudWindow.isDestroyed()) return hudWindow;
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  const { x, y, width, height } = display.bounds;
+  hudWindow = new BrowserWindow({
+    x,
+    y,
+    width,
+    height,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    hasShadow: false,
+    focusable: true,
+    show: false,
+    backgroundColor: "#00000000",
+    webPreferences: {
+      preload: path.join(__dirname, "hud-preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  hudWindow.setAlwaysOnTop(true, "screen-saver");
+  // Click-through except interactive chrome (renderer sets pointer-events).
+  try {
+    hudWindow.setContentProtection(true);
+  } catch {
+    /* ok */
+  }
+  hudWindow.loadFile(path.join(__dirname, "hud.html"));
+  hudWindow.on("closed", () => {
+    hudWindow = null;
+  });
+  return hudWindow;
+}
+
+function showHud() {
+  const win = createHud();
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  win.setBounds({ ...display.bounds });
+  win.show();
+  win.focus();
+  sendHud({ type: "reset-timer" });
+  sendHud({ type: "open-ask" });
+}
+
+function hideHud() {
+  if (hudWindow && !hudWindow.isDestroyed()) hudWindow.hide();
 }
 
 function createStage() {
@@ -624,11 +690,21 @@ async function executeApproved(actions) {
 function armSession() {
   state = "ARMED";
   startTicks();
-  showPanel();
-  showStage();
-  sendStage({ type: "mood", mood: "idle" });
-  sendToPanel("clicks:state", { state, hotkey: HOTKEY });
-  openOverlay();
+  // Default Cluely flow: full-screen capture immediately (no drag required).
+  captureDisplayCrop(null)
+    .then((cap) => {
+      sendToPanel("click:onHotkeyFired", { dataUrl: cap.dataUrl, path: cap.path, fullScreen: true });
+      showHud();
+      showStage();
+      sendStage({ type: "mood", mood: "idle" });
+      sendHud({ type: "insight", text: "Full screen captured. Speak or tap the cute Netie button." });
+      sendToPanel("clicks:state", { state: "ACTIVE", hotkey: HOTKEY, mode: "hud" });
+      state = "ACTIVE";
+    })
+    .catch((err) => {
+      sendToPanel("clicks:error", { message: String(err.message || err) });
+      showPanel();
+    });
 }
 
 function disarmSession() {
@@ -636,6 +712,7 @@ function disarmSession() {
     if (sessionTurns.length) saveCurrentConversation();
     brain.absorbHotSummary(hot.summaryText());
     brain.syncFleet("session-end").catch(() => {});
+    stt.stop().catch(() => {});
   } catch {
     /* ok */
   }
@@ -643,6 +720,7 @@ function disarmSession() {
   stopTicks();
   closeOverlay();
   hideStage();
+  hideHud();
   sendToPanel("clicks:state", { state, hotkey: HOTKEY });
 }
 
@@ -778,11 +856,13 @@ ipcMain.handle("clicks:commitRegion", async (_e, region) => {
   try {
     const cap = await captureDisplayCrop(screenRegion);
     showPanel();
+    showHud();
     sendToPanel("click:onHotkeyFired", {
       dataUrl: cap.dataUrl,
       path: cap.path,
       region: screenRegion,
     });
+    sendHud({ type: "insight", text: "Region framed. Speak or ask Netie." });
     sendToPanel("clicks:state", { state, region: screenRegion, hotkey: HOTKEY });
     return { ok: true };
   } catch (err) {
@@ -1057,6 +1137,100 @@ ipcMain.handle("clicks:openInSpace", async () => {
   }
 });
 
+ipcMain.handle("hud:ready", async () => ({
+  ok: true,
+  listen: listenMic && !hudPaused,
+  systemAudio: listenSystem,
+  sidecar: stt.sidecarOnline,
+}));
+
+ipcMain.handle("hud:ask", async (_e, payload) => {
+  const message = (payload && payload.message) || "";
+  const dataUrl = (lastCapture && lastCapture.dataUrl) || null;
+  showStage();
+  const r = await askBuddy({ message, dataUrl });
+  sendHud({
+    type: "answer",
+    meta: r.ok ? "AI response" : "Error",
+    text: r.ok ? r.text : r.text || r.error || "Failed",
+  });
+  return r.ok
+    ? { ok: true, reply: r.text, degraded: r.degraded }
+    : { ok: false, error: r.text || "Ask failed", degraded: r.degraded, blocked: r.blocked };
+});
+
+ipcMain.handle("hud:act", async (_e, payload) => {
+  const message = (payload && payload.message) || "";
+  const dataUrl = (lastCapture && lastCapture.dataUrl) || null;
+  showStage();
+  pushTurn("user", message);
+  sendStage({ type: "bubble", role: "user", text: message });
+  const plan = await eco.planActions({
+    instruction: message,
+    dataUrl,
+    hotContext: plannerContext(),
+  });
+  pendingPlan = plan;
+  if (plan.ok) {
+    sendHud({
+      type: "answer",
+      meta: "Plan ready",
+      text: `${plan.actions.length} step(s) — approve in panel`,
+    });
+    showPanel();
+  }
+  return plan;
+});
+
+ipcMain.handle("hud:hide", async () => {
+  hideHud();
+  return { ok: true };
+});
+
+ipcMain.handle("hud:openPanel", async () => {
+  showPanel();
+  return { ok: true };
+});
+
+ipcMain.handle("hud:frameRegion", async () => {
+  // Optional region refine while HUD is up.
+  openOverlay();
+  return { ok: true };
+});
+
+ipcMain.handle("hud:toggleListen", async (_e, payload) => {
+  listenMic = Boolean(payload && payload.on);
+  return {
+    ok: true,
+    message: listenMic
+      ? "Mic listening (on-device SpeechRecognition)"
+      : "Mic paused",
+  };
+});
+
+ipcMain.handle("hud:toggleSystemAudio", async (_e, payload) => {
+  listenSystem = Boolean(payload && payload.on);
+  if (!listenSystem) {
+    await stt.stop();
+    return { ok: true, message: "System audio off" };
+  }
+  const r = await stt.start("both");
+  if (!r.ok) {
+    listenSystem = false;
+    return {
+      ok: false,
+      message:
+        "System audio needs a local STT sidecar (Hearsay / RealtimeSTT). See docs/TRANSCRIPTION.md. Mic still works.",
+    };
+  }
+  return { ok: true, message: "System audio sidecar started" };
+});
+
+ipcMain.handle("hud:setPaused", async (_e, payload) => {
+  hudPaused = Boolean(payload && payload.paused);
+  return { ok: true, paused: hudPaused };
+});
+
 app.whenReady().then(() => {
   ensureTemp();
   setupCsp();
@@ -1064,7 +1238,9 @@ app.whenReady().then(() => {
   createTray();
   createPanel();
   createStage();
+  createHud();
   registerHotkey();
+  stt.ping().catch(() => {});
 });
 
 app.on("will-quit", () => {

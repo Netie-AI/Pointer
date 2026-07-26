@@ -18,16 +18,18 @@ Branch `netie-ecosystem-contracts`.
 | Post-step verify | ✅ | fresh pre-action fingerprint (not plan-time stale); stop on no change |
 | Custody client | ✅ | `requestCustody` → `/v1/custody/inject` (soft-fail until OV ships) |
 | Hot ticks | ✅ | foreground sampling rides the driver worker — no powershell spawn per tick |
-| Cluely stage (bubbles + subtitles) | ✅ | `stage.html` — `setContentProtection(true)` (capture-hidden); layout right/below |
-| Soft sounds + cute orb | ✅ | Web Audio beeps; spinning mascot while thinking |
-| Clicky conversations | ✅ | per-session `.md` under `%APPDATA%/NetieClicks/conversations`; Explorer + Space open |
-| Tests | ✅ | 58+ passed (`npm test`) |
+| Cluely HUD | ✅ | Top bar + Live insights + AI response + cute FAB (`hud.html`, content-protected) |
+| Ctrl+Space default | ✅ | Full-screen capture immediately; **Frame** for optional region |
+| Live mic STT | ✅ | Chromium SpeechRecognition in HUD |
+| System audio STT | ✅ contract | Sidecar `NETIE_STT_URL` — see `docs/TRANSCRIPTION.md` (Hearsay / RealtimeSTT) |
+| Ask + Do it | ✅ | HUD Ask AI / Do it → same Cortex-gated paths |
+| Tests | ✅ | includes `stt.test.js` |
 
 ## Still open (not blocking local zen)
 
 1. Cortex `/v1/telemetry` + `/register` live endpoints (Cortex lane).
 2. OpenVault custody inject for secret fields.
-3. nut-js swap now unnecessary — persistent worker is already ms-latency.
+3. Ship bundled RealtimeSTT/Hearsay sidecar for system-audio (optional install).
 
 ## Ops
 

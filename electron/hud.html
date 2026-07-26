@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; media-src 'self'; connect-src 'self' http://127.0.0.1:*"
+    />
+    <title>Netie HUD</title>
+    <style>
+      :root {
+        --glass: rgba(22, 24, 32, 0.55);
+        --glass-strong: rgba(18, 20, 28, 0.72);
+        --line: rgba(255, 255, 255, 0.12);
+        --text: #f4f6fb;
+        --muted: rgba(244, 246, 251, 0.65);
+        --accent: #8eb6ff;
+        --ok: #6dffb0;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        color: var(--text);
+        font-family: "Segoe UI", system-ui, sans-serif;
+        user-select: none;
+      }
+      .hud {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      .hud * { pointer-events: auto; }
+
+      /* Cluely-style top bar */
+      .topbar {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 14px;
+        background: var(--glass);
+        border: 1px solid var(--line);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.28);
+        -webkit-app-region: no-drag;
+      }
+      .topbar button, .chip {
+        border: 0;
+        background: rgba(255,255,255,0.06);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 7px 11px;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .topbar button:hover, .chip:hover { background: rgba(255,255,255,0.12); }
+      .topbar button.active { background: rgba(109, 255, 176, 0.2); color: var(--ok); }
+      .topbar button.warn-on { background: rgba(142, 182, 255, 0.25); color: var(--accent); }
+      .timer { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12px; min-width: 42px; text-align: center; }
+      .wave {
+        width: 28px; height: 16px; display: flex; align-items: flex-end; gap: 2px;
+      }
+      .wave i {
+        display: block; width: 3px; background: var(--accent); border-radius: 2px;
+        height: 4px; animation: none; opacity: 0.35;
+      }
+      .wave.live i { animation: wave 0.7s ease-in-out infinite; opacity: 1; }
+      .wave.live i:nth-child(2) { animation-delay: 0.1s; }
+      .wave.live i:nth-child(3) { animation-delay: 0.2s; }
+      .wave.live i:nth-child(4) { animation-delay: 0.05s; }
+      @keyframes wave {
+        0%, 100% { height: 4px; }
+        50% { height: 14px; }
+      }
+      .kbd { color: var(--muted); font-size: 11px; }
+
+      /* Panels */
+      .panel {
+        position: absolute;
+        width: min(360px, 34vw);
+        max-height: 52vh;
+        overflow: auto;
+        padding: 14px;
+        border-radius: 16px;
+        background: var(--glass-strong);
+        border: 1px solid var(--line);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        box-shadow: 0 16px 48px rgba(0,0,0,0.35);
+      }
+      .panel h2 {
+        margin: 0 0 8px;
+        font-size: 13px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .panel .muted { color: var(--muted); font-size: 12px; line-height: 1.45; }
+      .insights { top: 70px; left: 18px; }
+      .answer { top: 70px; right: 18px; }
+      .actions { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+      .actions button {
+        text-align: left;
+        border: 1px solid transparent;
+        background: rgba(255,255,255,0.05);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 9px 10px;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .actions button:hover {
+        border-color: rgba(142,182,255,0.45);
+        background: rgba(142,182,255,0.12);
+      }
+      .transcript {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: rgba(0,0,0,0.22);
+        font-size: 12px;
+        line-height: 1.4;
+        white-space: pre-wrap;
+        min-height: 42px;
+        color: var(--muted);
+      }
+      .transcript.has { color: var(--text); }
+
+      /* Cute floating chat FAB */
+      .fab-wrap {
+        position: absolute;
+        right: 28px;
+        bottom: 36px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
+      }
+      .ask-bubble {
+        display: none;
+        width: min(320px, 78vw);
+        padding: 12px;
+        border-radius: 18px;
+        background: var(--glass-strong);
+        border: 1px solid var(--line);
+        backdrop-filter: blur(16px);
+        box-shadow: 0 14px 40px rgba(0,0,0,0.35);
+      }
+      .ask-bubble.open { display: block; animation: pop 0.28s ease; }
+      @keyframes pop {
+        from { opacity: 0; transform: translateY(8px) scale(0.96); }
+        to { opacity: 1; transform: none; }
+      }
+      .ask-bubble label {
+        display: block;
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .ask-bubble textarea {
+        width: 100%;
+        min-height: 64px;
+        resize: none;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: rgba(0,0,0,0.25);
+        color: var(--text);
+        padding: 8px 10px;
+        font: inherit;
+        font-size: 13px;
+      }
+      .ask-row { display: flex; gap: 6px; margin-top: 8px; }
+      .ask-row button {
+        flex: 1;
+        border: 0;
+        border-radius: 10px;
+        padding: 8px;
+        font-weight: 700;
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+      }
+      .ask-row .ask { background: var(--accent); color: #0b1220; }
+      .ask-row .act { background: rgba(109,255,176,0.85); color: #072016; }
+      .ask-row .sec { background: rgba(255,255,255,0.08); color: var(--text); }
+
+      .fab {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        border: 2px solid rgba(255,255,255,0.25);
+        cursor: pointer;
+        background:
+          radial-gradient(circle at 32% 30%, #fff 0 9%, transparent 10%),
+          radial-gradient(circle at 68% 30%, #fff 0 9%, transparent 10%),
+          radial-gradient(circle at 50% 62%, #1b2233 0 11%, transparent 12%),
+          linear-gradient(145deg, #b7d4ff, #6ea8ff 50%, #4d8dff);
+        box-shadow: 0 12px 32px rgba(80, 140, 255, 0.45);
+        animation: floaty 2.8s ease-in-out infinite;
+        position: relative;
+      }
+      .fab::after {
+        content: "";
+        position: absolute;
+        inset: -6px;
+        border-radius: 50%;
+        border: 2px solid rgba(142, 182, 255, 0.35);
+        animation: pulse 2s ease-out infinite;
+      }
+      .fab.listening {
+        animation: spinCute 1s linear infinite;
+        box-shadow: 0 0 0 6px rgba(109, 255, 176, 0.2);
+      }
+      @keyframes floaty {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+      }
+      @keyframes pulse {
+        0% { transform: scale(0.92); opacity: 0.7; }
+        100% { transform: scale(1.15); opacity: 0; }
+      }
+      @keyframes spinCute {
+        to { transform: rotate(360deg); }
+      }
+      .hint {
+        position: absolute;
+        bottom: 110px;
+        right: 28px;
+        font-size: 11px;
+        color: var(--muted);
+        background: var(--glass);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 10px;
+        backdrop-filter: blur(10px);
+      }
+      .paused-veil {
+        display: none;
+        position: absolute;
+        inset: 0;
+        background: transparent;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="hud" id="hud">
+      <div class="topbar" id="topbar">
+        <button type="button" id="btn-pause">Pause</button>
+        <div class="wave" id="wave" title="Listening"><i></i><i></i><i></i><i></i></div>
+        <span class="timer" id="timer">00:00</span>
+        <button type="button" id="btn-listen" class="active">Mic</button>
+        <button type="button" id="btn-system">System audio</button>
+        <span class="kbd">Ask · Ctrl+Enter</span>
+        <button type="button" id="btn-hide">Hide</button>
+        <button type="button" id="btn-frame">Frame</button>
+      </div>
+
+      <section class="panel insights" id="insights">
+        <h2>✨ Live insights</h2>
+        <div class="muted" id="insight-summary">Listening for real life… speak or type what you want.</div>
+        <div class="transcript" id="live-transcript">Transcript will appear here.</div>
+        <div class="actions" id="insight-actions">
+          <button type="button" data-q="Summarize what I'm looking at">Summarize this screen</button>
+          <button type="button" data-q="What should I click next?">What should I click next?</button>
+          <button type="button" data-act="true" data-q="click the primary button">Do the primary action</button>
+          <button type="button" data-q="Give me helpful context">Helpful context</button>
+        </div>
+      </section>
+
+      <section class="panel answer" id="answer">
+        <h2>💬 AI response</h2>
+        <div class="muted" id="answer-meta">Ready</div>
+        <div class="transcript has" id="answer-body">Tap the cute Netie button and ask anything — or just speak.</div>
+      </section>
+
+      <div class="hint" id="hint">What do you want to ask?</div>
+      <div class="fab-wrap">
+        <div class="ask-bubble" id="ask-bubble">
+          <label for="ask-input">What do you want to ask?</label>
+          <textarea id="ask-input" placeholder="Speak or type… then Ask or Do it"></textarea>
+          <div class="ask-row">
+            <button type="button" class="sec" id="btn-clear">Clear</button>
+            <button type="button" class="act" id="btn-act">Do it</button>
+            <button type="button" class="ask" id="btn-ask">Ask AI</button>
+          </div>
+        </div>
+        <button type="button" class="fab" id="fab" title="Netie" aria-label="Open Netie ask"></button>
+      </div>
+    </div>
+    <script src="netie-sound.js"></script>
+    <script src="hud.js"></script>
+  </body>
+</html>
