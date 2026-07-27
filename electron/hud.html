@@ -16,6 +16,13 @@
         --muted: rgba(244, 246, 251, 0.65);
         --accent: #8eb6ff;
         --ok: #6dffb0;
+        /* Segoe UI Variable is Windows 11's display face — noticeably more
+           refined than plain Segoe UI at small sizes. Falls back gracefully. */
+        --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI",
+          system-ui, -apple-system, sans-serif;
+        --font-display: "Segoe UI Variable Display", "Segoe UI Variable",
+          "Segoe UI Semibold", "Segoe UI", system-ui, sans-serif;
+        --radius: 14px;
       }
       * { box-sizing: border-box; }
       html, body {
@@ -25,16 +32,54 @@
         overflow: hidden;
         background: transparent;
         color: var(--text);
-        font-family: "Segoe UI", system-ui, sans-serif;
+        font-family: var(--font);
+        font-size: 13px;
+        /* Optical polish: tighter tracking on a dark glass surface reads
+           cleaner, and antialiasing stops the light-on-dark text blooming. */
+        letter-spacing: 0.005em;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        font-variant-numeric: tabular-nums;
         user-select: none;
       }
+      h2, h3, .fab-title { font-family: var(--font-display); }
       .hud {
         position: relative;
         width: 100%;
         height: 100%;
-        pointer-events: none;
+        pointer-events: none; /* desktop stays clickable under transparent areas */
       }
-      .hud * { pointer-events: auto; }
+      .chrome { pointer-events: auto; }
+
+      .mode-pill {
+        display: flex;
+        gap: 4px;
+        padding: 2px;
+        border-radius: 10px;
+        background: rgba(0,0,0,0.2);
+      }
+      .mode-pill button {
+        padding: 6px 9px !important;
+        font-size: 11px !important;
+      }
+      .hud.mode-transcribe .insights,
+      .hud.mode-transcribe .answer,
+      .hud.mode-transcribe .fab-wrap,
+      .hud.mode-transcribe .hint { display: none !important; }
+      .hud.mode-meeting .answer,
+      .hud.mode-meeting .fab-wrap { display: none !important; }
+      .hud.mode-meeting .insights .actions { display: none; }
+      .notes-chip {
+        display: none;
+        font-size: 11px;
+        color: var(--ok);
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .hud.mode-transcribe .notes-chip,
+      .hud.mode-meeting .notes-chip { display: inline-block; }
 
       /* Cluely-style top bar */
       .topbar {
@@ -259,41 +304,143 @@
         background: transparent;
         pointer-events: none;
       }
+      .menu {
+        display: none;
+        position: absolute;
+        top: 58px;
+        right: 18px;
+        width: 260px;
+        padding: 10px;
+        border-radius: 14px;
+        background: var(--glass-strong);
+        border: 1px solid var(--line);
+        backdrop-filter: blur(16px);
+        z-index: 20;
+      }
+      .menu.open { display: block; animation: pop 0.22s ease; }
+      .menu-foot {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid var(--line);
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .menu-foot kbd {
+        font: inherit;
+        background: rgba(255,255,255,0.09);
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
+      /* The FAB is the single entry point, so it must read as pressable. */
+      .fab:hover { filter: brightness(1.08); }
+      .fab:active { transform: scale(0.94); }
+      .fab.menu-open { animation: none; box-shadow: 0 0 0 4px rgba(142,182,255,0.35); }
+      .menu h3 {
+        margin: 0 0 8px;
+        font-size: 11px;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .menu label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 12px;
+        padding: 7px 4px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+      }
+      .menu label:last-of-type { border-bottom: 0; }
+      .menu input { accent-color: var(--accent); }
+      .menu .row-btns { display: flex; gap: 6px; margin-top: 10px; }
+      .menu .row-btns button {
+        flex: 1;
+        border: 0;
+        border-radius: 8px;
+        padding: 8px;
+        font: inherit;
+        font-size: 11px;
+        font-weight: 650;
+        cursor: pointer;
+        background: rgba(255,255,255,0.08);
+        color: var(--text);
+      }
+      .nod-toast {
+        display: none;
+        position: absolute;
+        left: 50%;
+        top: 70px;
+        transform: translateX(-50%);
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: var(--glass-strong);
+        border: 1px solid rgba(109,255,176,0.35);
+        font-size: 12px;
+        pointer-events: auto;
+      }
+      .nod-toast.show { display: flex; gap: 8px; align-items: center; }
     </style>
   </head>
   <body>
     <div class="hud" id="hud">
-      <div class="topbar" id="topbar">
+      <div class="topbar chrome" id="topbar">
+        <div class="mode-pill" id="mode-pill" title="Say: transcribe mode / meeting mode / agent mode">
+          <button type="button" data-mode="agent" class="active" id="mode-agent">Agent</button>
+          <button type="button" data-mode="transcribe" id="mode-transcribe">Transcribe</button>
+          <button type="button" data-mode="meeting" id="mode-meeting">Meeting</button>
+        </div>
         <button type="button" id="btn-pause">Pause</button>
         <div class="wave" id="wave" title="Listening"><i></i><i></i><i></i><i></i></div>
         <span class="timer" id="timer">00:00</span>
-        <button type="button" id="btn-listen" class="active">Mic</button>
-        <button type="button" id="btn-system">System audio</button>
+        <button type="button" id="btn-listen" class="active" title="Microphone on/off">Mic</button>
+        <button type="button" id="btn-system" title="What speakers play (WASAPI loopback)">System audio</button>
+        <span class="notes-chip" id="notes-chip" title="Live markdown notes">Notes…</span>
         <span class="kbd">Ask · Ctrl+Enter</span>
-        <button type="button" id="btn-hide">Hide</button>
-        <button type="button" id="btn-frame">Frame</button>
+        <button type="button" id="btn-more" title="Settings, history, frame (Esc closes)">⋯</button>
       </div>
 
-      <section class="panel insights" id="insights">
+      <div class="menu chrome" id="settings-menu">
+        <h3>Agent settings</h3>
+        <label>Auto-run sensible <input type="checkbox" id="set-auto" /></label>
+        <label>Nod confirm <input type="checkbox" id="set-nod" /></label>
+        <label>Cursor bubble <input type="checkbox" id="set-cursor" /></label>
+        <label>Save markdown <input type="checkbox" id="set-md" /></label>
+        <label>Python checks <input type="checkbox" id="set-py" /></label>
+        <div class="row-btns">
+          <button type="button" id="btn-ask-open">Ask Netie…</button>
+          <button type="button" id="btn-canvas">History &amp; review</button>
+          <button type="button" id="btn-frame">Frame a region</button>
+          <button type="button" id="btn-affirm">Affirm (Y)</button>
+          <button type="button" id="btn-hide">Hide HUD</button>
+        </div>
+        <div class="menu-foot">
+          <kbd>Esc</kbd> closes · <kbd>Ctrl</kbd>+<kbd>Space</kbd> reopens
+        </div>
+      </div>
+      <div class="nod-toast chrome" id="nod-toast">
+        <span>Nod / say yes / Ctrl+Y</span>
+        <button type="button" id="btn-nod-go">Go</button>
+      </div>
+
+      <section class="panel insights chrome" id="insights">
         <h2>✨ Live insights</h2>
         <div class="muted" id="insight-summary">Listening for real life… speak or type what you want.</div>
         <div class="transcript" id="live-transcript">Transcript will appear here.</div>
         <div class="actions" id="insight-actions">
           <button type="button" data-q="Summarize what I'm looking at">Summarize this screen</button>
           <button type="button" data-q="What should I click next?">What should I click next?</button>
-          <button type="button" data-act="true" data-q="click the primary button">Do the primary action</button>
-          <button type="button" data-q="Give me helpful context">Helpful context</button>
         </div>
       </section>
 
-      <section class="panel answer" id="answer">
+      <section class="panel answer chrome" id="answer">
         <h2>💬 AI response</h2>
         <div class="muted" id="answer-meta">Ready</div>
-        <div class="transcript has" id="answer-body">Tap the cute Netie button and ask anything — or just speak.</div>
+        <div class="transcript has" id="answer-body">Just speak — or tap Netie for settings, history and frame. Esc closes.</div>
       </section>
 
-      <div class="hint" id="hint">What do you want to ask?</div>
-      <div class="fab-wrap">
+      <div class="hint chrome" id="hint">Settings &amp; history</div>
+      <div class="fab-wrap chrome">
         <div class="ask-bubble" id="ask-bubble">
           <label for="ask-input">What do you want to ask?</label>
           <textarea id="ask-input" placeholder="Speak or type… then Ask or Do it"></textarea>

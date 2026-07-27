@@ -11,6 +11,8 @@ const btnListen = document.getElementById("btn-listen");
 const btnSystem = document.getElementById("btn-system");
 const btnPause = document.getElementById("btn-pause");
 const hint = document.getElementById("hint");
+const hudRoot = document.getElementById("hud");
+const notesChip = document.getElementById("notes-chip");
 
 let listening = true;
 let systemAudio = false;
@@ -18,10 +20,37 @@ let paused = false;
 let startedAt = Date.now();
 let finalBits = [];
 let sttEngine = null;
+let appMode = "agent";
 
 const capture = new window.NetieCapture.LiveCapture((source, samples, rate) => {
   window.netieHud.sendFrame(source, samples, rate);
 });
+
+/** Click-through: ignore mouse except while pointer is over .chrome. */
+function wireClickThrough() {
+  document.querySelectorAll(".chrome").forEach((el) => {
+    el.addEventListener("mouseenter", () => {
+      window.netieHud.invoke("hud:setIgnoreMouse", { ignore: false });
+    });
+    el.addEventListener("mouseleave", () => {
+      window.netieHud.invoke("hud:setIgnoreMouse", { ignore: true });
+    });
+  });
+}
+wireClickThrough();
+
+function applyModeUi(mode, notesPath) {
+  appMode = mode || "agent";
+  hudRoot.classList.remove("mode-agent", "mode-transcribe", "mode-meeting");
+  hudRoot.classList.add(`mode-${appMode}`);
+  document.querySelectorAll("#mode-pill button").forEach((b) => {
+    b.classList.toggle("active", b.getAttribute("data-mode") === appMode);
+  });
+  if (notesPath) {
+    notesChip.textContent = "Notes live";
+    notesChip.title = notesPath;
+  }
+}
 
 function setTranscript(text, partial = false) {
   const t = String(text || "").trim();
@@ -52,6 +81,8 @@ async function refreshEngine(force = false) {
     answerMeta.textContent = sttEngine.label;
     setTranscript("");
     liveTranscript.textContent = sttEngine.hint || sttEngine.label;
+  } else {
+    answerMeta.textContent = sttEngine.label || "STT ready";
   }
   return sttEngine;
 }
@@ -79,13 +110,54 @@ function stopMic() {
   setLive(capture.active("system"));
 }
 
-fab.addEventListener("click", () => {
-  askBubble.classList.toggle("open");
-  hint.style.display = askBubble.classList.contains("open") ? "none" : "block";
-  if (askBubble.classList.contains("open")) {
-    askInput.focus();
-    if (window.NetieSound) NetieSound.pop();
+document.getElementById("mode-pill").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-mode]");
+  if (!btn) return;
+  const res = await window.netieHud.invoke("hud:setMode", { mode: btn.getAttribute("data-mode") });
+  applyModeUi(res.mode, res.notesPath);
+  if (window.NetieSound) NetieSound.pop();
+});
+
+function setMenu(open) {
+  settingsMenu.classList.toggle("open", open);
+  fab.classList.toggle("menu-open", open);
+}
+
+function setAsk(open) {
+  askBubble.classList.toggle("open", open);
+  hint.style.display = open ? "none" : "block";
+  if (open) askInput.focus();
+}
+
+/**
+ * The FAB is the one entry point: settings, history, frame, hide. It used to
+ * just toggle a text box, which gave no hint it was pressable or what it did.
+ */
+fab.addEventListener("click", async () => {
+  const open = !settingsMenu.classList.contains("open");
+  setMenu(open);
+  if (open) {
+    setAsk(false);
+    await loadSettings(); // reflect real values, not stale checkboxes
   }
+  if (window.NetieSound) NetieSound.pop();
+});
+
+document.getElementById("btn-ask-open").addEventListener("click", () => {
+  setMenu(false);
+  setAsk(true);
+});
+
+/**
+ * Esc unwinds one layer at a time rather than nuking everything, so it never
+ * throws away a half-typed question just to close a menu.
+ */
+window.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  e.preventDefault();
+  if (settingsMenu.classList.contains("open")) return setMenu(false);
+  if (askBubble.classList.contains("open")) return setAsk(false);
+  window.netieHud.invoke("hud:hide");
 });
 
 document.getElementById("btn-clear").addEventListener("click", () => {
@@ -198,20 +270,80 @@ document.getElementById("btn-frame").addEventListener("click", () => {
   window.netieHud.invoke("hud:frameRegion");
 });
 
+const settingsMenu = document.getElementById("settings-menu");
+const nodToast = document.getElementById("nod-toast");
+const setAuto = document.getElementById("set-auto");
+const setNod = document.getElementById("set-nod");
+const setCursor = document.getElementById("set-cursor");
+const setMd = document.getElementById("set-md");
+const setPy = document.getElementById("set-py");
+
+async function loadSettings() {
+  const res = await window.netieHud.invoke("hud:getSettings");
+  const s = (res && res.settings) || {};
+  setAuto.checked = s.autoRunSensible !== false;
+  setNod.checked = s.nodConfirm !== false;
+  setCursor.checked = s.cursorBubble !== false;
+  setMd.checked = s.saveAllMarkdown !== false;
+  setPy.checked = s.runPythonChecks !== false;
+}
+
+async function saveSettingsFromUi() {
+  await window.netieHud.invoke("hud:setSettings", {
+    settings: {
+      autoRunSensible: setAuto.checked,
+      nodConfirm: setNod.checked,
+      cursorBubble: setCursor.checked,
+      saveAllMarkdown: setMd.checked,
+      runPythonChecks: setPy.checked,
+    },
+  });
+}
+
+document.getElementById("btn-more").addEventListener("click", async () => {
+  // Same menu as the FAB — keep the open/close state in one place.
+  const open = !settingsMenu.classList.contains("open");
+  setMenu(open);
+  if (open) await loadSettings();
+});
+
+[setAuto, setNod, setCursor, setMd, setPy].forEach((el) => {
+  el.addEventListener("change", saveSettingsFromUi);
+});
+
+document.getElementById("btn-canvas").addEventListener("click", () => {
+  window.netieHud.invoke("hud:openCanvas");
+  settingsMenu.classList.remove("open");
+});
+
+document.getElementById("btn-affirm").addEventListener("click", () => {
+  window.netieHud.invoke("hud:affirm");
+});
+
+document.getElementById("btn-nod-go").addEventListener("click", () => {
+  window.netieHud.invoke("hud:affirm");
+});
+
 window.netieHud.on((ev) => {
   if (!ev || !ev.type) return;
+  if (ev.type === "mode") {
+    applyModeUi(ev.mode, ev.notesPath);
+    answerMeta.textContent = `${ev.label || ev.mode} mode`;
+  }
+  if (ev.type === "nod-wait") {
+    nodToast.classList.toggle("show", ev.on !== false);
+  }
   if (ev.type === "transcript") {
-    // Utterances arrive whole from the engine; accumulate them into the line.
     finalBits.push(ev.text);
     if (finalBits.length > 12) finalBits = finalBits.slice(-12);
     setTranscript(finalBits.join(" "));
-    askInput.value = ev.text;
+    if (appMode === "agent") askInput.value = ev.text;
     if (ev.engine && sttEngine) sttEngine.engine = ev.engine;
-    // A rough engine (Windows dictation) mishears often — say so, and never let
-    // it read as a settled transcript before the user hits Ask or Do it.
     liveTranscript.classList.toggle("rough", Boolean(ev.rough));
     if (ev.rough) {
       answerMeta.textContent = "Heard roughly — check the text before Do it";
+    } else if (ev.language) {
+      answerMeta.textContent = `Heard (${ev.language}${ev.engine ? ` · ${ev.engine}` : ""})`;
     }
   }
   if (ev.type === "stt-busy") wave.classList.toggle("thinking", Boolean(ev.busy));
@@ -233,10 +365,10 @@ window.netieHud.on((ev) => {
 
 window.netieHud.invoke("hud:ready").then(async (info) => {
   await refreshEngine();
+  await loadSettings();
   if (info && info.listen !== false) await startMic();
 });
 
-// Releasing the devices when hidden keeps the mic indicator honest.
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) capture.stopAll();
 });
