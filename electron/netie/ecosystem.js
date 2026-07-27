@@ -25,7 +25,13 @@ const { reviewPlan } = require("./safety");
 const DEFAULTS = {
   openvaultUrl: process.env.NETIE_OPENVAULT_URL || "http://127.0.0.1:5000",
   cortexUrl: process.env.NETIE_CORTEX_URL || "http://127.0.0.1:8010",
-  cortexKey: process.env.NETIE_CORTEX_KEY || "", // scoped viewer/steward key, never a raw provider key
+  // Scoped viewer/steward key, never a raw provider key. Cortex ships these
+  // demo keys as its own default (packs/dms/security/api_auth.py), so local dev
+  // works out of the box — without one every /dms call 401s and the gate fails
+  // closed, which reads as "AI mode is broken" rather than "no key".
+  cortexKey:
+    process.env.NETIE_CORTEX_KEY ||
+    (process.env.NETIE_CORTEX_DEMO_KEY === "0" ? "" : "dms-demo-steward-key"),
   model: process.env.NETIE_CLICK_MODEL || "gpt-4o-mini",
   deviceId: process.env.NETIE_CLICK_DEVICE || "netie-clicks",
   requestTimeoutMs: 20000,
