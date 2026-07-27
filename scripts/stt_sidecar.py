@@ -28,6 +28,15 @@ MODEL_NAME = os.environ.get("NETIE_STT_MODEL", "small")
 DEVICE = os.environ.get("NETIE_STT_DEVICE", "cpu")
 COMPUTE = os.environ.get("NETIE_STT_COMPUTE", "int8" if DEVICE == "cpu" else "float16")
 PORT = int(os.environ.get("NETIE_STT_PORT", "8766"))
+# MEASURED on Ryzen 780M (8c/16t), small int8, 3.6s clip — more threads is
+# catastrophically worse, not better, because CTranslate2 oversubscribes:
+#   threads=4  -> 10.9s (3.1x realtime)   <- optimum
+#   threads=8  -> 21.6s (6.1x realtime)
+#   threads=16 -> 261.9s (73x realtime)
+# Beam size is nearly free at 4 threads (beam1 10.90s vs beam5 11.14s), so we
+# keep beam=5 for accuracy. Re-benchmark before changing either on new hardware.
+CPU_THREADS = int(os.environ.get("NETIE_STT_THREADS", "4"))
+BEAM = int(os.environ.get("NETIE_STT_BEAM", "5"))
 
 app = FastAPI(title="Netie STT", version="1.0")
 _model = None
@@ -43,7 +52,14 @@ def get_model():
             if _model is None:
                 from faster_whisper import WhisperModel
 
-                _model = WhisperModel(MODEL_NAME, device=DEVICE, compute_type=COMPUTE)
+                # Default cpu_threads=4 leaves most of a 16-thread laptop idle;
+                # this is the single biggest lever on per-utterance latency.
+                _model = WhisperModel(
+                    MODEL_NAME,
+                    device=DEVICE,
+                    compute_type=COMPUTE,
+                    cpu_threads=CPU_THREADS,
+                )
     return _model
 
 
@@ -117,7 +133,7 @@ def transcribe(
             multilingual=True,
             condition_on_previous_text=False,
             vad_filter=True,
-            beam_size=5,
+            beam_size=BEAM,
         )
         parts = []
         for seg in segments:

@@ -68,9 +68,13 @@ class Transcriber {
     const form = new FormData();
     form.append("file", new Blob([wav], { type: "audio/wav" }), "audio.wav");
     form.append("model", this.model);
+    // Multilingual / Malaysian rojak — never force a single language.
+    if (!("language" in extra)) form.append("language", "auto");
     for (const [k, v] of Object.entries(extra)) form.append(k, v);
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 20000);
+    // Whisper on CPU can take ~10s for a few seconds of speech; a 20s ceiling
+    // sat close enough to that to abort real work and demote a healthy engine.
+    const timer = setTimeout(() => ctrl.abort(), Number(process.env.NETIE_STT_TIMEOUT_MS) || 60000);
     try {
       const res = await this._fetch(url, {
         method: "POST",
@@ -80,7 +84,12 @@ class Transcriber {
       });
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
-      return String((data && (data.text ?? data.transcript)) || "").trim();
+      const text = String((data && (data.text ?? data.transcript)) || "").trim();
+      return {
+        text,
+        language: (data && data.language) || null,
+        language_probability: (data && data.language_probability) || null,
+      };
     } finally {
       clearTimeout(timer);
     }
@@ -96,22 +105,24 @@ class Transcriber {
       this.engine = "whisper-cli";
       return this.engine;
     }
+    // Prefer Netie STT sidecar (faster-whisper multilingual) before OpenVault —
+    // best path for zh/en/ms code-switch ("rojak").
     for (const [name, url] of [
+      ["sidecar", this.sidecarUrl ? `${this.sidecarUrl}/health` : ""],
       ["openvault", this.openvaultUrl],
-      ["sidecar", this.sidecarUrl ? `${this.sidecarUrl}/v1/audio/transcriptions` : ""],
     ]) {
       if (!url) continue;
       try {
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), 800);
-        // A HEAD/GET that 404s still proves something is listening on the port;
-        // only a connection failure means the engine is truly absent.
-        const res = await this._fetch(url.replace(/\/v1\/.*$/, "/v1/models"), {
+        const probeUrl =
+          name === "sidecar" ? url : url.replace(/\/v1\/.*$/, "/v1/models");
+        const res = await this._fetch(probeUrl, {
           method: "GET",
           signal: ctrl.signal,
         });
         clearTimeout(t);
-        if (res) {
+        if (res && (res.ok || res.status === 404)) {
           this.engine = name;
           return this.engine;
         }
@@ -150,6 +161,7 @@ class Transcriber {
       const args = [
         "-m", this.whisperModel,
         "-f", wavPath,
+        "-l", "auto",   // zh/en/ms mix — never pin *.en model
         "-nt",          // no timestamps
         "-np",          // no progress prints
         "-t", String(Math.max(2, Math.min(8, os.cpus().length - 2))),
@@ -199,13 +211,17 @@ class Transcriber {
         }
       }
       if (engine === "openvault") {
-        return { ok: true, text: cleanup(await this._postWav(this.openvaultUrl, wav)), engine };
+        const r = await this._postWav(this.openvaultUrl, wav);
+        return { ok: true, text: cleanup(r.text), engine, language: r.language };
       }
       if (engine === "sidecar") {
+        const r = await this._postWav(`${this.sidecarUrl}/v1/audio/transcriptions`, wav);
         return {
           ok: true,
-          text: cleanup(await this._postWav(`${this.sidecarUrl}/v1/audio/transcriptions`, wav)),
+          text: cleanup(r.text),
           engine,
+          language: r.language,
+          confidence: r.language_probability,
         };
       }
       return { ok: false, text: "", engine: "none", error: "no local STT engine" };
@@ -225,7 +241,11 @@ class Transcriber {
       case "openvault":
         return { engine: this.engine, label: "OpenVault STT (127.0.0.1)", local: true };
       case "sidecar":
-        return { engine: this.engine, label: "STT sidecar (127.0.0.1)", local: true };
+        return {
+          engine: this.engine,
+          label: "Faster-Whisper sidecar (zh/en/ms rojak)",
+          local: true,
+        };
       case "windows-speech":
         return {
           engine: this.engine,
