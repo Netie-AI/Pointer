@@ -38,6 +38,8 @@ const { SettingsStore } = require("./netie/settings");
 const { createNodGate, isAffirmation } = require("./netie/affirm");
 const { checkMarkdownPython } = require("./netie/coderun");
 const { matchRecipe, expandRecipe } = require("./netie/recipes");
+const { DemoDebugTrail } = require("./netie/demo-debug");
+const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -87,7 +89,10 @@ const eco = new NetieEcosystem({ deviceId: `netie-clicks:${hot.deviceId}` });
 const brain = new PersonalBrain({
   deviceId: `netie-clicks:${hot.deviceId}`,
   cortexUrl: process.env.NETIE_CORTEX_URL || `http://${API_HOST}:${CORTEX_PORT}`,
-  cortexKey: process.env.NETIE_CORTEX_KEY || "",
+  // Match ecosystem demo steward key so telemetry/status do not 401 while eco gates work.
+  cortexKey:
+    process.env.NETIE_CORTEX_KEY ||
+    (process.env.NETIE_CORTEX_DEMO_KEY === "0" ? "" : "dms-demo-steward-key"),
 });
 try {
   brain.unlock();
@@ -116,6 +121,7 @@ const transcriber = new Transcriber({
 });
 const notes = new NotesSession();
 const settings = new SettingsStore();
+const demoDebug = new DemoDebugTrail({ enabled: settings.get("demoDebug") === true });
 const features = new FeatureFlags({
   env: process.env,
   settings: {
@@ -892,6 +898,27 @@ async function captureDisplayCrop(regionLogical) {
   return lastCapture;
 }
 
+/** Ensure we have a screenshot before planning (tray-opened HUD may have none). */
+async function ensureCaptureForPlan() {
+  if (lastCapture && lastCapture.dataUrl) return lastCapture.dataUrl;
+  try {
+    const cap = await captureDisplayCrop(null);
+    return (cap && cap.dataUrl) || null;
+  } catch (err) {
+    console.error("ensureCaptureForPlan:", err.message || err);
+    return null;
+  }
+}
+
+function recipeCoordContext() {
+  try {
+    const pt = screen.getCursorScreenPoint();
+    return { coords: { x: pt.x, y: pt.y } };
+  } catch {
+    return {};
+  }
+}
+
 async function askBuddy({ message, dataUrl }) {
   const memCtx = (() => {
     try {
@@ -934,7 +961,7 @@ async function askBuddy({ message, dataUrl }) {
   return r;
 }
 
-function plannerContext() {
+function plannerContext(instruction = "") {
   let mem = "";
   try {
     mem = brain.contextForLlm();
@@ -948,10 +975,17 @@ function plannerContext() {
       return "";
     }
   })();
+  let ground = "";
+  try {
+    ground = plannerGrounding(instruction);
+  } catch {
+    ground = "";
+  }
   return [
     hot.summaryText(),
     mem ? `Personal memory:\n${mem}` : "",
     recallTxt ? `Clicky recall (last ~60s):\n${recallTxt}` : "",
+    ground || "",
     clickyState === ClickyStates.CLICKY ? "Mode: Clicky armed — prefer concrete screen actions." : "",
   ]
     .filter(Boolean)
@@ -1093,7 +1127,11 @@ function startRecallDaemon() {
   stopRecallDaemon();
   if (!features.isEnabled("recall")) return;
   if (!shouldRunRecall()) return;
-  const ms = features.isEnabled("recallLite") ? 2000 : 1000;
+  // MEASURED: desktopCapturer.getSources() costs ~350ms on this machine and the
+  // cost is pipeline setup, NOT thumbnail size (320px ~= full-res). At the old
+  // 1000ms cadence the app blocked ~35% of every second — that was the lag.
+  // Shrinking the thumbnail does nothing; only calling it less often helps.
+  const ms = features.isEnabled("recallLite") ? 15000 : 5000;
   // Kick immediately once a session/clicky starts.
   recallTick().catch(() => {});
   recallTimer = setInterval(() => {
@@ -1157,6 +1195,11 @@ async function executeApproved(actions) {
   }
   const results = [];
   const capped = (actions || []).slice(0, MAX_AGENT_STEPS);
+  demoDebug.setEnabled(settings.get("demoDebug") === true);
+  const debugDir = demoDebug.beginRun("act");
+  if (debugDir) {
+    sendHud({ type: "insight", text: `Demo debug: ${debugDir}` });
+  }
   /**
    * Re-read the screen for EACH step that needs aiming. These were consts
    * captured once before the loop, so a multi-app plan ("copy from the
@@ -1170,9 +1213,34 @@ async function executeApproved(actions) {
   });
   /** Actions whose target only exists after a previous step changed the screen. */
   const needsFreshView = (t) =>
-    ["click", "doubleclick", "rightclick", "hover", "movecursor", "type", "fill", "paste", "drag"].includes(
-      String(t || "").toLowerCase()
-    );
+    [
+      "click",
+      "doubleclick",
+      "rightclick",
+      "hover",
+      "movecursor",
+      "type",
+      "fill",
+      "paste",
+      "drag",
+      "press",
+    ].includes(String(t || "").toLowerCase());
+
+  /** Drop planner aim so vision re-resolves against a fresh capture. */
+  const stripAimCoords = (action) => {
+    const next = { ...(action || {}) };
+    delete next.xPct;
+    delete next.yPct;
+    delete next.x;
+    delete next.y;
+    delete next.screenX;
+    delete next.screenY;
+    return next;
+  };
+
+  /** type/fill often leave the region hash unchanged (caret blink only) — warn, don't abort. */
+  const softVerifyOnly = (t) =>
+    ["type", "fill", "press", "paste", "clipboard_paste"].includes(String(t || "").toLowerCase());
 
   try {
     if (panelWindow && !panelWindow.isDestroyed()) panelWindow.hide();
@@ -1213,15 +1281,25 @@ async function executeApproved(actions) {
       const started = Date.now();
       // Refresh the screenshot before aiming, so targets created by earlier
       // steps (a launched app, an opened dialog) are actually visible.
-      if (!driver.dryRun && needsFreshView(action.type)) {
+      let refreshedView = false;
+      // Only pay the ~350ms capture when this step must actually be AIMED by
+      // vision — no coordinates, or plan-guard stripped them after an app
+      // switch. Steps that already carry valid coordinates were costing a full
+      // screen capture for nothing, on every single step.
+      const mustReaim =
+        needsFreshView(action.type) &&
+        (action._reaim === true || (action.xPct == null && action.yPct == null));
+      if (!driver.dryRun && mustReaim) {
         try {
           await captureDisplayCrop(null);
+          refreshedView = true;
         } catch (err) {
           console.error("pre-step capture:", err.message || err);
         }
       }
       const { region, dataUrl } = currentView();
-      const enriched = await ensureActionCoords(action, { dataUrl, eco });
+      const aimSource = refreshedView ? stripAimCoords(action) : action;
+      const enriched = await ensureActionCoords(aimSource, { dataUrl, eco });
       // Auto-swap Windows pointer face per action (click vs type/agent).
       try {
         const face = modeForAction(enriched.type);
@@ -1242,12 +1320,15 @@ async function executeApproved(actions) {
       });
       sendStage({ type: "mood", mood: "crazy" });
       sendStage({ type: "cursor-move", stepIndex: results.length });
+      // SHA-256 PNG verify is opt-in (settings.verifySteps). Off by default:
+      // caret/clock flips count as "verified", and it costs two captures/step.
+      const verifyOn = settings.get("verifySteps") === true;
       const needsVerify =
+        verifyOn &&
         ["click", "doubleclick", "rightclick", "type", "fill", "drag", "clipboard_paste"].includes(
           String(enriched.type || "").toLowerCase()
-        ) && Boolean(region.width);
-      // Fresh capture right before the action — comparing against the stale
-      // plan-time screenshot would let unrelated screen changes fake a "verified".
+        ) &&
+        Boolean(region.width);
       let beforeFp = null;
       if (needsVerify && !driver.dryRun) {
         try {
@@ -1257,6 +1338,16 @@ async function executeApproved(actions) {
         }
       }
 
+      demoDebug.recordStep(
+        {
+          phase: "before",
+          type: enriched.type,
+          target: enriched.target || null,
+          reaim: Boolean(enriched._reaim || aimSource !== action),
+        },
+        lastCapture && lastCapture.path
+      );
+
       let outcome;
       try {
         outcome = await driver.perform(enriched, { region });
@@ -1264,19 +1355,30 @@ async function executeApproved(actions) {
         outcome = { ok: false, error: String(err.message || err) };
       }
 
-      // Post-step verify: consequential actions should change the region (soft check).
       if (outcome.ok && beforeFp && !driver.dryRun) {
         try {
           await new Promise((r) => setTimeout(r, 200));
           const after = await captureDisplayCrop(region);
           const afterFp = pngFingerprint(after.dataUrl);
           if (afterFp && afterFp === beforeFp) {
-            outcome = {
-              ...outcome,
-              ok: false,
-              error: "no visible change after action — stopped",
-              verified: false,
-            };
+            if (softVerifyOnly(enriched.type)) {
+              console.warn(
+                `post-step verify: no visible change after ${enriched.type} — continuing`
+              );
+              outcome = {
+                ...outcome,
+                verified: false,
+                verifyWarning: "no visible change (soft)",
+              };
+              lastCapture = after;
+            } else {
+              outcome = {
+                ...outcome,
+                ok: false,
+                error: "no visible change after action — stopped",
+                verified: false,
+              };
+            }
           } else {
             outcome.verified = true;
             lastCapture = after;
@@ -1286,7 +1388,20 @@ async function executeApproved(actions) {
         }
       } else if (driver.dryRun) {
         outcome.verified = "dry-run";
+      } else {
+        outcome.verified = verifyOn ? outcome.verified : "skipped";
       }
+
+      demoDebug.recordStep(
+        {
+          phase: "after",
+          type: enriched.type,
+          ok: Boolean(outcome.ok),
+          verified: outcome.verified,
+          error: outcome.error || null,
+        },
+        lastCapture && lastCapture.path
+      );
 
       await eco.audit("clicks.action.executed", {
         type: enriched.type,
@@ -1330,6 +1445,10 @@ async function executeApproved(actions) {
   } finally {
     planRunning = false;
     releaseKillSwitch();
+    demoDebug.endRun({
+      aborted: Boolean(abortPlan),
+      steps: results.length,
+    });
     sendHud({ type: "plan-running", on: false });
     try {
       await agentPointer.restore();
@@ -1607,13 +1726,14 @@ ipcMain.handle("click:askBuddy", async (_e, payload) => {
 /** One-tap Go: we pick ask vs act. Users don't choose modes. */
 ipcMain.handle("clicks:go", async (_e, payload) => {
   const message = (payload && payload.message) || "";
-  const dataUrl =
+  let dataUrl =
     (payload && payload.dataUrl) || (lastCapture && lastCapture.dataUrl) || null;
+  if (!dataUrl) dataUrl = await ensureCaptureForPlan();
   const intent = classifyIntent(message);
 
   // Idiot-proof fast path: obvious desktop recipes skip the LLM.
   if (intent === "act") {
-    const recipe = expandRecipe(matchRecipe(message), {});
+    const recipe = expandRecipe(matchRecipe(message), recipeCoordContext());
     if (recipe && recipe.actions && recipe.actions.length) {
       try {
         showStage();
@@ -1698,6 +1818,7 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
     sendStage({ type: "bubble", role: "user", text: message });
     sendStage({ type: "mood", mood: "thinking" });
     sendStage({ type: "subtitle", text: "Planning safely…", ms: 2500, sound: false });
+    if (!dataUrl) dataUrl = await ensureCaptureForPlan();
     const plan = await eco.planActions({
       instruction: message,
       screenText: (payload && payload.screenText) || "",
@@ -1707,6 +1828,19 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
     });
     pendingPlan = plan;
     if (plan.ok) {
+      try {
+        const osr = await eco.classifyOsr(message);
+        if (osr && osr.band) {
+          plan.osr = osr;
+          const tip = (osr.assumptions && osr.assumptions[0]) || `band=${osr.band}`;
+          sendHud({
+            type: "insight",
+            text: `OSR ${osr.band}: ${tip}`,
+          });
+        }
+      } catch (err) {
+        console.error("osr classify:", err.message || err);
+      }
       const summary = plan.needsApproval
         ? `${(plan.actions || []).length} step(s) — nod or approve`
         : `${(plan.actions || []).length} sensible step(s) — auto-running`;
@@ -1740,8 +1874,9 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
 
 ipcMain.handle("clicks:planActions", async (_e, payload) => {
   const instruction = (payload && payload.instruction) || "";
-  const dataUrl =
+  let dataUrl =
     (payload && payload.dataUrl) || (lastCapture && lastCapture.dataUrl) || null;
+  if (!dataUrl) dataUrl = await ensureCaptureForPlan();
   try {
     const plan = await eco.planActions({
       instruction,
@@ -1751,6 +1886,14 @@ ipcMain.handle("clicks:planActions", async (_e, payload) => {
       policy: settings.safetyPolicy(),
     });
     pendingPlan = plan;
+    if (plan.ok) {
+      try {
+        const osr = await eco.classifyOsr(instruction);
+        if (osr && osr.band) plan.osr = osr;
+      } catch (err) {
+        console.error("osr classify:", err.message || err);
+      }
+    }
     return plan;
   } catch (err) {
     return { ok: false, blocked: false, reason: String(err.message || err), actions: [] };
@@ -1987,22 +2130,83 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
 
 ipcMain.handle("hud:act", async (_e, payload) => {
   const message = (payload && payload.message) || "";
-  const dataUrl = (lastCapture && lastCapture.dataUrl) || null;
+  let dataUrl = (lastCapture && lastCapture.dataUrl) || null;
+  if (!dataUrl) dataUrl = await ensureCaptureForPlan();
   showStage();
   pushTurn("user", message);
   sendStage({ type: "bubble", role: "user", text: message });
+
+  // Coding ask without an explicit tool → stop and ask which app.
+  if (needsAppFork(message)) {
+    const fork = appForkPrompt(message);
+    sendHud({
+      type: "answer",
+      meta: "Which app?",
+      text: `${fork.question}\n• ${fork.options.map((o) => o.label).join("\n• ")}`,
+    });
+    sendHud({ type: "insight", text: "Say: use Cursor / use Claude Code / use Netie" });
+    return { ok: true, needsChoice: true, fork };
+  }
+
+  // Cheap SOPs skip OpenVault entirely (demo works even when chat is 503).
+  const recipe = expandRecipe(matchRecipe(message), recipeCoordContext());
+  if (recipe && recipe.actions && recipe.actions.length) {
+    const reviewed = reviewPlan(recipe.actions, settings.safetyPolicy());
+    const plan = {
+      ok: true,
+      blocked: false,
+      recipe: recipe.id,
+      reason: `recipe:${recipe.id}`,
+      actions: reviewed.actions,
+      needsApproval: reviewed.needsApproval,
+      autoOnly: reviewed.autoOnly,
+    };
+    pendingPlan = plan;
+    sendHud({
+      type: "answer",
+      meta: plan.needsApproval ? "Waiting for nod / approve" : `Recipe · ${recipe.label}`,
+      text: `${plan.actions.length} step(s) · ${recipe.id}`,
+    });
+    sendHud({ type: "insight", text: `Recipe ${recipe.id} (no LLM)` });
+    const run = await maybeRunPlan(plan);
+    return { ok: true, plan, run, recipe: recipe.id };
+  }
+
+  try {
+    const skills = await eco.findSkills(message);
+    if (skills && skills.ok && skills.hits && skills.hits[0]) {
+      const hit = skills.hits[0];
+      sendHud({
+        type: "insight",
+        text: `Skill hit: ${hit.name || hit.id || hit.title || "catalog"} — prefer over inventing clicks`,
+      });
+    }
+  } catch (err) {
+    console.error("find-skills:", err.message || err);
+  }
+
   const plan = await eco.planActions({
     instruction: message,
     dataUrl,
-    hotContext: plannerContext(),
+    hotContext: plannerContext(message),
     policy: settings.safetyPolicy(),
   });
   pendingPlan = plan;
   if (plan.ok) {
+    try {
+      const osr = await eco.classifyOsr(message);
+      if (osr && osr.band) {
+        plan.osr = osr;
+        const tip = (osr.assumptions && osr.assumptions[0]) || `band=${osr.band}`;
+        sendHud({ type: "insight", text: `OSR ${osr.band}: ${tip}` });
+      }
+    } catch (err) {
+      console.error("osr classify:", err.message || err);
+    }
     sendHud({
       type: "answer",
       meta: plan.needsApproval ? "Waiting for nod / approve" : "Auto-running",
-      text: `${plan.actions.length} step(s)`,
+      text: `${plan.actions.length} step(s)${plan.osr ? ` · ${plan.osr.band}` : ""}`,
     });
     const run = await maybeRunPlan(plan);
     return {
@@ -2011,6 +2215,7 @@ ipcMain.handle("hud:act", async (_e, payload) => {
       needsApproval: plan.needsApproval,
       ran: run.ran,
       runMode: run.mode,
+      osr: plan.osr || null,
     };
   }
   sendHud({ type: "answer", meta: "Blocked", text: plan.reason || "Blocked" });
@@ -2236,6 +2441,7 @@ ipcMain.handle("hud:getSettings", async () => ({ ok: true, settings: settings.sn
 ipcMain.handle("hud:setSettings", async (_e, payload) => {
   const next = settings.set((payload && payload.settings) || payload || {});
   agentPointer.enabled = next.cursorBubble !== false;
+  demoDebug.setEnabled(next.demoDebug === true);
   if (!agentPointer.enabled) {
     try {
       await agentPointer.restore();
@@ -2244,6 +2450,12 @@ ipcMain.handle("hud:setSettings", async (_e, payload) => {
     }
   }
   return { ok: true, settings: next };
+});
+
+ipcMain.handle("hud:openDemoDebug", async () => {
+  const folder = demoDebug.openFolder();
+  await shell.openPath(folder);
+  return { ok: true, folder };
 });
 
 ipcMain.handle("hud:openCanvas", async () => {
