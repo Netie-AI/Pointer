@@ -133,6 +133,60 @@ class NetieEcosystem {
     }
   }
 
+  /**
+   * OSR novelty band (known / near / open) — collapse UX for Pointer plans.
+   * Soft-fail: never blocks Act if OSR is down.
+   */
+  async classifyOsr(text) {
+    const clean = (text || "").toString().trim();
+    if (!clean) return { ok: false, error: "empty" };
+    try {
+      const res = await this._post(
+        `${this.cfg.cortexUrl}/api/engine/osr`,
+        { text: clean },
+        this._cortexHeaders()
+      );
+      if (!res.ok) throw new Error(`cortex /api/engine/osr ${res.status}`);
+      const data = await res.json();
+      this.cortexOnline = true;
+      return {
+        ok: true,
+        band: data.band || data.result?.band,
+        assumptions: data.assumptions || data.result?.assumptions || [],
+        family_id: data.family_id || data.result?.family_id,
+        novelty_score: data.novelty_score ?? data.result?.novelty_score,
+        raw: data,
+      };
+    } catch (err) {
+      return { ok: false, error: String(err && err.message ? err.message : err) };
+    }
+  }
+
+  /**
+   * Soft skill discovery — advisory only. Never blocks Act.
+   */
+  async findSkills(text, opts = {}) {
+    const clean = (text || "").toString().trim();
+    if (!clean) return { ok: false, hits: [] };
+    try {
+      const res = await this._post(
+        `${this.cfg.cortexUrl}/api/discovery/find-skills`,
+        { goal: clean, top_k: opts.limit || 5 },
+        this._cortexHeaders()
+      );
+      if (!res.ok) throw new Error(`cortex /api/discovery/find-skills ${res.status}`);
+      const data = await res.json();
+      const hits = [];
+      if (data.best) hits.push(data.best);
+      for (const h of data.hits || data.results || data.items || []) {
+        if (h && (!data.best || h.name !== data.best.name)) hits.push(h);
+      }
+      return { ok: true, hits: hits.slice(0, opts.limit || 5), raw: data };
+    } catch (err) {
+      return { ok: false, hits: [], error: String(err && err.message ? err.message : err) };
+    }
+  }
+
   // ── Cortex: tamper-evident audit ledger (best-effort, never blocks) ───────
   async audit(eventType, payload = {}) {
     try {

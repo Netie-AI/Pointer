@@ -96,6 +96,19 @@ public class NetieInput {
     keybd_event(vk,0,KEYEVENTF_KEYUP,UIntPtr.Zero);
     for (int i=mods.Length-1; i>=0; i--) keybd_event(mods[i],0,KEYEVENTF_KEYUP,UIntPtr.Zero);
   }
+  public static void Drag(int x1, int y1, int x2, int y2) {
+    SetCursorPos(x1,y1);
+    System.Threading.Thread.Sleep(25);
+    INPUT[] down = new INPUT[1];
+    down[0].type=INPUT_MOUSE; down[0].mkhi.mi.dwFlags=MOUSEEVENTF_LEFTDOWN;
+    SendInput(1,down,Marshal.SizeOf(typeof(INPUT)));
+    System.Threading.Thread.Sleep(40);
+    SetCursorPos(x2,y2);
+    System.Threading.Thread.Sleep(40);
+    INPUT[] up = new INPUT[1];
+    up[0].type=INPUT_MOUSE; up[0].mkhi.mi.dwFlags=MOUSEEVENTF_LEFTUP;
+    SendInput(1,up,Marshal.SizeOf(typeof(INPUT)));
+  }
   public static string FgInfo() {
     IntPtr h = GetForegroundWindow();
     var sb = new System.Text.StringBuilder(512);
@@ -120,6 +133,7 @@ while (-not $done) {
     switch ($m.op) {
       'move'  { [NetieInput]::SetCursorPos([int]$m.x, [int]$m.y) | Out-Null }
       'click' { [NetieInput]::Click([int]$m.x, [int]$m.y, [bool]$m.right) }
+      'drag'  { [NetieInput]::Drag([int]$m.x1, [int]$m.y1, [int]$m.x2, [int]$m.y2) }
       'wheel' {
         if ($m.move) { [NetieInput]::SetCursorPos([int]$m.x, [int]$m.y) | Out-Null }
         [NetieInput]::Wheel([int]$m.delta)
@@ -127,6 +141,18 @@ while (-not $done) {
       'type'  { [NetieInput]::TypeUnicode([System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($m.b64))) }
       'tap'   { [NetieInput]::TapVk([byte]$m.vk) }
       'combo' { [NetieInput]::Combo([byte[]]$m.mods, [byte]$m.vk) }
+      'clip_set' {
+        $text = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($m.b64))
+        Set-Clipboard -Value $text
+      }
+      'clip_get' {
+        try { $r.text = [string](Get-Clipboard -Raw -ErrorAction Stop) } catch { $r.text = '' }
+      }
+      'open' {
+        $target = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($m.b64))
+        if (-not $target) { throw 'empty open target' }
+        Start-Process $target | Out-Null
+      }
       'fg'    {
         $info = [NetieInput]::FgInfo()
         $parts = $info -split '\\|', 2
@@ -447,28 +473,76 @@ class InputDriver {
     return this.last;
   }
 
+  /** Drag from (x1,y1) to (x2,y2) in DIP/screen space. */
+  async drag(x1, y1, x2, y2) {
+    const a = { x: Math.round(Number(x1)), y: Math.round(Number(y1)) };
+    const b = { x: Math.round(Number(x2)), y: Math.round(Number(y2)) };
+    this.last = { op: "drag", x1: a.x, y1: a.y, x2: b.x, y2: b.y };
+    if (this.dryRun) return this.last;
+    const p1 = this._phys(a.x, a.y);
+    const p2 = this._phys(b.x, b.y);
+    await this._send({ op: "drag", x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y });
+    return this.last;
+  }
+
+  /** Set system clipboard text (UTF-8). */
+  async clipboardSet(text) {
+    const s = String(text ?? "");
+    this.last = { op: "clip_set", len: s.length };
+    if (this.dryRun) return this.last;
+    await this._send({ op: "clip_set", b64: Buffer.from(s, "utf8").toString("base64") });
+    return this.last;
+  }
+
+  /** Read system clipboard text. */
+  async clipboardGet() {
+    this.last = { op: "clip_get" };
+    if (this.dryRun) return { ...this.last, text: "" };
+    const r = await this._send({ op: "clip_get" });
+    return { ...this.last, text: r.text || "" };
+  }
+
+  /** Open URL or local path via Start-Process (ShellExecute). */
+  async openTarget(target) {
+    const s = String(target || "").trim();
+    if (!s) throw new Error("empty open target");
+    // Block obvious shell metacharacters — Start-Process still executes, keep boring.
+    if (/[\r\n|&<>^]/.test(s)) throw new Error("open target rejected");
+    this.last = { op: "open", target: s.slice(0, 240) };
+    if (this.dryRun) return this.last;
+    await this._send({ op: "open", b64: Buffer.from(s, "utf8").toString("base64") });
+    return this.last;
+  }
+
+  _resolvePoint(action, region, prefix = "") {
+    const ax = action[`${prefix}screenX`] ?? action[`${prefix}x`] ?? action.screenX ?? action.x;
+    const ay = action[`${prefix}screenY`] ?? action[`${prefix}y`] ?? action.screenY ?? action.y;
+    const xPct = action[`${prefix}xPct`] ?? action.xPct;
+    const yPct = action[`${prefix}yPct`] ?? action.yPct;
+    let sx = ax;
+    let sy = ay;
+    if ((sx == null || sy == null) && xPct != null && yPct != null && region.width) {
+      sx = region.x + (Number(xPct) / 100) * region.width;
+      sy = region.y + (Number(yPct) / 100) * region.height;
+    } else if (sx != null && sy != null && action.relative !== false && region.width) {
+      if (action.screenX == null && action.screenY == null && !prefix) {
+        sx = region.x + Number(sx);
+        sy = region.y + Number(sy);
+      }
+    }
+    return { sx, sy };
+  }
+
   /**
    * Execute one reviewed action.
+   * Stolen patterns (OpenClaw/Orca): clipboard, hotkeys, drag, open — predictable only.
    * @param {object} action
    * @param {object} [ctx]  { region: {x,y,width,height}, imageSize?: {width,height} }
    */
   async perform(action, ctx = {}) {
     const type = String(action.type || "").toLowerCase();
     const region = ctx.region || { x: 0, y: 0, width: 0, height: 0 };
-
-    // Absolute screen coords preferred; else xPct/yPct of capture region; else x/y relative.
-    let sx = action.screenX ?? action.x;
-    let sy = action.screenY ?? action.y;
-    if ((sx == null || sy == null) && action.xPct != null && action.yPct != null && region.width) {
-      sx = region.x + (Number(action.xPct) / 100) * region.width;
-      sy = region.y + (Number(action.yPct) / 100) * region.height;
-    } else if (sx != null && sy != null && action.relative !== false && region.width) {
-      // treat as region-relative pixels when region present and screenX not set
-      if (action.screenX == null && action.screenY == null) {
-        sx = region.x + Number(sx);
-        sy = region.y + Number(sy);
-      }
-    }
+    const { sx, sy } = this._resolvePoint(action, region);
 
     switch (type) {
       case "observe":
@@ -500,7 +574,6 @@ class InputDriver {
 
       case "type":
       case "fill":
-      case "paste":
       case "setvalue": {
         // Click the field first when we know where it is — typing into the
         // wrong window is the classic blind-agent failure.
@@ -519,6 +592,45 @@ class InputDriver {
         return out;
       }
 
+      case "paste":
+      case "clipboard_paste": {
+        // Prefer clipboard + Ctrl+V (OpenClaw-style) — more reliable than Unicode typing.
+        if (sx != null && sy != null) {
+          await this.clickAt(sx, sy, { button: "left" });
+          if (!this.dryRun) await sleep(80);
+        }
+        if (action.value != null && String(action.value).length) {
+          await this.clipboardSet(action.value);
+          if (!this.dryRun) await sleep(40);
+        }
+        await this.press("ctrl+v");
+        return { ok: true, type, pasted: String(action.value ?? "").length };
+      }
+
+      case "clipboard_set":
+        await this.clipboardSet(action.value ?? "");
+        return { ok: true, type, len: String(action.value ?? "").length };
+
+      case "clipboard_get":
+      case "copy_clipboard": {
+        const got = await this.clipboardGet();
+        return { ok: true, type, text: got.text || "" };
+      }
+
+      case "copy":
+      case "select_copy": {
+        if (sx != null && sy != null) {
+          await this.clickAt(sx, sy, { button: "left" });
+          if (!this.dryRun) await sleep(60);
+        }
+        await this.press("ctrl+c");
+        return { ok: true, type };
+      }
+
+      case "select_all":
+        await this.press("ctrl+a");
+        return { ok: true, type };
+
       case "press":
       case "keypress":
         await this.press(action.value || action.key || action.target);
@@ -530,10 +642,37 @@ class InputDriver {
         return { ok: true, type, ...(at || {}) };
       }
 
+      case "drag": {
+        const end = this._resolvePoint(
+          {
+            x: action.endX ?? action.toX ?? action.x2,
+            y: action.endY ?? action.toY ?? action.y2,
+            xPct: action.endXPct ?? action.toXPct,
+            yPct: action.endYPct ?? action.toYPct,
+            screenX: action.endScreenX,
+            screenY: action.endScreenY,
+            relative: action.relative,
+          },
+          region
+        );
+        if (sx == null || sy == null || end.sx == null || end.sy == null) {
+          return { ok: false, error: "drag needs start and end coordinates" };
+        }
+        await this.drag(sx, sy, end.sx, end.sy);
+        return { ok: true, type, x: sx, y: sy, endX: end.sx, endY: end.sy };
+      }
+
       case "navigate":
-      case "open":
-      case "drag":
-        return { ok: false, error: `${type} not supported by local driver yet` };
+      case "open": {
+        const target = action.url || action.href || action.path || action.value || action.target;
+        if (!target) return { ok: false, error: "open/navigate needs url or path" };
+        try {
+          await this.openTarget(target);
+        } catch (err) {
+          return { ok: false, error: String(err.message || err) };
+        }
+        return { ok: true, type, target: String(target).slice(0, 240) };
+      }
 
       default:
         return { ok: false, error: `unknown action type: ${type}` };

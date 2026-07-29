@@ -438,3 +438,22 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
     background: rgba(16, 18, 24, 0.92);
   }
 }
+
+/*
+ * Roulette slice indices, --i via nth-child.
+ *
+ * These used to live on inline style="--i: N" attributes in hud.html, but the
+ * HUD's CSP is `style-src 'self'` with no 'unsafe-inline' — so the browser
+ * REFUSED every one of them. Each slice fell back to the same --i, so all the
+ * buttons rendered stacked on top of each other. Declaring them here keeps the
+ * CSP tight instead of adding 'unsafe-inline' just to lay out a wheel.
+ */
+#roulette-wheel { --n: 6; }
+#roulette-wheel .dial-slice:nth-child(1) { --i: 0; }
+#roulette-wheel .dial-slice:nth-child(2) { --i: 1; }
+#roulette-wheel .dial-slice:nth-child(3) { --i: 2; }
+#roulette-wheel .dial-slice:nth-child(4) { --i: 3; }
+#roulette-wheel .dial-slice:nth-child(5) { --i: 4; }
+#roulette-wheel .dial-slice:nth-child(6) { --i: 5; }
+#roulette-wheel .dial-slice:nth-child(7) { --i: 6; }
+#roulette-wheel .dial-slice:nth-child(8) { --i: 7; }

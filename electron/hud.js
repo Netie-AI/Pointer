@@ -22,7 +22,7 @@ const rouletteItems = $("roulette-items");
 const roulettePreview = $("roulette-preview");
 const rouletteLabel = $("roulette-label");
 const chatDock = $("chat-dock");
-const clickyOrb = $("btn-clicky");
+const clickyOrb = $("btn-clicky"); // removed from the UI; kept null-safe below
 const peekDrop = $("peek-drop");
 const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify")];
 
@@ -694,9 +694,9 @@ btnPause.addEventListener("click", async () => {
   answerMeta.textContent = "Resumed";
 });
 
-clickyOrb.addEventListener("pointerdown", async (event) => {
+clickyOrb && clickyOrb.addEventListener("pointerdown", async (event) => {
   if (event.button !== 0) return;
-  clickyOrb.classList.add("armed");
+  clickyOrb && clickyOrb.classList.add("armed");
   clickyHoldTimer = "holding";
   await invoke("hud:clickyHold", { phase: "start" });
 });
@@ -705,10 +705,10 @@ const endClickyHold = async (commit) => {
   clickyHoldTimer = null;
   await invoke("hud:clickyHold", { phase: commit ? "end" : "cancel" });
 };
-clickyOrb.addEventListener("pointerup", () => endClickyHold(true));
-clickyOrb.addEventListener("pointercancel", () => endClickyHold(false));
-clickyOrb.addEventListener("dblclick", async () => {
-  clickyOrb.classList.remove("armed");
+clickyOrb && clickyOrb.addEventListener("pointerup", () => endClickyHold(true));
+clickyOrb && clickyOrb.addEventListener("pointercancel", () => endClickyHold(false));
+clickyOrb && clickyOrb.addEventListener("dblclick", async () => {
+  clickyOrb && clickyOrb.classList.remove("armed");
   await invoke("hud:clickyExit");
 });
 
@@ -793,7 +793,7 @@ window.netieHud.on((event) => {
     lastTickAt = Date.now();
   }
   if (event.type === "clicky") {
-    clickyOrb.classList.toggle("armed", event.state === "clicky" || event.state === "holding");
+    clickyOrb && clickyOrb.classList.toggle("armed", event.state === "clicky" || event.state === "holding");
   }
   if (event.type === "pointer") {
     answerMeta.textContent = event.mode ? `Pointer · ${event.mode}` : answerMeta.textContent;
@@ -817,3 +817,24 @@ invoke("hud:ready").then(async (info) => {
   await fetchBucket("chat");
   syncClickThrough(true);
 });
+
+// On-demand demo screenshot. Replaces the old bottom-right orb, which had no
+// discoverable action bound to it beyond a hold gesture.
+const shotBtn = $("btn-shot");
+if (shotBtn) {
+  shotBtn.addEventListener("click", async () => {
+    shotBtn.disabled = true;
+    const prev = shotBtn.textContent;
+    shotBtn.textContent = "...";
+    const res = await invoke("hud:demoShot");
+    const ok = res && res.ok;
+    shotBtn.textContent = ok ? "Saved" : "Failed";
+    answerMeta.textContent = ok
+      ? `Screenshot saved to ${res.dir}`
+      : `Screenshot failed: ${(res && res.error) || "unknown"}`;
+    setTimeout(() => {
+      shotBtn.textContent = prev;
+      shotBtn.disabled = false;
+    }, 1200);
+  });
+}

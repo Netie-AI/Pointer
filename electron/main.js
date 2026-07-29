@@ -400,7 +400,7 @@ function ensureSttSidecar() {
     sttChild.on("exit", () => {
       sttChild = null;
     });
-    console.log("STT sidecar spawning (faster-whisper multilingual)…");
+    console.log("STT sidecar spawning (faster-whisper multilingual)...");
   } catch (err) {
     console.error("STT sidecar failed to start:", err.message || err);
   }
@@ -1363,7 +1363,7 @@ async function executeApproved(actions) {
           if (afterFp && afterFp === beforeFp) {
             if (softVerifyOnly(enriched.type)) {
               console.warn(
-                `post-step verify: no visible change after ${enriched.type} — continuing`
+                `post-step verify: no visible change after ${enriched.type} - continuing`
               );
               outcome = {
                 ...outcome,
@@ -2458,6 +2458,25 @@ ipcMain.handle("hud:openDemoDebug", async () => {
   return { ok: true, folder };
 });
 
+/**
+ * On-demand screenshot for demos. The DemoDebugTrail only wrote frames during
+ * an act run, so there was no way to just capture the screen — which is why
+ * "demo screenshots" looked broken. Saves the full screen and returns the path.
+ */
+ipcMain.handle("hud:demoShot", async () => {
+  try {
+    const cap = await captureDisplayCrop(null);
+    const dir = path.join(os.homedir(), "AppData", "Roaming", "NetieClicks", "demo-debug", "shots");
+    fs.mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const file = path.join(dir, `shot-${stamp}.png`);
+    fs.copyFileSync(cap.path, file);
+    return { ok: true, file, dir };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
 ipcMain.handle("hud:openCanvas", async () => {
   createCanvas();
   return { ok: true };
@@ -2807,7 +2826,7 @@ app.whenReady().then(() => {
   setupMediaCapture();
   registerHotkey();
   console.log(
-    "Netie Pointer ready — tray-first. Ctrl+` toggles session. Hover top-left peek when morph-hidden."
+    "Netie Pointer ready - tray-first. Ctrl+` toggles session. Hover top-left peek when morph-hidden."
   );
 });
 
@@ -2853,7 +2872,7 @@ app.on("window-all-closed", (e) => {
 });
 
 app.on("before-quit", () => {
-  console.log("Netie Pointer quitting…");
+  console.log("Netie Pointer quitting...");
 });
 
 process.on("uncaughtException", (err) => {

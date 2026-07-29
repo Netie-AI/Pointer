@@ -39,9 +39,16 @@ class LiveCapture {
 
   _makeTap(source) {
     const rate = this.ctx.sampleRate;
+    // Worklet + ScriptProcessor only run while connected to a destination.
+    // Mute the output so we never echo capture back through speakers.
+    const mute = this.ctx.createGain();
+    mute.gain.value = 0;
+    mute.connect(this.ctx.destination);
+
     if (this.mode === "worklet") {
       const node = new AudioWorkletNode(this.ctx, "netie-tap");
       node.port.onmessage = (e) => this.onFrame(source, e.data, rate);
+      node.connect(mute);
       return node;
     }
     const node = this.ctx.createScriptProcessor(1024, 1, 1);
@@ -57,12 +64,7 @@ class LiveCapture {
         }
       }
     };
-    // ScriptProcessor only fires while connected to a destination; a muted gain
-    // keeps it pumping without echoing captured audio back out of the speakers.
-    const mute = this.ctx.createGain();
-    mute.gain.value = 0;
     node.connect(mute);
-    mute.connect(this.ctx.destination);
     return node;
   }
 

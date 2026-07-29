@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+    />
+    <title>Netie Review Canvas</title>
+    <style>
+      :root {
+        --bg: #0f1218;
+        --panel: #161b24;
+        --line: rgba(255, 255, 255, 0.08);
+        --text: #e8ecf4;
+        --muted: rgba(232, 236, 244, 0.58);
+        --accent: #7eb6ff;
+        --ok: #6dffb0;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+      .shell {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        height: 100%;
+      }
+      aside {
+        border-right: 1px solid var(--line);
+        background: var(--panel);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .aside-head {
+        padding: 16px 14px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      .aside-head h1 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+      .aside-head p {
+        margin: 6px 0 0;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .filters {
+        display: flex;
+        gap: 6px;
+        padding: 10px 12px;
+      }
+      .filters button {
+        flex: 1;
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--muted);
+        border-radius: 8px;
+        padding: 7px;
+        font: inherit;
+        font-size: 11px;
+        cursor: pointer;
+      }
+      .filters button.active {
+        color: var(--accent);
+        border-color: rgba(126, 182, 255, 0.4);
+        background: rgba(126, 182, 255, 0.08);
+      }
+      .list {
+        overflow: auto;
+        padding: 4px 8px 16px;
+        flex: 1;
+      }
+      .item {
+        width: 100%;
+        text-align: left;
+        border: 0;
+        background: transparent;
+        color: var(--text);
+        padding: 10px 10px;
+        border-radius: 10px;
+        cursor: pointer;
+        font: inherit;
+      }
+      .item:hover, .item.active {
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .item .t { font-size: 12px; font-weight: 650; display: block; }
+      .item .m { font-size: 10px; color: var(--muted); margin-top: 3px; display: block; }
+      main {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+      }
+      .main-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      .main-bar .meta { color: var(--muted); font-size: 12px; flex: 1; }
+      .main-bar button {
+        border: 1px solid var(--line);
+        background: rgba(255,255,255,0.04);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 7px 10px;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .view {
+        overflow: auto;
+        padding: 22px 28px 48px;
+        flex: 1;
+      }
+      .md h1, .md h2, .md h3 { margin: 1.1em 0 0.4em; line-height: 1.25; }
+      .md h1 { font-size: 22px; }
+      .md h2 { font-size: 17px; color: var(--accent); }
+      .md h3 { font-size: 14px; }
+      .md p, .md li { font-size: 13.5px; line-height: 1.55; color: var(--text); }
+      .md blockquote {
+        margin: 10px 0;
+        padding: 8px 12px;
+        border-left: 3px solid var(--accent);
+        color: var(--muted);
+        background: rgba(126, 182, 255, 0.06);
+        border-radius: 0 8px 8px 0;
+      }
+      .md hr {
+        border: 0;
+        border-top: 1px solid var(--line);
+        margin: 18px 0;
+      }
+      .md pre {
+        background: #0a0d12;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+        overflow: auto;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .md code {
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 0.92em;
+      }
+      .md :not(pre) > code {
+        background: rgba(255,255,255,0.06);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      .empty {
+        color: var(--muted);
+        padding: 48px 20px;
+        text-align: center;
+      }
+      .pill {
+        display: inline-block;
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        background: rgba(109, 255, 176, 0.12);
+        color: var(--ok);
+        margin-left: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside>
+        <div class="aside-head">
+          <h1>Review canvas</h1>
+          <p>Sessions · notes · audit trail</p>
+        </div>
+        <div class="filters">
+          <button type="button" class="active" data-filter="today">Today</button>
+          <button type="button" data-filter="all">All</button>
+          <button type="button" data-filter="notes">Notes</button>
+        </div>
+        <div class="list" id="list"></div>
+      </aside>
+      <main>
+        <div class="main-bar">
+          <div class="meta" id="meta">Select a session</div>
+          <button type="button" id="btn-refresh">Refresh</button>
+          <button type="button" id="btn-folder">Open folder</button>
+        </div>
+        <div class="view md" id="view"><div class="empty">Nothing selected yet.</div></div>
+      </main>
+    </div>
+    <script src="canvas-view.js"></script>
+  </body>
+</html>

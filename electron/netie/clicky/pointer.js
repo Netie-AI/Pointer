@@ -31,6 +31,42 @@ const MODES = Object.freeze({
   AGENT: "agent",
 });
 
+/** Map a driver action type → Netie pointer face (auto-swap while acting). */
+function modeForAction(type) {
+  const t = String(type || "").toLowerCase().replace(/[\s-]+/g, "_");
+  if (
+    t === "click" ||
+    t === "doubleclick" ||
+    t === "double_click" ||
+    t === "rightclick" ||
+    t === "right_click" ||
+    t === "drag" ||
+    t === "mousemove" ||
+    t === "move" ||
+    t === "scroll" ||
+    t === "wheel"
+  ) {
+    return MODES.CLICK;
+  }
+  if (
+    t === "type" ||
+    t === "fill" ||
+    t === "hotkey" ||
+    t === "key" ||
+    t === "keys" ||
+    t === "clipboard_paste" ||
+    t === "clipboard_set" ||
+    t === "clipboard_get" ||
+    t === "paste" ||
+    t === "open" ||
+    t === "navigate" ||
+    t === "wait"
+  ) {
+    return MODES.AGENT;
+  }
+  return MODES.AGENT;
+}
+
 class Pointer {
   constructor(opts = {}) {
     this.dir = opts.cursorDir || path.join(__dirname, "..", "..", "..", "assets", "cursors");
@@ -134,4 +170,4 @@ const RELOAD = `
 Add-Type -MemberDefinition '[DllImport("user32.dll", SetLastError=true)] public static extern bool SystemParametersInfo(uint a,uint b,IntPtr c,uint d);' -Name NetieCur -Namespace W32 | Out-Null
 [W32.NetieCur]::SystemParametersInfo(0x0057,0,[IntPtr]::Zero,0x02) | Out-Null`;
 
-module.exports = { Pointer, MODES, SLOTS, KEY };
+module.exports = { Pointer, MODES, SLOTS, KEY, modeForAction };

@@ -62,12 +62,15 @@
               <label>Agent cursor <input type="checkbox" id="set-cursor" /></label>
               <label>Save markdown <input type="checkbox" id="set-md" /></label>
               <label>Python checks <input type="checkbox" id="set-py" /></label>
+              <label>Demo screenshots <input type="checkbox" id="set-demo-debug" /></label>
+              <label>Verify steps (slow) <input type="checkbox" id="set-verify" /></label>
               <div class="menu-actions">
                 <button type="button" id="btn-canvas">History</button>
                 <button type="button" id="btn-frame">Frame</button>
                 <button type="button" id="btn-frame-top">Frame region</button>
                 <button type="button" id="btn-affirm">Affirm</button>
                 <button type="button" id="btn-space">Space</button>
+                <button type="button" id="btn-demo-debug">Debug shots</button>
                 <button type="button" id="btn-hide">Hide</button>
               </div>
             </div>
@@ -124,27 +127,27 @@
         </div>
       </section>
 
-      <button type="button" class="clicky-orb chrome" id="btn-clicky" title="Hold for Clicky" aria-label="Clicky"><span class="smile"></span></button>
+      <button type="button" class="shot-btn chrome" id="btn-shot" title="Save a screenshot to the demo folder" aria-label="Screenshot">Shot</button>
 
       <section class="roulette glass chrome" id="roulette-panel" aria-label="Retrieve Roulette">
         <div class="dial-wrap">
-          <div class="roulette-dial" id="roulette-wheel" style="--n: 6">
-            <button type="button" class="dial-slice slice active" data-bucket="chat" style="--i: 0" title="Chat">
+          <div class="roulette-dial" id="roulette-wheel">
+            <button type="button" class="dial-slice slice active" data-bucket="chat" title="Chat">
               <span class="dial-ico">C</span><span class="dial-label">Chat</span>
             </button>
-            <button type="button" class="dial-slice slice" data-bucket="notes" style="--i: 1" title="Notes">
+            <button type="button" class="dial-slice slice" data-bucket="notes" title="Notes">
               <span class="dial-ico">N</span><span class="dial-label">Notes</span>
             </button>
-            <button type="button" class="dial-slice slice" data-bucket="assets" style="--i: 2" title="Assets">
+            <button type="button" class="dial-slice slice" data-bucket="assets" title="Assets">
               <span class="dial-ico">A</span><span class="dial-label">Assets</span>
             </button>
-            <button type="button" class="dial-slice slice" data-bucket="memory" style="--i: 3" title="Memory">
+            <button type="button" class="dial-slice slice" data-bucket="memory" title="Memory">
               <span class="dial-ico">M</span><span class="dial-label">Memory</span>
             </button>
-            <button type="button" class="dial-slice slice" data-bucket="source" style="--i: 4" title="Original file source">
+            <button type="button" class="dial-slice slice" data-bucket="source" title="Original file source">
               <span class="dial-ico">S</span><span class="dial-label">Source</span>
             </button>
-            <button type="button" class="dial-slice slice" data-bucket="fleet" style="--i: 5" title="Dual Brain / Fleet">
+            <button type="button" class="dial-slice slice" data-bucket="fleet" title="Dual Brain / Fleet">
               <span class="dial-ico">F</span><span class="dial-label">Fleet</span>
             </button>
             <div class="dial-core" id="dial-core" aria-hidden="true">

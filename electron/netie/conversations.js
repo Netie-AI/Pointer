@@ -34,11 +34,14 @@ class ConversationStore {
       fs.writeFileSync(
         readme,
         [
-          "# Netie Clicky conversations",
+          "# Netie Pointer conversations",
           "",
-          "Each `.md` file is one session. Open this folder in Explorer or Netie Space.",
+          "Each `.md` file is one Pointer session.",
           "",
-          "Netie Space: point a space at this directory to browse / search chats.",
+          "Soft handoff: open a file with Netie Space `--preview` from Pointer.",
+          "Do not write into the Netie Space repo or its preview fixtures.",
+          "",
+          `Folder: ${this.root}`,
           "",
         ].join("\n"),
         "utf8"
@@ -61,9 +64,12 @@ class ConversationStore {
     const file = path.join(this.root, `${base}.md`);
 
     const lines = [
-      `# ${title || "Netie Click session"}`,
+      `# ${title || "Netie Pointer session"}`,
       "",
       `> saved: ${when.toISOString()}`,
+      `> product: Netie Pointer`,
+      `> airgpt_id: ${meta.airgptId || `Pointer-${when.toISOString().slice(0, 10)}`}`,
+      `> session_kind: ${meta.kind || "agent"}`,
       `> device: ${meta.deviceId || ""}`,
       `> id: ${base}`,
       "",
@@ -89,9 +95,11 @@ class ConversationStore {
     index.items.unshift({
       id: base,
       file: `${base}.md`,
-      title: title || "Netie Click session",
+      title: title || "Netie Pointer session",
       saved_at: when.toISOString(),
       turns: (turns || []).length,
+      airgpt_id: meta.airgptId || `Pointer-${when.toISOString().slice(0, 10)}`,
+      kind: meta.kind || "agent",
     });
     index.items = index.items.slice(0, 200);
     fs.writeFileSync(indexPath, JSON.stringify(index, null, 2), "utf8");
@@ -99,11 +107,16 @@ class ConversationStore {
     return { ok: true, id: base, path: file, folder: this.root };
   }
 
-  list(limit = 40) {
+  list(limit = 40, opts = {}) {
     this.ensure();
     try {
       const index = JSON.parse(fs.readFileSync(path.join(this.root, "index.json"), "utf8"));
-      return (index.items || []).slice(0, limit);
+      let items = index.items || [];
+      if (opts.today) {
+        const day = new Date().toISOString().slice(0, 10);
+        items = items.filter((it) => String(it.saved_at || "").startsWith(day));
+      }
+      return items.slice(0, limit);
     } catch {
       return [];
     }

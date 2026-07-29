@@ -28,6 +28,13 @@ MODEL_NAME = os.environ.get("NETIE_STT_MODEL", "small")
 DEVICE = os.environ.get("NETIE_STT_DEVICE", "cpu")
 COMPUTE = os.environ.get("NETIE_STT_COMPUTE", "int8" if DEVICE == "cpu" else "float16")
 PORT = int(os.environ.get("NETIE_STT_PORT", "8766"))
+# MEASURED on this box (small/int8, Windows TTS clips): auto-detect costs
+# 5.6-10.0s per utterance, a pinned language 3.1-3.4s — roughly 2-3x. Auto-detect
+# also runs PER SEGMENT, and on short or noisy real-mic audio it can land on the
+# wrong language and then decode English as Malay-sounding text ("how are you
+# doing" -> "apa khabar"). Pin the language when you know it; leave empty for
+# true rojak code-switching and accept the cost.
+DEFAULT_LANG = (os.environ.get("NETIE_STT_LANG", "") or "").strip()
 # MEASURED on Ryzen 780M (8c/16t), small int8, 3.6s clip — more threads is
 # catastrophically worse, not better, because CTranslate2 oversubscribes:
 #   threads=4  -> 10.9s (3.1x realtime)   <- optimum
@@ -124,9 +131,12 @@ def transcribe(
 
     try:
         m = get_model()
-        lang = (language or "").strip() or None
+        lang = (language or "").strip() or DEFAULT_LANG or None
         if lang in ("auto", "mixed", "rojak"):
-            lang = None
+            lang = None  # explicit request for full code-switch detection
+        # task is pinned to "transcribe": Whisper's "translate" task only ever
+        # targets English, so it can never be the cause of English-in/Malay-out,
+        # but pinning removes the doubt entirely.
         segments, info = m.transcribe(
             path,
             language=lang,
@@ -134,6 +144,7 @@ def transcribe(
             condition_on_previous_text=False,
             vad_filter=True,
             beam_size=BEAM,
+            task="transcribe",
         )
         parts = []
         for seg in segments:

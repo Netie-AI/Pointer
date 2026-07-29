@@ -18,26 +18,35 @@ const ASK_CUES = [
   "look at", "help me understand", "?",
 ];
 
+const CODE_CUES = [
+  "code", "python", "script", "function", "debug", "traceback", "stack trace",
+  "write a", "implement", "refactor", "unit test", "pytest", "fix bug",
+  "compile", "syntax", "algorithm", "leetcode",
+];
+
 /**
  * @param {string} text
- * @returns {'act'|'ask'}
+ * @returns {'act'|'ask'|'code'}
  */
 function classifyIntent(text) {
   const t = String(text || "").trim().toLowerCase();
   if (!t) return "ask";
 
+  const hasCode = CODE_CUES.some((v) => t.includes(v));
   const hasAct = ACT_VERBS.some((v) => t.includes(v));
   const hasAsk = ASK_CUES.some((v) => t.includes(v));
 
-  // Imperative short commands → act ("click Save", "fill name Ada")
+  // Coding questions → full answer + optional Python check (not screen clicks).
+  if (hasCode && !hasAct) return "code";
+  if (hasCode && hasAsk) return "code";
+
   if (hasAct && !hasAsk) return "act";
   if (hasAct && hasAsk && /^(please\s+)?(click|type|fill|press|open|save|send|delete)\b/.test(t)) {
     return "act";
   }
   if (hasAsk && !hasAct) return "ask";
   if (hasAct) return "act";
-  // Default: prefer ask (safer). User can still hit an explicit Do path if we add one.
   return "ask";
 }
 
-module.exports = { classifyIntent, ACT_VERBS, ASK_CUES };
+module.exports = { classifyIntent, ACT_VERBS, ASK_CUES, CODE_CUES };

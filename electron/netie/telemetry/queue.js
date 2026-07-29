@@ -160,8 +160,20 @@ class TelemetryQueue {
   setConsent(partial) {
     const next = this.consent.write(partial);
     if (!this.consent.fleetOn()) {
-      // Pause fleet — keep personal brain; drop upload wraps seed only if fully off.
-      // Keep netieKek so re-enable is instant; just stop enqueue.
+      // Opt-out: purge pending fleet envelopes + drop fleet KEK (governance).
+      // Personal brain (userKek / DPAPI) stays intact.
+      try {
+        this.purge();
+      } catch {
+        /* ok */
+      }
+      try {
+        if (this.vault && typeof this.vault.clearNetieKek === "function") {
+          this.vault.clearNetieKek();
+        }
+      } catch {
+        /* ok */
+      }
     }
     return next;
   }
