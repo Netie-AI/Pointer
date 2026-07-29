@@ -1,4 +1,4 @@
-# Netie Clicks — wiring status
+# Netie Pointer — wiring status
 
 Branch `netie-ecosystem-contracts`.
 
@@ -7,44 +7,55 @@ Branch `netie-ecosystem-contracts`.
 | Surface | Status | Notes |
 |---|---|---|
 | Cortex gate + OpenVault vision | ✅ | fail-closed on act |
-| One-tap **Go** | ✅ | intent ask/act |
+| One-tap **Go** | ✅ | intent ask/act/code |
+| **Idiot-proof recipes** | ✅ | copy/paste/fill left·right/merge/save skip LLM |
 | Plan review + Run | ✅ | irreversible unchecked |
-| **Real input driver v2** | ✅ | one persistent Win32 SendInput worker — ~12 ms/op warm (was ~2 s/op); dry-run env |
-| Wheel scroll + key combos | ✅ | real `MOUSEEVENTF_WHEEL`; `ctrl+s`-style combos, a–z/0–9/F1–F12 |
-| DPI / multi-monitor | ✅ | per-monitor-DPI-aware worker + `dipToScreenPoint`; overlay/capture follow the cursor's display (`geometry.js`) |
-| Vision targeting | ✅ | `targeting.js` fills xPct/yPct when missing — now also for type/fill (click-to-focus before typing) |
-| Kill switch | ✅ | Ctrl+Space always; Esc grabbed **only while a plan runs** (no system-wide Esc hijack) |
+| **Real input driver v3** | ✅ | drag, clipboard set/get/paste, open/navigate + SendInput |
+| Wheel scroll + key combos | ✅ | real `MOUSEEVENTF_WHEEL`; `ctrl+s`-style combos |
+| DPI / multi-monitor | ✅ | per-monitor-DPI-aware worker + `dipToScreenPoint` |
+| Vision targeting | ✅ | `targeting.js` fills xPct/yPct when missing |
+| Kill switch | ✅ | Ctrl+` always; Esc only while plan runs |
 | Memory-aware plans | ✅ | hot + personal brain into `_llmPlan` |
-| Post-step verify | ✅ | fresh pre-action fingerprint (not plan-time stale); stop on no change |
-| Custody client | ✅ | `requestCustody` → `/v1/custody/inject` (soft-fail until OV ships) |
-| Hot ticks | ✅ | foreground sampling rides the driver worker — no powershell spawn per tick |
-| Cluely HUD | ✅ | Top bar + Live insights + AI response + cute FAB (`hud.html`, content-protected) |
-| Ctrl+Space default | ✅ | Full-screen capture immediately; **Frame** for optional region |
-| Live mic capture | ✅ | `getUserMedia` → 16 kHz worklet → main (`hud-audio.js`) |
-| **System audio capture** | ✅ | Native Electron WASAPI **loopback** — no sidecar. Verified track label `"System audio"` |
-| Utterance gating | ✅ | `netie/audio.js` adaptive floor + hangover; `minMs` counts voiced audio only |
-| STT engine chain | ✅ | whisper.cpp → OpenVault `/v1/audio/transcriptions` → sidecar → **Windows dictation (zero install)** → honest "none" |
-| Works out of the box | ✅ | `netie/winspeech.js` persistent worker; 158–559 ms warm. Rough output flagged `rough` and shown italic |
-| Ask + Do it | ✅ | HUD Ask AI / Do it → same Cortex-gated paths |
-| Tests | ✅ | 83 passing incl. `audio.test.js`, `transcriber.test.js` |
-
-### Removed on purpose: Chromium SpeechRecognition
-
-Probed on Electron 35.7.5 — reaches `audiostart`, then **`error: "network"`** at ~3.8 s (Electron ships no Google Speech key), and the old `onend` handler restarted it forever. It is also **cloud**, not on-device, which contradicts our governance. Replaced by the local engine chain above; see `docs/TRANSCRIPTION.md`.
+| Post-step verify | ✅ | fresh pre-action fingerprint |
+| Custody client | ✅ | soft-fail until OV ships inject |
+| **Agent presence** | ✅ | crazy smile + matrix rain while working |
+| **Clicky hold mode** | ✅ | hold topbar / Ctrl+Shift+Space → cursor overlay |
+| **Recall 60s ring** | ✅ | gated by active session or Clicky; dual-wrap on eviction |
+| **Finite horizon** | ✅ | `NETIE_MAX_STEPS` (default 24) |
+| **Light mode** | ✅ | `NETIE_LIGHT=1` disables systemAudio/canvas/hotTicks |
+| Dual vault + consent purge | ✅ | opt-out purges queue + clears fleet KEK |
+| **Cortex `/v1/telemetry`** | ✅ | register + opaque envelope store (Cortex lane) |
+| Pointer HUD + STT chain | ✅ | whisper → OV → sidecar → Win dictation |
+| Tests | ✅ | recipes + presence + driver v3 |
 
 ## Still open (not blocking local zen)
 
-1. Cortex `/v1/telemetry` + `/register` live endpoints (Cortex lane).
-2. OpenVault custody inject for secret fields.
-3. **Better STT accuracy is opt-in**: Windows dictation works with zero install but mishears (~0.5 confidence typical). Set `NETIE_WHISPER_BIN` + `NETIE_WHISPER_MODEL` for a real jump — see `docs/TRANSCRIPTION.md`.
+1. OpenVault custody inject for secret fields.
+2. Accessibility-tree targeting (Orca-style) — coords remain fallback.
+3. Better STT accuracy is opt-in (`NETIE_WHISPER_*`).
+4. Recall pixel seal to disk is env-gated (`NETIE_RECALL_PIXELS=1`) — RAM ring always on.
+
+## HUD (liquid glass chat)
+
+Central draggable chat flies into the middle. Transcript on the left rail. Mic + system audio are icon-only in a bottom-right dock. Enter sends; Ctrl+Enter newline. ⋯ menu opens **below** the dots. Themes: dark / light / gra. `setContentProtection(true)` keeps the HUD out of normal screenshots/share (not a kernel rootkit — DWM protection).
+
+| Piece | Behaviour |
+|---|---|
+| **Hold Clicky** (topbar) ≥180ms | Cursor becomes Netie smile orb (follows pointer) |
+| **Ctrl+Shift+Space** | Toggle Clicky |
+| **Recall daemon** | 1 Hz thumbs (2 Hz if `NETIE_LIGHT=1`), 60s ring |
+| **Vault** | Evicted frames dual-wrapped; pixels only with `NETIE_RECALL_PIXELS=1` |
+| **Planner** | Gets last ~60s cursor/app summary as memory |
+
+Esc layers: menu → ask → Clicky exit → hide HUD.
 
 ## Ops
 
 ```powershell
 npm test
 $env:NETIE_CLICK_DRY_RUN=1; npm start   # no real clicks
-npm start                               # real clicks after Approve
+$env:NETIE_LIGHT=1; npm start           # laptop-friendly
+npm start                               # real clicks after Approve / auto-run
 ```
 
-Conversations folder (Explorer / Netie Space):
-`%APPDATA%\NetieClicks\conversations\`
+Say **copy**, **paste**, **fill right**, **merge cells** — Go runs the recipe immediately.

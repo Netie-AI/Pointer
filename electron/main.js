@@ -1,6 +1,6 @@
 /**
  * Netie Clicks — Windows screen buddy in the Netie Ecosystem.
- * Ctrl+Space → frame drag → Cortex gate → OpenVault vision / planned actions.
+ * Ctrl+` → frame drag → Cortex gate → OpenVault vision / planned actions.
  * Personal memory + learning telemetry: dual-envelope crypto (see electron/netie/).
  */
 
@@ -32,7 +32,31 @@ const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
 const { Segmenter } = require("./netie/audio");
 const { Transcriber } = require("./netie/transcriber");
+const { detectModeSwitch, getMode } = require("./netie/modes");
+const { NotesSession } = require("./netie/notes");
+const { SettingsStore } = require("./netie/settings");
+const { createNodGate, isAffirmation } = require("./netie/affirm");
+const { checkMarkdownPython } = require("./netie/coderun");
+const { matchRecipe, expandRecipe } = require("./netie/recipes");
+const {
+  STATES: PresenceStates,
+  EVENTS: PresenceEvents,
+  transition: presenceTransition,
+  describe: presenceDescribe,
+} = require("./netie/presence");
+const { FeatureFlags } = require("./netie/features");
+const { reviewPlan } = require("./netie/safety");
+const {
+  STATES: ClickyStates,
+  EVENTS: ClickyEvents,
+  HOLD_MS: CLICKY_HOLD_MS,
+  transition: clickyTransition,
+  describe: clickyDescribe,
+  RecallRing,
+} = require("./netie/clicky");
+const { Pointer, modeForAction } = require("./netie/clicky/pointer");
 const crypto = require("crypto");
+const { spawn } = require("child_process");
 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -40,12 +64,22 @@ if (!gotTheLock) {
   process.exit(0);
 }
 
+// Windows GPU/network child crashes have been killing the shell mid-session.
+// Prefer software compositing unless explicitly overridden.
+if (process.platform === "win32" && process.env.NETIE_FORCE_GPU !== "1") {
+  try {
+    app.disableHardwareAcceleration();
+  } catch {
+    /* ok */
+  }
+}
+
 const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
 const API_HOST = "127.0.0.1";
 const OPENVAULT_PORT = 5000;
 const CORTEX_PORT = 8010;
 const API_CHAT_URL = `http://${API_HOST}:${OPENVAULT_PORT}/v1/chat/completions`;
-const HOTKEY = process.env.NETIE_CLICK_HOTKEY || "Control+Space";
+const HOTKEY = process.env.NETIE_CLICK_HOTKEY || "Control+`";
 
 const TEMP_DIR = path.join(os.tmpdir(), "netie-clicks");
 const hot = new HotMemory();
@@ -77,21 +111,105 @@ let pendingPlan = null; // last planActions result for approve UI
 let stageLayout = process.env.NETIE_STAGE_LAYOUT === "below" ? "below" : "right";
 const chats = new ConversationStore();
 const stt = new SttBridge();
-const transcriber = new Transcriber({ sidecarUrl: process.env.NETIE_STT_URL || "" });
+const transcriber = new Transcriber({
+  sidecarUrl: process.env.NETIE_STT_URL || "http://127.0.0.1:8766",
+});
+const notes = new NotesSession();
+const settings = new SettingsStore();
+const features = new FeatureFlags({
+  env: process.env,
+  settings: {
+    systemAudio: settings.get("systemAudio"),
+    sttSidecar: settings.get("sttSidecar"),
+    canvas: settings.get("largeContext"),
+    hotTicks: settings.get("hotTicks"),
+    fleetTelemetry: settings.get("fleetTelemetry"),
+    agentPresenceFx: settings.get("agentPresenceFx"),
+    recall: settings.get("recall"),
+    clicky: settings.get("clicky"),
+  },
+});
+const nodGate = createNodGate({ timeoutMs: 25000 });
 /** One segmenter per audio source so mic and system speech never interleave. */
 const segmenters = new Map();
 let sttBusy = 0;
 /** @type {Array<{role:string,text:string,ts:number}>} */
 let sessionTurns = [];
-let listenMic = true;
+let listenMic = false;
 let listenSystem = false;
 let hudPaused = false;
+let appMode = "agent"; // agent | transcribe | meeting
+let sttChild = null;
+let canvasWindow = null;
+let cursorTrackTimer = null;
+let presenceState = PresenceStates.IDLE;
+let clickyState = ClickyStates.IDLE;
+let clickyHoldStartedAt = 0;
+let clickyCursorWindow = null;
+let clickyFollowTimer = null;
+let recallTimer = null;
+let recallBusy = false;
+const MAX_AGENT_STEPS = Math.max(1, Number(process.env.NETIE_MAX_STEPS) || 24);
+const AIRGPT_DAY = `Pointer-${new Date().toISOString().slice(0, 10)}`;
 const driver = new InputDriver({
   dryRun: process.env.NETIE_CLICK_DRY_RUN === "1",
   // Worker is per-monitor DPI aware → feed it physical pixels, not DIPs.
   toPhysical: (pt) => screen.dipToScreenPoint(pt),
 });
 
+/** Real Windows pointer swap while Netie acts (opt-in via settings / Agent cursor). */
+const agentPointer = new Pointer({
+  enabled: settings.get("cursorBubble") !== false,
+});
+// If a previous crash left a Netie face on, put the user cursor back.
+agentPointer.restore().catch(() => {});
+
+/** Rolling 60s screen memory — thumbs in RAM; sealed dual-wrap on eviction. */
+const recall = new RecallRing({
+  windowMs: 60_000,
+  maxFrames: 60,
+  dataDir: brain.vault ? brain.vault.dataDir : path.join(os.homedir(), "AppData", "Roaming", "NetieClicks"),
+  vault: brain.vault || null,
+  // Pixel seal is HQ/trainer lane — default metadata-only to keep laptops light.
+  sealPixels:
+    process.env.NETIE_RECALL_PIXELS === "1" || process.env.NETIE_HQ_CAPTURE === "1",
+});
+
+function setPresence(event) {
+  presenceState = presenceTransition(presenceState, event);
+  if (!features.isEnabled("agentPresenceFx")) return presenceDescribe(presenceState);
+  const desc = presenceDescribe(presenceState);
+  sendStage({
+    type: "presence",
+    state: presenceState,
+    mood: desc.mood,
+    label: desc.label,
+    crazy: desc.crazy,
+    matrix: desc.matrix,
+  });
+  return desc;
+}
+
+function setClicky(event, meta = {}) {
+  clickyState = clickyTransition(clickyState, event, meta);
+  const desc = clickyDescribe(clickyState);
+  if (desc.cursorOn) showClickyCursor();
+  else hideClickyCursor();
+  reconcileRecallDaemon();
+  sendHud({
+    type: "clicky",
+    state: clickyState,
+    label: desc.label,
+    hint: desc.recordingHint,
+  });
+  sendStage({
+    type: "subtitle",
+    text: desc.label,
+    ms: clickyState === ClickyStates.CLICKY ? 2800 : 1600,
+    sound: false,
+  });
+  return desc;
+}
 function pngFingerprint(dataUrlOrPath) {
   try {
     if (dataUrlOrPath && String(dataUrlOrPath).startsWith("data:")) {
@@ -156,9 +274,17 @@ function createHud() {
     },
   });
   hudWindow.setAlwaysOnTop(true, "screen-saver");
-  // Click-through except interactive chrome (renderer sets pointer-events).
+  // Desktop stays usable — chrome opts in via hud:setIgnoreMouse(false).
+  hudWindow.setIgnoreMouseEvents(true, { forward: true });
+  // Cluely-style: excluded from desktopCapturer / most screen share & screenshots.
+  // Not a kernel bypass — OS-level DWM content protection. CapturePage still works for us.
   try {
     hudWindow.setContentProtection(true);
+  } catch {
+    /* ok */
+  }
+  try {
+    hudWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   } catch {
     /* ok */
   }
@@ -166,21 +292,158 @@ function createHud() {
   hudWindow.on("closed", () => {
     hudWindow = null;
   });
+  // Keep the process alive even if the HUD is closed — recreate shell on demand.
+  hudWindow.on("close", (e) => {
+    if (!app.isQuitting) {
+      e.preventDefault();
+      try {
+        hudWindow.hide();
+      } catch {
+        /* ok */
+      }
+    }
+  });
   return hudWindow;
 }
 
-function showHud() {
+function setHudClickThrough(ignore) {
+  if (!hudWindow || hudWindow.isDestroyed()) return;
+  try {
+    if (ignore) hudWindow.setIgnoreMouseEvents(true, { forward: true });
+    else hudWindow.setIgnoreMouseEvents(false);
+  } catch {
+    /* ok */
+  }
+}
+
+function applyAppMode(modeId, { reason = "" } = {}) {
+  const prev = appMode;
+  appMode = getMode(modeId).id;
+  const spec = getMode(appMode);
+  if (spec.autoNotes && (!notes.file || prev !== appMode)) {
+    const started = notes.start(appMode);
+    try {
+      shell.openPath(started.folder);
+    } catch {
+      /* ok */
+    }
+  }
+  if (!spec.autoNotes && notes.file) {
+    notes.stop();
+  }
+  // Transcribe / Meeting must actually capture audio — mode switch arms STT.
+  const armMic = appMode === "transcribe" || appMode === "meeting";
+  const armSystem = appMode === "meeting";
+  if (armMic) {
+    listenMic = true;
+    hudPaused = false;
+    ensureSttSidecar();
+  }
+  if (armSystem) {
+    listenSystem = true;
+    ensureSttSidecar();
+  }
+  sendHud({
+    type: "mode",
+    mode: appMode,
+    label: spec.label,
+    chrome: spec.chrome,
+    reason,
+    notesPath: notes.file,
+  });
+  if (armMic || armSystem) {
+    sendHud({
+      type: "auto-listen",
+      mic: listenMic,
+      system: listenSystem,
+      paused: false,
+    });
+  }
+  sendStage({
+    type: "subtitle",
+    text: `${spec.label} mode${reason ? ` — ${reason}` : ""}`,
+    ms: 3500,
+  });
+  return {
+    ok: true,
+    mode: appMode,
+    notesPath: notes.file,
+    listen: listenMic,
+    systemAudio: listenSystem,
+  };
+}
+
+function ensureSttSidecar() {
+  if (process.env.NETIE_STT_AUTOSTART === "0") return;
+  if (!features.isEnabled("sttSidecar")) return;
+  if (sttChild && !sttChild.killed) return;
+  const script = path.join(__dirname, "..", "scripts", "stt_sidecar.py");
+  if (!fs.existsSync(script)) return;
+  try {
+    sttChild = spawn("py", ["-3.12", script], {
+      cwd: path.join(__dirname, ".."),
+      env: {
+        ...process.env,
+        NETIE_STT_MODEL: process.env.NETIE_STT_MODEL || "small",
+        NETIE_STT_DEVICE: process.env.NETIE_STT_DEVICE || "cpu",
+        NETIE_STT_PORT: process.env.NETIE_STT_PORT || "8766",
+      },
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    sttChild.on("exit", () => {
+      sttChild = null;
+    });
+    console.log("STT sidecar spawning (faster-whisper multilingual)…");
+  } catch (err) {
+    console.error("STT sidecar failed to start:", err.message || err);
+  }
+}
+
+/** True only while the user explicitly revealed the HUD (hotkey / tray). */
+let hudUserOpened = false;
+/** Restore HUD after Frame overlay only if the user had it open. */
+let hudVisibleBeforeOverlay = false;
+
+function isHudVisible() {
+  return Boolean(hudWindow && !hudWindow.isDestroyed() && hudWindow.isVisible());
+}
+
+/**
+ * Intentional reveal only — never call from auto paths (ready / plan / clicky / capture).
+ * @param {{ expandChat?: boolean }} [opts]
+ */
+function showHud(opts = {}) {
+  // Default: liquid top bar + chat open. Pass expandChat: false for bar-only.
+  const expandChat = opts.expandChat !== false;
   const win = createHud();
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   win.setBounds({ ...display.bounds });
+  try {
+    if (panelWindow && !panelWindow.isDestroyed()) panelWindow.hide();
+  } catch {
+    /* ok */
+  }
+  hudUserOpened = true;
   win.show();
   win.focus();
   sendHud({ type: "reset-timer" });
-  sendHud({ type: "open-ask" });
+  sendHud({ type: "ui", chatOpen: expandChat, compact: !expandChat });
+  if (expandChat) sendHud({ type: "open-ask" });
 }
 
 function hideHud() {
+  hudUserOpened = false;
   if (hudWindow && !hudWindow.isDestroyed()) hudWindow.hide();
+}
+
+/** Push HUD events only when the overlay is already open — never force-pop. */
+function sendHudQuiet(event) {
+  if (isHudVisible()) sendHud(event);
+}
+
+function hidePanel() {
+  if (panelWindow && !panelWindow.isDestroyed()) panelWindow.hide();
 }
 
 function createStage() {
@@ -244,15 +507,150 @@ function pushTurn(role, text) {
   if (sessionTurns.length > 80) sessionTurns = sessionTurns.slice(-80);
 }
 
-function saveCurrentConversation(title) {
+function saveCurrentConversation(title, kind = "agent") {
   if (!sessionTurns.length) return { ok: false, error: "nothing to save" };
+  if (!settings.get("saveAllMarkdown")) return { ok: false, skipped: true };
   const firstUser = sessionTurns.find((x) => x.role === "user");
   const res = chats.save({
     title: title || (firstUser && firstUser.text.slice(0, 60)) || "Netie Click session",
     turns: sessionTurns,
-    meta: { deviceId: hot.deviceId },
+    meta: {
+      deviceId: hot.deviceId,
+      airgptId: AIRGPT_DAY,
+      kind,
+    },
   });
   return res;
+}
+
+function startCursorTracking() {
+  if (cursorTrackTimer) return;
+  if (!settings.get("cursorBubble")) return;
+  cursorTrackTimer = setInterval(() => {
+    if (!stageWindow || stageWindow.isDestroyed() || !stageWindow.isVisible()) return;
+    try {
+      const pt = screen.getCursorScreenPoint();
+      const bounds = stageWindow.getBounds();
+      sendStage({
+        type: "cursor-move",
+        x: pt.x - bounds.x,
+        y: pt.y - bounds.y,
+      });
+    } catch {
+      /* ok */
+    }
+  }, 50);
+}
+
+function stopCursorTracking() {
+  if (cursorTrackTimer) {
+    clearInterval(cursorTrackTimer);
+    cursorTrackTimer = null;
+  }
+  sendStage({ type: "cursor-hide" });
+}
+
+function createCanvas() {
+  if (canvasWindow && !canvasWindow.isDestroyed()) {
+    canvasWindow.show();
+    canvasWindow.focus();
+    return canvasWindow;
+  }
+  canvasWindow = new BrowserWindow({
+    width: 1100,
+    height: 720,
+    show: true,
+    title: "Netie Review Canvas",
+    backgroundColor: "#0f1218",
+    webPreferences: {
+      preload: path.join(__dirname, "canvas-preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  canvasWindow.loadFile(path.join(__dirname, "canvas.html"));
+  canvasWindow.on("closed", () => {
+    canvasWindow = null;
+  });
+  return canvasWindow;
+}
+
+/**
+ * After a plan is ready: auto-run sensible steps, or wait for a nod, else panel.
+ */
+async function maybeRunPlan(plan, { teach = true } = {}) {
+  if (!plan || !plan.ok) return { ran: false, plan };
+  const actions = plan.actions || [];
+  const steps = actions.map(
+    (a, i) => `${a.type}${a.target ? ` → ${a.target}` : ""}`.slice(0, 80) || `step ${i + 1}`
+  );
+  if (teach && settings.get("cursorBubble") && steps.length) {
+    showStage();
+    startCursorTracking();
+    const pt = screen.getCursorScreenPoint();
+    const display = screen.getDisplayNearestPoint(pt);
+    sendStage({
+      type: "cursor-guide",
+      label: "Plan",
+      steps,
+      x: pt.x - display.bounds.x,
+      y: pt.y - display.bounds.y,
+    });
+  }
+
+  const autoOnes = actions.filter((a) => a.safety && a.safety.disposition === "auto");
+  const needHuman = actions.filter((a) => a.safety && a.safety.disposition === "approve");
+
+  // Sensible-only plan → run immediately (no Enter).
+  if (!plan.needsApproval && autoOnes.length) {
+    const toRun = actions.map((a) =>
+      a.safety && a.safety.disposition === "auto" ? { ...a, _approved: true } : { ...a }
+    );
+    sendStage({ type: "subtitle", text: "Running sensible steps…", ms: 2500 });
+    const results = await executeApproved(toRun);
+    stopCursorTracking();
+    return { ran: true, mode: "auto", results, plan };
+  }
+
+  // Mixed / irreversible: optional nod gate (disable in ⋯ settings).
+  if (needHuman.length && settings.get("nodConfirm")) {
+    setPresence(PresenceEvents.WAIT);
+    sendStage({ type: "nod-wait", on: true, text: "Nod · say “yes” · or press Y to run safe steps" });
+    sendHud({ type: "nod-wait", on: true });
+    const affirmed = await nodGate.begin();
+    sendStage({ type: "nod-wait", on: false });
+    sendHud({ type: "nod-wait", on: false });
+    if (affirmed && affirmed.ok) {
+      setPresence(PresenceEvents.NOD);
+      const toRun = actions.map((a) => {
+        const copy = { ...a };
+        if (a.safety && a.safety.disposition === "auto") copy._approved = true;
+        else if (a.safety && a.safety.disposition === "approve" && !a.safety.irreversible) {
+          copy._approved = true;
+        }
+        return copy;
+      });
+      sendStage({ type: "subtitle", text: `Affirmed (${affirmed.via}) — running…`, ms: 2500 });
+      const results = await executeApproved(toRun);
+      stopCursorTracking();
+      return { ran: true, mode: "nod", results, plan };
+    }
+  }
+
+  // Needs human judgment — update HUD if open; otherwise stage toast + Ctrl+Y (no force-pop).
+  sendHudQuiet({
+    type: "answer",
+    meta: "Waiting for your nod",
+    text: `${needHuman.length} step(s) need confirmation. Say yes, press Affirm, or Ctrl+Y.`,
+  });
+  sendHudQuiet({ type: "nod-wait", on: true });
+  sendStage({
+    type: "subtitle",
+    text: `${needHuman.length} step(s) need nod — Affirm / Ctrl+Y`,
+    ms: 4500,
+  });
+  return { ran: false, mode: "hud-nod", plan };
 }
 
 function setupCsp() {
@@ -327,6 +725,11 @@ function closeOverlay() {
 
 function openOverlay() {
   closeOverlay();
+  // Hide chrome while framing; restore only if the user had HUD open.
+  hudVisibleBeforeOverlay = isHudVisible() || hudUserOpened;
+  if (isHudVisible()) {
+    if (hudWindow && !hudWindow.isDestroyed()) hudWindow.hide();
+  }
   // Frame where the user is working, not just the primary monitor.
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   overlayDisplayBounds = { ...display.bounds };
@@ -359,6 +762,8 @@ function openOverlay() {
   overlayWindow.on("closed", () => {
     overlayWindow = null;
     if (state === "SELECTING") state = "ARMED";
+    if (hudVisibleBeforeOverlay) showHud({ expandChat: false });
+    hudVisibleBeforeOverlay = false;
   });
   state = "SELECTING";
 }
@@ -399,6 +804,7 @@ function sampleForeground(cb) {
 
 function startTicks() {
   stopTicks();
+  if (!features.isEnabled("hotTicks")) return;
   tickTimer = setInterval(() => {
     if (state === "IDLE") return;
     const pt = screen.getCursorScreenPoint();
@@ -525,7 +931,180 @@ function plannerContext() {
   } catch {
     mem = "";
   }
-  return [hot.summaryText(), mem ? `Personal memory:\n${mem}` : ""].filter(Boolean).join("\n");
+  const recallTxt = (() => {
+    try {
+      return recall.summaryText({ limit: 14 });
+    } catch {
+      return "";
+    }
+  })();
+  return [
+    hot.summaryText(),
+    mem ? `Personal memory:\n${mem}` : "",
+    recallTxt ? `Clicky recall (last ~60s):\n${recallTxt}` : "",
+    clickyState === ClickyStates.CLICKY ? "Mode: Clicky armed — prefer concrete screen actions." : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function createClickyCursor() {
+  if (clickyCursorWindow && !clickyCursorWindow.isDestroyed()) return clickyCursorWindow;
+  clickyCursorWindow = new BrowserWindow({
+    width: 56,
+    height: 56,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    focusable: false,
+    hasShadow: false,
+    show: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+  clickyCursorWindow.setIgnoreMouseEvents(true, { forward: true });
+  try {
+    clickyCursorWindow.setContentProtection(true);
+  } catch {
+    /* ok */
+  }
+  clickyCursorWindow.setAlwaysOnTop(true, "screen-saver");
+  clickyCursorWindow.loadFile(path.join(__dirname, "clicky-cursor.html"));
+  return clickyCursorWindow;
+}
+
+function placeClickyCursor() {
+  if (!clickyCursorWindow || clickyCursorWindow.isDestroyed()) return;
+  const pt = screen.getCursorScreenPoint();
+  clickyCursorWindow.setBounds({
+    x: Math.round(pt.x - 10),
+    y: Math.round(pt.y - 10),
+    width: 56,
+    height: 56,
+  });
+}
+
+function showClickyCursor() {
+  if (!features.isEnabled("clicky")) return;
+  const win = createClickyCursor();
+  placeClickyCursor();
+  if (!win.isVisible()) win.showInactive();
+  if (clickyFollowTimer) clearInterval(clickyFollowTimer);
+  clickyFollowTimer = setInterval(placeClickyCursor, 33);
+  if (clickyFollowTimer.unref) clickyFollowTimer.unref();
+}
+
+function hideClickyCursor() {
+  if (clickyFollowTimer) {
+    clearInterval(clickyFollowTimer);
+    clickyFollowTimer = null;
+  }
+  if (clickyCursorWindow && !clickyCursorWindow.isDestroyed()) {
+    clickyCursorWindow.hide();
+  }
+}
+
+/**
+ * Cheap 1Hz (or 2Hz lite) thumb for Recall — not the full planner capture.
+ */
+async function captureRecallThumb() {
+  const pt = screen.getCursorScreenPoint();
+  const display = screen.getDisplayNearestPoint(pt);
+  const scale = display.scaleFactor || 1;
+  const longEdge = features.isEnabled("recallLite") ? 320 : 480;
+  const aspect = display.size.height / Math.max(1, display.size.width);
+  const tw = Math.round(longEdge * scale);
+  const th = Math.round(longEdge * aspect * scale);
+  const sources = await desktopCapturer.getSources({
+    types: ["screen"],
+    thumbnailSize: { width: tw, height: th },
+  });
+  const displayId = String(display.id);
+  const source =
+    sources.find((s) => s.display_id && String(s.display_id) === displayId) || sources[0];
+  if (!source) return null;
+  let image = source.thumbnail;
+  const size = image.getSize();
+  const long = Math.max(size.width, size.height);
+  if (long > longEdge) {
+    const f = longEdge / long;
+    image = image.resize({
+      width: Math.round(size.width * f),
+      height: Math.round(size.height * f),
+    });
+  }
+  const jpeg = image.toJPEG(features.isEnabled("recallLite") ? 32 : 42);
+  return {
+    jpeg,
+    width: image.getSize().width,
+    height: image.getSize().height,
+    displayId,
+    cx: pt.x,
+    cy: pt.y,
+  };
+}
+
+async function recallTick() {
+  if (recallBusy || !features.isEnabled("recall") || hudPaused) return;
+  recallBusy = true;
+  try {
+    const cap = await captureRecallThumb();
+    if (!cap) return;
+    let fg = { title: "?", proc: "?" };
+    try {
+      fg = await driver.foreground();
+    } catch {
+      /* dry-run / worker */
+    }
+    recall.push({
+      t: Date.now(),
+      cx: cap.cx,
+      cy: cap.cy,
+      displayId: cap.displayId,
+      fgTitle: fg.title,
+      fgProc: fg.proc,
+      thumbJpeg: cap.jpeg,
+      width: cap.width,
+      height: cap.height,
+    });
+  } catch (err) {
+    console.error("recall tick:", err.message || err);
+  } finally {
+    recallBusy = false;
+  }
+}
+
+function startRecallDaemon() {
+  stopRecallDaemon();
+  if (!features.isEnabled("recall")) return;
+  if (!shouldRunRecall()) return;
+  const ms = features.isEnabled("recallLite") ? 2000 : 1000;
+  // Kick immediately once a session/clicky starts.
+  recallTick().catch(() => {});
+  recallTimer = setInterval(() => {
+    recallTick().catch(() => {});
+  }, ms);
+  if (recallTimer.unref) recallTimer.unref();
+  console.log(`Clicky recall daemon @ ${ms}ms (sealPixels=${recall.sealPixels})`);
+}
+
+function stopRecallDaemon() {
+  if (recallTimer) clearInterval(recallTimer);
+  recallTimer = null;
+}
+
+function shouldRunRecall() {
+  return state !== "IDLE" || clickyState === ClickyStates.CLICKY;
+}
+
+function reconcileRecallDaemon() {
+  if (shouldRunRecall()) startRecallDaemon();
+  else stopRecallDaemon();
 }
 
 /**
@@ -558,9 +1137,18 @@ async function executeApproved(actions) {
   abortPlan = false;
   planRunning = true;
   grabKillSwitch();
+  setPresence(PresenceEvents.START);
+  sendHud({ type: "plan-running", on: true });
+  agentPointer.enabled = settings.get("cursorBubble") !== false;
+  try {
+    await agentPointer.set("agent");
+  } catch (err) {
+    console.error("agent pointer:", err.message || err);
+  }
   const results = [];
   const region = (lastCapture && lastCapture.region) || { x: 0, y: 0, width: 0, height: 0 };
   const dataUrl = (lastCapture && lastCapture.dataUrl) || null;
+  const capped = (actions || []).slice(0, MAX_AGENT_STEPS);
 
   try {
     if (panelWindow && !panelWindow.isDestroyed()) panelWindow.hide();
@@ -570,7 +1158,7 @@ async function executeApproved(actions) {
   }
 
   try {
-    for (const action of actions) {
+    for (const action of capped) {
       if (abortPlan) {
         results.push({ action, ok: false, skipped: "aborted" });
         break;
@@ -600,15 +1188,28 @@ async function executeApproved(actions) {
 
       const started = Date.now();
       const enriched = await ensureActionCoords(action, { dataUrl, eco });
+      // Auto-swap Windows pointer face per action (click vs type/agent).
+      try {
+        const face = modeForAction(enriched.type);
+        if (agentPointer.mode !== face) await agentPointer.set(face);
+      } catch (err) {
+        console.error("agent pointer swap:", err.message || err);
+      }
+      sendHud({
+        type: "pointer",
+        mode: agentPointer.mode,
+        action: enriched.type,
+      });
       sendStage({
         type: "subtitle",
         text: `${enriched.type}${enriched.target ? ` · ${enriched.target}` : ""}`,
         ms: 1800,
         sound: false,
       });
-      sendStage({ type: "mood", mood: "talking" });
+      sendStage({ type: "mood", mood: "crazy" });
+      sendStage({ type: "cursor-move", stepIndex: results.length });
       const needsVerify =
-        ["click", "doubleclick", "rightclick", "type", "fill"].includes(
+        ["click", "doubleclick", "rightclick", "type", "fill", "drag", "clipboard_paste"].includes(
           String(enriched.type || "").toLowerCase()
         ) && Boolean(region.width);
       // Fresh capture right before the action — comparing against the stale
@@ -661,18 +1262,20 @@ async function executeApproved(actions) {
         targeted: Boolean(enriched._targeted),
         verified: outcome.verified,
       });
-      try {
-        brain.telemetry.enqueueOutcome({
-          action_type: enriched.type,
-          safety_tier: action.safety && action.safety.tierName,
-          approved: d === "approve",
-          succeeded: Boolean(outcome.ok),
-          latency_ms: Date.now() - started,
-          app_class: "unknown",
-          irreversible: Boolean(action.safety && action.safety.irreversible),
-        });
-      } catch {
-        /* fleet paused */
+      if (features.isEnabled("fleetTelemetry")) {
+        try {
+          brain.telemetry.enqueueOutcome({
+            action_type: enriched.type,
+            safety_tier: action.safety && action.safety.tierName,
+            approved: d === "approve",
+            succeeded: Boolean(outcome.ok),
+            latency_ms: Date.now() - started,
+            app_class: "unknown",
+            irreversible: Boolean(action.safety && action.safety.irreversible),
+          });
+        } catch {
+          /* fleet paused */
+        }
       }
 
       const message = outcome.ok
@@ -681,38 +1284,51 @@ async function executeApproved(actions) {
           }${driver.dryRun ? " [dry-run]" : ""}`
         : `failed: ${outcome.error || outcome.skipped || "unknown"}`;
       results.push({ action: enriched, ...outcome, message });
-      if (!outcome.ok && !outcome.noop) break;
+      if (!outcome.ok && !outcome.noop) {
+        setPresence(PresenceEvents.FAIL);
+        break;
+      }
       await new Promise((r) => setTimeout(r, 120));
+    }
+    if (!abortPlan && results.every((r) => r.ok || r.noop || r.skipped === "refused")) {
+      setPresence(PresenceEvents.COMPLETE);
     }
   } finally {
     planRunning = false;
     releaseKillSwitch();
+    sendHud({ type: "plan-running", on: false });
     try {
-      showPanel();
+      await agentPointer.restore();
     } catch {
       /* ok */
     }
+    setTimeout(() => setPresence(PresenceEvents.RESET), 1600);
+    // Stay invisible after plans — do not force-pop the HUD.
+    sendHudQuiet({ type: "insight", text: "Plan finished." });
   }
   return results;
 }
 
 function armSession() {
   state = "ARMED";
+  reconcileRecallDaemon();
   startTicks();
-  // Default Cluely flow: full-screen capture immediately (no drag required).
+  // Ctrl+` / tray — intentional reveal (liquid bar + chat).
   captureDisplayCrop(null)
     .then((cap) => {
-      sendToPanel("click:onHotkeyFired", { dataUrl: cap.dataUrl, path: cap.path, fullScreen: true });
-      showHud();
-      showStage();
-      sendStage({ type: "mood", mood: "idle" });
-      sendHud({ type: "insight", text: "Full screen captured. Speak or tap the cute Netie button." });
-      sendToPanel("clicks:state", { state: "ACTIVE", hotkey: HOTKEY, mode: "hud" });
+      lastCapture = cap;
+      hidePanel();
+      showHud({ expandChat: true });
+      sendHud({
+        type: "insight",
+        text: "Ready. Record to speak, or type in chat. Hide morphs to the corner.",
+      });
       state = "ACTIVE";
     })
     .catch((err) => {
-      sendToPanel("clicks:error", { message: String(err.message || err) });
-      showPanel();
+      showHud({ expandChat: true });
+      sendHud({ type: "insight", text: `Capture failed: ${err.message || err}` });
+      state = "ACTIVE";
     });
 }
 
@@ -726,6 +1342,7 @@ function disarmSession() {
     /* ok */
   }
   state = "IDLE";
+  reconcileRecallDaemon();
   stopTicks();
   closeOverlay();
   hideStage();
@@ -758,20 +1375,24 @@ function trayIcon() {
 
 function createTray() {
   tray = new Tray(trayIcon());
-  tray.setToolTip("Netie Clicks");
+  tray.setToolTip("Netie Pointer");
   tray.setContextMenu(
     Menu.buildFromTemplate([
       {
-        label: `Capture (${HOTKEY})`,
+        label: `Toggle session (${HOTKEY})`,
         click: () => armSession(),
       },
       {
-        label: "Show panel",
-        click: () => showPanel(),
+        label: "Show chat",
+        click: () => showHud(),
       },
       {
-        label: "Show stage (bubbles)",
-        click: () => showStage(),
+        label: "Frame region (drag box)",
+        click: () => openOverlay(),
+      },
+      {
+        label: "Review canvas",
+        click: () => createCanvas(),
       },
       { type: "separator" },
       {
@@ -779,24 +1400,31 @@ function createTray() {
         click: () => chats.reveal(),
       },
       {
-        label: stageLayout === "below" ? "Bubbles: right side" : "Bubbles: below",
+        label: settings.get("autoRunSensible") ? "✓ Auto-run sensible" : "Auto-run sensible",
         click: () => {
-          stageLayout = stageLayout === "below" ? "right" : "below";
-          sendStage({ type: "layout", mode: stageLayout });
-          createTray(); // refresh label
+          settings.set({ autoRunSensible: !settings.get("autoRunSensible") });
+          createTray();
+        },
+      },
+      {
+        label: settings.get("nodConfirm") ? "✓ Nod confirm" : "Nod confirm",
+        click: () => {
+          settings.set({ nodConfirm: !settings.get("nodConfirm") });
+          createTray();
         },
       },
       { type: "separator" },
       {
         label: "Quit",
         click: () => {
+          app.isQuitting = true;
           disarmSession();
           app.quit();
         },
       },
     ]),
   );
-  tray.on("double-click", () => showPanel());
+  tray.on("double-click", () => showHud());
 }
 
 function registerHotkey() {
@@ -816,6 +1444,38 @@ function registerHotkey() {
     }
   });
   if (!ok) console.error("Failed to register hotkey", HOTKEY);
+  // Affirmation hotkey while nod gate is open (does not steal Y globally forever —
+  // only registered… actually Electron can't scope easily; use Control+Y).
+  try {
+    globalShortcut.register("Control+Y", () => {
+      if (nodGate.pending) {
+        nodGate.hotkey("ctrl-y");
+        sendStage({ type: "subtitle", text: "Affirmed — going", ms: 1800 });
+      }
+    });
+  } catch {
+    /* ok */
+  }
+  // Hold-equivalent: Ctrl+Shift+Space toggles Clicky (cursor mode).
+  try {
+    globalShortcut.register("Control+Shift+Space", () => {
+      if (!features.isEnabled("clicky")) return;
+      if (clickyState === ClickyStates.CLICKY) setClicky(ClickyEvents.EXIT);
+      else {
+        setClicky(ClickyEvents.HOLD_START);
+        setClicky(ClickyEvents.HOLD_COMMIT, { heldMs: CLICKY_HOLD_MS });
+        // Clicky arms silently — no HUD pop. Backend + pointer stay live.
+        sendHudQuiet({ type: "open-ask", clicky: true });
+        sendHudQuiet({
+          type: "insight",
+          text: "Clicky on — cursor is Netie. Speak or type what to do.",
+        });
+        sendStage({ type: "subtitle", text: "Clicky on", ms: 1800 });
+      }
+    });
+  } catch {
+    /* ok */
+  }
   // Esc kill switch is grabbed only while a plan runs (see grabKillSwitch) —
   // a lifetime global Escape would swallow Esc in every other app.
 }
@@ -864,18 +1524,17 @@ ipcMain.handle("clicks:commitRegion", async (_e, region) => {
   state = "ACTIVE";
   try {
     const cap = await captureDisplayCrop(screenRegion);
-    showPanel();
-    showHud();
-    sendToPanel("click:onHotkeyFired", {
-      dataUrl: cap.dataUrl,
-      path: cap.path,
-      region: screenRegion,
+    lastCapture = cap;
+    if (hudVisibleBeforeOverlay || hudUserOpened) showHud({ expandChat: false });
+    sendHudQuiet({
+      type: "insight",
+      text: `Region ${Math.round(screenRegion.width)}×${Math.round(screenRegion.height)} captured.`,
     });
-    sendHud({ type: "insight", text: "Region framed. Speak or ask Netie." });
-    sendToPanel("clicks:state", { state, region: screenRegion, hotkey: HOTKEY });
     return { ok: true };
   } catch (err) {
-    sendToPanel("clicks:error", { message: String(err.message || err) });
+    if (hudVisibleBeforeOverlay || hudUserOpened) showHud({ expandChat: false });
+    sendHudQuiet({ type: "insight", text: `Frame failed: ${err.message || err}` });
+    sendStage({ type: "subtitle", text: `Frame failed: ${err.message || err}`, ms: 3500 });
     return { ok: false, error: String(err.message || err) };
   }
 });
@@ -917,26 +1576,90 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
   const dataUrl =
     (payload && payload.dataUrl) || (lastCapture && lastCapture.dataUrl) || null;
   const intent = classifyIntent(message);
-  if (intent === "ask") {
+
+  // Idiot-proof fast path: obvious desktop recipes skip the LLM.
+  if (intent === "act") {
+    const recipe = expandRecipe(matchRecipe(message), {});
+    if (recipe && recipe.actions && recipe.actions.length) {
+      try {
+        showStage();
+        setPresence(PresenceEvents.THINK);
+        pushTurn("user", message);
+        sendStage({ type: "bubble", role: "user", text: message });
+        const reviewed = reviewPlan(recipe.actions, settings.safetyPolicy());
+        const plan = {
+          ok: true,
+          blocked: false,
+          recipe: recipe.id,
+          reason: `recipe:${recipe.id}`,
+          actions: reviewed.actions,
+          needsApproval: reviewed.needsApproval,
+          autoOnly: reviewed.autoOnly,
+        };
+        pendingPlan = plan;
+        const summary = `${recipe.label} · ${recipe.actions.length} step(s)`;
+        pushTurn("assistant", summary);
+        sendStage({ type: "bubble", role: "netie", text: summary });
+        sendStage({ type: "subtitle", text: summary, ms: 3500 });
+        const run = await maybeRunPlan(plan);
+        if (settings.get("saveAllMarkdown")) saveCurrentConversation(message.slice(0, 60), "act");
+        return { ...plan, mode: "act", intent, ran: run.ran, runMode: run.mode || "recipe" };
+      } catch (err) {
+        setPresence(PresenceEvents.FAIL);
+        return { ok: false, mode: "act", intent, reason: String(err.message || err), actions: [] };
+      }
+    }
+  }
+
+  if (intent === "ask" || intent === "code") {
     try {
-      const r = await askBuddy({ message, dataUrl });
+      const r = await askBuddy({
+        message:
+          intent === "code"
+            ? `${message}\n\n(Respond with complete, runnable Python in fenced \`\`\`python blocks when code is needed. Prefer working solutions over sketches.)`
+            : message,
+        dataUrl,
+      });
       if (!r.ok) {
         return {
           ok: false,
-          mode: "ask",
+          mode: intent,
           error: r.text || "Ask failed",
           blocked: Boolean(r.blocked),
           degraded: Boolean(r.degraded),
         };
       }
-      return { ok: true, mode: "ask", reply: r.text, degraded: Boolean(r.degraded) };
+      pushTurn("user", message);
+      pushTurn("assistant", r.text);
+      let pyCheck = null;
+      if (intent === "code" && settings.get("runPythonChecks")) {
+        pyCheck = await checkMarkdownPython(r.text);
+        if (pyCheck.ran) {
+          const summary = pyCheck.ok
+            ? `Python check OK (${pyCheck.ran} block(s))`
+            : `Python check failed — see stderr in session log`;
+          pushTurn("assistant", summary);
+          sendHud({ type: "answer", meta: summary, text: r.text });
+        }
+      }
+      if (settings.get("saveAllMarkdown")) {
+        saveCurrentConversation(message.slice(0, 60), intent === "code" ? "coding" : "ask");
+      }
+      return {
+        ok: true,
+        mode: intent,
+        reply: r.text,
+        degraded: Boolean(r.degraded),
+        pyCheck,
+      };
     } catch (err) {
-      return { ok: false, mode: "ask", error: String(err.message || err) };
+      return { ok: false, mode: intent, error: String(err.message || err) };
     }
   }
 
   try {
     showStage();
+    setPresence(PresenceEvents.THINK);
     pushTurn("user", message);
     sendStage({ type: "bubble", role: "user", text: message });
     sendStage({ type: "mood", mood: "thinking" });
@@ -946,28 +1669,37 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
       screenText: (payload && payload.screenText) || "",
       dataUrl,
       hotContext: plannerContext(),
+      policy: settings.safetyPolicy(),
     });
     pendingPlan = plan;
     if (plan.ok) {
-      const summary = `${(plan.actions || []).length} step(s) ready — review in panel`;
+      const summary = plan.needsApproval
+        ? `${(plan.actions || []).length} step(s) — nod or approve`
+        : `${(plan.actions || []).length} sensible step(s) — auto-running`;
       pushTurn("assistant", summary);
       sendStage({ type: "bubble", role: "netie", text: summary });
       sendStage({ type: "subtitle", text: summary, ms: 4500 });
-      try {
-        brain.telemetry.enqueueSessionSketch({
-          app_class: "unknown",
-          labels: (plan.actions || []).map((a) => `${a.type}:${a.target || ""}`).slice(0, 20),
-          intent: message.slice(0, 120),
-          outcome: plan.needsApproval ? "needs-approval" : "auto-ok",
-        });
-      } catch {
-        /* fleet may be paused */
+      if (features.isEnabled("fleetTelemetry")) {
+        try {
+          brain.telemetry.enqueueSessionSketch({
+            app_class: "unknown",
+            labels: (plan.actions || []).map((a) => `${a.type}:${a.target || ""}`).slice(0, 20),
+            intent: message.slice(0, 120),
+            outcome: plan.needsApproval ? "needs-approval" : "auto-ok",
+          });
+        } catch {
+          /* fleet may be paused */
+        }
       }
-    } else {
-      sendStage({ type: "subtitle", text: plan.reason || "Blocked", ms: 4000 });
+      const run = await maybeRunPlan(plan);
+      if (settings.get("saveAllMarkdown")) saveCurrentConversation(message.slice(0, 60), "act");
+      return { ...plan, mode: "act", intent, ran: run.ran, runMode: run.mode };
     }
+    setPresence(PresenceEvents.FAIL);
+    sendStage({ type: "subtitle", text: plan.reason || "Blocked", ms: 4000 });
     return { ...plan, mode: "act", intent };
   } catch (err) {
+    setPresence(PresenceEvents.FAIL);
     return { ok: false, mode: "act", reason: String(err.message || err), actions: [] };
   }
 });
@@ -982,6 +1714,7 @@ ipcMain.handle("clicks:planActions", async (_e, payload) => {
       screenText: (payload && payload.screenText) || "",
       dataUrl,
       hotContext: plannerContext(),
+      policy: settings.safetyPolicy(),
     });
     pendingPlan = plan;
     return plan;
@@ -1135,12 +1868,62 @@ ipcMain.handle("clicks:revealConversations", async (_e, file) => {
   }
 });
 
-ipcMain.handle("clicks:openInSpace", async () => {
-  // Soft hand-off: open the folder; Netie Space can index it when pointed here.
+function resolveNetieSpaceExe() {
+  const candidates = [
+    process.env.NETIE_SPACE_EXE,
+    path.join("D:", "Netie Space", "dist", "NetieSpace", "NetieSpace.exe"),
+    path.join(os.homedir(), "AppData", "Local", "NetieSpace", "NetieSpace.exe"),
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) return candidate;
+    } catch {
+      /* next */
+    }
+  }
+  return null;
+}
+
+/**
+ * Soft Space handoff only — never writes into Netie Space repo / preview fixtures.
+ * Prefer `NetieSpace.exe --preview <md>` for one file; else Explorer on AppData chats.
+ */
+async function openInNetieSpace(filePath) {
+  chats.ensure();
+  const target =
+    filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile()
+      ? filePath
+      : chats.root;
+  const spaceExe = resolveNetieSpaceExe();
+  if (spaceExe && fs.existsSync(target) && fs.statSync(target).isFile()) {
+    try {
+      spawn(spaceExe, ["--preview", target], {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+      }).unref();
+      return {
+        ok: true,
+        mode: "preview",
+        file: target,
+        hint: "Opened in Netie Space preview (Pointer AppData only).",
+      };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  }
+  await shell.openPath(chats.root);
+  return {
+    ok: true,
+    mode: "folder",
+    folder: chats.root,
+    hint: "Point Netie Space at this AppData folder — never mutate Space preview fixtures.",
+  };
+}
+
+ipcMain.handle("clicks:openInSpace", async (_e, payload) => {
   try {
-    chats.ensure();
-    await shell.openPath(chats.root);
-    return { ok: true, folder: chats.root, hint: "Add this folder as a Netie Space to browse chats." };
+    return await openInNetieSpace(payload && payload.file);
   } catch (err) {
     return { ok: false, error: String(err.message || err) };
   }
@@ -1178,27 +1961,91 @@ ipcMain.handle("hud:act", async (_e, payload) => {
     instruction: message,
     dataUrl,
     hotContext: plannerContext(),
+    policy: settings.safetyPolicy(),
   });
   pendingPlan = plan;
   if (plan.ok) {
     sendHud({
       type: "answer",
-      meta: "Plan ready",
-      text: `${plan.actions.length} step(s) — approve in panel`,
+      meta: plan.needsApproval ? "Waiting for nod / approve" : "Auto-running",
+      text: `${plan.actions.length} step(s)`,
     });
-    showPanel();
+    const run = await maybeRunPlan(plan);
+    return {
+      ok: true,
+      actions: plan.actions,
+      needsApproval: plan.needsApproval,
+      ran: run.ran,
+      runMode: run.mode,
+    };
   }
-  return plan;
+  sendHud({ type: "answer", meta: "Blocked", text: plan.reason || "Blocked" });
+  return { ok: false, reason: plan.reason || "Blocked", error: plan.reason };
+});
+
+ipcMain.handle("hud:clickyHold", async (_e, payload) => {
+  if (!features.isEnabled("clicky")) {
+    return { ok: false, state: clickyState, reason: "clicky-disabled" };
+  }
+  const phase = String((payload && payload.phase) || "");
+  if (phase === "start") {
+    clickyHoldStartedAt = Date.now();
+    setClicky(ClickyEvents.HOLD_START);
+    return { ok: true, state: clickyState, holdMs: CLICKY_HOLD_MS };
+  }
+  if (phase === "cancel") {
+    clickyHoldStartedAt = 0;
+    setClicky(ClickyEvents.HOLD_CANCEL);
+    return { ok: true, state: clickyState };
+  }
+  if (phase === "end") {
+    const heldMs = Math.max(0, Date.now() - (clickyHoldStartedAt || Date.now()));
+    clickyHoldStartedAt = 0;
+    setClicky(ClickyEvents.HOLD_COMMIT, { heldMs });
+    if (clickyState === ClickyStates.CLICKY) {
+      // Stay invisible — Clicky does not force the HUD open.
+      sendHudQuiet({ type: "open-ask", clicky: true });
+      sendHudQuiet({
+        type: "insight",
+        text: "Clicky on — cursor is Netie. Speak or type what to do; last minute is in memory.",
+      });
+      sendStage({ type: "subtitle", text: "Clicky on", ms: 1800 });
+    }
+    return { ok: true, state: clickyState, heldMs };
+  }
+  return { ok: false, state: clickyState, reason: "bad-phase" };
+});
+
+ipcMain.handle("hud:clickyExit", async () => {
+  setClicky(ClickyEvents.EXIT);
+  return { ok: true, state: clickyState };
+});
+
+ipcMain.handle("hud:clickyStatus", async () => {
+  const desc = clickyDescribe(clickyState);
+  return {
+    ok: true,
+    state: clickyState,
+    label: desc.label,
+    hint: desc.recordingHint,
+    frames: recall.snapshot().length,
+    sealPixels: recall.sealPixels,
+  };
 });
 
 ipcMain.handle("hud:hide", async () => {
+  if (clickyState === ClickyStates.CLICKY) {
+    setClicky(ClickyEvents.EXIT);
+  }
   hideHud();
   return { ok: true };
 });
 
 ipcMain.handle("hud:openPanel", async () => {
-  showPanel();
-  return { ok: true };
+  // Legacy channel — panel retired. Never force-pop; nod works via Ctrl+Y.
+  sendHudQuiet({ type: "nod-wait", on: true });
+  sendStage({ type: "subtitle", text: "Nod / Affirm / Ctrl+Y", ms: 3500 });
+  return { ok: true, surface: "hud" };
 });
 
 ipcMain.handle("hud:frameRegion", async () => {
@@ -1209,6 +2056,7 @@ ipcMain.handle("hud:frameRegion", async () => {
 
 ipcMain.handle("hud:toggleListen", async (_e, payload) => {
   listenMic = Boolean(payload && payload.on);
+  if (listenMic) ensureSttSidecar();
   if (!listenMic) flushSource("mic");
   const d = transcriber.describe();
   return {
@@ -1220,6 +2068,7 @@ ipcMain.handle("hud:toggleListen", async (_e, payload) => {
 
 ipcMain.handle("hud:toggleSystemAudio", async (_e, payload) => {
   listenSystem = Boolean(payload && payload.on);
+  if (listenSystem) ensureSttSidecar();
   if (!listenSystem) {
     flushSource("system");
     return { ok: true, message: "System audio off" };
@@ -1275,16 +2124,48 @@ function handleUtterance(source, utt) {
     .transcribe(utt.pcm)
     .then((res) => {
       if (res.ok && res.text) {
-        sendHud({
-          type: "transcript",
-          text: res.text,
-          source,
-          engine: res.engine,
-          rough: Boolean(res.rough),
-          confidence: res.confidence,
-        });
-        pushTurn(source === "system" ? "heard" : "user", res.text);
-        void hot.pushTick({ t: Date.now(), heard: res.text.slice(0, 160), src: source });
+        if (nodGate.pending && isAffirmation(res.text)) {
+          nodGate.signal(res.text);
+        }
+        const switched = detectModeSwitch(res.text);
+        if (switched) {
+          applyAppMode(switched, { reason: res.text.slice(0, 80) });
+          // Mode phrases are commands — never dump them into the chat composer.
+          sendHud({
+            type: "transcript",
+            text: res.text,
+            source,
+            engine: res.engine,
+            mode: appMode,
+            modeSwitchOnly: true,
+          });
+          sendHud({
+            type: "answer",
+            meta: `${getMode(appMode).label} mode`,
+            text: `Switched to ${getMode(appMode).label}. (Heard: “${res.text.slice(0, 80)}”)`,
+          });
+        } else {
+          if (getMode(appMode).autoNotes) {
+            notes.append({
+              text: res.text,
+              source,
+              langHint: res.language || "",
+            });
+          }
+          sendHud({
+            type: "transcript",
+            text: res.text,
+            source,
+            engine: res.engine,
+            rough: Boolean(res.rough),
+            confidence: res.confidence,
+            language: res.language,
+            mode: appMode,
+            modeSwitchOnly: false,
+          });
+          pushTurn(source === "system" ? "heard" : "user", res.text);
+          void hot.pushTick({ t: Date.now(), heard: res.text.slice(0, 160), src: source });
+        }
       } else if (!res.ok) {
         sendHud({
           type: "stt-error",
@@ -1304,6 +2185,340 @@ function handleUtterance(source, utt) {
 ipcMain.handle("hud:setPaused", async (_e, payload) => {
   hudPaused = Boolean(payload && payload.paused);
   return { ok: true, paused: hudPaused };
+});
+
+ipcMain.handle("hud:setIgnoreMouse", async (_e, payload) => {
+  setHudClickThrough(payload && payload.ignore !== false);
+  return { ok: true };
+});
+
+ipcMain.handle("hud:setMode", async (_e, payload) => {
+  const mode = (payload && payload.mode) || "agent";
+  return applyAppMode(mode, { reason: (payload && payload.reason) || "ui" });
+});
+
+ipcMain.handle("hud:getSettings", async () => ({ ok: true, settings: settings.snapshot() }));
+
+ipcMain.handle("hud:setSettings", async (_e, payload) => {
+  const next = settings.set((payload && payload.settings) || payload || {});
+  agentPointer.enabled = next.cursorBubble !== false;
+  if (!agentPointer.enabled) {
+    try {
+      await agentPointer.restore();
+    } catch {
+      /* ok */
+    }
+  }
+  return { ok: true, settings: next };
+});
+
+ipcMain.handle("hud:openCanvas", async () => {
+  createCanvas();
+  return { ok: true };
+});
+
+ipcMain.handle("hud:retrieveList", async (_e, payload) => {
+  const bucket = String((payload && payload.bucket) || "chat");
+  if (bucket === "chat") {
+    return {
+      ok: true,
+      bucket,
+      items: chats.list(40).map((it) => ({ id: it.id, title: it.title, saved_at: it.saved_at })),
+    };
+  }
+  if (bucket === "notes") {
+    notes.ensure();
+    const items = fs
+      .readdirSync(notes.root)
+      .filter((name) => name.endsWith(".md"))
+      .sort()
+      .reverse()
+      .slice(0, 40)
+      .map((name) => ({ id: name.replace(/\.md$/, ""), title: name, saved_at: "" }));
+    return { ok: true, bucket, items };
+  }
+  if (bucket === "assets") {
+    const items = recall
+      .snapshot()
+      .slice(-24)
+      .reverse()
+      .map((frame, idx) => ({
+        id: `frame-${idx}-${frame.t}`,
+        title: `${new Date(frame.t).toLocaleTimeString()} · ${frame.fgProc || "app"}`,
+        saved_at: new Date(frame.t).toISOString(),
+        detail: `${frame.width || "?"}x${frame.height || "?"} · cursor(${frame.cx || "?"},${frame.cy || "?"})`,
+      }));
+    return { ok: true, bucket, items };
+  }
+  if (bucket === "memory") {
+    const summary = hot.summaryText(20).split("\n").filter(Boolean);
+    let brainLines = [];
+    try {
+      brainLines = String(brain.contextForLlm() || "")
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 12);
+    } catch {
+      /* ok */
+    }
+    const items = [
+      ...summary.map((row, i) => ({ id: `hot-${i}`, title: row, kind: "hot" })),
+      ...brainLines.map((row, i) => ({ id: `brain-${i}`, title: row, kind: "brain" })),
+    ];
+    return { ok: true, bucket, items };
+  }
+  if (bucket === "source") {
+    const roots = [
+      { id: "conversations", title: "Conversations folder", path: chats.root, kind: "folder" },
+      { id: "notes", title: "Notes folder", path: notes.root, kind: "folder" },
+    ];
+    try {
+      const dataDir = brain.vault ? brain.vault.dataDir : path.join(os.homedir(), "AppData", "Roaming", "NetieClicks");
+      roots.push({ id: "netie-data", title: "NetieClicks data root", path: dataDir, kind: "folder" });
+      const recallDir = path.join(dataDir, "recall");
+      if (fs.existsSync(recallDir)) {
+        roots.push({ id: "recall", title: "Recall / assets folder", path: recallDir, kind: "folder" });
+      }
+    } catch {
+      /* ok */
+    }
+    return { ok: true, bucket, items: roots };
+  }
+  if (bucket === "fleet") {
+    let status = {};
+    try {
+      status = brain.status() || {};
+    } catch {
+      status = {};
+    }
+    const items = [
+      {
+        id: "cortex-status",
+        title: `Cortex ${eco.cortexOnline ? "online" : "offline"} · ${process.env.NETIE_CORTEX_URL || "http://127.0.0.1:8010"}`,
+        kind: "status",
+      },
+      {
+        id: "fleet-sync",
+        title: status.fleetOn ? "Fleet sync on — tap Open to sync now" : "Fleet sync off — enable in consent / settings",
+        kind: "sync",
+      },
+      {
+        id: "dual-brain",
+        title: "Dual Brain — on-device memory + fleet telemetry",
+        kind: "info",
+      },
+    ];
+    return { ok: true, bucket, items, cortexOnline: Boolean(eco.cortexOnline), brain: status };
+  }
+  return { ok: true, bucket, items: [] };
+});
+
+ipcMain.handle("hud:retrieveRead", async (_e, payload) => {
+  const bucket = String((payload && payload.bucket) || "chat");
+  const id = String((payload && payload.id) || "");
+  if (bucket === "chat") {
+    const rec = chats.read(id);
+    if (!rec) return { ok: false, error: "not found" };
+    return {
+      ok: true,
+      bucket,
+      markdown: rec.markdown || "",
+      title: rec.meta && rec.meta.title,
+      path: rec.path || null,
+      openPath: rec.path || null,
+    };
+  }
+  if (bucket === "notes") {
+    const file = path.join(notes.root, id.endsWith(".md") ? id : `${id}.md`);
+    if (!fs.existsSync(file)) return { ok: false, error: "not found" };
+    return {
+      ok: true,
+      bucket,
+      markdown: fs.readFileSync(file, "utf8"),
+      title: path.basename(file),
+      path: file,
+      openPath: file,
+    };
+  }
+  if (bucket === "source") {
+    const map = {
+      conversations: chats.root,
+      notes: notes.root,
+    };
+    let openPath = map[id] || null;
+    if (!openPath && id === "netie-data") {
+      openPath = brain.vault ? brain.vault.dataDir : path.join(os.homedir(), "AppData", "Roaming", "NetieClicks");
+    }
+    if (!openPath && id === "recall") {
+      const dataDir = brain.vault ? brain.vault.dataDir : path.join(os.homedir(), "AppData", "Roaming", "NetieClicks");
+      openPath = path.join(dataDir, "recall");
+    }
+    return {
+      ok: true,
+      bucket,
+      markdown: openPath
+        ? `Original source folder:\n${openPath}\n\nOpen in Explorer to browse files.`
+        : "Unknown source root.",
+      path: openPath,
+      openPath,
+    };
+  }
+  if (bucket === "fleet") {
+    let status = {};
+    try {
+      status = brain.status() || {};
+    } catch {
+      status = {};
+    }
+    return {
+      ok: true,
+      bucket,
+      markdown: [
+        `Cortex: ${eco.cortexOnline ? "online" : "offline"}`,
+        `URL: ${process.env.NETIE_CORTEX_URL || "http://127.0.0.1:8010"}`,
+        `Fleet: ${status.fleetOn ? "on" : "off"}`,
+        "",
+        "Do with Cortex sends the selected retrieve text through the Cortex-gated planner.",
+        "Open runs a fleet sync (or opens Cortex URL).",
+      ].join("\n"),
+      openPath: null,
+      fleetAction: id,
+    };
+  }
+  if (bucket === "memory") {
+    const title = String((payload && payload.title) || id);
+    return {
+      ok: true,
+      bucket,
+      markdown: title,
+      openPath: null,
+    };
+  }
+  if (bucket === "assets") {
+    const title = String((payload && payload.title) || id);
+    const detail = String((payload && payload.detail) || "");
+    return {
+      ok: true,
+      bucket,
+      markdown: [title, detail].filter(Boolean).join("\n"),
+      openPath: null,
+    };
+  }
+  return {
+    ok: true,
+    bucket,
+    markdown: "Preview unavailable for this bucket.",
+  };
+});
+
+ipcMain.handle("hud:retrieveOpen", async (_e, payload) => {
+  const bucket = String((payload && payload.bucket) || "");
+  const openPath = payload && payload.path;
+  if (bucket === "fleet") {
+    try {
+      const sync = await brain.syncFleet("retrieve-roulette");
+      const url = process.env.NETIE_CORTEX_URL || "http://127.0.0.1:8010";
+      try {
+        await shell.openExternal(url);
+      } catch {
+        /* ok */
+      }
+      return { ok: true, synced: sync, opened: url };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  }
+  if (openPath && fs.existsSync(openPath)) {
+    try {
+      if (fs.statSync(openPath).isDirectory()) {
+        await shell.openPath(openPath);
+      } else {
+        shell.showItemInFolder(openPath);
+      }
+      return { ok: true, path: openPath };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  }
+  if (bucket === "notes") {
+    notes.ensure();
+    await shell.openPath(notes.root);
+    return { ok: true, path: notes.root };
+  }
+  chats.ensure();
+  await shell.openPath(chats.root);
+  return { ok: true, path: chats.root };
+});
+
+ipcMain.handle("hud:openInSpace", async (_e, payload) => {
+  try {
+    return await openInNetieSpace(payload && payload.file);
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
+ipcMain.handle("hud:affirm", async () => {
+  if (nodGate.pending) {
+    nodGate.hotkey("ui");
+    return { ok: true };
+  }
+  return { ok: false, reason: "not waiting" };
+});
+
+ipcMain.handle("canvas:ready", async () => ({ ok: true, airgptId: AIRGPT_DAY }));
+
+ipcMain.handle("canvas:list", async (_e, payload) => {
+  const filter = (payload && payload.filter) || "today";
+  if (filter === "notes") {
+    notes.ensure();
+    const dir = notes.root;
+    const files = fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith(".md"))
+      .sort()
+      .reverse()
+      .slice(0, 60)
+      .map((f) => ({
+        id: f.replace(/\.md$/, ""),
+        title: f,
+        saved_at: "",
+        airgpt_id: AIRGPT_DAY,
+        kind: "notes",
+        source: "notes",
+        file: f,
+      }));
+    return { ok: true, items: files };
+  }
+  const items = chats.list(60, { today: filter === "today" }).map((it) => ({
+    ...it,
+    source: "conversations",
+  }));
+  return { ok: true, items };
+});
+
+ipcMain.handle("canvas:read", async (_e, payload) => {
+  const id = payload && payload.id;
+  const source = (payload && payload.source) || "conversations";
+  if (source === "notes") {
+    const file = path.join(notes.root, String(id).endsWith(".md") ? id : `${id}.md`);
+    if (!fs.existsSync(file)) return { ok: false, error: "not found" };
+    return { ok: true, markdown: fs.readFileSync(file, "utf8"), path: file };
+  }
+  const rec = chats.read(id);
+  if (!rec) return { ok: false, error: "not found" };
+  return { ok: true, ...rec };
+});
+
+ipcMain.handle("canvas:openFolder", async (_e, payload) => {
+  const filter = payload && payload.filter;
+  if (filter === "notes") {
+    notes.ensure();
+    await shell.openPath(notes.root);
+    return { ok: true, folder: notes.root };
+  }
+  return chats.reveal();
 });
 
 /**
@@ -1339,21 +2554,40 @@ app.whenReady().then(() => {
   ensureTemp();
   setupCsp();
   chats.ensure();
+  notes.ensure();
   createTray();
-  createPanel();
-  createStage();
+  // Preload HUD shell hidden. Mic/STT/recall stay lazy until used.
   createHud();
   setupMediaCapture();
   registerHotkey();
-  stt.ping().catch(() => {});
-  transcriber.probe().then((e) => console.log("STT engine:", e));
+  console.log(
+    "Netie Pointer ready — tray-first. Ctrl+` toggles session. Hover top-left peek when morph-hidden."
+  );
 });
 
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   stopTicks();
+  stopRecallDaemon();
+  hideClickyCursor();
+  try {
+    recall.stopFlush();
+  } catch {
+    /* ok */
+  }
+  try {
+    agentPointer.restore();
+  } catch {
+    /* ok */
+  }
   driver.dispose();
   transcriber.dispose();
+  if (notes.file) notes.stop();
+  try {
+    if (sttChild && !sttChild.killed) sttChild.kill();
+  } catch {
+    /* ok */
+  }
   try {
     brain.stopAutoSync();
     brain.syncFleet("quit").catch(() => {});
@@ -1363,9 +2597,22 @@ app.on("will-quit", () => {
 });
 
 app.on("second-instance", () => {
-  showPanel();
+  // User re-launched — intentional reveal.
+  showHud({ expandChat: false });
 });
 
 app.on("window-all-closed", (e) => {
+  // Tray app — never quit just because HUD/stage windows are hidden/closed.
   e.preventDefault();
+});
+
+app.on("before-quit", () => {
+  console.log("Netie Pointer quitting…");
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("uncaughtException:", err && err.stack ? err.stack : err);
+});
+process.on("unhandledRejection", (err) => {
+  console.error("unhandledRejection:", err && err.stack ? err.stack : err);
 });

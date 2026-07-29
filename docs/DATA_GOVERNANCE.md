@@ -17,7 +17,7 @@ product power with mythos-grade crypto against everyone who is **not** Netie.
 | **Cortex dual brain** | Netie main servers | **Netie Final Boss Key** (HQ private KEK) | Trains the strongest shared models from fleet learning envelopes |
 
 Clicks feeds both. The user never manages keys, never sees crypto, never configures
-pipelines. They press **Ctrl+Space**, say what they want, tap **Go**.
+pipelines. They press **Ctrl+`**, say what they want, tap **Go**.
 
 ---
 

@@ -4,453 +4,179 @@
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: mediastream:; worker-src 'self' blob:; connect-src 'self' http://127.0.0.1:*"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob: mediastream:; worker-src 'self' blob:; connect-src 'self' http://127.0.0.1:*"
     />
-    <title>Netie HUD</title>
-    <style>
-      :root {
-        --glass: rgba(22, 24, 32, 0.55);
-        --glass-strong: rgba(18, 20, 28, 0.72);
-        --line: rgba(255, 255, 255, 0.12);
-        --text: #f4f6fb;
-        --muted: rgba(244, 246, 251, 0.65);
-        --accent: #8eb6ff;
-        --ok: #6dffb0;
-        /* Segoe UI Variable is Windows 11's display face — noticeably more
-           refined than plain Segoe UI at small sizes. Falls back gracefully. */
-        --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI",
-          system-ui, -apple-system, sans-serif;
-        --font-display: "Segoe UI Variable Display", "Segoe UI Variable",
-          "Segoe UI Semibold", "Segoe UI", system-ui, sans-serif;
-        --radius: 14px;
-      }
-      * { box-sizing: border-box; }
-      html, body {
-        margin: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background: transparent;
-        color: var(--text);
-        font-family: var(--font);
-        font-size: 13px;
-        /* Optical polish: tighter tracking on a dark glass surface reads
-           cleaner, and antialiasing stops the light-on-dark text blooming. */
-        letter-spacing: 0.005em;
-        -webkit-font-smoothing: antialiased;
-        text-rendering: optimizeLegibility;
-        font-variant-numeric: tabular-nums;
-        user-select: none;
-      }
-      h2, h3, .fab-title { font-family: var(--font-display); }
-      .hud {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        pointer-events: none; /* desktop stays clickable under transparent areas */
-      }
-      .chrome { pointer-events: auto; }
-
-      .mode-pill {
-        display: flex;
-        gap: 4px;
-        padding: 2px;
-        border-radius: 10px;
-        background: rgba(0,0,0,0.2);
-      }
-      .mode-pill button {
-        padding: 6px 9px !important;
-        font-size: 11px !important;
-      }
-      .hud.mode-transcribe .insights,
-      .hud.mode-transcribe .answer,
-      .hud.mode-transcribe .fab-wrap,
-      .hud.mode-transcribe .hint { display: none !important; }
-      .hud.mode-meeting .answer,
-      .hud.mode-meeting .fab-wrap { display: none !important; }
-      .hud.mode-meeting .insights .actions { display: none; }
-      .notes-chip {
-        display: none;
-        font-size: 11px;
-        color: var(--ok);
-        max-width: 160px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .hud.mode-transcribe .notes-chip,
-      .hud.mode-meeting .notes-chip { display: inline-block; }
-
-      /* Cluely-style top bar */
-      .topbar {
-        position: absolute;
-        top: 14px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 12px;
-        border-radius: 14px;
-        background: var(--glass);
-        border: 1px solid var(--line);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        box-shadow: 0 10px 40px rgba(0,0,0,0.28);
-        -webkit-app-region: no-drag;
-      }
-      .topbar button, .chip {
-        border: 0;
-        background: rgba(255,255,255,0.06);
-        color: var(--text);
-        border-radius: 10px;
-        padding: 7px 11px;
-        font: inherit;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-      }
-      .topbar button:hover, .chip:hover { background: rgba(255,255,255,0.12); }
-      .topbar button.active { background: rgba(109, 255, 176, 0.2); color: var(--ok); }
-      .topbar button.warn-on { background: rgba(142, 182, 255, 0.25); color: var(--accent); }
-      .timer { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12px; min-width: 42px; text-align: center; }
-      .wave {
-        width: 28px; height: 16px; display: flex; align-items: flex-end; gap: 2px;
-      }
-      .wave i {
-        display: block; width: 3px; background: var(--accent); border-radius: 2px;
-        height: 4px; animation: none; opacity: 0.35;
-      }
-      .wave.live i { animation: wave 0.7s ease-in-out infinite; opacity: 1; }
-      .wave.live i:nth-child(2) { animation-delay: 0.1s; }
-      .wave.live i:nth-child(3) { animation-delay: 0.2s; }
-      .wave.live i:nth-child(4) { animation-delay: 0.05s; }
-      /* Utterance captured, engine is transcribing it. */
-      .wave.thinking i { animation-duration: 0.35s; background: var(--good, #7ee0a8); }
-      @keyframes wave {
-        0%, 100% { height: 4px; }
-        50% { height: 14px; }
-      }
-      .kbd { color: var(--muted); font-size: 11px; }
-
-      /* Panels */
-      .panel {
-        position: absolute;
-        width: min(360px, 34vw);
-        max-height: 52vh;
-        overflow: auto;
-        padding: 14px;
-        border-radius: 16px;
-        background: var(--glass-strong);
-        border: 1px solid var(--line);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        box-shadow: 0 16px 48px rgba(0,0,0,0.35);
-      }
-      .panel h2 {
-        margin: 0 0 8px;
-        font-size: 13px;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-      .panel .muted { color: var(--muted); font-size: 12px; line-height: 1.45; }
-      .insights { top: 70px; left: 18px; }
-      .answer { top: 70px; right: 18px; }
-      .actions { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
-      .actions button {
-        text-align: left;
-        border: 1px solid transparent;
-        background: rgba(255,255,255,0.05);
-        color: var(--text);
-        border-radius: 10px;
-        padding: 9px 10px;
-        font: inherit;
-        font-size: 12px;
-        cursor: pointer;
-      }
-      .actions button:hover {
-        border-color: rgba(142,182,255,0.45);
-        background: rgba(142,182,255,0.12);
-      }
-      .transcript {
-        margin-top: 8px;
-        padding: 8px 10px;
-        border-radius: 10px;
-        background: rgba(0,0,0,0.22);
-        font-size: 12px;
-        line-height: 1.4;
-        white-space: pre-wrap;
-        min-height: 42px;
-        color: var(--muted);
-      }
-      .transcript.has { color: var(--text); }
-      /* Low-confidence engine output — visibly provisional. */
-      .transcript.rough { font-style: italic; opacity: 0.82; border-left: 2px solid var(--accent); padding-left: 8px; }
-
-      /* Cute floating chat FAB */
-      .fab-wrap {
-        position: absolute;
-        right: 28px;
-        bottom: 36px;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 10px;
-      }
-      .ask-bubble {
-        display: none;
-        width: min(320px, 78vw);
-        padding: 12px;
-        border-radius: 18px;
-        background: var(--glass-strong);
-        border: 1px solid var(--line);
-        backdrop-filter: blur(16px);
-        box-shadow: 0 14px 40px rgba(0,0,0,0.35);
-      }
-      .ask-bubble.open { display: block; animation: pop 0.28s ease; }
-      @keyframes pop {
-        from { opacity: 0; transform: translateY(8px) scale(0.96); }
-        to { opacity: 1; transform: none; }
-      }
-      .ask-bubble label {
-        display: block;
-        font-size: 11px;
-        color: var(--muted);
-        margin-bottom: 6px;
-      }
-      .ask-bubble textarea {
-        width: 100%;
-        min-height: 64px;
-        resize: none;
-        border-radius: 12px;
-        border: 1px solid var(--line);
-        background: rgba(0,0,0,0.25);
-        color: var(--text);
-        padding: 8px 10px;
-        font: inherit;
-        font-size: 13px;
-      }
-      .ask-row { display: flex; gap: 6px; margin-top: 8px; }
-      .ask-row button {
-        flex: 1;
-        border: 0;
-        border-radius: 10px;
-        padding: 8px;
-        font-weight: 700;
-        cursor: pointer;
-        font: inherit;
-        font-size: 12px;
-      }
-      .ask-row .ask { background: var(--accent); color: #0b1220; }
-      .ask-row .act { background: rgba(109,255,176,0.85); color: #072016; }
-      .ask-row .sec { background: rgba(255,255,255,0.08); color: var(--text); }
-
-      .fab {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        border: 2px solid rgba(255,255,255,0.25);
-        cursor: pointer;
-        background:
-          radial-gradient(circle at 32% 30%, #fff 0 9%, transparent 10%),
-          radial-gradient(circle at 68% 30%, #fff 0 9%, transparent 10%),
-          radial-gradient(circle at 50% 62%, #1b2233 0 11%, transparent 12%),
-          linear-gradient(145deg, #b7d4ff, #6ea8ff 50%, #4d8dff);
-        box-shadow: 0 12px 32px rgba(80, 140, 255, 0.45);
-        animation: floaty 2.8s ease-in-out infinite;
-        position: relative;
-      }
-      .fab::after {
-        content: "";
-        position: absolute;
-        inset: -6px;
-        border-radius: 50%;
-        border: 2px solid rgba(142, 182, 255, 0.35);
-        animation: pulse 2s ease-out infinite;
-      }
-      .fab.listening {
-        animation: spinCute 1s linear infinite;
-        box-shadow: 0 0 0 6px rgba(109, 255, 176, 0.2);
-      }
-      @keyframes floaty {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-6px); }
-      }
-      @keyframes pulse {
-        0% { transform: scale(0.92); opacity: 0.7; }
-        100% { transform: scale(1.15); opacity: 0; }
-      }
-      @keyframes spinCute {
-        to { transform: rotate(360deg); }
-      }
-      .hint {
-        position: absolute;
-        bottom: 110px;
-        right: 28px;
-        font-size: 11px;
-        color: var(--muted);
-        background: var(--glass);
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        padding: 6px 10px;
-        backdrop-filter: blur(10px);
-      }
-      .paused-veil {
-        display: none;
-        position: absolute;
-        inset: 0;
-        background: transparent;
-        pointer-events: none;
-      }
-      .menu {
-        display: none;
-        position: absolute;
-        top: 58px;
-        right: 18px;
-        width: 260px;
-        padding: 10px;
-        border-radius: 14px;
-        background: var(--glass-strong);
-        border: 1px solid var(--line);
-        backdrop-filter: blur(16px);
-        z-index: 20;
-      }
-      .menu.open { display: block; animation: pop 0.22s ease; }
-      .menu-foot {
-        margin-top: 10px;
-        padding-top: 8px;
-        border-top: 1px solid var(--line);
-        font-size: 11px;
-        color: var(--muted);
-      }
-      .menu-foot kbd {
-        font: inherit;
-        background: rgba(255,255,255,0.09);
-        border-radius: 4px;
-        padding: 1px 5px;
-      }
-      /* The FAB is the single entry point, so it must read as pressable. */
-      .fab:hover { filter: brightness(1.08); }
-      .fab:active { transform: scale(0.94); }
-      .fab.menu-open { animation: none; box-shadow: 0 0 0 4px rgba(142,182,255,0.35); }
-      .menu h3 {
-        margin: 0 0 8px;
-        font-size: 11px;
-        color: var(--muted);
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-      .menu label {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        font-size: 12px;
-        padding: 7px 4px;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-      }
-      .menu label:last-of-type { border-bottom: 0; }
-      .menu input { accent-color: var(--accent); }
-      .menu .row-btns { display: flex; gap: 6px; margin-top: 10px; }
-      .menu .row-btns button {
-        flex: 1;
-        border: 0;
-        border-radius: 8px;
-        padding: 8px;
-        font: inherit;
-        font-size: 11px;
-        font-weight: 650;
-        cursor: pointer;
-        background: rgba(255,255,255,0.08);
-        color: var(--text);
-      }
-      .nod-toast {
-        display: none;
-        position: absolute;
-        left: 50%;
-        top: 70px;
-        transform: translateX(-50%);
-        padding: 10px 14px;
-        border-radius: 12px;
-        background: var(--glass-strong);
-        border: 1px solid rgba(109,255,176,0.35);
-        font-size: 12px;
-        pointer-events: auto;
-      }
-      .nod-toast.show { display: flex; gap: 8px; align-items: center; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Netie Pointer HUD</title>
+    <link rel="stylesheet" href="hud.css" />
   </head>
   <body>
-    <div class="hud" id="hud">
-      <div class="topbar chrome" id="topbar">
-        <div class="mode-pill" id="mode-pill" title="Say: transcribe mode / meeting mode / agent mode">
-          <button type="button" data-mode="agent" class="active" id="mode-agent">Agent</button>
-          <button type="button" data-mode="transcribe" id="mode-transcribe">Transcribe</button>
-          <button type="button" data-mode="meeting" id="mode-meeting">Meeting</button>
+    <div class="hud theme-dark mode-agent chat-open" id="hud">
+      <button type="button" class="peek-drop chrome" id="peek-drop" title="Show Netie" aria-label="Show Netie"><span class="peek-orb"></span></button>
+
+      <header class="top-bar chrome drag-surface" id="top-bar">
+        <div class="top-cluster">
+          <button type="button" class="rec-button" id="btn-listen" title="Microphone">
+            <span class="rec-dot" aria-hidden="true"></span>
+            <span class="rec-label" id="rec-label">Record</span>
+          </button>
+          <button type="button" class="icon-btn" id="btn-pause" title="Pause" aria-label="Pause">
+            <svg class="ico-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+            <svg class="ico-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <div class="wave" id="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <span class="timer" id="timer">00:00</span>
+          <span class="notes-chip" id="notes-chip">Notes live</span>
         </div>
-        <button type="button" id="btn-pause">Pause</button>
-        <div class="wave" id="wave" title="Listening"><i></i><i></i><i></i><i></i></div>
-        <span class="timer" id="timer">00:00</span>
-        <button type="button" id="btn-listen" class="active" title="Microphone on/off">Mic</button>
-        <button type="button" id="btn-system" title="What speakers play (WASAPI loopback)">System audio</button>
-        <span class="notes-chip" id="notes-chip" title="Live markdown notes">Notes…</span>
-        <span class="kbd">Ask · Ctrl+Enter</span>
-        <button type="button" id="btn-more" title="Settings, history, frame (Esc closes)">⋯</button>
+        <div class="top-cluster mode-pill" id="mode-pill">
+          <button type="button" data-mode="agent" class="active">Agent</button>
+          <button type="button" data-mode="transcribe">Transcribe</button>
+          <button type="button" data-mode="meeting">Meeting</button>
+        </div>
+        <div class="top-cluster top-actions">
+          <button type="button" class="ask-pill" id="btn-chat-toggle" title="Ask AI">
+            <span>Ask AI</span>
+            <kbd>Ctrl</kbd><kbd>Enter</kbd>
+          </button>
+          <button type="button" class="icon-btn sys-btn" id="btn-system" title="System audio">
+            <img class="sys-icon sys-dark" src="assets/icons/system-audio-dark.png" alt="" />
+            <img class="sys-icon sys-light" src="assets/icons/system-audio-light.png" alt="" />
+          </button>
+          <button type="button" class="icon-btn" id="btn-roulette" title="Retrieve">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+          </button>
+          <div class="menu-anchor">
+            <button type="button" class="icon-btn more-button" id="btn-more" aria-label="Settings" aria-expanded="false">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+            </button>
+            <div class="menu" id="settings-menu">
+              <h3>Appearance</h3>
+              <div class="theme-row" id="theme-row">
+                <button type="button" data-theme="dark">Dark</button>
+                <button type="button" data-theme="light">Light</button>
+                <button type="button" data-theme="gra">Gra</button>
+              </div>
+              <h3>Agent settings</h3>
+              <label>Auto-run sensible <input type="checkbox" id="set-auto" /></label>
+              <label>Nod confirm <input type="checkbox" id="set-nod" /></label>
+              <label>Agent cursor <input type="checkbox" id="set-cursor" /></label>
+              <label>Save markdown <input type="checkbox" id="set-md" /></label>
+              <label>Python checks <input type="checkbox" id="set-py" /></label>
+              <div class="menu-actions">
+                <button type="button" id="btn-canvas">History</button>
+                <button type="button" id="btn-frame">Frame</button>
+                <button type="button" id="btn-frame-top">Frame region</button>
+                <button type="button" id="btn-affirm">Affirm</button>
+                <button type="button" id="btn-space">Space</button>
+                <button type="button" id="btn-hide">Hide</button>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="ask-pill ghost" id="btn-hide-top" title="Show / Hide">
+            <span>Show/Hide</span>
+            <kbd>Ctrl</kbd><kbd>`</kbd>
+          </button>
+        </div>
+      </header>
+
+      <div class="subtitle-live glass chrome" id="subtitle-bar" aria-live="polite">
+        <span class="subtitle-label">Live</span>
+        <span id="subtitle-text">Listening…</span>
+        <button type="button" id="btn-add-sub">Add</button>
       </div>
 
-      <div class="menu chrome" id="settings-menu">
-        <h3>Agent settings</h3>
-        <label>Auto-run sensible <input type="checkbox" id="set-auto" /></label>
-        <label>Nod confirm <input type="checkbox" id="set-nod" /></label>
-        <label>Cursor bubble <input type="checkbox" id="set-cursor" /></label>
-        <label>Save markdown <input type="checkbox" id="set-md" /></label>
-        <label>Python checks <input type="checkbox" id="set-py" /></label>
-        <div class="row-btns">
-          <button type="button" id="btn-ask-open">Ask Netie…</button>
-          <button type="button" id="btn-canvas">History &amp; review</button>
-          <button type="button" id="btn-frame">Frame a region</button>
-          <button type="button" id="btn-affirm">Affirm (Y)</button>
-          <button type="button" id="btn-hide">Hide HUD</button>
+      <aside class="insight-panel glass chrome" id="insight-panel">
+        <header class="panel-head drag-handle" id="insight-drag">
+          <span class="spark">✦</span>
+          <span>Live insights</span>
+          <button type="button" class="text-btn" id="btn-show-transcript" title="Focus transcript">Show transcript</button>
+        </header>
+        <div class="section-label" id="insight-topic">Discussion</div>
+        <p class="insight-summary" id="insight-summary">Listening for speech or a typed request.</p>
+        <div class="section-label">Actions</div>
+        <div class="quick-actions" id="insight-actions">
+          <button type="button" data-q="Summarize what I am looking at"><span class="q-ico">✦</span> Summarize screen</button>
+          <button type="button" data-q="What should I click next?"><span class="q-ico">›</span> What next?</button>
+          <button type="button" data-q="Suggest follow-up questions"><span class="q-ico">?</span> Suggest follow-ups</button>
+          <button type="button" data-q="Give me helpful information"><span class="q-ico">✦</span> Helpful info</button>
         </div>
-        <div class="menu-foot">
-          <kbd>Esc</kbd> closes · <kbd>Ctrl</kbd>+<kbd>Space</kbd> reopens
+      </aside>
+
+      <section class="chat-dock glass chrome" id="chat-dock" aria-label="AI response">
+        <header class="panel-head drag-handle" id="chat-drag">
+          <span>AI response</span>
+          <span class="answer-meta" id="answer-meta">Ready</span>
+          <button type="button" class="text-btn" id="btn-clear">Clear</button>
+          <button type="button" class="icon-btn tiny" id="btn-chat-close" title="Close chat" aria-label="Close">×</button>
+        </header>
+        <div class="chat-stream" id="chat-stream">
+          <div class="messages" id="messages">
+            <div class="msg assistant">Speak or type. Transcribe arms the mic automatically. Drag this panel anywhere.</div>
+          </div>
+          <div class="msg live" id="live-transcript" hidden>…</div>
+          <div class="answer-body" id="answer-body"></div>
         </div>
-      </div>
-      <div class="nod-toast chrome" id="nod-toast">
+        <div class="composer">
+          <textarea id="ask-input" rows="2" placeholder="Ask AI — Enter to send" aria-label="Ask AI"></textarea>
+          <div class="composer-actions">
+            <button type="button" class="act-button" id="btn-act">Do it</button>
+          </div>
+        </div>
+      </section>
+
+      <button type="button" class="clicky-orb chrome" id="btn-clicky" title="Hold for Clicky" aria-label="Clicky"><span class="smile"></span></button>
+
+      <section class="roulette glass chrome" id="roulette-panel" aria-label="Retrieve Roulette">
+        <div class="dial-wrap">
+          <div class="roulette-dial" id="roulette-wheel" style="--n: 6">
+            <button type="button" class="dial-slice slice active" data-bucket="chat" style="--i: 0" title="Chat">
+              <span class="dial-ico">C</span><span class="dial-label">Chat</span>
+            </button>
+            <button type="button" class="dial-slice slice" data-bucket="notes" style="--i: 1" title="Notes">
+              <span class="dial-ico">N</span><span class="dial-label">Notes</span>
+            </button>
+            <button type="button" class="dial-slice slice" data-bucket="assets" style="--i: 2" title="Assets">
+              <span class="dial-ico">A</span><span class="dial-label">Assets</span>
+            </button>
+            <button type="button" class="dial-slice slice" data-bucket="memory" style="--i: 3" title="Memory">
+              <span class="dial-ico">M</span><span class="dial-label">Memory</span>
+            </button>
+            <button type="button" class="dial-slice slice" data-bucket="source" style="--i: 4" title="Original file source">
+              <span class="dial-ico">S</span><span class="dial-label">Source</span>
+            </button>
+            <button type="button" class="dial-slice slice" data-bucket="fleet" style="--i: 5" title="Dual Brain / Fleet">
+              <span class="dial-ico">F</span><span class="dial-label">Fleet</span>
+            </button>
+            <div class="dial-core" id="dial-core" aria-hidden="true">
+              <span class="dial-glow"></span>
+              <span class="dial-arrow up"></span>
+              <span class="dial-arrow right"></span>
+              <span class="dial-arrow down"></span>
+              <span class="dial-arrow left"></span>
+            </div>
+          </div>
+        </div>
+        <div class="roulette-list">
+          <div class="section-label" id="roulette-label">Chat</div>
+          <div id="roulette-items" class="roulette-items"></div>
+          <pre id="roulette-preview" class="roulette-preview">Spin the roulette — Chat, Notes, Assets, Memory, Source, Fleet.</pre>
+          <div class="retrieve-actions">
+            <button type="button" id="btn-retrieve-open" title="Open in Explorer / Cortex">Open</button>
+            <button type="button" id="btn-retrieve-add">Add to chat</button>
+            <button type="button" id="btn-retrieve-act" class="act-button">Do with Cortex</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="nod-toast glass chrome" id="nod-toast">
         <span>Nod / say yes / Ctrl+Y</span>
         <button type="button" id="btn-nod-go">Go</button>
       </div>
 
-      <section class="panel insights chrome" id="insights">
-        <h2>✨ Live insights</h2>
-        <div class="muted" id="insight-summary">Listening for real life… speak or type what you want.</div>
-        <div class="transcript" id="live-transcript">Transcript will appear here.</div>
-        <div class="actions" id="insight-actions">
-          <button type="button" data-q="Summarize what I'm looking at">Summarize this screen</button>
-          <button type="button" data-q="What should I click next?">What should I click next?</button>
-        </div>
-      </section>
-
-      <section class="panel answer chrome" id="answer">
-        <h2>💬 AI response</h2>
-        <div class="muted" id="answer-meta">Ready</div>
-        <div class="transcript has" id="answer-body">Just speak — or tap Netie for settings, history and frame. Esc closes.</div>
-      </section>
-
-      <div class="hint chrome" id="hint">Settings &amp; history</div>
-      <div class="fab-wrap chrome">
-        <div class="ask-bubble" id="ask-bubble">
-          <label for="ask-input">What do you want to ask?</label>
-          <textarea id="ask-input" placeholder="Speak or type… then Ask or Do it"></textarea>
-          <div class="ask-row">
-            <button type="button" class="sec" id="btn-clear">Clear</button>
-            <button type="button" class="act" id="btn-act">Do it</button>
-            <button type="button" class="ask" id="btn-ask">Ask AI</button>
-          </div>
-        </div>
-        <button type="button" class="fab" id="fab" title="Netie" aria-label="Open Netie ask"></button>
+      <div class="hidden-stub" aria-hidden="true">
+        <div id="audio-dock"></div><div id="fab"></div><div id="ask-bubble"></div><div id="hint"></div>
+        <button type="button" id="btn-ask" tabindex="-1"></button>
+        <button type="button" id="btn-ask-open" tabindex="-1"></button>
       </div>
     </div>
     <script src="netie-sound.js"></script>

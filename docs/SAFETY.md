@@ -41,7 +41,7 @@ they stay CONSEQUENTIAL and gated — but they're **flagged** so the approval UI
 ## What a safe run looks like
 
 ```
-User: (Ctrl+Space, drags a form) "fill my name Ada and click Save"
+User: (Ctrl+`, drags a form) "fill my name Ada and click Save"
  1. secure(instruction + screen text)        → not blocked, PII masked
  2. _llmPlan()                                → [observe, type Name=Ada, click Save]
  3. reviewPlan()                              → type/click = approve; needsApproval=true
@@ -59,3 +59,6 @@ If Cortex were down          → step 1 fail-closed → whole plan refused, noth
 - Cortex `/dms/agents/computer-use` server-side planner — until then planning is LLM-via-OpenVault
   with the local review above; the swap point is `ecosystem._llmPlan()`.
 - Per-action screenshot diffing to confirm an action landed (post-condition checks).
+- Webcam nod vision (`nodCamera`) — today voice + Ctrl+Y / Affirm; camera path is settings-gated off.
+- **No raw kernel / microkernel hooks.** Agentic control is Cortex-gated Win32 SendInput + audit only.
+  “Full laptop control” means approved plans through the safety tiers, not ungated kernel access.

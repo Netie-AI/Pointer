@@ -19,7 +19,7 @@ npm start
 
 ## Use
 
-1. **Ctrl+Space** — arm session (hot ticks + capture-hidden stage)
+1. **Ctrl+`** — arm session (hot ticks + capture-hidden stage)
 2. **Drag** a rectangle — region screenshot
 3. Type what you want → **Go** (ask or act — we decide)
 4. Watch **bubbles + bottom subtitles** (hidden from screen capture)
@@ -43,7 +43,7 @@ npm test
 
 | Var | Default |
 |---|---|
-| `NETIE_CLICK_HOTKEY` | `Control+Space` |
+| `NETIE_CLICK_HOTKEY` | `Control+`` |
 | `NETIE_CLICK_MODEL` | `gpt-4o-mini` |
 | `NETIE_OPENVAULT_URL` | `http://127.0.0.1:5000` |
 | `NETIE_CORTEX_URL` | `http://127.0.0.1:8010` |

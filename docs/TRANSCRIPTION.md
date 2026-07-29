@@ -16,22 +16,31 @@ Topic page: [github.com/topics/real-time-transcription](https://github.com/topic
 
 **Capture is solved natively; only the engine is pluggable.**
 
-1. **Mic + Windows system audio, no sidecar.** `electron/hud-audio.js` takes the mic via `getUserMedia` and speaker output via `getDisplayMedia` — Electron's `setDisplayMediaRequestHandler` answers with `audio: 'loopback'`, which is real WASAPI loopback. Verified on Electron 35.7.5: the track comes back labelled `"System audio"`.
-2. **16 kHz mono pipeline.** `AudioContext({ sampleRate: 16000 })` lets Chromium resample in native code; `electron/audio-worklet.js` emits 20 ms mono frames to the main process.
-3. **Gating in `netie/audio.js`.** Adaptive noise floor + hangover so a mid-sentence pause doesn't shatter one thought into five engine calls, with `minMs` measured on *voiced* audio only.
-4. **Engine chain in `netie/transcriber.js`**, ordered by privacy — every link is on-device:
+1. **Mic + Windows system audio, no sidecar for capture.** `electron/hud-audio.js` — mic via `getUserMedia`, speakers via `getDisplayMedia` + Electron `audio: 'loopback'` (WASAPI).
+2. **16 kHz mono pipeline** + adaptive VAD in `netie/audio.js`.
+3. **Engine chain** (`netie/transcriber.js`) — privacy-first, all on-device:
 
    | # | Engine | Install | Notes |
    |---|--------|---------|-------|
-   | 1 | `whisper-cli` | whisper.cpp binary + model | Best accuracy, fully offline. Preferred whenever present. |
-   | 2 | `openvault` | OpenVault on :5000 | OpenAI-shaped `/v1/audio/transcriptions`, same gateway as chat. |
-   | 3 | `sidecar` | `NETIE_STT_URL` | RealtimeSTT / Hearsay bridge. |
-   | 4 | `windows-speech` | **none** | `System.Speech` offline dictation — works out of the box, but rough. |
-   | 5 | `none` | — | Says so plainly; typed Ask / Act still work. |
+   | 1 | `whisper-cli` | whisper.cpp + **multilingual** model (`-l auto`) | Best offline |
+   | 2 | `sidecar` | `npm run stt` → `:8766` faster-whisper | **Default for Malaysian rojak** (zh/en/ms) |
+   | 3 | `openvault` | OpenVault `:5000` | Same gateway as chat |
+   | 4 | `windows-speech` | none | Rough floor |
+   | 5 | `none` | — | Typed Ask/Act still work |
 
-5. **Zero-install floor.** `netie/winspeech.js` runs Windows' own offline recognizer behind a persistent PowerShell worker (same pattern as `netie/driver.js`, because constructing the recognizer costs ~1.5 s and per-utterance spawning would be unusable). Measured warm: 158–559 ms per utterance.
+4. App auto-spawns `scripts/stt_sidecar.py` on start (set `NETIE_STT_AUTOSTART=0` to disable).
 
-   Accuracy is genuinely limited — round-tripping Windows TTS through it gave "open the settings window" → *"Although settings window"* (confidence 0.54), while "scroll down" and "what is on my screen" came back exact. Anything under 0.75 confidence is returned with `rough: true` and the HUD renders it in italic with "check the text before Do it". Install Whisper for real accuracy.
+### Malaysian / Singaporean rojak
+
+Use a **multilingual** Whisper model (not `*.en`). Sidecar sets `multilingual=True`, `condition_on_previous_text=False`, `language=auto`. Transcripts keep each language as spoken (Chinese characters, English, Malay) for note-taking.
+
+**Accuracy test (say these, mark right/wrong):**
+1. "Open the settings window"
+2. "帮我 copy 这段到 Cursor"
+3. "Jom meeting — I share screen dulu"
+4. "Transcribe mode" / "Meeting mode"
+
+Later GPU (12GB): `$env:NETIE_STT_DEVICE='cuda'; $env:NETIE_STT_MODEL='medium'` then `npm run stt`.
 
 ### Why Chromium `SpeechRecognition` is NOT used
 
