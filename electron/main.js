@@ -878,7 +878,17 @@ async function captureDisplayCrop(regionLogical) {
   const file = path.join(TEMP_DIR, `cap_${Date.now()}.png`);
   fs.writeFileSync(file, png);
   const dataUrl = `data:image/png;base64,${png.toString("base64")}`;
-  lastCapture = { path: file, dataUrl, region: regionLogical || null };
+  // A full-screen capture must record the DISPLAY as its region. Storing null
+  // here left region = {0,0,0,0} in executeApproved, and driver.js gates percent
+  // -> pixel conversion on `region.width`, so every xPct/yPct action failed with
+  // "missing coordinates" and broke the plan on its first click.
+  const region = regionLogical || {
+    x: display.bounds.x,
+    y: display.bounds.y,
+    width: display.bounds.width,
+    height: display.bounds.height,
+  };
+  lastCapture = { path: file, dataUrl, region, fullScreen: !regionLogical };
   return lastCapture;
 }
 
@@ -1146,9 +1156,23 @@ async function executeApproved(actions) {
     console.error("agent pointer:", err.message || err);
   }
   const results = [];
-  const region = (lastCapture && lastCapture.region) || { x: 0, y: 0, width: 0, height: 0 };
-  const dataUrl = (lastCapture && lastCapture.dataUrl) || null;
   const capped = (actions || []).slice(0, MAX_AGENT_STEPS);
+  /**
+   * Re-read the screen for EACH step that needs aiming. These were consts
+   * captured once before the loop, so a multi-app plan ("copy from the
+   * terminal, then click Blank document in Word") resolved every later target
+   * against the screenshot taken before Word existed — the vision model was
+   * asked to find a control that was not on screen yet.
+   */
+  const currentView = () => ({
+    region: (lastCapture && lastCapture.region) || { x: 0, y: 0, width: 0, height: 0 },
+    dataUrl: (lastCapture && lastCapture.dataUrl) || null,
+  });
+  /** Actions whose target only exists after a previous step changed the screen. */
+  const needsFreshView = (t) =>
+    ["click", "doubleclick", "rightclick", "hover", "movecursor", "type", "fill", "paste", "drag"].includes(
+      String(t || "").toLowerCase()
+    );
 
   try {
     if (panelWindow && !panelWindow.isDestroyed()) panelWindow.hide();
@@ -1187,6 +1211,16 @@ async function executeApproved(actions) {
       }
 
       const started = Date.now();
+      // Refresh the screenshot before aiming, so targets created by earlier
+      // steps (a launched app, an opened dialog) are actually visible.
+      if (!driver.dryRun && needsFreshView(action.type)) {
+        try {
+          await captureDisplayCrop(null);
+        } catch (err) {
+          console.error("pre-step capture:", err.message || err);
+        }
+      }
+      const { region, dataUrl } = currentView();
       const enriched = await ensureActionCoords(action, { dataUrl, eco });
       // Auto-swap Windows pointer face per action (click vs type/agent).
       try {
