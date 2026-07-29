@@ -1,4 +1,6 @@
 "use strict";
+
+const { guardPlan } = require("./plan-guard");
 /**
  * Netie Clicks — action safety policy.
  *
@@ -77,7 +79,13 @@ function classifyAction(action) {
   if (_matchesAny(hay, SYSTEM_SURFACE_WORDS)) return ActionTier.PROHIBITED;
 
   // Typing (or pasting) into a secret field is custody-only, never the agent's job.
-  const isInput = type === "type" || type === "fill" || type === "paste" || type === "setvalue";
+  const isInput =
+    type === "type" ||
+    type === "fill" ||
+    type === "paste" ||
+    type === "clipboard_paste" ||
+    type === "setvalue" ||
+    type === "clipboard_set";
   if (isInput && _matchesAny(hay, SECRET_TARGET_WORDS)) return ActionTier.PROHIBITED;
 
   switch (type) {
@@ -88,11 +96,21 @@ function classifyAction(action) {
     case "movecursor":
     case "hover":
     case "scroll":
+    case "clipboard_get":
+    case "copy_clipboard":
       return ActionTier.READ;
+
+    case "copy":
+    case "select_copy":
+    case "select_all":
+    case "clipboard_set":
+      // Local clipboard / selection — reversible, OpenClaw-style easy ops.
+      return ActionTier.BENIGN;
 
     case "type":
     case "fill":
     case "paste":
+    case "clipboard_paste":
     case "setvalue":
       // Free-text into a normal field is consequential (it changes state and
       // can be submitted). Secret fields already returned PROHIBITED above.
@@ -130,7 +148,9 @@ function targetsSecret(action) {
 /**
  * Decide the disposition of an action under the current policy.
  * @param {object} action
- * @param {object} [policy]  { autoRunBenign?: bool }  default false (approve everything past READ)
+ * @param {object} [policy]
+ *   autoRunBenign?: bool
+ *   autoRunSensible?: bool  — auto-run non-irreversible consequential (copy/click/type normal fields)
  * @returns {{ tier:number, tierName:string, disposition:'auto'|'approve'|'custody'|'refuse',
  *            irreversible:boolean, secret:boolean }}
  */
@@ -141,12 +161,23 @@ function decide(action, policy = {}) {
 
   let disposition;
   if (tier === ActionTier.PROHIBITED) {
-    // Secret field → hand to OpenVault custody (user approves in the vault UI,
-    // the value is injected by the OS, Clicks/LLM never see it). Otherwise refuse.
     disposition = secret ? "custody" : "refuse";
+  } else if (action && action._requireConfirm) {
+    // Set by plan-guard for launches (open/navigate). Start-Process hands the
+    // machine to another application and is not undone by a second click, so it
+    // never auto-runs regardless of autoRunSensible.
+    disposition = "approve";
   } else if (tier === ActionTier.READ) {
     disposition = "auto";
-  } else if (tier === ActionTier.BENIGN && policy.autoRunBenign) {
+  } else if (tier === ActionTier.BENIGN && (policy.autoRunBenign || policy.autoRunSensible)) {
+    disposition = "auto";
+  } else if (
+    tier === ActionTier.CONSEQUENTIAL &&
+    policy.autoRunSensible &&
+    !irreversible
+  ) {
+    // Sensible agentic path: copy Claude→Cursor, click primary, type non-secret — run now.
+    // Irreversible (buy/send/delete) still needs nod / explicit approve.
     disposition = "auto";
   } else {
     disposition = "approve";
@@ -167,14 +198,20 @@ function decide(action, policy = {}) {
  * @param {object} [policy]
  */
 function reviewPlan(actions, policy = {}) {
-  const list = Array.isArray(actions) ? actions : [];
-  const annotated = list.map((a) => ({ ...a, safety: decide(a, policy) }));
+  // Guard first: drop verbs the driver cannot run, force a human beat on
+  // launches, and strip coordinates that a launch has invalidated. Doing this
+  // inside reviewPlan means every caller is covered — it is the one chokepoint
+  // every plan passes through.
+  const guard = guardPlan(actions);
+  const annotated = guard.actions.map((a) => ({ ...a, safety: decide(a, policy) }));
   return {
     actions: annotated,
     needsApproval: annotated.some((a) => a.safety.disposition === "approve"),
     custody: annotated.filter((a) => a.safety.disposition === "custody"),
     refused: annotated.filter((a) => a.safety.disposition === "refuse"),
-    autoOnly: annotated.every((a) => a.safety.disposition === "auto"),
+    autoOnly: annotated.length > 0 && annotated.every((a) => a.safety.disposition === "auto"),
+    dropped: guard.dropped,
+    reaimed: guard.reaimed,
   };
 }
 

@@ -29,8 +29,12 @@ class Transcriber {
   constructor(opts = {}) {
     this.whisperBin = opts.whisperBin || process.env.NETIE_WHISPER_BIN || "";
     this.whisperModel = opts.whisperModel || process.env.NETIE_WHISPER_MODEL || "";
-    this.openvaultUrl = opts.openvaultUrl || process.env.NETIE_STT_OPENVAULT_URL || DEFAULT_OPENVAULT;
-    this.sidecarUrl = (opts.sidecarUrl || process.env.NETIE_STT_URL || "").replace(/\/$/, "");
+    // `??` not `||`: passing an explicit "" must DISABLE this engine. With `||`
+    // an empty string fell through to the default, so a caller could not opt out
+    // and probe() would still reach for 127.0.0.1:5000.
+    this.openvaultUrl =
+      opts.openvaultUrl ?? process.env.NETIE_STT_OPENVAULT_URL ?? DEFAULT_OPENVAULT;
+    this.sidecarUrl = String(opts.sidecarUrl ?? process.env.NETIE_STT_URL ?? "").replace(/\/$/, "");
     this.model = opts.model || process.env.NETIE_STT_MODEL || "whisper-1";
     this.tempDir = opts.tempDir || path.join(os.tmpdir(), "netie-clicks", "stt");
     this._fetch = opts.fetchImpl || ((...a) => globalThis.fetch(...a));

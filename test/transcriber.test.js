@@ -13,6 +13,7 @@ const fails = [];
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
 
+const NO_NET = () => { throw new Error("test touched the network"); };
 const pcm = () => Float32Array.from({ length: 1600 }, (_, i) => Math.sin(i / 10) * 0.3);
 const fakeFs = (present = []) => ({
   existsSync: (p) => present.includes(p),
@@ -43,6 +44,7 @@ test("prefers local whisper.cpp over any network engine", async () => {
   );
   assert.strictEqual(calls[0].bin, "C:\\w\\main.exe");
   assert.ok(calls[0].args.includes("-m") && calls[0].args.includes("C:\\w\\ggml-tiny.bin"));
+  assert.ok(calls[0].args.includes("-l") && calls[0].args.includes("auto"), "multilingual auto");
 });
 
 test("half-installed whisper (binary but no model) is not used", async () => {
@@ -53,18 +55,42 @@ test("half-installed whisper (binary but no model) is not used", async () => {
     openvaultUrl: "",
     sidecarUrl: "",
     allowWindowsSpeech: false,
+    fetchImpl: NO_NET,
   });
   assert.strictEqual(t.hasLocalWhisper(), false);
   assert.strictEqual(await t.probe(), "none");
 });
 
-test("falls back to OpenVault when whisper is absent", async () => {
+test("prefers faster-whisper sidecar (rojak) over OpenVault", async () => {
   const seen = [];
   const t = new Transcriber({
     fsImpl: fakeFs(),
     openvaultUrl: "http://127.0.0.1:5000/v1/audio/transcriptions",
+    sidecarUrl: "http://127.0.0.1:8766",
     fetchImpl: async (url, opts) => {
       seen.push({ url, method: (opts && opts.method) || "GET" });
+      if (url.endsWith("/health")) return { ok: true };
+      if (url.endsWith("/v1/models")) return { ok: true };
+      return {
+        ok: true,
+        json: async () => ({ text: "你好 hello lah", language: "zh" }),
+      };
+    },
+  });
+  const out = await t.transcribe(pcm());
+  assert.strictEqual(out.engine, "sidecar");
+  assert.strictEqual(out.text, "你好 hello lah");
+  assert.strictEqual(out.language, "zh");
+  assert.ok(seen.some((s) => s.url.includes("/health")), "probes sidecar /health first");
+  assert.ok(seen.some((s) => s.method === "POST"), "posted the wav");
+});
+
+test("falls back to OpenVault when sidecar is absent", async () => {
+  const t = new Transcriber({
+    fsImpl: fakeFs(),
+    openvaultUrl: "http://127.0.0.1:5000/v1/audio/transcriptions",
+    sidecarUrl: "",
+    fetchImpl: async (url, opts) => {
       if (url.endsWith("/v1/models")) return { ok: true };
       return { ok: true, json: async () => ({ text: "from openvault" }) };
     },
@@ -75,7 +101,6 @@ test("falls back to OpenVault when whisper is absent", async () => {
     text: "from openvault",
     engine: "openvault",
   });
-  assert.ok(seen.some((s) => s.method === "POST"), "posted the wav");
 });
 
 test("falls back to sidecar when OpenVault is down", async () => {
@@ -85,8 +110,8 @@ test("falls back to sidecar when OpenVault is down", async () => {
     sidecarUrl: "http://127.0.0.1:8766",
     fetchImpl: async (url) => {
       if (url.startsWith("http://127.0.0.1:5000")) throw new Error("ECONNREFUSED");
-      if (url.endsWith("/v1/models")) return { ok: true };
-      return { ok: true, json: async () => ({ text: "from sidecar" }) };
+      if (url.endsWith("/health")) return { ok: true };
+      return { ok: true, json: async () => ({ text: "from sidecar", language: "en" }) };
     },
   });
   const out = await t.transcribe(pcm());
@@ -99,7 +124,7 @@ test("no engine anywhere → honest failure, never a fake transcript", async () 
     fsImpl: fakeFs(),
     openvaultUrl: "http://127.0.0.1:5000/v1/audio/transcriptions",
     sidecarUrl: "",
-    allowWindowsSpeech: false, // non-Windows, or dictation unavailable
+    allowWindowsSpeech: false,
     fetchImpl: async () => {
       throw new Error("ECONNREFUSED");
     },
@@ -122,11 +147,11 @@ test("Windows dictation is the floor, never preferred over a real engine", async
       return { text: "open the settings window", confidence: 0.55 };
     },
   };
-  // Nothing else available → falls through to Windows dictation.
   const t = new Transcriber({
     fsImpl: fakeFs(),
     openvaultUrl: "",
     sidecarUrl: "",
+    fetchImpl: NO_NET,
     allowWindowsSpeech: true,
     winSpeechImpl: winStub,
   });
@@ -136,7 +161,6 @@ test("Windows dictation is the floor, never preferred over a real engine", async
   assert.strictEqual(out.rough, true, "0.55 confidence must be flagged rough");
   assert.ok(recognized[0].endsWith(".wav"));
 
-  // But a real engine outranks it.
   const better = new Transcriber({
     fsImpl: fakeFs(["C:\\w\\m.exe", "C:\\w\\g.bin"]),
     whisperBin: "C:\\w\\m.exe",
@@ -153,6 +177,7 @@ test("high-confidence Windows dictation is not flagged rough", async () => {
     fsImpl: fakeFs(),
     openvaultUrl: "",
     sidecarUrl: "",
+    fetchImpl: NO_NET,
     allowWindowsSpeech: true,
     winSpeechImpl: { recognizeFile: async () => ({ text: "scroll down", confidence: 0.92 }) },
   });
@@ -174,27 +199,28 @@ test("every engine in the chain is local-only (governance)", async () => {
 });
 
 test("a failing engine re-probes next utterance instead of wedging", async () => {
-  let up = true;
+  let sidecarUp = true;
   const t = new Transcriber({
     fsImpl: fakeFs(),
     openvaultUrl: "http://127.0.0.1:5000/v1/audio/transcriptions",
     sidecarUrl: "http://127.0.0.1:8766",
     fetchImpl: async (url) => {
-      if (url.endsWith("/v1/models")) {
-        if (url.startsWith("http://127.0.0.1:5000") && !up) throw new Error("down");
+      if (url.endsWith("/health")) {
+        if (!sidecarUp) throw new Error("sidecar down");
         return { ok: true };
       }
-      if (url.startsWith("http://127.0.0.1:5000")) throw new Error("500");
-      return { ok: true, json: async () => ({ text: "sidecar rescued it" }) };
+      if (url.endsWith("/v1/models")) return { ok: true };
+      if (url.startsWith("http://127.0.0.1:8766")) throw new Error("500");
+      return { ok: true, json: async () => ({ text: "openvault rescued it" }) };
     },
   });
   const first = await t.transcribe(pcm());
-  assert.strictEqual(first.ok, false, "openvault failed");
+  assert.strictEqual(first.ok, false, "sidecar failed");
   assert.strictEqual(t.engine, null, "engine cleared for re-probe");
-  up = false;
+  sidecarUp = false;
   const second = await t.transcribe(pcm());
-  assert.strictEqual(second.engine, "sidecar");
-  assert.strictEqual(second.text, "sidecar rescued it");
+  assert.strictEqual(second.engine, "openvault");
+  assert.strictEqual(second.text, "openvault rescued it");
 });
 
 test("empty audio is rejected without calling an engine", async () => {

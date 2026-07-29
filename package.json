@@ -1,13 +1,13 @@
 {
-  "name": "netie-clicks",
+  "name": "netie-pointer",
   "version": "0.1.0",
-  "description": "Netie Clicks — Windows screen buddy (Ctrl+Space → frame → chat via OpenVault)",
+  "description": "Netie Pointer — center chat HUD + Frame drag + Clicky (OpenVault/Cortex)",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
     "start": "electron electron/main.js",
     "dev": "electron electron/main.js",
-    "test": "node test/ecosystem.test.js && node test/vault.test.js && node test/intent.test.js && node test/zen.test.js && node test/followup.test.js && node test/driver.test.js && node test/geometry.test.js && node test/conversations.test.js && node test/stt.test.js && node test/audio.test.js && node test/transcriber.test.js && node test/agentic.test.js && node test/recipes.test.js && node test/presence.test.js && node test/clicky.test.js && node test/clicky-cursor.test.js",
+    "test": "node test/ecosystem.test.js && node test/vault.test.js && node test/intent.test.js && node test/zen.test.js && node test/followup.test.js && node test/driver.test.js && node test/geometry.test.js && node test/conversations.test.js && node test/stt.test.js && node test/audio.test.js && node test/transcriber.test.js && node test/agentic.test.js && node test/recipes.test.js && node test/presence.test.js && node test/clicky.test.js && node test/clicky-cursor.test.js && node test/plan-guard.test.js",
     "test:agentic": "node test/agentic.test.js",
     "test:recipes": "node test/recipes.test.js",
     "test:presence": "node test/presence.test.js",
@@ -22,7 +22,8 @@
     "test:followup": "node test/followup.test.js",
     "test:driver": "node test/driver.test.js",
     "test:geometry": "node test/geometry.test.js",
-    "test:cursor": "node test/clicky-cursor.test.js"
+    "test:cursor": "node test/clicky-cursor.test.js",
+    "test:guard": "node test/plan-guard.test.js"
   },
   "devDependencies": {
     "electron": "^35.0.0"
