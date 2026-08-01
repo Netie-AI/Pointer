@@ -899,9 +899,11 @@ function onHudEvent(event) {
     if (event.modeSwitchOnly) return;
     const text = String(event.text || "").trim();
     const source = event.source === "system" ? "system" : "mic";
-    // The LIVE bar is a rolling transcript, not a status line: following a
-    // video means reading the last few sentences, not the latest one.
-    if (text) {
+    // The LIVE bar is what the SCREEN is saying -- the video, the call, the
+    // other side. Your own voice does not belong in it: you already know what
+    // you said, and mixing both made it impossible to read either. Your words
+    // go to the Ask box instead, where you can edit them before sending.
+    if (text && source === "system") {
       liveLine.push(source, text);
       liveFeed.push(source, text, { partial: Boolean(event.partial) });
       renderSubtitle();
@@ -917,7 +919,11 @@ function onHudEvent(event) {
       if (finalBits.length > 12) finalBits = finalBits.slice(-12);
       setLivePartial("");
       setChatOpen(true);
-      appendMessage("user", text);
+      // Deliberately NOT appendMessage() here. Echoing your speech into the
+      // chat log made it look like it had been sent -- the transcript appeared
+      // as a user turn identical to one you actually submitted, so "it keeps
+      // auto-sending" was the only reasonable reading. It goes in the composer
+      // and stays there until you press Do it.
       // Put the words in the box you are about to send. They only lived in the
       // chat log before, so the Ask field looked empty and speaking read as
       // "nothing happened" — even though Ask/Do it silently fell back to the

@@ -46,6 +46,8 @@ const DEFAULTS = Object.freeze({
    * the app from an automation tool — it is a testing affordance, not a mode.
    */
   captureVisible: false,
+  /** Schema version for one-time stored-value corrections. See migrate(). */
+  settingsVersion: 2,
   /** Wait for nod / "yes" / Y before irreversible or when autoRun is off. */
   nodConfirm: true,
   /** Future: webcam nod detection (off until calibrated). */
@@ -88,6 +90,43 @@ function defaultPath() {
   return path.join(os.homedir(), "AppData", "Roaming", "NetieClicks", "settings.json");
 }
 
+/**
+ * Bump when a stored value must change for existing installs.
+ *
+ * Stored settings win over DEFAULTS -- that is the whole point of storing them --
+ * so flipping a default does nothing for anyone who has run the app before. The
+ * only way to change behaviour for an existing install is to rewrite the stored
+ * value once, which is what this does.
+ */
+const SETTINGS_VERSION = 2;
+
+/**
+ * One-time corrections to stored settings.
+ *
+ * Each step runs once, keyed on the version, so a user who deliberately turns a
+ * setting back on afterwards keeps their choice. A migration that re-applied on
+ * every boot would be a preference the user is not allowed to have.
+ */
+function migrate(data, storedVersion) {
+  const out = { ...data };
+  // The version must come from the FILE, not from the merged object: DEFAULTS
+  // carries the current version, so merging first makes every install look
+  // already-migrated and no step ever runs.
+  const from = Number(storedVersion) || 1;
+
+  if (from < 2) {
+    // v2: the agent no longer moves the mouse the instant a plan comes back.
+    // Auto-run shipped on by default, which meant the first surprise was an
+    // agent clicking something while you were still reading the plan. It stays
+    // available in the settings menu; it is just no longer the default, and
+    // that has to reach installs that already stored `true`.
+    out.autoRunSensible = false;
+  }
+
+  out.settingsVersion = SETTINGS_VERSION;
+  return out;
+}
+
 class SettingsStore {
   constructor(opts = {}) {
     this.path = opts.path || defaultPath();
@@ -99,12 +138,28 @@ class SettingsStore {
     try {
       if (fs.existsSync(this.path)) {
         const raw = JSON.parse(fs.readFileSync(this.path, "utf8"));
-        this._data = { ...DEFAULTS, ...raw };
+        const before = Number(raw.settingsVersion) || 1;
+        this._data = migrate({ ...DEFAULTS, ...raw }, before);
+        // Persist immediately. Without this the version never advances, the
+        // migration re-runs on every boot, and a user who turns auto-run back
+        // on finds it off again next launch -- a preference they are not
+        // allowed to have.
+        if (before < SETTINGS_VERSION) this._write();
       }
     } catch {
       this._data = { ...DEFAULTS };
     }
     return this.snapshot();
+  }
+
+  _write() {
+    try {
+      fs.mkdirSync(path.dirname(this.path), { recursive: true });
+      fs.writeFileSync(this.path, JSON.stringify(this._data, null, 2), "utf8");
+    } catch {
+      // A read-only profile must not stop the app booting; the in-memory value
+      // is still correct for this session.
+    }
   }
 
   snapshot() {
@@ -113,8 +168,7 @@ class SettingsStore {
 
   set(partial = {}) {
     this._data = { ...this._data, ...partial };
-    fs.mkdirSync(path.dirname(this.path), { recursive: true });
-    fs.writeFileSync(this.path, JSON.stringify(this._data, null, 2), "utf8");
+    this._write();
     return this.snapshot();
   }
 

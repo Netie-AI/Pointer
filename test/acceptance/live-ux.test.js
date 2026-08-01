@@ -110,6 +110,54 @@ const UPSTREAM_NOISE =
       assert.ok(html.includes('id="set-auto"'), "auto-run stays available in settings");
     }),
 
+    T("a stored autoRunSensible:true is migrated off for existing installs", async () => {
+      // Flipping a DEFAULT does nothing for anyone who has run the app before:
+      // load() does `{...DEFAULTS, ...stored}` and the stored value wins. This
+      // is why "auto-run is off now" was still auto-running.
+      const os = require("os");
+      const fsx = require("fs");
+      const pathx = require("path");
+      const { SettingsStore } = require("../../electron/netie/settings");
+
+      const dir = fsx.mkdtempSync(pathx.join(os.tmpdir(), "netie-settings-"));
+      const file = pathx.join(dir, "settings.json");
+
+      fsx.writeFileSync(file, JSON.stringify({ autoRunSensible: true, nodConfirm: true }), "utf8");
+      const s1 = new SettingsStore({ path: file });
+      assert.strictEqual(s1.get("autoRunSensible"), false, "the stored true must be migrated off");
+      assert.strictEqual(s1.get("nodConfirm"), true, "unrelated settings must survive");
+
+      // It has to be written, or the migration re-runs forever…
+      const onDisk = JSON.parse(fsx.readFileSync(file, "utf8"));
+      assert.strictEqual(onDisk.autoRunSensible, false);
+      assert.ok(onDisk.settingsVersion >= 2, "the version must persist");
+
+      // …and once migrated, turning it back on must STICK. A migration that
+      // re-applies every boot is a preference the user is not allowed to have.
+      s1.set({ autoRunSensible: true });
+      const s2 = new SettingsStore({ path: file });
+      assert.strictEqual(s2.get("autoRunSensible"), true, "the user's later choice must win");
+
+      fsx.rmSync(dir, { recursive: true, force: true });
+    }),
+
+    T("the LIVE bar carries system audio only", async () => {
+      // It is what the SCREEN is saying. Your own voice belongs in the Ask box,
+      // not mixed into the thing you are reading to follow a video.
+      const js = read("electron/hud.js");
+      const block = js.slice(js.indexOf('if (event.type === "transcript")'));
+      const body = block.slice(0, block.indexOf('if (event.type === "capture")'));
+      assert.ok(
+        /if \(text && source === "system"\)/.test(body),
+        "only system audio may reach the LIVE feed"
+      );
+      assert.ok(
+        !/^\s*appendMessage\("user", text\);/m.test(body),
+        "mic speech must not be echoed into the chat log — it reads as already sent"
+      );
+      assert.ok(/askInput\.value = existing/.test(body), "…it goes to the composer instead");
+    }),
+
     T("speech lands in the Ask box whether or not auto-send is on", async () => {
       const js = read("electron/hud.js");
       const block = js.slice(js.indexOf('if (event.type === "transcript")'));
