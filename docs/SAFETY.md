@@ -52,6 +52,34 @@ If step were "type password" → step 3 marks it custody → OpenVault, agent sk
 If Cortex were down          → step 1 fail-closed → whole plan refused, nothing runs.
 ```
 
+## Adversarial invariants (2026-07-31)
+
+Ledger: [`findings/ADVERSARIAL_2026-07-31.md`](findings/ADVERSARIAL_2026-07-31.md).
+KB: A-0005 (self-approving plan), A-0006 (custody overwrite), A-0007 (recipe skips secure).
+
+1. **Whitelist planner fields** — never keep unknown keys from model JSON (`sanitizeModelAction`).
+2. **Strip-then-grant `_approved`** — never inherit executor trust from the plan object.
+3. **`_custody` is sticky** — `reviewPlan` / `decide()` may only add secrecy, never remove it.
+4. **Every act path secures** — recipes and skills call `/dms/secure` fail-closed before run.
+5. **Degradation is visible** — HUD + ledger, including replan and UIA→vision (R-0011).
+6. **Tests must exercise the mechanism** — fixtures the heuristic alone would catch are false greens (R-TEST-MECH).
+7. **Author ≠ sole verifier** for critical gates (R-0003); mutation-verify.
+8. **Arm to listen** — capture starts disarmed and every frame passes `capture-gate.shouldAcceptFrame`
+   before it is transcribed. Pause outranks armed; an unrecognised source fails closed; arming the
+   mic never arms system audio. Transcription is on-device — no raw audio reaches a non-loopback host.
+9. **Enquire is a PII form, never a credential prompt** — `enquire.validateAnswers` refuses secret
+   keys with a reason (they belong to OpenVault custody), accepts only known profile fields, and
+   strips control characters, because every value it stores is later sent to the OS as keystrokes:
+   a newline submits the form the agent is halfway through filling.
+10. **Answering a form is not an approval** — a plan parked for enquire resumes back through
+    `secureBeforeAct` → `reviewPlan` → `maybeRunPlan`, never straight to the driver.
+
+**A contract asserted with no consumer is not a feature.** C-17 (`toOverlayEvent`), C-19
+(`_targetedVia`) and enquire were all tests passing against code the product never called. When
+adding an event, assert the handler exists too.
+
+---
+
 ## Not yet (tracked, not silently missing)
 
 - OpenVault credential-custody inject endpoint (week 2) — until then `custody` actions surface a

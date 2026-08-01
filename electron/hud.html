@@ -12,8 +12,6 @@
   </head>
   <body>
     <div class="hud theme-dark mode-agent chat-open" id="hud">
-      <button type="button" class="peek-drop chrome" id="peek-drop" title="Show Netie" aria-label="Show Netie"><span class="peek-orb"></span></button>
-
       <header class="top-bar chrome drag-surface" id="top-bar">
         <div class="top-cluster">
           <button type="button" class="rec-button" id="btn-listen" title="Microphone">
@@ -30,6 +28,7 @@
         </div>
         <div class="top-cluster mode-pill" id="mode-pill">
           <button type="button" data-mode="agent" class="active">Agent</button>
+          <button type="button" data-mode="general">General</button>
           <button type="button" data-mode="transcribe">Transcribe</button>
           <button type="button" data-mode="meeting">Meeting</button>
         </div>
@@ -59,11 +58,14 @@
               <h3>Agent settings</h3>
               <label>Auto-run sensible <input type="checkbox" id="set-auto" /></label>
               <label>Nod confirm <input type="checkbox" id="set-nod" /></label>
-              <label>Agent cursor <input type="checkbox" id="set-cursor" /></label>
+              <label>Netie pointer <input type="checkbox" id="set-cursor" /></label>
               <label>Save markdown <input type="checkbox" id="set-md" /></label>
               <label>Python checks <input type="checkbox" id="set-py" /></label>
               <label>Demo screenshots <input type="checkbox" id="set-demo-debug" /></label>
               <label>Verify steps (slow) <input type="checkbox" id="set-verify" /></label>
+              <label>Auto-send after speaking <input type="checkbox" id="set-autosend" /></label>
+              <label>Subtitle follows cursor <input type="checkbox" id="set-follow" /></label>
+              <label>Visible to screen capture <input type="checkbox" id="set-capture-visible" /></label>
               <div class="menu-actions">
                 <button type="button" id="btn-canvas">History</button>
                 <button type="button" id="btn-frame">Frame</button>
@@ -83,8 +85,13 @@
       </header>
 
       <div class="subtitle-live glass chrome" id="subtitle-bar" aria-live="polite">
+        <span class="subtitle-grip drag-handle" id="subtitle-drag" title="Drag the LIVE line"></span>
         <span class="subtitle-label">Live</span>
         <span id="subtitle-text">Listening…</span>
+        <span class="autosend" id="autosend">
+          <span class="autosend-count" id="autosend-count">4</span>
+          <button type="button" id="btn-autosend-cancel" title="Don't send that">Cancel</button>
+        </span>
         <button type="button" id="btn-add-sub">Add</button>
       </div>
 
@@ -176,13 +183,35 @@
         <button type="button" id="btn-nod-go">Go</button>
       </div>
 
-      <div class="hidden-stub" aria-hidden="true">
-        <div id="audio-dock"></div><div id="fab"></div><div id="ask-bubble"></div><div id="hint"></div>
-        <button type="button" id="btn-ask" tabindex="-1"></button>
-        <button type="button" id="btn-ask-open" tabindex="-1"></button>
+      <!-- P5-ENQUIRE: a real <form>, so Enter submits, <label for> binds to the
+           input, and focus order is the browser's job rather than ours. Fields
+           are built at runtime from the missing vault keys. -->
+      <form class="enquire glass chrome" id="enquire-panel" hidden>
+        <header class="panel-head">
+          <span class="spark">✦</span>
+          <span>Netie needs a few details</span>
+        </header>
+        <p class="enquire-why">
+          I won't type placeholders into a form. Tell me these once — they stay on this device.
+        </p>
+        <div id="enquire-fields"></div>
+        <div class="enquire-actions">
+          <button type="submit" class="act-button" id="btn-enquire-save">Save &amp; continue</button>
+          <button type="button" class="text-btn" id="btn-enquire-cancel">Not now</button>
+        </div>
+      </form>
+
+      <!-- P3-POINT-OVERLAY: a crosshair and a label, nothing that could grow
+           back into a floating companion. Never .chrome — it must not eat clicks. -->
+      <div class="point-layer" id="point-layer" aria-hidden="true"></div>
+
+      <div class="bg-status chrome" id="bg-status">
+        <span id="bg-status-text"></span>
+        <button type="button" class="text-btn" id="btn-bg-cancel">Stop</button>
       </div>
     </div>
     <script src="netie-sound.js"></script>
+    <script src="netie/hud-live.js"></script>
     <script src="hud-audio.js"></script>
     <script src="hud.js"></script>
   </body>

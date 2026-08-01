@@ -51,6 +51,9 @@ outage must never block or silently enable an action — losses are detectable v
 Event types Clicks emits: `clicks.vision`, `clicks.plan`, `clicks.blocked`,
 `clicks.action.executed`, `clicks.action.approved`, `clicks.action.rejected`, `clicks.custody.requested`.
 
+Computer-use adds (C25-03): `clicks.cu.plan`, `clicks.cu.replan`, `clicks.cu.fallback`,
+`clicks.skill.expand`, `clicks.vault.unresolved`.
+
 ## OpenVault — LLM (vision + planning)
 
 `POST /v1/chat/completions`  ·  OpenAI shape  ·  header `x-openfree-identity: netie-clicks`
@@ -58,6 +61,70 @@ Event types Clicks emits: `clicks.vision`, `clicks.plan`, `clicks.blocked`,
 Standard `{ model, messages:[{role,content:[{type:"text"…},{type:"image_url",image_url:{url:dataURL}}]}], max_tokens }`.
 OpenVault injects the real provider key from its custody/fallback chain — **Clicks sends none.**
 Non-streaming only today (OpenVault returns 400 on `stream:true`).
+
+## Cortex — computer-use planner (C25-01)
+
+`POST /dms/agents/computer-use`  ·  role: `steward`  ·  **Cortex 2.5 — Pointer side shipped, engine side pending**
+
+Pointer calls this when `NETIE_CU_PLANNER=1` (or `new NetieEcosystem({cuPlanner:true})`).
+Implemented as `ecosystem.planViaCortex()`; `ecosystem._llmPlan()` is the fallback.
+Contract tests against the mock peer: `test/contracts/computer-use.contract.js`.
+
+Request:
+
+```jsonc
+{
+  "device_id": "netie-clicks",
+  "instruction": "…gated safeText, never raw screen text…",
+  "hot_context": "skill preamble + brain/recall summary",
+  "skills": ["form-fill"],                 // ids from /api/discovery/find-skills
+  "screen": { "image_url": "data:image/png;base64,…",
+              "region": { "x":0, "y":0, "width":1920, "height":1080 } },
+  "policy": { "auto_run_sensible": true, "max_steps": 24 },
+  "prior":  { "results": [], "replan_n": 0 }   // populated on replan rounds
+}
+```
+
+Response:
+
+```jsonc
+{
+  "ok": true,
+  "plan_id": "cu_…",
+  "actions": [ { "type":"fill", "target":"Email",
+                 "value":"{{vault.profile.email}}", "xPct":42.1, "yPct":31.0 } ],
+  "needs_approval": true,
+  "rationale": "…",
+  "skills_used": ["form-fill"]
+}
+```
+
+Four rules Pointer enforces on the response, all covered by the contract tests:
+
+0. **Only the fields listed above are read.** Planner output is projected onto a whitelist
+   (`ecosystem.sanitizeModelAction`) before anything else touches it. The flags that decide
+   whether a human is asked — `_approved`, `_requireConfirm`, `safety`, `_custody` — are set
+   locally and are *not* accepted from the wire. A plan that arrives carrying `_approved:true`
+   is a plan trying to approve itself, and on-screen text is enough to make a planner emit
+   one, because the gate sanitises the instruction string and not the screenshot.
+1. **`needs_approval:false` is advisory.** Local `reviewPlan` runs regardless and its
+   verdict wins. Cortex cannot vote its own plan past the human.
+2. **`{{vault.*}}` values are resolved locally** (`netie/vault-fill.js`) immediately before
+   review. Cortex never receives and never returns the user's real data; an unresolved
+   placeholder is blanked and forced to a human beat, never typed.
+3. **Any failure falls back to `_llmPlan()` visibly** — `plan.planner` is
+   `"cortex-cu"` or `"openvault-llm"`, `plan.plannerFallback` carries the reason, the
+   HUD says so, and `clicks.cu.fallback` reaches the ledger. A silent brain swap is a lie.
+
+Verbs are still filtered by `plan-guard` (`DRIVER_ACTIONS`), so the engine cannot introduce
+an action the local driver does not implement.
+
+### Replan (C25-03 · P13-03)
+
+On step failure Pointer observes the run (`netie/replan.js`), re-captures the screen and
+re-plans the remainder, at most **3 times per task**, carrying `prior.results` /
+`prior.replan_n` back to Cortex. It never replans after the kill switch (`aborted`) or
+after a gate refusal (`blocked`).
 
 ## Human-in-the-loop (local, mirrors Cortex approve/reject)
 

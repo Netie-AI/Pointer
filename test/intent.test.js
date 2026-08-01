@@ -27,6 +27,11 @@ test("imperatives → act", () => {
   assert.strictEqual(classifyIntent("type hello in the box"), "act");
 });
 
+test("coding questions → code", () => {
+  assert.strictEqual(classifyIntent("write a python script to sort a list"), "code");
+  assert.strictEqual(classifyIntent("debug this traceback please"), "code");
+});
+
 test("empty → ask (safe default)", () => {
   assert.strictEqual(classifyIntent(""), "ask");
 });

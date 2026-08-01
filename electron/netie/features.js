@@ -6,7 +6,7 @@ const DEFAULTS = Object.freeze({
   canvas: true,
   hotTicks: true,
   fleetTelemetry: true,
-  agentPresenceFx: true,
+  agentPresenceFx: false,
   recall: true,
   clicky: true,
   recallLite: true,

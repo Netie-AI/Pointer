@@ -16,6 +16,7 @@ const {
   session,
   ipcMain,
   shell,
+  dialog,
 } = require("electron");
 const fs = require("fs");
 const os = require("os");
@@ -32,12 +33,76 @@ const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
 const { Segmenter } = require("./netie/audio");
 const { Transcriber } = require("./netie/transcriber");
-const { detectModeSwitch, getMode } = require("./netie/modes");
+const { detectModeSwitch, getMode, allowsActions } = require("./netie/modes");
 const { NotesSession } = require("./netie/notes");
 const { SettingsStore } = require("./netie/settings");
 const { createNodGate, isAffirmation } = require("./netie/affirm");
 const { checkMarkdownPython } = require("./netie/coderun");
-const { matchRecipe, expandRecipe } = require("./netie/recipes");
+const { matchRecipe, expandRecipe, RECIPES } = require("./netie/recipes");
+const { expandSkillsToActions, skillPreamble, describeExpansion } = require("./netie/skills-exec");
+const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
+const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
+const { shouldAcceptFrame, detectCaptureCommand } = require("./netie/capture-gate");
+/** Plan parked while the human answers the enquire panel. */
+let pendingEnquire = null;
+const { setPrivacyVeil } = require("./netie/privacy-veil");
+const { shouldVerifyStep, verdictWhenSkipped } = require("./netie/verify");
+const { parsePoints, toOverlayEvent } = require("./netie/point-overlay");
+const { humanizeError, shortError } = require("./netie/errors");
+const { createJobQueue, describeQueue } = require("./netie/bg-agents");
+
+/**
+ * P3-UIA-TARGETING — run one UIA probe in a short-lived PowerShell.
+ *
+ * Not the driver's persistent worker: that worker has a fixed op set and a
+ * SendInput job, and a tree walk that hangs on an unresponsive window would
+ * take the whole input path down with it. A separate, hard-timed process can
+ * only lose itself. After three consecutive failures UIA stands down for the
+ * session and vision takes over — a probe that keeps timing out is slower than
+ * the fallback it was meant to beat.
+ */
+const UIA_ENABLED = process.env.NETIE_UIA !== "0";
+const UIA_TIMEOUT_MS = 1500;
+let uiaFailures = 0;
+
+function runUiaProbe(script) {
+  return new Promise((resolve, reject) => {
+    const encoded = Buffer.from(script, "utf16le").toString("base64");
+    execFile(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded],
+      { windowsHide: true, timeout: UIA_TIMEOUT_MS, maxBuffer: 4 * 1024 * 1024 },
+      (err, stdout) => {
+        if (err) {
+          uiaFailures += 1;
+          if (uiaFailures === 3) {
+            sendHudQuiet({ type: "insight", text: "UIA targeting unavailable — using vision." });
+          }
+          reject(err);
+          return;
+        }
+        uiaFailures = 0;
+        resolve(stdout);
+      }
+    );
+  });
+}
+
+/** UIA context for ensureActionCoords, or null when it cannot help. */
+function uiaContext(region) {
+  if (!UIA_ENABLED || uiaFailures >= 3) return null;
+  if (driver.dryRun) return null; // never spawn a probe in a dry run
+  if (!region || !region.width) return null;
+  return { run: runUiaProbe, screen: region };
+}
+const {
+  MAX_REPLANS,
+  shouldReplan,
+  observeResults,
+  nextPrior,
+  replanInstruction,
+  describeReplan,
+} = require("./netie/replan");
 const { DemoDebugTrail } = require("./netie/demo-debug");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
 const {
@@ -151,8 +216,6 @@ let cursorTrackTimer = null;
 let presenceState = PresenceStates.IDLE;
 let clickyState = ClickyStates.IDLE;
 let clickyHoldStartedAt = 0;
-let clickyCursorWindow = null;
-let clickyFollowTimer = null;
 let recallTimer = null;
 let recallBusy = false;
 const MAX_AGENT_STEPS = Math.max(1, Number(process.env.NETIE_MAX_STEPS) || 24);
@@ -199,8 +262,13 @@ function setPresence(event) {
 function setClicky(event, meta = {}) {
   clickyState = clickyTransition(clickyState, event, meta);
   const desc = clickyDescribe(clickyState);
-  if (desc.cursorOn) showClickyCursor();
-  else hideClickyCursor();
+  // Real OS pointer swap — no floating ring overlay (that stacked on the arrow).
+  if (desc.cursorOn) {
+    agentPointer.enabled = settings.get("cursorBubble") !== false;
+    agentPointer.set("normal").catch((err) => console.error("clicky pointer:", err.message || err));
+  } else if (clickyState === ClickyStates.IDLE && !planRunning) {
+    agentPointer.restore().catch(() => {});
+  }
   reconcileRecallDaemon();
   sendHud({
     type: "clicky",
@@ -208,11 +276,11 @@ function setClicky(event, meta = {}) {
     label: desc.label,
     hint: desc.recordingHint,
   });
-  sendStage({
+  // Subtitles live on the HUD LIVE line — not a floating stage bubble.
+  sendHud({
     type: "subtitle",
     text: desc.label,
     ms: clickyState === ClickyStates.CLICKY ? 2800 : 1600,
-    sound: false,
   });
   return desc;
 }
@@ -284,8 +352,11 @@ function createHud() {
   hudWindow.setIgnoreMouseEvents(true, { forward: true });
   // Cluely-style: excluded from desktopCapturer / most screen share & screenshots.
   // Not a kernel bypass — OS-level DWM content protection. CapturePage still works for us.
+  // Reads the setting rather than hardcoding true: a window created AFTER the
+  // user turned capture on would otherwise come back protected, so the toggle
+  // appeared to work and then silently undid itself.
   try {
-    hudWindow.setContentProtection(true);
+    hudWindow.setContentProtection(!captureVisible());
   } catch {
     /* ok */
   }
@@ -337,8 +408,10 @@ function applyAppMode(modeId, { reason = "" } = {}) {
   if (!spec.autoNotes && notes.file) {
     notes.stop();
   }
-  // Transcribe / Meeting must actually capture audio — mode switch arms STT.
-  const armMic = appMode === "transcribe" || appMode === "meeting";
+  // General / Transcribe / Meeting must actually capture audio — mode switch
+  // arms STT. `listens` is declared on the mode so adding a listening mode does
+  // not mean remembering to extend an or-chain here.
+  const armMic = spec.listens === true;
   const armSystem = appMode === "meeting";
   if (armMic) {
     listenMic = true;
@@ -441,6 +514,12 @@ function showHud(opts = {}) {
 function hideHud() {
   hudUserOpened = false;
   if (hudWindow && !hudWindow.isDestroyed()) hudWindow.hide();
+  // Hide means hide. The stage is a SEPARATE window, so hiding the HUD left its
+  // "Nod / say yes / press Y" toast and any error text sitting on screen with no
+  // chrome attached to them — which reads as the app leaking text onto the
+  // desktop. Anything that draws must be hidden here.
+  hideStage();
+  if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.hide();
 }
 
 /** Push HUD events only when the overlay is already open — never force-pop. */
@@ -482,7 +561,7 @@ function createStage() {
   stageWindow.setIgnoreMouseEvents(true, { forward: true });
   // Cluely-style: excluded from screen capture / desktopCapturer.
   try {
-    stageWindow.setContentProtection(true);
+    stageWindow.setContentProtection(!captureVisible());
   } catch {
     /* older Electron */
   }
@@ -529,23 +608,64 @@ function saveCurrentConversation(title, kind = "agent") {
   return res;
 }
 
+/**
+ * Stream the cursor position so the LIVE subtitle can sit beside it.
+ *
+ * Not the old cursor-adjacent bubble — that was chrome that followed you around
+ * and is not coming back. This moves the transcript bar only, so what you said
+ * is where you are looking instead of pinned to the top of the screen.
+ *
+ * Polled rather than hooked: the HUD is click-through, so it receives no
+ * pointermove events over anything but its own chrome. 60ms is under a frame at
+ * 16fps — smooth enough to read, cheap enough to leave on.
+ */
 function startCursorTracking() {
   if (cursorTrackTimer) return;
-  if (!settings.get("cursorBubble")) return;
+  if (settings.get("followCursor") === false) return;
   cursorTrackTimer = setInterval(() => {
-    if (!stageWindow || stageWindow.isDestroyed() || !stageWindow.isVisible()) return;
+    if (!isHudVisible()) return;
     try {
-      const pt = screen.getCursorScreenPoint();
-      const bounds = stageWindow.getBounds();
-      sendStage({
-        type: "cursor-move",
-        x: pt.x - bounds.x,
-        y: pt.y - bounds.y,
-      });
+      const point = screen.getCursorScreenPoint();
+      const bounds = hudWindow.getBounds();
+      sendHudQuiet({ type: "cursor", x: point.x - bounds.x, y: point.y - bounds.y });
     } catch {
-      /* ok */
+      /* display detached mid-poll */
     }
-  }, 50);
+  }, 60);
+}
+
+/**
+ * Show or hide Netie's windows from screen capture.
+ *
+ * `setContentProtection(true)` is the default and is why the HUD does not appear
+ * in its own screenshots, in Teams shares, or to an automation tool. Passing
+ * `visible` flips all three windows at once so none of them can be left behind
+ * in the wrong state.
+ */
+/**
+ * Is Netie allowed to appear in screen capture?
+ *
+ * `NETIE_CAPTURE_VISIBLE=1` wins over the stored setting so a demo, a bug
+ * report, or a tool driving the app can turn this on without clicking through
+ * a HUD that is — by definition — invisible to the thing trying to click it.
+ */
+function captureVisible() {
+  if (process.env.NETIE_CAPTURE_VISIBLE === "1") return true;
+  return settings.get("captureVisible") === true;
+}
+
+function applyContentProtection(visible) {
+  const protect = !visible;
+  for (const win of [hudWindow, stageWindow, panelWindow, overlayWindow]) {
+    if (win && !win.isDestroyed()) {
+      try {
+        win.setContentProtection(protect);
+      } catch {
+        /* platform without the API */
+      }
+    }
+  }
+  return { protected: protect };
 }
 
 function stopCursorTracking() {
@@ -553,7 +673,6 @@ function stopCursorTracking() {
     clearInterval(cursorTrackTimer);
     cursorTrackTimer = null;
   }
-  sendStage({ type: "cursor-hide" });
 }
 
 function createCanvas() {
@@ -583,25 +702,49 @@ function createCanvas() {
 }
 
 /**
+ * Approval is a decision this process makes, never a property of the plan.
+ *
+ * `_approved` is the executor's only gate (see executeApproved). It is set in
+ * exactly three places, all of them after a human acted. Copying an action with
+ * `{...a}` preserved whatever arrived on it, so a planner that emitted
+ * `_approved:true` — trivially injectable through on-screen text, which reaches
+ * the vision planner as an ungated screenshot — approved its own irreversible
+ * steps. ecosystem.sanitizeModelAction now whitelists planner fields at the
+ * trust boundary; this is the second line, so that any future path into the
+ * executor still has to grant approval explicitly rather than inherit it.
+ */
+function stripApproval(action) {
+  const { _approved, ...rest } = action || {};
+  return rest;
+}
+
+/**
  * After a plan is ready: auto-run sensible steps, or wait for a nod, else panel.
  */
 async function maybeRunPlan(plan, { teach = true } = {}) {
   if (!plan || !plan.ok) return { ran: false, plan };
+  // HUD-03 — the mode gate lives HERE, not only at hud:act. There are seven
+  // call sites (hotkey go, approvePlan, recipes, skills, replan…) and a check
+  // at one entry point is a check one new caller away from being bypassed.
+  // This is the chokepoint every plan passes through, same argument as
+  // guardPlan living inside reviewPlan.
+  if (!allowsActions(appMode)) {
+    const label = getMode(appMode).label;
+    sendHudQuiet({
+      type: "insight",
+      text: `${label} mode doesn't act on the screen — switch to Agent mode to run steps.`,
+    });
+    return { ran: false, mode: "mode-blocked", blockedBy: appMode, plan };
+  }
   const actions = plan.actions || [];
   const steps = actions.map(
     (a, i) => `${a.type}${a.target ? ` → ${a.target}` : ""}`.slice(0, 80) || `step ${i + 1}`
   );
-  if (teach && settings.get("cursorBubble") && steps.length) {
-    showStage();
-    startCursorTracking();
-    const pt = screen.getCursorScreenPoint();
-    const display = screen.getDisplayNearestPoint(pt);
-    sendStage({
-      type: "cursor-guide",
-      label: "Plan",
-      steps,
-      x: pt.x - display.bounds.x,
-      y: pt.y - display.bounds.y,
+  // Teach steps go to HUD Live insights — not floating cursor bubbles.
+  if (teach && steps.length) {
+    sendHud({
+      type: "insight",
+      text: steps.map((s, i) => `${i + 1}. ${s}`).join(" · ").slice(0, 420),
     });
   }
 
@@ -610,9 +753,11 @@ async function maybeRunPlan(plan, { teach = true } = {}) {
 
   // Sensible-only plan → run immediately (no Enter).
   if (!plan.needsApproval && autoOnes.length) {
-    const toRun = actions.map((a) =>
-      a.safety && a.safety.disposition === "auto" ? { ...a, _approved: true } : { ...a }
-    );
+    const toRun = actions.map((a) => {
+      const copy = stripApproval(a);
+      if (a.safety && a.safety.disposition === "auto") copy._approved = true;
+      return copy;
+    });
     sendStage({ type: "subtitle", text: "Running sensible steps…", ms: 2500 });
     const results = await executeApproved(toRun);
     stopCursorTracking();
@@ -630,7 +775,11 @@ async function maybeRunPlan(plan, { teach = true } = {}) {
     if (affirmed && affirmed.ok) {
       setPresence(PresenceEvents.NOD);
       const toRun = actions.map((a) => {
-        const copy = { ...a };
+        // Strip first, then grant. Building on `{...a}` meant an `_approved`
+        // that arrived on the action was already true, so the deliberate
+        // refusal below ("irreversible steps do not ride a nod") granted
+        // nothing but also revoked nothing.
+        const copy = stripApproval(a);
         if (a.safety && a.safety.disposition === "auto") copy._approved = true;
         else if (a.safety && a.safety.disposition === "approve" && !a.safety.irreversible) {
           copy._approved = true;
@@ -702,7 +851,7 @@ function createPanel() {
     },
   });
   try {
-    panelWindow.setContentProtection(true);
+    panelWindow.setContentProtection(!captureVisible());
   } catch {
     /* ok */
   }
@@ -910,6 +1059,45 @@ async function ensureCaptureForPlan() {
   }
 }
 
+/**
+ * Resolve vault placeholders on a recipe/skills plan. If profile fields are
+ * missing, ask the human (enquire) — never type `{{vault…}}` into a form.
+ */
+function prepareVaultPlan(actions, message = "") {
+  const profile = settings.vaultProfile();
+  const missing = missingVaultKeys(actions);
+  const filled = resolveVaultTemplates(actions, profile);
+  if (missing.length) {
+    // P5-ENQUIRE — labels and examples, not bare keys: the panel has to be
+    // answerable. `fieldsToPrompts` also drops anything secret or unknown, so a
+    // poisoned plan cannot turn this into a password box.
+    const prompts = fieldsToPrompts(missing);
+    const fields = prompts.map((p) => p.key);
+    if (!prompts.length) {
+      // Every missing key was secret or unrecognised — there is nothing a human
+      // can usefully type here, and pretending otherwise would stall silently.
+      sendHud({
+        type: "answer",
+        meta: "Blocked",
+        text: "This form needs a secret. Netie does not type secrets — use OpenVault custody.",
+      });
+      return { ok: false, needsEnquire: false, fields: [], actions: filled };
+    }
+    // Hold the plan so answering the panel can resume it instead of making the
+    // user retype the whole request.
+    pendingEnquire = { actions, message: String(message || ""), at: Date.now() };
+    sendHud({
+      type: "enquire",
+      meta: "Need profile",
+      text: `Tell me your ${prompts.map((p) => p.label.toLowerCase()).join(", ")} — I will not type placeholders.`,
+      fields,
+      prompts,
+    });
+    return { ok: false, needsEnquire: true, fields, prompts, actions: filled };
+  }
+  return { ok: true, actions: filled, fields: [] };
+}
+
 function recipeCoordContext() {
   try {
     const pt = screen.getCursorScreenPoint();
@@ -917,6 +1105,33 @@ function recipeCoordContext() {
   } catch {
     return {};
   }
+}
+
+/**
+ * A-0007 / FIX-C09 — recipes and skills used to skip /dms/secure.
+ * Fail-closed: Cortex down or blocked ⇒ no act path, even for "cheap SOPs".
+ */
+async function secureBeforeAct(message, where) {
+  const gate = await eco.secure(String(message || ""), { failClosed: true });
+  if (gate.blocked) {
+    try {
+      await eco.audit("clicks.blocked", {
+        where: where || "act-fast-path",
+        reasons: gate.reasons || [],
+        degraded: Boolean(gate.degraded),
+      });
+    } catch {
+      /* audit soft-fail */
+    }
+    const why = (gate.reasons && gate.reasons[0]) || "blocked";
+    const text = gate.degraded
+      ? `Cortex security gate unavailable — refusing to act (${why}).`
+      : `Blocked by Cortex security gate (${why}).`;
+    sendHud({ type: "answer", meta: "Security gate", text });
+    sendHud({ type: "insight", text });
+    return { ok: false, blocked: true, degraded: Boolean(gate.degraded), reasons: gate.reasons || [], text };
+  }
+  return { ok: true, safeText: gate.safeText || message, degraded: Boolean(gate.degraded) };
 }
 
 async function askBuddy({ message, dataUrl }) {
@@ -968,6 +1183,14 @@ function plannerContext(instruction = "") {
   } catch {
     mem = "";
   }
+  let prefs = "";
+  try {
+    if (/fill|form|ticket|flight|passenger|profile|book/i.test(String(instruction || ""))) {
+      prefs = brain.maskedPrefs(instruction) || "";
+    }
+  } catch {
+    prefs = "";
+  }
   const recallTxt = (() => {
     try {
       return recall.summaryText({ limit: 14 });
@@ -984,6 +1207,7 @@ function plannerContext(instruction = "") {
   return [
     hot.summaryText(),
     mem ? `Personal memory:\n${mem}` : "",
+    prefs ? `Masked prefs (no raw PII):\n${prefs}` : "",
     recallTxt ? `Clicky recall (last ~60s):\n${recallTxt}` : "",
     ground || "",
     clickyState === ClickyStates.CLICKY ? "Mode: Clicky armed — prefer concrete screen actions." : "",
@@ -992,66 +1216,7 @@ function plannerContext(instruction = "") {
     .join("\n");
 }
 
-function createClickyCursor() {
-  if (clickyCursorWindow && !clickyCursorWindow.isDestroyed()) return clickyCursorWindow;
-  clickyCursorWindow = new BrowserWindow({
-    width: 56,
-    height: 56,
-    frame: false,
-    transparent: true,
-    resizable: false,
-    movable: false,
-    skipTaskbar: true,
-    alwaysOnTop: true,
-    focusable: false,
-    hasShadow: false,
-    show: false,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-    },
-  });
-  clickyCursorWindow.setIgnoreMouseEvents(true, { forward: true });
-  try {
-    clickyCursorWindow.setContentProtection(true);
-  } catch {
-    /* ok */
-  }
-  clickyCursorWindow.setAlwaysOnTop(true, "screen-saver");
-  clickyCursorWindow.loadFile(path.join(__dirname, "clicky-cursor.html"));
-  return clickyCursorWindow;
-}
-
-function placeClickyCursor() {
-  if (!clickyCursorWindow || clickyCursorWindow.isDestroyed()) return;
-  const pt = screen.getCursorScreenPoint();
-  clickyCursorWindow.setBounds({
-    x: Math.round(pt.x - 10),
-    y: Math.round(pt.y - 10),
-    width: 56,
-    height: 56,
-  });
-}
-
-function showClickyCursor() {
-  if (!features.isEnabled("clicky")) return;
-  const win = createClickyCursor();
-  placeClickyCursor();
-  if (!win.isVisible()) win.showInactive();
-  if (clickyFollowTimer) clearInterval(clickyFollowTimer);
-  clickyFollowTimer = setInterval(placeClickyCursor, 33);
-  if (clickyFollowTimer.unref) clickyFollowTimer.unref();
-}
-
-function hideClickyCursor() {
-  if (clickyFollowTimer) {
-    clearInterval(clickyFollowTimer);
-    clickyFollowTimer = null;
-  }
-  if (clickyCursorWindow && !clickyCursorWindow.isDestroyed()) {
-    clickyCursorWindow.hide();
-  }
-}
+/** Floating Clicky ring removed — identity is the real Windows pointer (pointer.js). */
 
 /**
  * Cheap 1Hz (or 2Hz lite) thumb for Recall — not the full planner capture.
@@ -1182,8 +1347,38 @@ function releaseKillSwitch() {
  * Real Windows driver via PowerShell SendInput (or dry-run when NETIE_CLICK_DRY_RUN=1).
  */
 async function executeApproved(actions) {
+  // HUD-03, for real this time. The gate was at hud:act, then at maybeRunPlan —
+  // but clicks:approvePlan calls this function directly, so both were one
+  // caller away from bypass. This is where the driver is actually reached, so
+  // this is where "General mode cannot act" has to be true.
+  if (!allowsActions(appMode)) {
+    const label = getMode(appMode).label;
+    sendHudQuiet({
+      type: "insight",
+      text: `${label} mode doesn't act on the screen — switch to Agent mode to run steps.`,
+    });
+    return (actions || []).map((action) => ({
+      action,
+      ok: false,
+      skipped: "mode-blocked",
+      message: `${label} mode does not act`,
+    }));
+  }
   abortPlan = false;
   planRunning = true;
+  const needsVeil = (actions || []).some(
+    (a) =>
+      a &&
+      (a.type === "type" || a.type === "fill" || a.type === "clipboard_paste") &&
+      String(a.value || a.text || "").length > 0
+  );
+  if (needsVeil) {
+    try {
+      setPrivacyVeil(true, { BrowserWindow, screen, path, rootDir: __dirname });
+    } catch (err) {
+      console.error("privacy veil:", err.message || err);
+    }
+  }
   grabKillSwitch();
   setPresence(PresenceEvents.START);
   sendHud({ type: "plan-running", on: true });
@@ -1194,7 +1389,23 @@ async function executeApproved(actions) {
     console.error("agent pointer:", err.message || err);
   }
   const results = [];
-  const capped = (actions || []).slice(0, MAX_AGENT_STEPS);
+  let capped = (actions || []).slice(0, MAX_AGENT_STEPS);
+  // Last line before the OS. Every path is supposed to have resolved its
+  // `{{vault.*}}` placeholders already; if one reaches here the answer is not
+  // "type it and hope" — a literal template in a form field gets submitted by
+  // the user. Drop it, and say so rather than failing quietly (R-0011).
+  if (hasRawTemplate(capped)) {
+    const blocked = capped.filter((a) => hasRawTemplate([a]));
+    capped = capped.filter((a) => !hasRawTemplate([a]));
+    sendHud({
+      type: "insight",
+      text: `Dropped ${blocked.length} step(s): unresolved vault placeholder — nothing was typed.`,
+    });
+    await eco.audit("clicks.vault.unresolved", {
+      dropped: blocked.length,
+      targets: blocked.map((a) => String(a.target || "").slice(0, 40)),
+    });
+  }
   demoDebug.setEnabled(settings.get("demoDebug") === true);
   const debugDir = demoDebug.beginRun("act");
   if (debugDir) {
@@ -1262,9 +1473,18 @@ async function executeApproved(actions) {
       }
       if (d === "custody") {
         const custody = await eco.requestCustody({
-          field: action.field,
+          field: action.field || action._custody,
           target: action.target,
         });
+        // WP-P2-CUSTODY-INJECT — when OpenVault injected the value itself, the
+        // step is DONE and the plan carries on. It used to record a failure
+        // either way, so a password field that had just been filled correctly
+        // stalled everything after it. Netie still never sees the secret.
+        if (custody.injected === true) {
+          results.push({ action, ok: true, via: "custody", message: custody.message });
+          sendHud({ type: "insight", text: `${action.target || "Secret"} filled by OpenVault custody.` });
+          continue;
+        }
         results.push({
           action,
           ok: false,
@@ -1299,7 +1519,11 @@ async function executeApproved(actions) {
       }
       const { region, dataUrl } = currentView();
       const aimSource = refreshedView ? stripAimCoords(action) : action;
-      const enriched = await ensureActionCoords(aimSource, { dataUrl, eco });
+      const enriched = await ensureActionCoords(aimSource, {
+        dataUrl,
+        eco,
+        uia: uiaContext(region),
+      });
       // Auto-swap Windows pointer face per action (click vs type/agent).
       try {
         const face = modeForAction(enriched.type);
@@ -1311,7 +1535,14 @@ async function executeApproved(actions) {
         type: "pointer",
         mode: agentPointer.mode,
         action: enriched.type,
+        aimedVia: enriched._targetedVia || null,
       });
+      if (enriched._targetedVia === "vision") {
+        sendHudQuiet({
+          type: "insight",
+          text: `Aiming “${enriched.target || enriched.type}” by vision — the OS could not name that control.`,
+        });
+      }
       sendStage({
         type: "subtitle",
         text: `${enriched.type}${enriched.target ? ` · ${enriched.target}` : ""}`,
@@ -1320,15 +1551,16 @@ async function executeApproved(actions) {
       });
       sendStage({ type: "mood", mood: "crazy" });
       sendStage({ type: "cursor-move", stepIndex: results.length });
-      // SHA-256 PNG verify is opt-in (settings.verifySteps). Off by default:
-      // caret/clock flips count as "verified", and it costs two captures/step.
+      // WP-P2-VERIFY-DEFAULT — SHA-256 PNG verify is noisy and costs two
+      // captures per step, so it stays off for routine work. It is now ON by
+      // default for the steps a silent no-op actually hurts: irreversible
+      // controls and launches. `settings.verifySteps` still forces everything.
       const verifyOn = settings.get("verifySteps") === true;
-      const needsVerify =
-        verifyOn &&
-        ["click", "doubleclick", "rightclick", "type", "fill", "drag", "clipboard_paste"].includes(
-          String(enriched.type || "").toLowerCase()
-        ) &&
-        Boolean(region.width);
+      const verdict = shouldVerifyStep(enriched, {
+        verifyAll: verifyOn,
+        hasRegion: Boolean(region.width),
+      });
+      const needsVerify = verdict.verify;
       let beforeFp = null;
       if (needsVerify && !driver.dryRun) {
         try {
@@ -1389,7 +1621,8 @@ async function executeApproved(actions) {
       } else if (driver.dryRun) {
         outcome.verified = "dry-run";
       } else {
-        outcome.verified = verifyOn ? outcome.verified : "skipped";
+        outcome.verified = needsVerify ? outcome.verified : verdictWhenSkipped(verdict.reason);
+        outcome.verifyReason = verdict.reason;
       }
 
       demoDebug.recordStep(
@@ -1409,7 +1642,12 @@ async function executeApproved(actions) {
         ok: Boolean(outcome.ok),
         dryRun: driver.dryRun,
         targeted: Boolean(enriched._targeted),
+        // "The OS told us where the control is" and "a model guessed from a
+        // screenshot" are not the same claim, and the ledger is where that
+        // difference has to survive (R-0011).
+        targetedVia: enriched._targetedVia || null,
         verified: outcome.verified,
+        verifyReason: outcome.verifyReason || null,
       });
       if (features.isEnabled("fleetTelemetry")) {
         try {
@@ -1445,6 +1683,11 @@ async function executeApproved(actions) {
   } finally {
     planRunning = false;
     releaseKillSwitch();
+    try {
+      setPrivacyVeil(false, { BrowserWindow, screen, path, rootDir: __dirname });
+    } catch {
+      /* ok */
+    }
     demoDebug.endRun({
       aborted: Boolean(abortPlan),
       steps: results.length,
@@ -1731,7 +1974,8 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
   if (!dataUrl) dataUrl = await ensureCaptureForPlan();
   const intent = classifyIntent(message);
 
-  // Idiot-proof fast path: obvious desktop recipes skip the LLM.
+  // Cheap SOPs still need the security gate (A-0007). Demo-without-LLM is not
+  // permission to skip Cortex when the path still clicks the screen.
   if (intent === "act") {
     const recipe = expandRecipe(matchRecipe(message), recipeCoordContext());
     if (recipe && recipe.actions && recipe.actions.length) {
@@ -1740,7 +1984,16 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
         setPresence(PresenceEvents.THINK);
         pushTurn("user", message);
         sendStage({ type: "bubble", role: "user", text: message });
-        const reviewed = reviewPlan(recipe.actions, settings.safetyPolicy());
+        const gate = await secureBeforeAct(message, "recipe");
+        if (!gate.ok) {
+          setPresence(PresenceEvents.FAIL);
+          return { ok: false, mode: "act", intent, blocked: true, reason: gate.text, actions: [], recipe: recipe.id };
+        }
+        const vault = prepareVaultPlan(recipe.actions, message);
+        if (!vault.ok) {
+          return { ok: false, mode: "act", intent, needsEnquire: true, fields: vault.fields, recipe: recipe.id, actions: [] };
+        }
+        const reviewed = reviewPlan(vault.actions, settings.safetyPolicy());
         const plan = {
           ok: true,
           blocked: false,
@@ -1905,7 +2158,7 @@ ipcMain.handle("clicks:approvePlan", async (_e, payload) => {
   const approveAllSafe = Boolean(payload && payload.approveAllSafe);
   const actions = (pendingPlan && pendingPlan.actions) || [];
   const toRun = actions.map((a, i) => {
-    const copy = { ...a };
+    const copy = stripApproval(a);
     if (a.safety && a.safety.disposition === "auto") {
       copy._approved = true;
     } else if (a.safety && a.safety.disposition === "approve") {
@@ -2118,18 +2371,110 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
   const dataUrl = (lastCapture && lastCapture.dataUrl) || null;
   showStage();
   const r = await askBuddy({ message, dataUrl });
+  // P3-POINT-OVERLAY — "click here" is worth more pointed at than described.
+  // The tokens are stripped from the prose either way, so a model that emits
+  // them into a chat that cannot draw does not leak `[POINT:…]` at the user.
+  const pointed = r.ok ? parsePoints(r.text) : { text: r.text, points: [] };
+  // A provider chain that exhausts itself says the same thing six ways and never
+  // names the file to edit. Keep the raw text for the console; show the fix.
+  const failure = r.ok ? null : humanizeError(r.text || r.error);
+  if (failure) console.error("hud:ask failed:", failure.raw);
   sendHud({
     type: "answer",
-    meta: r.ok ? "AI response" : "Error",
-    text: r.ok ? r.text : r.text || r.error || "Failed",
+    meta: r.ok ? "AI response" : shortError(r.text || r.error),
+    text: r.ok ? pointed.text : failure.text,
   });
+  // toOverlayEvent carries the TTL, so the overlay never owns a policy about
+  // how long a hint lives — and the acceptance test asserts a path that ships.
+  if (pointed.points.length) sendHud(toOverlayEvent(r.text));
   return r.ok
-    ? { ok: true, reply: r.text, degraded: r.degraded }
-    : { ok: false, error: r.text || "Ask failed", degraded: r.degraded, blocked: r.blocked };
+    ? { ok: true, reply: pointed.text, points: pointed.points, degraded: r.degraded }
+    : { ok: false, error: failure.text, hint: failure.hint, kind: failure.kind, degraded: r.degraded, blocked: r.blocked };
+});
+
+/**
+ * P4-BG-AGENTS — long jobs run behind the LIVE bar, with status in the HUD.
+ * Concurrency 1: these can drive the screen, and two agents sharing one mouse
+ * is a fight, not parallelism.
+ */
+const bgJobs = createJobQueue({
+  concurrency: 1,
+  onChange: (job, sum) => {
+    sendHudQuiet({ type: "bg", job, summary: sum, text: describeQueue(sum) });
+  },
+});
+
+ipcMain.handle("hud:bgList", async () => ({
+  ok: true,
+  jobs: bgJobs.list(),
+  summary: bgJobs.summary(),
+  text: describeQueue(bgJobs.summary()),
+}));
+
+ipcMain.handle("hud:bgCancel", async (_e, payload) => bgJobs.cancel(payload && payload.id));
+
+/**
+ * WP-P2-MEMORY-IMPORT — the first real background job. A ChatGPT export can be
+ * hundreds of megabytes; parsing it on the Ask path would freeze the HUD.
+ */
+ipcMain.handle("hud:importMemory", async (_e, payload) => {
+  const source = String((payload && payload.source) || "").toLowerCase();
+  const importers = {
+    chatgpt: require("./netie/import/chatgpt"),
+    claude: require("./netie/import/claude"),
+    cursor: require("./netie/import/cursor"),
+  };
+  if (!importers[source]) return { ok: false, error: `unknown source ${source || "(none)"}` };
+
+  let file = (payload && payload.file) || null;
+  if (!file) {
+    const picked = await dialog.showOpenDialog({
+      title: `Import ${source} export`,
+      properties: ["openFile"],
+      filters: [{ name: "Export", extensions: ["json", "md", "txt"] }],
+    });
+    if (picked.canceled || !picked.filePaths.length) return { ok: false, error: "cancelled" };
+    file = picked.filePaths[0];
+  }
+
+  const queued = bgJobs.add({
+    id: `import-${source}-${path.basename(file)}`,
+    title: `Import ${source}`,
+    run: async (ctx) => {
+      const raw = fs.readFileSync(file, "utf8");
+      if (ctx.cancelled) return null;
+      const result = importers[source].importExport(raw);
+      const { summarize } = require("./netie/import/normalize");
+      const sum = summarize(result);
+      sendHud({
+        type: "insight",
+        text: sum.error
+          ? `Import ${source} failed: ${sum.error}`
+          : `Imported ${sum.conversations} conversation(s), ${sum.messages} message(s)${sum.skipped ? `, ${sum.skipped} skipped` : ""}.`,
+      });
+      await eco.audit("clicks.memory.import", sum);
+      return sum;
+    },
+  });
+  if (!queued.ok) return queued;
+  void bgJobs.drain();
+  return { ok: true, id: queued.id, file };
 });
 
 ipcMain.handle("hud:act", async (_e, payload) => {
   const message = (payload && payload.message) || "";
+  // HUD-03 — General/Transcribe/Meeting are listening modes. The renderer also
+  // hides the button, but the main process is where "cannot act" has to be true:
+  // a hotkey, a recipe or a stale renderer must not get past it either.
+  if (!allowsActions(appMode)) {
+    const label = getMode(appMode).label;
+    sendHud({
+      type: "answer",
+      meta: `${label} mode`,
+      text: `${label} mode doesn't act on the screen. Switch to Agent mode to run steps.`,
+    });
+    return { ok: false, reason: `mode:${appMode} does not act`, mode: appMode };
+  }
   let dataUrl = (lastCapture && lastCapture.dataUrl) || null;
   if (!dataUrl) dataUrl = await ensureCaptureForPlan();
   showStage();
@@ -2148,10 +2493,18 @@ ipcMain.handle("hud:act", async (_e, payload) => {
     return { ok: true, needsChoice: true, fork };
   }
 
-  // Cheap SOPs skip OpenVault entirely (demo works even when chat is 503).
+  // Cheap SOPs skip OpenVault LLM — not the Cortex security gate (A-0007).
   const recipe = expandRecipe(matchRecipe(message), recipeCoordContext());
   if (recipe && recipe.actions && recipe.actions.length) {
-    const reviewed = reviewPlan(recipe.actions, settings.safetyPolicy());
+    const gate = await secureBeforeAct(message, "recipe");
+    if (!gate.ok) {
+      return { ok: false, blocked: true, reason: gate.text, recipe: recipe.id };
+    }
+    const vault = prepareVaultPlan(recipe.actions, message);
+    if (!vault.ok) {
+      return { ok: false, needsEnquire: true, fields: vault.fields, recipe: recipe.id };
+    }
+    const reviewed = reviewPlan(vault.actions, settings.safetyPolicy());
     const plan = {
       ok: true,
       blocked: false,
@@ -2172,14 +2525,62 @@ ipcMain.handle("hud:act", async (_e, payload) => {
     return { ok: true, plan, run, recipe: recipe.id };
   }
 
+  // WP-P1-SKILLS-EXEC — a catalogued skill used to produce a toast and nothing
+  // else, so a known SOP and an invented click sequence took the same path.
+  // Now a hit either becomes the plan, or becomes a preamble the planner must
+  // prefer. Soft-fail throughout: discovery being down never blocks Act.
+  let preamble = "";
   try {
-    const skills = await eco.findSkills(message);
-    if (skills && skills.ok && skills.hits && skills.hits[0]) {
-      const hit = skills.hits[0];
-      sendHud({
-        type: "insight",
-        text: `Skill hit: ${hit.name || hit.id || hit.title || "catalog"} — prefer over inventing clicks`,
+    const found = await eco.findSkills(message);
+    const hits = (found && found.ok && found.hits) || [];
+    if (hits.length) {
+      const expanded = expandSkillsToActions(hits, {
+        instruction: message,
+        profile: settings.vaultProfile(),
+        recipes: RECIPES,
       });
+      sendHud({ type: "insight", text: describeExpansion(hits, expanded) });
+      if (expanded.length) {
+        const gate = await secureBeforeAct(message, "skills");
+        if (!gate.ok) {
+          return { ok: false, blocked: true, reason: gate.text, skill: hits[0].id || hits[0].name };
+        }
+        const reviewed = reviewPlan(
+          resolveVaultTemplates(expanded, settings.vaultProfile()),
+          settings.safetyPolicy()
+        );
+        const plan = {
+          ok: true,
+          blocked: false,
+          skill: hits[0].id || hits[0].name || "catalog",
+          reason: `skill:${hits[0].id || hits[0].name || "catalog"}`,
+          actions: reviewed.actions,
+          needsApproval: reviewed.needsApproval,
+          custody: reviewed.custody,
+          autoOnly: reviewed.autoOnly,
+        };
+        pendingPlan = plan;
+        await eco.audit("clicks.skill.expand", {
+          skill: plan.skill,
+          count: plan.actions.length,
+          needsApproval: plan.needsApproval,
+        });
+        sendHud({
+          type: "answer",
+          meta: plan.needsApproval ? "Waiting for nod / approve" : `Skill · ${plan.skill}`,
+          text: `${plan.actions.length} step(s) · ${plan.skill}`,
+        });
+        const run = await maybeRunPlan(plan);
+        return {
+          ok: true,
+          actions: plan.actions,
+          needsApproval: plan.needsApproval,
+          ran: run.ran,
+          runMode: run.mode,
+          skill: plan.skill,
+        };
+      }
+      preamble = skillPreamble(hits);
     }
   } catch (err) {
     console.error("find-skills:", err.message || err);
@@ -2188,8 +2589,9 @@ ipcMain.handle("hud:act", async (_e, payload) => {
   const plan = await eco.planActions({
     instruction: message,
     dataUrl,
-    hotContext: plannerContext(message),
+    hotContext: [preamble, plannerContext(message)].filter(Boolean).join("\n\n"),
     policy: settings.safetyPolicy(),
+    profile: settings.vaultProfile(),
   });
   pendingPlan = plan;
   if (plan.ok) {
@@ -2203,19 +2605,95 @@ ipcMain.handle("hud:act", async (_e, payload) => {
     } catch (err) {
       console.error("osr classify:", err.message || err);
     }
+    // A fallback from the governed planner to OpenVault is not a detail — say
+    // which brain planned this (R-0011).
+    if (plan.plannerFallback) {
+      sendHud({
+        type: "insight",
+        text: `Cortex computer-use unavailable (${plan.plannerFallback}) — planned by OpenVault instead.`,
+      });
+    }
+    if (plan.model || plan.planner) {
+      const via = plan.plannerFallback
+        ? `fallback · ${plan.model || "openvault"}`
+        : `${plan.planner || "planner"} · ${plan.model || "default"}`;
+      sendHud({ type: "insight", text: `Planned via ${via}` });
+    }
     sendHud({
       type: "answer",
       meta: plan.needsApproval ? "Waiting for nod / approve" : "Auto-running",
-      text: `${plan.actions.length} step(s)${plan.osr ? ` · ${plan.osr.band}` : ""}`,
+      text: `${plan.actions.length} step(s)${plan.osr ? ` · ${plan.osr.band}` : ""}${plan.model ? ` · ${plan.model}` : ""}`,
     });
-    const run = await maybeRunPlan(plan);
+
+    let active = plan;
+    let run = await maybeRunPlan(active);
+    // WP-P3-REPLAN-LOOP — a step failing used to end the task. Observe what
+    // broke, re-read the screen, and plan only the remainder. Hard-bounded, and
+    // shouldReplan refuses outright after an abort or a gate block.
+    let observation = observeResults(run.results);
+    let prior = null;
+    let replanN = 0;
+    while (
+      run.ran &&
+      shouldReplan({
+        failCount: observation.failCount,
+        replanN,
+        maxReplans: MAX_REPLANS,
+        // `abortPlan` is the authoritative kill switch; `observation.aborted`
+        // only sees it if the abort happened to land mid-list. A press that
+        // stopped the run after the last step leaves no "aborted" result at
+        // all, and the loop would restart the agent after the human said stop.
+        aborted: abortPlan || observation.aborted,
+      })
+    ) {
+      replanN += 1;
+      prior = nextPrior(prior, observation);
+      sendHud({ type: "insight", text: describeReplan(observation, replanN, MAX_REPLANS) });
+      await eco.audit("clicks.cu.replan", {
+        n: replanN,
+        failed: observation.failCount,
+        completed: observation.completed,
+      });
+      const fresh = await ensureCaptureForPlan();
+      const next = await eco.planActions({
+        instruction: replanInstruction(message, observation),
+        dataUrl: fresh || dataUrl,
+        hotContext: [preamble, plannerContext(message)].filter(Boolean).join("\n\n"),
+        policy: settings.safetyPolicy(),
+        profile: settings.vaultProfile(),
+        prior,
+      });
+      if (!next.ok || !next.actions.length) {
+        // Say WHY. "Replan produced nothing" reads as "the model had no ideas"
+        // when the actual answer is usually "Cortex went down" or "the gate
+        // refused" — two things the user can act on (R-0011).
+        const why = next.blocked
+          ? next.reason || "the security gate refused"
+          : next.reason || "no further steps";
+        sendHud({ type: "insight", text: `Replan stopped — ${why}` });
+        break;
+      }
+      if (next.plannerFallback) {
+        sendHud({
+          type: "insight",
+          text: `Replan ${replanN} planned by OpenVault — Cortex computer-use unavailable (${next.plannerFallback}).`,
+        });
+      }
+      active = next;
+      pendingPlan = next;
+      run = await maybeRunPlan(next);
+      observation = observeResults(run.results);
+    }
+
     return {
       ok: true,
-      actions: plan.actions,
-      needsApproval: plan.needsApproval,
+      actions: active.actions,
+      needsApproval: active.needsApproval,
       ran: run.ran,
       runMode: run.mode,
       osr: plan.osr || null,
+      planner: active.planner || plan.planner || null,
+      replans: replanN,
     };
   }
   sendHud({ type: "answer", meta: "Blocked", text: plan.reason || "Blocked" });
@@ -2272,6 +2750,16 @@ ipcMain.handle("hud:clickyStatus", async () => {
   };
 });
 
+/**
+ * The HUD's own Show/Hide collapses its chrome but leaves the window up for
+ * click-through, so it cannot hide the stage — a different window — by itself.
+ */
+ipcMain.handle("hud:hideStage", async () => {
+  hideStage();
+  if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.hide();
+  return { ok: true };
+});
+
 ipcMain.handle("hud:hide", async () => {
   if (clickyState === ClickyStates.CLICKY) {
     setClicky(ClickyEvents.EXIT);
@@ -2319,10 +2807,12 @@ ipcMain.handle("hud:toggleSystemAudio", async (_e, payload) => {
 
 /** Renderer hands us 20 ms mono frames; gating + transcription live here. */
 ipcMain.on("hud:audioFrame", (_e, payload) => {
-  if (!payload || hudPaused) return;
+  if (!payload) return;
   const source = payload.source === "system" ? "system" : "mic";
-  if (source === "mic" && !listenMic) return;
-  if (source === "system" && !listenSystem) return;
+  // Arm-to-listen. The gate is a module so a test can hold the privacy claim
+  // rather than trusting a comment — and so the next audio source has one place
+  // to pass through. Nothing is transcribed until a human armed it.
+  if (!shouldAcceptFrame({ source, listenMic, listenSystem, paused: hudPaused }).accept) return;
   const samples = payload.samples instanceof Float32Array
     ? payload.samples
     : new Float32Array(payload.samples || []);
@@ -2341,6 +2831,61 @@ ipcMain.handle("hud:captureFailed", async (_e, payload) => {
   else listenSystem = false;
   return { ok: true };
 });
+
+/**
+ * Act on a spoken capture command.
+ *
+ * "stop" closes the markdown transcript and tells the user where it landed —
+ * a recording that ends with no file path is a recording you have to go hunting
+ * for. "continue" re-arms whatever was armed before, so it resumes the session
+ * rather than starting a new file.
+ */
+function applyCaptureCommand(command, heard = "") {
+  if (command === "pause") {
+    hudPaused = true;
+    sendHud({ type: "capture", state: "paused" });
+    sendHud({ type: "answer", meta: "Paused", text: `Paused. Say "continue" to carry on.` });
+    return { ok: true, state: "paused" };
+  }
+
+  if (command === "continue") {
+    hudPaused = false;
+    // Nothing was armed — "continue" must not become a way to switch the mic on
+    // by talking near the machine.
+    if (!listenMic && !listenSystem) {
+      sendHud({ type: "answer", meta: "Not recording", text: "Nothing was armed — press Record first." });
+      return { ok: false, state: "disarmed" };
+    }
+    sendHud({ type: "capture", state: "recording" });
+    sendHud({ type: "auto-listen", mic: listenMic, system: listenSystem, paused: false });
+    sendHud({ type: "answer", meta: "Recording", text: "Continuing." });
+    return { ok: true, state: "recording" };
+  }
+
+  if (command === "stop") {
+    listenMic = false;
+    listenSystem = false;
+    hudPaused = false;
+    flushSource("mic");
+    flushSource("system");
+    const saved = notes.stop();
+    sendHud({ type: "capture", state: "stopped", notesPath: saved && saved.path });
+    if (saved && saved.path) {
+      sendHud({
+        type: "answer",
+        meta: `Saved · ${saved.lines} line(s)`,
+        text: `Transcript saved to ${saved.path}`,
+      });
+      sendHud({ type: "insight", text: `Transcript: ${saved.path}` });
+      void eco.audit("clicks.transcript.saved", { lines: saved.lines, heard: heard.slice(0, 40) });
+    } else {
+      sendHud({ type: "answer", meta: "Stopped", text: "Recording stopped — nothing to save." });
+    }
+    return { ok: true, state: "stopped", path: saved && saved.path };
+  }
+
+  return { ok: false, state: "unknown" };
+}
 
 function segmenterFor(source) {
   if (!segmenters.has(source)) segmenters.set(source, new Segmenter());
@@ -2366,6 +2911,21 @@ function handleUtterance(source, utt) {
         if (nodGate.pending && isAffirmation(res.text)) {
           nodGate.signal(res.text);
         }
+        // "continue" / "pause" / "stop" — spoken, whole-utterance only.
+        const capCmd = detectCaptureCommand(res.text);
+        if (capCmd) {
+          applyCaptureCommand(capCmd, res.text);
+          sendHud({
+            type: "transcript",
+            text: res.text,
+            source,
+            engine: res.engine,
+            mode: appMode,
+            modeSwitchOnly: true, // a command, not something to send to the model
+          });
+          return;
+        }
+
         const switched = detectModeSwitch(res.text);
         if (switched) {
           applyAppMode(switched, { reason: res.text.slice(0, 80) });
@@ -2384,7 +2944,10 @@ function handleUtterance(source, utt) {
             text: `Switched to ${getMode(appMode).label}. (Heard: “${res.text.slice(0, 80)}”)`,
           });
         } else {
-          if (getMode(appMode).autoNotes) {
+          // System audio is always written to the markdown transcript, whatever
+          // the mode: if you armed loopback you are recording something you want
+          // to keep. Mic still follows the mode's autoNotes setting.
+          if (getMode(appMode).autoNotes || source === "system") {
             notes.append({
               text: res.text,
               source,
@@ -2421,6 +2984,60 @@ function handleUtterance(source, utt) {
     });
 }
 
+/**
+ * P5-ENQUIRE — the human answered the panel.
+ *
+ * Writes only what `validateAnswers` accepted (known profile fields, secrets
+ * refused, keystroke-unsafe characters stripped), then resumes the plan that was
+ * parked waiting for them. The resume goes back through `secureBeforeAct` and
+ * `maybeRunPlan`: answering a form is not an approval, and a resumed plan is not
+ * a plan that already passed the gate.
+ */
+ipcMain.handle("hud:enquireSave", async (_e, payload) => {
+  const { profile, accepted, rejected } = validateAnswers(payload && payload.answers);
+  if (accepted.length) {
+    settings.set({ profile: { ...(settings.get("profile") || {}), ...profile } });
+  }
+  // Keys only — the ledger must never carry the values the user just typed.
+  await eco.audit("clicks.enquire.saved", {
+    accepted,
+    rejected: rejected.map((r) => r.key),
+  });
+  sendHud({ type: "answer", meta: "Profile", text: describeResult({ accepted, rejected }) });
+
+  const parked = pendingEnquire;
+  pendingEnquire = null;
+  if (!parked || !accepted.length) {
+    return { ok: true, saved: accepted, rejected, resumed: false };
+  }
+
+  const gate = await secureBeforeAct(parked.message, "enquire-resume");
+  if (!gate.ok) return { ok: false, saved: accepted, rejected, resumed: false, blocked: true };
+
+  const vault = prepareVaultPlan(parked.actions, parked.message);
+  if (!vault.ok) {
+    return { ok: true, saved: accepted, rejected, resumed: false, stillMissing: vault.fields };
+  }
+  const reviewed = reviewPlan(vault.actions, settings.safetyPolicy());
+  const plan = {
+    ok: true,
+    blocked: false,
+    actions: reviewed.actions,
+    needsApproval: reviewed.needsApproval,
+    custody: reviewed.custody,
+    autoOnly: reviewed.autoOnly,
+  };
+  pendingPlan = plan;
+  const run = await maybeRunPlan(plan);
+  return { ok: true, saved: accepted, rejected, resumed: true, ran: run.ran, runMode: run.mode };
+});
+
+/** Drop the parked plan — answering nothing must not leave it armed forever. */
+ipcMain.handle("hud:enquireCancel", async () => {
+  pendingEnquire = null;
+  return { ok: true };
+});
+
 ipcMain.handle("hud:setPaused", async (_e, payload) => {
   hudPaused = Boolean(payload && payload.paused);
   return { ok: true, paused: hudPaused };
@@ -2442,6 +3059,12 @@ ipcMain.handle("hud:setSettings", async (_e, payload) => {
   const next = settings.set((payload && payload.settings) || payload || {});
   agentPointer.enabled = next.cursorBubble !== false;
   demoDebug.setEnabled(next.demoDebug === true);
+  // Content protection keeps Netie out of screen shares AND out of screenshots,
+  // which also makes it invisible to any tool driving the app. Toggling it is a
+  // testing affordance, applied live so a demo does not need a restart.
+  applyContentProtection(captureVisible());
+  if (next.followCursor === false) stopCursorTracking();
+  else startCursorTracking();
   if (!agentPointer.enabled) {
     try {
       await agentPointer.restore();
@@ -2826,7 +3449,7 @@ app.whenReady().then(() => {
   setupMediaCapture();
   registerHotkey();
   console.log(
-    "Netie Pointer ready - tray-first. Ctrl+` toggles session. Hover top-left peek when morph-hidden."
+    "Netie Pointer ready - tray-first. Ctrl+` toggles session. Ctrl+Shift+Space arms Clicky (real OS pointer)."
   );
 });
 
@@ -2834,7 +3457,7 @@ app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   stopTicks();
   stopRecallDaemon();
-  hideClickyCursor();
+  agentPointer.restore().catch(() => {});
   try {
     recall.stopFlush();
   } catch {

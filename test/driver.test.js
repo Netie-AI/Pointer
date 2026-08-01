@@ -132,9 +132,14 @@ test("type with coords clicks the field first (focus), then types", async () => 
   assert.strictEqual(out.ok, true);
   assert.strictEqual(out.focused, true);
   assert.strictEqual(out.typed, 3);
-  assert.strictEqual(state.ops[0].op, "click");
-  assert.strictEqual(state.ops[0].x, 100);
-  assert.strictEqual(state.ops[1].op, "type");
+  // Animated travel queries cursor pos, eases with move, then clicks the field.
+  const click = state.ops.find((o) => o.op === "click");
+  const type = state.ops.find((o) => o.op === "type");
+  assert.ok(state.ops.some((o) => o.op === "pos" || o.op === "move"), "travels before click");
+  assert.ok(click, "clicks field to focus");
+  assert.strictEqual(click.x, 100);
+  assert.ok(type, "types after focus");
+  assert.ok(state.ops.indexOf(click) < state.ops.indexOf(type), "click before type");
   d.dispose();
 });
 
@@ -171,6 +176,50 @@ test("press rejects unsupported keys without touching the worker", async () => {
   await assert.rejects(() => d.press("hyper+q"), /Unsupported key/);
   assert.strictEqual(state.spawned, 0);
   assert.strictEqual(state.ops.length, 0);
+});
+
+test("drag / clipboard / open actions ride the worker", async () => {
+  const state = {};
+  const d = new InputDriver({
+    spawnImpl: fakeSpawn((m) => (m.op === "clip_get" ? { text: "hello" } : null), state),
+    toPhysical: (pt) => ({ x: pt.x * 2, y: pt.y * 2 }),
+  });
+
+  const drag = await d.perform(
+    { type: "drag", xPct: 10, yPct: 20, endXPct: 80, endYPct: 60 },
+    { region: { x: 0, y: 0, width: 100, height: 100 } }
+  );
+  assert.strictEqual(drag.ok, true);
+  assert.strictEqual(state.ops[0].op, "drag");
+  assert.strictEqual(state.ops[0].x1, 20);
+  assert.strictEqual(state.ops[0].y1, 40);
+
+  const paste = await d.perform({ type: "clipboard_paste", value: "hi" });
+  assert.strictEqual(paste.ok, true);
+  assert.ok(state.ops.some((o) => o.op === "clip_set"));
+  assert.ok(state.ops.some((o) => o.op === "combo"));
+
+  const copy = await d.perform({ type: "copy" });
+  assert.strictEqual(copy.ok, true);
+
+  const opened = await d.perform({ type: "open", url: "https://example.com" });
+  assert.strictEqual(opened.ok, true);
+  assert.strictEqual(state.ops.filter((o) => o.op === "open").length, 1);
+
+  const got = await d.perform({ type: "clipboard_get" });
+  assert.strictEqual(got.text, "hello");
+
+  const badOpen = await d.perform({ type: "open", url: "https://x.com|calc" });
+  assert.strictEqual(badOpen.ok, false);
+  assert.match(String(badOpen.error || ""), /rejected/);
+  d.dispose();
+});
+
+test("dry-run supports drag/open/clipboard without spawning", async () => {
+  const d = new InputDriver({ dryRun: true });
+  assert.strictEqual((await d.perform({ type: "drag", x: 1, y: 2, endX: 3, endY: 4 })).ok, true);
+  assert.strictEqual((await d.perform({ type: "clipboard_paste", value: "x" })).ok, true);
+  assert.strictEqual((await d.perform({ type: "open", path: "C:\\Windows\\notepad.exe" })).ok, true);
 });
 
 (async () => {

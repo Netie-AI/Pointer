@@ -1,6 +1,6 @@
 :root {
   --font: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-  --glass-blur: blur(8px) saturate(120%);
+  --glass-blur: blur(22px) saturate(160%);
 }
 * { box-sizing: border-box; }
 html, body {
@@ -62,19 +62,20 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 .chrome { pointer-events: auto; }
 
-/* Liquid glass pane */
+/* Liquid glass pane — HeyClicky-class frosted chrome */
 .glass, .top-bar, .menu, .peek-drop, .clicky-orb, .nod-toast {
   background: var(--panel);
   background-image:
-    linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.03) 38%, rgba(0,0,0,0.12)),
+    linear-gradient(145deg, rgba(255,255,255,0.22), rgba(255,255,255,0.04) 40%, rgba(0,0,0,0.14)),
     var(--panel);
   border: 1px solid var(--line);
   box-shadow:
-    0 18px 50px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+    0 22px 56px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.14);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
+  transition: opacity 180ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms ease;
 }
 
 .hud.morph-hidden .top-bar,
@@ -99,9 +100,11 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-solid), transparent 70%);
 }
 
-/* Cluely top pill */
+/* Cluely top pill — centred: the record bar is the thing you look for, and it
+   used to sit in the top-right corner where a maximised window's own controls
+   already live. */
 .top-bar {
-  position: absolute; top: 14px; right: 18px; left: auto; transform: none;
+  position: absolute; top: 14px; left: 50%; right: auto; transform: translateX(-50%);
   z-index: 30; display: flex; align-items: center; gap: 10px;
   max-width: min(980px, 94vw); padding: 6px 8px; border-radius: 999px;
 }
@@ -165,6 +168,79 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 }
 .mode-pill button.active { background: rgba(255,255,255,0.16); color: var(--text); }
 .hud.theme-light .mode-pill button.active { background: rgba(0,0,0,0.08); }
+/* General is a companion, not an agent — no act affordance at all. */
+.hud.mode-general .act-button { display: none; }
+
+/* The Shot button had no rule at all, so it was the one non-positioned child of
+   .hud — a UA-default button parked at (0,0), eating clicks and outliving Hide. */
+.shot-btn {
+  position: absolute; right: 18px; bottom: 22px; z-index: 24;
+  padding: 7px 12px; border: 1px solid var(--line-soft); border-radius: 999px;
+  background: var(--surface); color: var(--muted); font-size: 11px; font-weight: 650;
+}
+.shot-btn:hover { background: var(--surface-hover); color: var(--text); }
+.hud.morph-hidden .shot-btn { display: none; }
+
+/* P5-ENQUIRE — the missing-profile form. Centred, because it is a question the
+   user has to answer before anything else continues. */
+.enquire {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 34; width: min(420px, 82vw); padding: 16px; border-radius: 20px;
+}
+.enquire[hidden] { display: none; }
+.enquire-why { margin: 6px 2px 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.enquire-field { display: block; margin-bottom: 10px; }
+.enquire-field span {
+  display: block; margin-bottom: 4px;
+  color: var(--muted); font-size: 10px; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.enquire-field input {
+  width: 100%; padding: 8px 10px; border-radius: 12px;
+  border: 1px solid var(--line-soft); background: var(--field); color: var(--text);
+}
+.enquire-field input:focus-visible {
+  outline: 2px solid var(--accent-solid); outline-offset: 1px;
+}
+.enquire-field input::placeholder { color: var(--muted); }
+.enquire-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.enquire-actions .text-btn { margin-left: 0; }
+
+/* P3-POINT-OVERLAY — a thin teach layer. pointer-events stays none so the
+   crosshair can never intercept the click it is pointing at. */
+.point-layer { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+.point-mark {
+  position: absolute; transform: translate(-50%, -50%);
+  display: grid; place-items: center; pointer-events: none;
+  animation: point-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.point-mark::before, .point-mark::after {
+  content: ""; position: absolute; background: var(--accent); opacity: 0.85;
+}
+.point-mark::before { width: 26px; height: 1.5px; }
+.point-mark::after { width: 1.5px; height: 26px; }
+.point-ring {
+  width: 34px; height: 34px; border-radius: 999px;
+  border: 1.5px solid color-mix(in srgb, var(--accent), transparent 40%);
+}
+.point-label {
+  position: absolute; top: 24px; left: 50%; transform: translateX(-50%);
+  padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+  background: var(--surface); border: 1px solid var(--line-soft);
+  color: var(--text); font-size: 11px; font-weight: 650;
+}
+@keyframes point-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); } }
+.point-mark.fading { opacity: 0; transition: opacity 420ms ease; }
+
+/* P4-BG-AGENTS — background work is a status line, not a stage orb. */
+.bg-status {
+  position: absolute; left: 22px; bottom: 22px; z-index: 26;
+  display: none; align-items: center; gap: 8px;
+  padding: 7px 12px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--line-soft);
+  color: var(--muted); font-size: 11px; font-weight: 650;
+}
+.bg-status.show { display: inline-flex; }
 .hud.agent-busy .mode-pill { opacity: 0.55; }
 .hud.agent-busy .mode-pill button { pointer-events: none; }
 
@@ -209,16 +285,55 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .retrieve-actions button:hover, .text-btn:hover { background: var(--surface-hover); }
 .text-btn { padding: 4px 8px; border-radius: 999px; font-size: 10px; color: var(--muted); margin-left: auto; }
 
-/* Liquid subtitle under top bar */
+/* Liquid subtitle under top bar — centred with the record bar, and draggable
+   (translate carries the drag offset, so the -50% centring has to live in it). */
 .subtitle-live {
-  position: absolute; top: 66px; right: 18px; left: auto;
+  position: absolute; top: 66px; left: 50%; right: auto; transform: translateX(-50%);
   z-index: 22; display: flex; align-items: center; gap: 10px;
-  width: min(420px, 46vw); min-height: 38px; padding: 8px 12px; border-radius: 16px;
+  width: min(560px, 62vw); min-height: 38px; padding: 8px 12px; border-radius: 16px;
 }
+.subtitle-grip {
+  width: 12px; height: 20px; flex: none; cursor: grab; border-radius: 4px;
+  background-image: radial-gradient(currentColor 1px, transparent 1px);
+  background-size: 4px 5px; color: var(--muted); opacity: 0.5;
+}
+.subtitle-grip:active { cursor: grabbing; }
 .subtitle-label, .section-label {
   color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
 }
 #subtitle-text { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--muted); }
+
+/* Rolling transcript — up to five lines. The bar grows downward and scrolls, so
+   a fast talker cannot push it past the bottom of the screen. */
+.subtitle-live.multiline { align-items: flex-start; }
+.subtitle-live.multiline #subtitle-text {
+  white-space: normal; text-overflow: clip;
+  max-height: 8.4em; overflow-y: auto; scrollbar-width: thin;
+}
+.live-line {
+  display: block; margin: 1px 0; line-height: 1.45;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.live-line + .live-line { border-top: 1px solid var(--line-soft); padding-top: 3px; }
+.live-who {
+  display: inline-block; min-width: 46px; margin-right: 6px;
+  color: var(--accent); font-size: 9px; font-weight: 800;
+  letter-spacing: 0.06em; text-transform: uppercase; vertical-align: baseline;
+}
+/* System audio is the thing being watched — give it the readable weight. */
+.live-line.src-system { color: var(--text); }
+.live-line.src-mic { color: var(--muted); }
+.live-line.partial { opacity: 0.65; font-style: italic; }
+
+/* Auto-send countdown — visible, and cancellable without hunting for a menu. */
+.autosend { display: none; align-items: center; gap: 6px; flex: none; }
+.autosend.armed { display: inline-flex; }
+.autosend-count {
+  display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px;
+  border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent), transparent 55%);
+  background: color-mix(in srgb, var(--surface), var(--accent) 14%);
+  color: var(--accent); font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
 
 /* Live insights — left glass panel */
 .insight-panel {

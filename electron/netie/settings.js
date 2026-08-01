@@ -7,10 +7,45 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const { SECRET_KEYS, PROFILE_FIELDS } = require("./vault-fill");
 
 const DEFAULTS = Object.freeze({
-  /** Auto-run READ + sensible (non-irreversible) consequential without Enter. */
-  autoRunSensible: true,
+  /**
+   * WP-P1-VAULT-FILL — the `{{vault.profile.*}}` source. Non-secret contact
+   * details only: name, email, address. Passwords and OTPs are deliberately
+   * absent and `vaultProfile()` strips them even if a hand-edited settings.json
+   * puts them here — those go through OpenVault custody, which types them
+   * itself. Roughly the scope of a browser autofill store.
+   */
+  profile: {},
+  /**
+   * Auto-run READ + sensible (non-irreversible) consequential without Enter.
+   *
+   * Default OFF. The agent moving the real mouse the instant a plan comes back
+   * is startling, and it removes the beat where you notice the plan is wrong.
+   * Turn it on in the settings menu once you trust a workflow.
+   */
+  autoRunSensible: false,
+  /**
+   * Send dictated speech on a countdown instead of waiting for Do it.
+   *
+   * Default OFF. Speech lands in the Ask box and stays there so you can edit it,
+   * add to it by typing, and send when you mean to. The countdown still exists
+   * (hud-live.createAutoSend) for anyone who wants hands-free.
+   */
+  autoSend: false,
+  /** LIVE subtitle tracks the mouse instead of sitting under the top bar. */
+  followCursor: true,
+  /** How many transcript lines the LIVE subtitle keeps on screen. */
+  liveLines: 5,
+  /**
+   * Let screenshots and screen-capture see Netie's windows.
+   *
+   * Off by default: setContentProtection(true) keeps the HUD out of screen
+   * shares and out of its own screenshots. Turn on to record a demo or to drive
+   * the app from an automation tool — it is a testing affordance, not a mode.
+   */
+  captureVisible: false,
   /** Wait for nod / "yes" / Y before irreversible or when autoRun is off. */
   nodConfirm: true,
   /** Future: webcam nod detection (off until calibrated). */
@@ -93,6 +128,27 @@ class SettingsStore {
       autoRunBenign: Boolean(this._data.autoRunSensible),
       autoRunSensible: Boolean(this._data.autoRunSensible),
     };
+  }
+
+  /**
+   * The profile `{{vault.profile.*}}` resolves against — never the raw store.
+   * A secret that finds its way in (hand-edit, bad import, a future sync) is
+   * dropped here rather than trusted to be caught later: this is the only
+   * function that hands profile data to the fill path.
+   */
+  vaultProfile() {
+    const raw = this._data.profile;
+    if (!raw || typeof raw !== "object") return {};
+    const known = new Set(PROFILE_FIELDS.map((f) => f.key));
+    const out = {};
+    for (const [key, value] of Object.entries(raw)) {
+      const bare = key.startsWith("profile.") ? key.slice("profile.".length) : key;
+      if (!known.has(bare)) continue;
+      if (SECRET_KEYS.some((s) => bare.toLowerCase().includes(s))) continue;
+      if (value == null || typeof value === "object") continue;
+      out[bare] = String(value);
+    }
+    return out;
   }
 }
 

@@ -8,14 +8,22 @@ LLM + keys: OpenVault `http://127.0.0.1:5000` (no Cloudflare worker).
 ## Run
 
 ```powershell
-# 1) OpenVault API
-cd D:\OpenVault\OpenMW
-uv run openmw console --host 127.0.0.1 --port 5000 --no-open-browser
+# 1) Cortex engine (required for Act — fail-closed gate)
+powershell -ExecutionPolicy Bypass -File D:\Cortex\scripts\start_cortex_engine.ps1 -Port 8010 -Pack dms
 
-# 2) Netie Clicks
+# 2) OpenVault API (LLM + vision)
+cd D:\OpenVault\OpenMW
+$env:CORTEX_URL = "http://127.0.0.1:8010"
+uv run openmw console --host 127.0.0.1 --port 5000 --cortex-url http://127.0.0.1:8010 --no-open-browser
+
+# 3) Netie Pointer
 cd "D:\Netie Clicks"
 npm start
 ```
+
+Health checks: `http://127.0.0.1:8010/health`, `POST /dms/secure` with steward key, OpenVault `:5000`.
+
+Dry-run (no real clicks): `$env:NETIE_CLICK_DRY_RUN=1; npm start`
 
 ## Use
 
@@ -24,6 +32,8 @@ npm start
 3. Type what you want → **Go** (ask or act — we decide)
 4. Watch **bubbles + bottom subtitles** (hidden from screen capture)
 5. **Save chat** / **Folder** / **Space** — markdown under `%APPDATA%\NetieClicks\conversations`
+
+Demo rehearsal: Ask “what’s on screen?” → Act “type Hello from Netie” → “save”.
 
 ## Docs
 

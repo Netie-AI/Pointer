@@ -8,6 +8,12 @@
     "start": "electron electron/main.js",
     "dev": "electron electron/main.js",
     "test": "node test/ecosystem.test.js && node test/vault.test.js && node test/intent.test.js && node test/zen.test.js && node test/followup.test.js && node test/driver.test.js && node test/geometry.test.js && node test/conversations.test.js && node test/stt.test.js && node test/audio.test.js && node test/transcriber.test.js && node test/agentic.test.js && node test/recipes.test.js && node test/presence.test.js && node test/clicky.test.js && node test/clicky-cursor.test.js && node test/plan-guard.test.js",
+    "test:e2e": "node test/e2e/golden-act.test.js",
+    "test:stress": "node test/stress/agent-loop.stress.js",
+    "test:contracts": "node test/contracts/computer-use.contract.js",
+    "test:acceptance": "node test/acceptance/run.js && node test/acceptance/hud-live.test.js && node test/acceptance/skills-exec.test.js && node test/acceptance/vault-fill.test.js && node test/acceptance/replan.test.js && node test/acceptance/custody.test.js && node test/acceptance/verify.test.js && node test/acceptance/memory-import.test.js && node test/acceptance/uia.test.js && node test/acceptance/point-overlay.test.js && node test/acceptance/bg-agents.test.js && node test/acceptance/recipe-secure.test.js && node test/acceptance/form-fill-privacy.test.js && node test/acceptance/enquire.test.js && node test/acceptance/privacy-hud.test.js && node test/acceptance/live-ux.test.js",
+    "test:acceptance:strict": "set NETIE_ACCEPTANCE_STRICT=1&& set NETIE_ACCEPTANCE_HUD=1&& set NETIE_ACCEPTANCE_CU=1&& set NETIE_ACCEPTANCE_IMPORT=1&& set NETIE_ACCEPTANCE_CUSTODY=1&& node test/acceptance/run.js && node test/acceptance/hud-live.test.js && node test/acceptance/skills-exec.test.js && node test/acceptance/vault-fill.test.js && node test/acceptance/replan.test.js && node test/acceptance/custody.test.js && node test/acceptance/verify.test.js && node test/acceptance/memory-import.test.js && node test/acceptance/uia.test.js && node test/acceptance/point-overlay.test.js && node test/acceptance/bg-agents.test.js && node test/acceptance/recipe-secure.test.js && node test/acceptance/form-fill-privacy.test.js && node test/acceptance/enquire.test.js && node test/acceptance/privacy-hud.test.js && node test/acceptance/live-ux.test.js",
+    "test:agentic-pack": "npm test && npm run test:e2e && npm run test:stress && npm run test:contracts && npm run test:acceptance:strict",
     "test:agentic": "node test/agentic.test.js",
     "test:recipes": "node test/recipes.test.js",
     "test:presence": "node test/presence.test.js",
@@ -23,10 +29,12 @@
     "test:driver": "node test/driver.test.js",
     "test:geometry": "node test/geometry.test.js",
     "test:cursor": "node test/clicky-cursor.test.js",
-    "test:guard": "node test/plan-guard.test.js"
+    "test:guard": "node test/plan-guard.test.js",
+    "test:smoke": "node test/smoke/hud-boot.smoke.js"
   },
   "devDependencies": {
-    "electron": "^35.0.0"
+    "electron": "^35.0.0",
+    "playwright": "^1.62.1"
   },
   "optionalDependencies": {
     "ioredis": "^5.6.1"

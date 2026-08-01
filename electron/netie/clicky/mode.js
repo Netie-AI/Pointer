@@ -39,21 +39,21 @@ function describe(state) {
   switch (state) {
     case STATES.HOLDING:
       return {
-        label: "Hold for Clicky",
+        label: "Arming Clicky…",
         cursorOn: false,
-        recordingHint: "Release after Clicky arms",
+        recordingHint: "Hold — pointer will become Netie",
       };
     case STATES.CLICKY:
       return {
-        label: "Clicky",
+        label: "Clicky — pointer is Netie",
         cursorOn: true,
-        recordingHint: "Recent screen context is available",
+        recordingHint: "Your mouse pointer is Netie; speak or Do it",
       };
     default:
       return {
         label: "Clicky off",
         cursorOn: false,
-        recordingHint: "Hold to arm Clicky",
+        recordingHint: "Ctrl+Shift+Space arms Clicky (pointer swap)",
       };
   }
 }

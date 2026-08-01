@@ -22,8 +22,11 @@ const rouletteItems = $("roulette-items");
 const roulettePreview = $("roulette-preview");
 const rouletteLabel = $("roulette-label");
 const chatDock = $("chat-dock");
-const clickyOrb = $("btn-clicky"); // removed from the UI; kept null-safe below
-const peekDrop = $("peek-drop");
+const subtitleBar = $("subtitle-bar");
+const autosendChip = $("autosend");
+const autosendCount = $("autosend-count");
+const clickyOrb = null; // floating Clicky hold removed — Ctrl+Shift+Space arms real OS pointer
+const peekDrop = null;
 const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify")];
 
 let listening = false;
@@ -39,12 +42,92 @@ let lastWavePaintAt = 0;
 let activeBucket = "chat";
 let latestRetrieveText = "";
 let mouseOverChrome = false;
-let dockOffset = { x: 0, y: 0 };
-let insightOffset = { x: 0, y: 0 };
-let dragState = null;
 let clickyHoldTimer = null;
 let agentBusy = false;
 let peekTimer = null;
+
+// HUD-01..06 — the logic lives in netie/hud-live.js so the acceptance lane can
+// run the real thing; this file is DOM plumbing on top of it.
+const {
+  createDragController,
+  createAutoSend,
+  createLiveLine,
+  createLiveTranscript,
+  createInsightFeed,
+  shouldRearmAfterAct,
+  AUTO_SEND_MS,
+} = window.NetieHudLive;
+
+const drag = createDragController();
+const liveLine = createLiveLine();
+const liveFeed = createLiveTranscript({ maxLines: 5 });
+
+/** Mirrors the main-process settings the renderer needs each frame. */
+const hudSettings = { autoSend: false, followCursor: true, liveLines: 5 };
+
+/**
+ * Paint the LIVE bar as up to five rolling lines.
+ *
+ * `textContent` per line, never innerHTML: these strings are transcribed from
+ * whatever is playing on screen, and a YouTube title is not markup we control.
+ */
+function renderSubtitle() {
+  if (!subtitleText) return;
+  const lines = liveFeed.lines().slice(-hudSettings.liveLines);
+  if (!lines.length) {
+    subtitleText.textContent = listening || systemAudio ? "Listening…" : "";
+    return;
+  }
+  subtitleText.replaceChildren();
+  for (const line of lines) {
+    const row = document.createElement("div");
+    row.className = `live-line src-${line.source}${line.partial ? " partial" : ""}`;
+    const who = document.createElement("span");
+    who.className = "live-who";
+    who.textContent = line.label;
+    row.appendChild(who);
+    row.appendChild(document.createTextNode(line.text));
+    subtitleText.appendChild(row);
+  }
+  subtitleBar.classList.toggle("multiline", lines.length > 1);
+  subtitleText.scrollTop = subtitleText.scrollHeight;
+}
+
+/**
+ * Keep the LIVE bar near the mouse. Clamped to the viewport so it cannot walk
+ * off a screen edge, and offset below-right so it never sits under the pointer
+ * itself — the cursor is Netie's identity and must stay visible.
+ */
+function positionSubtitle(x, y) {
+  if (!subtitleBar || hudRoot.classList.contains("morph-hidden")) return;
+  const rect = subtitleBar.getBoundingClientRect();
+  const pad = 12;
+  const left = Math.min(Math.max(pad, x + 18), window.innerWidth - rect.width - pad);
+  const top = Math.min(Math.max(pad, y + 22), window.innerHeight - rect.height - pad);
+  subtitleBar.style.left = `${Math.round(left)}px`;
+  subtitleBar.style.top = `${Math.round(top)}px`;
+  subtitleBar.style.transform = "none"; // drop the -50% centring while tracking
+}
+const insightFeed = createInsightFeed({
+  onInsight: (i) => {
+    insightSummary.textContent = i.summary;
+    $("insight-topic").textContent = i.topic;
+  },
+});
+const autoSend = createAutoSend({
+  delayMs: AUTO_SEND_MS,
+  onTick: (s) => paintAutoSend(s),
+  onCancel: () => paintAutoSend({ armed: false }),
+  onFire: ({ text }) => {
+    paintAutoSend({ armed: false });
+    // The composer already accumulates the same words; anything the user typed
+    // on top of them is the instruction they actually mean.
+    if (!askInput.value.trim()) askInput.value = text;
+    // General mode listens and answers; it must never reach the act path.
+    if (appMode === "general") doAsk();
+    else doAct();
+  },
+});
 
 const capture = new window.NetieCapture.LiveCapture((source, samples) => {
   paintWaveFromSamples(samples);
@@ -144,7 +227,8 @@ function setChatOpen(open) {
   $("btn-chat-toggle").classList.toggle("active", Boolean(open));
   if (open) {
     askInput.focus();
-    syncClickThrough(true);
+    // FIX-C15: do not force global click capture when opening chat.
+    // Pointer-move / hitChrome already decide.
   }
 }
 
@@ -154,7 +238,11 @@ function setMorphHidden(hidden) {
   setMenu(false);
   if (hidden) {
     roulettePanel.classList.remove("open");
+    closeEnquire();
     syncClickThrough(false);
+    // The stage is a separate window: CSS here cannot reach it, so its nod
+    // toast and subtitles would stay on screen with no chrome around them.
+    invoke("hud:hideStage");
   } else {
     syncClickThrough(true);
   }
@@ -185,7 +273,13 @@ $("theme-row").addEventListener("click", (event) => {
 
 function applyModeUi(mode, notesPath) {
   appMode = mode || "agent";
-  hudRoot.classList.remove("mode-agent", "mode-transcribe", "mode-meeting");
+  // A countdown armed under the old mode must not fire under the new one —
+  // "agent mode" spoken while General was armed would send the mode phrase.
+  // Safe unguarded: applyModeUi only runs from hud:ready and event callbacks,
+  // both after module evaluation. (A `typeof` guard would be worse than none —
+  // `typeof` on a const still in its temporal dead zone throws.)
+  autoSend.cancel("mode-change");
+  hudRoot.classList.remove("mode-agent", "mode-general", "mode-transcribe", "mode-meeting");
   hudRoot.classList.add(`mode-${appMode}`);
   document.querySelectorAll("#mode-pill button").forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === appMode);
@@ -206,6 +300,21 @@ async function loadSettings() {
   $("set-py").checked = settings.runPythonChecks !== false;
   if ($("set-demo-debug")) $("set-demo-debug").checked = settings.demoDebug === true;
   if ($("set-verify")) $("set-verify").checked = settings.verifySteps === true;
+  if ($("set-autosend")) $("set-autosend").checked = settings.autoSend === true;
+  if ($("set-follow")) $("set-follow").checked = settings.followCursor !== false;
+  if ($("set-capture-visible")) $("set-capture-visible").checked = settings.captureVisible === true;
+  hudSettings.autoSend = settings.autoSend === true;
+  hudSettings.followCursor = settings.followCursor !== false;
+  hudSettings.liveLines = Number(settings.liveLines) > 0 ? Number(settings.liveLines) : 5;
+  if (!hudSettings.followCursor) resetSubtitlePosition();
+}
+
+/** Put the LIVE bar back under the top bar when it stops tracking the mouse. */
+function resetSubtitlePosition() {
+  if (!subtitleBar) return;
+  subtitleBar.style.left = "";
+  subtitleBar.style.top = "";
+  subtitleBar.style.transform = "";
 }
 async function saveSettingsFromUi() {
   await invoke("hud:setSettings", {
@@ -217,8 +326,12 @@ async function saveSettingsFromUi() {
       runPythonChecks: $("set-py").checked,
       demoDebug: $("set-demo-debug") ? $("set-demo-debug").checked : false,
       verifySteps: $("set-verify") ? $("set-verify").checked : false,
+      autoSend: $("set-autosend") ? $("set-autosend").checked : false,
+      followCursor: $("set-follow") ? $("set-follow").checked : true,
+      captureVisible: $("set-capture-visible") ? $("set-capture-visible").checked : false,
     },
   });
+  await loadSettings();
 }
 
 function setMenu(open) {
@@ -228,15 +341,51 @@ function setMenu(open) {
 
 function applyDockTransform() {
   if (!hudRoot.classList.contains("chat-open")) return;
-  chatDock.style.transform = `translate(calc(-20% + ${dockOffset.x}px), ${dockOffset.y}px) scale(1)`;
+  const o = drag.offset("chat");
+  // FIX-C16: match CSS — desktop -20%, narrow -50% — so drag keeps centring.
+  const cx = window.innerWidth <= 900 ? "-50%" : "-20%";
+  chatDock.style.transform = `translate(calc(${cx} + ${o.x}px), ${o.y}px) scale(1)`;
 }
 
 function applyInsightTransform() {
   if (!hudRoot.classList.contains("chat-open")) return;
   const panel = $("insight-panel");
   if (!panel) return;
-  panel.style.transform = `translate(${insightOffset.x}px, ${insightOffset.y}px)`;
+  const o = drag.offset("insight");
+  const cx = window.innerWidth <= 900 ? "-50%" : "0px";
+  panel.style.transform = `translate(calc(${cx} + ${o.x}px), ${o.y}px)`;
 }
+
+/** The LIVE bar is centred, so its drag offset rides on top of the -50%. */
+function applySubtitleTransform() {
+  if (!subtitleBar) return;
+  const o = drag.offset("subtitle");
+  subtitleBar.style.transform = `translate(calc(-50% + ${o.x}px), ${o.y}px)`;
+}
+
+function applyTransform(target) {
+  if (target === "chat") applyDockTransform();
+  else if (target === "insight") applyInsightTransform();
+  else if (target === "subtitle") applySubtitleTransform();
+}
+
+/** HUD-02 — the countdown has to be readable and cancellable at a glance. */
+function paintAutoSend(state) {
+  if (!autosendChip) return;
+  const armed = Boolean(state && state.armed);
+  autosendChip.classList.toggle("armed", armed);
+  if (armed && autosendCount) {
+    autosendCount.textContent = String(Math.ceil((state.remainingMs || 0) / 1000));
+  }
+}
+
+// One clock drives the countdown and the insight debounce; hud-live owns the
+// deadline arithmetic so both are testable without sleeping.
+setInterval(() => {
+  const now = Date.now();
+  if (autoSend.armed) autoSend.tick(now);
+  insightFeed.flush(now);
+}, 200);
 
 async function armCapture({ mic = false, system = false, resume = true } = {}) {
   if (resume) paused = false;
@@ -297,73 +446,44 @@ document.addEventListener(
   "pointermove",
   (event) => {
     if (hudRoot.classList.contains("morph-hidden")) {
-      const nearTop = event.clientY < 28;
-      if (nearTop) {
-        hudRoot.classList.add("peeking");
-        syncClickThrough(true);
-      } else if (!event.target.closest("#peek-drop")) {
-        hudRoot.classList.remove("peeking");
-        syncClickThrough(false);
-      }
+      // No peek orb — use Ctrl+` / Show/Hide to restore. Ignore hover chrome.
+      syncClickThrough(false);
       return;
     }
     syncClickThrough(hitChrome(event.target));
-    if (!dragState) return;
-    const dx = event.screenX - dragState.startX;
-    const dy = event.screenY - dragState.startY;
-    if (dragState.target === "chat") {
-      dockOffset.x = dragState.originX + dx;
-      dockOffset.y = dragState.originY + dy;
-      applyDockTransform();
-    } else if (dragState.target === "insight") {
-      insightOffset.x = dragState.originX + dx;
-      insightOffset.y = dragState.originY + dy;
-      applyInsightTransform();
-    }
+    const moved = drag.move({ x: event.screenX, y: event.screenY });
+    if (moved) applyTransform(moved.target);
   },
   true
 );
 document.addEventListener("pointerdown", (event) => syncClickThrough(hitChrome(event.target)), true);
 document.addEventListener("pointerleave", () => {
-  if (!dragState && hudRoot.classList.contains("morph-hidden")) {
+  if (!drag.dragging && hudRoot.classList.contains("morph-hidden")) {
     clearTimeout(peekTimer);
     peekTimer = setTimeout(() => {
       hudRoot.classList.remove("peeking");
       syncClickThrough(false);
     }, 400);
-  } else if (!dragState) syncClickThrough(false);
+  } else if (!drag.dragging) syncClickThrough(false);
 }, true);
 document.addEventListener("pointerup", () => {
-  dragState = null;
+  drag.end();
 });
 
-$("chat-drag").addEventListener("pointerdown", (event) => {
-  if (event.button !== 0) return;
-  if (event.target.closest("button")) return;
-  dragState = {
-    target: "chat",
-    startX: event.screenX,
-    startY: event.screenY,
-    originX: dockOffset.x,
-    originY: dockOffset.y,
-  };
-  event.currentTarget.setPointerCapture(event.pointerId);
-});
-const insightDrag = $("insight-drag");
-if (insightDrag) {
-  insightDrag.addEventListener("pointerdown", (event) => {
+/** Every draggable panel goes through the one controller — HUD-01. */
+function bindDrag(handleId, target) {
+  const handle = $(handleId);
+  if (!handle) return;
+  handle.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
     if (event.target.closest("button")) return;
-    dragState = {
-      target: "insight",
-      startX: event.screenX,
-      startY: event.screenY,
-      originX: insightOffset.x,
-      originY: insightOffset.y,
-    };
+    drag.begin(target, { x: event.screenX, y: event.screenY });
     event.currentTarget.setPointerCapture(event.pointerId);
   });
 }
+bindDrag("chat-drag", "chat");
+bindDrag("insight-drag", "insight");
+bindDrag("subtitle-drag", "subtitle");
 const btnChatClose = $("btn-chat-close");
 if (btnChatClose) btnChatClose.addEventListener("click", () => setChatOpen(false));
 const btnShowTranscript = $("btn-show-transcript");
@@ -377,6 +497,7 @@ if (btnShowTranscript) {
 async function doAsk() {
   const message = askInput.value.trim() || finalBits.slice(-1)[0] || "";
   if (!message) return;
+  autoSend.cancel("sent");
   setChatOpen(true);
   appendMessage("user", message, true);
   askInput.value = "";
@@ -392,13 +513,24 @@ async function doAsk() {
 }
 
 async function doAct() {
+  // General is a companion, not an agent. Hiding the button is cosmetics; this
+  // is the line that means a stray "do it" cannot move the mouse.
+  if (appMode === "general") {
+    answerMeta.textContent = "General mode — answering, not acting";
+    await doAsk();
+    return;
+  }
   const message = askInput.value.trim() || finalBits.slice(-1)[0] || "";
   if (!message) return;
+  autoSend.cancel("sent"); // it is going now; no second copy in four seconds
   setChatOpen(true);
   appendMessage("user", message, true);
   askInput.value = "";
   answerMeta.textContent = "Planning…";
   const result = await invoke("hud:act", { message });
+  // HUD-04 — acting used to end the conversation; the follow-up ("no, the other
+  // one") landed on a dead mic. Pick capture back up unless the user paused it.
+  await rearmAfterAct();
   if (!result.ok) {
     appendMessage("assistant", result.reason || result.error || "Blocked");
     if (window.NetieSound) NetieSound.warn();
@@ -409,6 +541,15 @@ async function doAct() {
     "assistant",
     result.ran ? `${n} step(s) running.` : `${n} step(s) ready — nod / Affirm / Ctrl+Y.`
   );
+}
+
+async function rearmAfterAct() {
+  const want = shouldRearmAfterAct({ listening, systemAudio, paused, mode: appMode });
+  if (!want.mic && !want.system) return want;
+  const need = { mic: want.mic && !capture.active("mic"), system: want.system && !capture.active("system") };
+  if (need.mic || need.system) await armCapture({ ...need, resume: true });
+  else setLive(true);
+  return want;
 }
 
 function addTextToChat(text, asRetrieve = false) {
@@ -446,7 +587,7 @@ $("btn-roulette").addEventListener("click", async () => {
   if (open) await fetchBucket(activeBucket);
 });
 
-peekDrop.addEventListener("click", () => {
+peekDrop && peekDrop.addEventListener("click", () => {
   setMorphHidden(false);
   setChatOpen(true);
 });
@@ -575,6 +716,19 @@ $("btn-clear").addEventListener("click", () => {
 });
 $("btn-act").addEventListener("click", doAct);
 $("btn-add-sub").addEventListener("click", () => addTextToChat(latestSystemSubtitle, true));
+const btnAutoSendCancel = $("btn-autosend-cancel");
+if (btnAutoSendCancel) {
+  btnAutoSendCancel.addEventListener("click", () => {
+    autoSend.cancel("user");
+    answerMeta.textContent = "Auto-send cancelled";
+  });
+}
+// Typing is taking control back — a countdown that fires mid-edit sends half a
+// thought. Escape kills it outright.
+askInput.addEventListener("input", () => autoSend.cancel("typing"));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && autoSend.armed) autoSend.cancel("escape");
+});
 $("insight-actions").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-q]");
   if (!button) return;
@@ -592,10 +746,12 @@ $("mode-pill").addEventListener("click", async (event) => {
   applyModeUi(result.mode, result.notesPath);
   if (result.listen || result.systemAudio) {
     await armCapture({ mic: Boolean(result.listen), system: Boolean(result.systemAudio) });
-    subtitleText.textContent =
-      result.mode === "meeting"
-        ? "Meeting — mic + system audio armed"
-        : "Transcribe — mic armed, speak now";
+    const armedText = {
+      meeting: "Meeting — mic + system audio armed",
+      transcribe: "Transcribe — mic armed, speak now",
+      general: "General — listening, I won't click anything",
+    };
+    subtitleText.textContent = armedText[result.mode] || "Mic armed";
   }
 });
 $("btn-more").addEventListener("click", async (event) => {
@@ -726,7 +882,15 @@ askInput.addEventListener("keydown", (event) => {
   doAsk();
 });
 
-window.netieHud.on((event) => {
+/**
+ * Everything main.js pushes at the HUD lands here.
+ *
+ * Named rather than inline so the smoke test can hand it a synthetic event and
+ * assert what gets painted. That adds no surface: it is the same handler the
+ * IPC bridge already calls, it can only draw, and anything able to call it can
+ * already run script in this renderer.
+ */
+function onHudEvent(event) {
   if (!event?.type) return;
   if (event.type === "mode") applyModeUi(event.mode, event.notesPath);
   if (event.type === "nod-wait") nodToast.classList.toggle("show", event.on !== false);
@@ -735,9 +899,16 @@ window.netieHud.on((event) => {
     if (event.modeSwitchOnly) return;
     const text = String(event.text || "").trim();
     const source = event.source === "system" ? "system" : "mic";
+    // The LIVE bar is a rolling transcript, not a status line: following a
+    // video means reading the last few sentences, not the latest one.
+    if (text) {
+      liveLine.push(source, text);
+      liveFeed.push(source, text, { partial: Boolean(event.partial) });
+      renderSubtitle();
+    }
     if (source === "system") {
       latestSystemSubtitle = text;
-      subtitleText.textContent = text || "No system-audio subtitle yet.";
+      insightFeed.push(text, Date.now()); // HUD-05 — the room counts as speech
     } else if (event.partial) {
       setLivePartial(text);
       if (text) setChatOpen(true);
@@ -754,8 +925,34 @@ window.netieHud.on((event) => {
       const existing = askInput.value.trim();
       askInput.value = existing ? `${existing} ${text}` : text;
       askInput.scrollTop = askInput.scrollHeight;
+      insightFeed.push(text, Date.now());
+      // HUD-02 — opt-in only. What you say lands in the Ask box and waits there
+      // so you can edit it, add to it by typing, and send when you mean to.
+      // Auto-sending a half-finished sentence is worse than not sending at all.
+      if (hudSettings.autoSend && (appMode === "agent" || appMode === "general")) {
+        autoSend.arm(text, Date.now());
+      }
     }
   }
+  if (event.type === "capture") {
+    if (event.state === "stopped") {
+      listening = false;
+      systemAudio = false;
+      paused = false;
+      capture.stopAll();
+      setLive(false);
+      liveFeed.clear();
+      renderSubtitle();
+      updateRecUi();
+    } else if (event.state === "paused") {
+      paused = true;
+      updateRecUi();
+    } else if (event.state === "recording") {
+      paused = false;
+      updateRecUi();
+    }
+  }
+  if (event.type === "cursor" && hudSettings.followCursor) positionSubtitle(event.x, event.y);
   if (event.type === "stt-busy") wave.classList.toggle("thinking", Boolean(event.busy));
   if (event.type === "stt-error") {
     answerMeta.textContent = event.hint ? `${event.error} — ${event.hint}` : event.error;
@@ -794,11 +991,23 @@ window.netieHud.on((event) => {
   }
   if (event.type === "clicky") {
     clickyOrb && clickyOrb.classList.toggle("armed", event.state === "clicky" || event.state === "holding");
+    if (event.label && subtitleText) {
+      subtitleText.textContent = event.label;
+    }
   }
+  if (event.type === "subtitle" && event.text && subtitleText) {
+    subtitleText.textContent = event.text;
+  }
+  if (event.type === "enquire") renderEnquire(event);
+  if (event.type === "point") renderPoints(event.points, event.ttlMs);
+  if (event.type === "bg") renderBgStatus(event);
   if (event.type === "pointer") {
     answerMeta.textContent = event.mode ? `Pointer · ${event.mode}` : answerMeta.textContent;
   }
-});
+}
+
+window.netieHud.on(onHudEvent);
+window.__netieOnEvent = onHudEvent;
 
 invoke("hud:ready").then(async (info) => {
   if (info?.mode) applyModeUi(info.mode, info.notesPath);
@@ -817,6 +1026,152 @@ invoke("hud:ready").then(async (info) => {
   await fetchBucket("chat");
   syncClickThrough(true);
 });
+
+/**
+ * P5-ENQUIRE — build the missing-profile form from what main asked for.
+ *
+ * `textContent` for every label and placeholder: these strings originate in a
+ * plan, and a plan can come from a model reading the screen. Nothing here is
+ * ever interpolated as HTML.
+ */
+const enquirePanel = $("enquire-panel");
+const enquireFields = $("enquire-fields");
+
+function renderEnquire(event) {
+  if (!enquirePanel || !enquireFields) return;
+  const prompts = (event && event.prompts) || [];
+  if (!prompts.length) return;
+
+  enquireFields.replaceChildren();
+  prompts.forEach((prompt, i) => {
+    const id = `enquire-${prompt.key}`;
+    const label = document.createElement("label");
+    label.className = "enquire-field";
+    label.htmlFor = id;
+
+    const caption = document.createElement("span");
+    caption.textContent = prompt.label || prompt.key;
+    label.appendChild(caption);
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.id = id;
+    input.name = prompt.key;
+    input.autocomplete = "off";
+    if (prompt.hint) input.placeholder = prompt.hint;
+    if (i === 0) input.autofocus = true;
+    label.appendChild(input);
+
+    enquireFields.appendChild(label);
+  });
+
+  enquirePanel.hidden = false;
+  setChatOpen(true);
+  syncClickThrough(true);
+  const first = enquireFields.querySelector("input");
+  if (first) first.focus();
+}
+
+function closeEnquire() {
+  if (!enquirePanel) return;
+  enquirePanel.hidden = true;
+  if (enquireFields) enquireFields.replaceChildren();
+}
+
+if (enquirePanel) {
+  // A real form: submit fires on Enter and on the button, so there is no
+  // keydown handler to get wrong.
+  enquirePanel.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const answers = {};
+    enquireFields.querySelectorAll("input[name]").forEach((input) => {
+      answers[input.name] = input.value;
+    });
+    closeEnquire();
+    answerMeta.textContent = "Saving…";
+    const result = await invoke("hud:enquireSave", { answers });
+    if (result && result.stillMissing && result.stillMissing.length) {
+      answerMeta.textContent = `Still need: ${result.stillMissing.join(", ")}`;
+    } else if (result && result.resumed) {
+      answerMeta.textContent = result.ran ? "Saved — running" : "Saved — waiting for your nod";
+    } else {
+      answerMeta.textContent = "Saved";
+    }
+  });
+  const cancel = $("btn-enquire-cancel");
+  if (cancel) {
+    cancel.addEventListener("click", () => {
+      closeEnquire();
+      invoke("hud:enquireCancel");
+      answerMeta.textContent = "Cancelled — nothing was typed";
+    });
+  }
+  enquirePanel.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    closeEnquire();
+    invoke("hud:enquireCancel");
+  });
+}
+
+/**
+ * P3-POINT-OVERLAY — draw where Netie is pointing, then get out of the way.
+ * A crosshair and a label that fade. Not a companion, not a ring that lives on
+ * screen; the floating Clicky chrome was removed for good reasons.
+ */
+function renderPoints(points, ttlMs) {
+  const layer = $("point-layer");
+  if (!layer) return;
+  layer.innerHTML = "";
+  const ttl = Number(ttlMs) > 0 ? Number(ttlMs) : 6000;
+  for (const point of points || []) {
+    const mark = document.createElement("div");
+    mark.className = "point-mark";
+    mark.style.left = `${point.xPct}%`;
+    mark.style.top = `${point.yPct}%`;
+    const ring = document.createElement("div");
+    ring.className = "point-ring";
+    mark.appendChild(ring);
+    if (point.label) {
+      const label = document.createElement("span");
+      label.className = "point-label";
+      label.textContent = point.label;
+      mark.appendChild(label);
+    }
+    layer.appendChild(mark);
+  }
+  // Both timers have to be cancellable: a new point set arriving during the
+  // 450ms fade would otherwise be wiped by the previous set's cleanup.
+  clearTimeout(renderPoints._fadeTimer);
+  clearTimeout(renderPoints._wipeTimer);
+  renderPoints._fadeTimer = setTimeout(() => {
+    layer.querySelectorAll(".point-mark").forEach((el) => el.classList.add("fading"));
+    renderPoints._wipeTimer = setTimeout(() => {
+      layer.innerHTML = "";
+    }, 450);
+  }, ttl);
+}
+
+/** P4-BG-AGENTS — one line, bottom left, with a way to stop it. */
+let bgActiveId = null;
+function renderBgStatus(event) {
+  const bar = $("bg-status");
+  const text = $("bg-status-text");
+  if (!bar || !text) return;
+  const summary = event.summary || {};
+  const busy = Boolean(summary.active || summary.queued);
+  text.textContent = event.text || "";
+  bar.classList.toggle("show", Boolean(event.text));
+  if (event.job && event.job.status === "running") bgActiveId = event.job.id;
+  else if (event.job && bgActiveId === event.job.id && !busy) bgActiveId = null;
+  const cancel = $("btn-bg-cancel");
+  if (cancel) cancel.hidden = !bgActiveId;
+}
+const btnBgCancel = $("btn-bg-cancel");
+if (btnBgCancel) {
+  btnBgCancel.addEventListener("click", () => {
+    if (bgActiveId) invoke("hud:bgCancel", { id: bgActiveId });
+  });
+}
 
 // On-demand demo screenshot. Replaces the old bottom-right orb, which had no
 // discoverable action bound to it beyond a hold gesture.

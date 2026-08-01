@@ -1,8 +1,19 @@
 "use strict";
 /**
- * Vision targeting — resolve missing click coords from a screenshot + target label.
- * Plans often have human "target" strings; this fills xPct/yPct before the driver runs.
+ * Targeting — resolve missing click coords from a target label.
+ *
+ * Two sources, in this order (P3-UIA-TARGETING):
+ *
+ *   1. UI Automation. The OS knows where its own controls are. Exact, ~1ms, no
+ *      network, and the screenshot never leaves the process.
+ *   2. Vision. For everything UIA cannot see — canvas apps, games, remote
+ *      desktops, custom-drawn UI — which is a permanent category, not a gap.
+ *
+ * The fallback is recorded on the action (`_targetedVia`) so a plan that quietly
+ * became model-guided is visible rather than assumed exact.
  */
+
+const { findControl } = require("./uia");
 
 /**
  * @param {object} opts
@@ -69,8 +80,13 @@ async function resolveTargetPoint({ target, dataUrl, eco }) {
 
 /**
  * Ensure an action has coords for the driver. Mutates a shallow copy.
+ *
+ * @param {object} opts
+ *   dataUrl  screenshot for the vision fallback
+ *   eco      ecosystem (vision transport)
+ *   uia      { run, screen } — omit to skip UIA (tests, non-Windows)
  */
-async function ensureActionCoords(action, { dataUrl, eco }) {
+async function ensureActionCoords(action, { dataUrl, eco, uia = null }) {
   const type = String(action.type || "").toLowerCase();
   const needs =
     type === "click" ||
@@ -89,13 +105,19 @@ async function ensureActionCoords(action, { dataUrl, eco }) {
   if (action.screenX != null && action.screenY != null) return action;
   if (action.x != null && action.y != null) return action;
 
-  const hit = await resolveTargetPoint({
-    target: action.target || action.field || action.label,
-    dataUrl,
-    eco,
-  });
+  const label = action.target || action.field || action.label;
+
+  // Ask Windows first. Free, exact, and nothing leaves the device.
+  if (uia && typeof uia.run === "function" && uia.screen) {
+    const found = await findControl(label, uia);
+    if (found) {
+      return { ...action, xPct: found.xPct, yPct: found.yPct, _targeted: true, _targetedVia: "uia" };
+    }
+  }
+
+  const hit = await resolveTargetPoint({ target: label, dataUrl, eco });
   if (!hit) return action;
-  return { ...action, xPct: hit.xPct, yPct: hit.yPct, _targeted: true };
+  return { ...action, xPct: hit.xPct, yPct: hit.yPct, _targeted: true, _targetedVia: "vision" };
 }
 
 module.exports = { resolveTargetPoint, ensureActionCoords };

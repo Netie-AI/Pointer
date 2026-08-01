@@ -101,6 +101,31 @@ class PersonalBrain {
     return this.memory.recentContext(12);
   }
 
+  /**
+   * Masked "what worked" hints for the planner — never raw email/phone.
+   * Used on form-fill intents (Beat Realtime Phase 4).
+   */
+  maskedPrefs(query = "prefer seat meal form") {
+    let hits = [];
+    try {
+      hits = this.memory.search(query) || [];
+    } catch {
+      hits = [];
+    }
+    return hits
+      .slice(0, 4)
+      .map((h) => {
+        const s = String((h && (h.summary || h.text)) || "")
+          .replace(/\S+@\S+/g, "[email]")
+          .replace(/\+?\d[\d\s\-()]{7,}\d/g, "[phone]")
+          .replace(/\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g, "[card]")
+          .slice(0, 140);
+        return s;
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+
   status() {
     const consent = this.telemetry.getConsent();
     const fleetOn =

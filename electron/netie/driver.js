@@ -30,6 +30,8 @@ using System;
 using System.Runtime.InteropServices;
 public class NetieInput {
   [StructLayout(LayoutKind.Sequential)]
+  public struct POINT { public int X; public int Y; }
+  [StructLayout(LayoutKind.Sequential)]
   public struct INPUT { public uint type; public MOUSEKEYBDHARDWAREINPUT mkhi; }
   [StructLayout(LayoutKind.Explicit)]
   public struct MOUSEKEYBDHARDWAREINPUT {
@@ -47,6 +49,7 @@ public class NetieInput {
   [DllImport("user32.dll", SetLastError=true)]
   public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
+  [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT pt);
   [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
@@ -132,6 +135,11 @@ while (-not $done) {
     $r.id = $m.id
     switch ($m.op) {
       'move'  { [NetieInput]::SetCursorPos([int]$m.x, [int]$m.y) | Out-Null }
+      'pos'   {
+        $pt = New-Object NetieInput+POINT
+        [NetieInput]::GetCursorPos([ref]$pt) | Out-Null
+        $r.x = $pt.X; $r.y = $pt.Y
+      }
       'click' { [NetieInput]::Click([int]$m.x, [int]$m.y, [bool]$m.right) }
       'drag'  { [NetieInput]::Drag([int]$m.x1, [int]$m.y1, [int]$m.x2, [int]$m.y2) }
       'wheel' {
@@ -420,6 +428,45 @@ class InputDriver {
     return this.last;
   }
 
+  /**
+   * Ease the pointer to (x,y) so the user sees Netie travel — not teleport.
+   * Skips animation when already close or dry-run.
+   */
+  async moveToAnimated(x, y, { durationMs = 280, steps = 18 } = {}) {
+    const xi = Math.round(Number(x));
+    const yi = Math.round(Number(y));
+    this.last = { op: "move_animated", x: xi, y: yi, durationMs, steps };
+    if (this.dryRun) return this.last;
+    const p1 = this._phys(xi, yi);
+    // Worker returns physical pixels; do not dip-convert again.
+    const from = await this._send({ op: "pos" }, { timeoutMs: 1500 }).catch(() => null);
+    const p0 =
+      from && from.x != null && from.y != null
+        ? { x: Math.round(Number(from.x)), y: Math.round(Number(from.y)) }
+        : p1;
+    const dx = p1.x - p0.x;
+    const dy = p1.y - p0.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 12) {
+      await this._send({ op: "move", x: p1.x, y: p1.y });
+      return this.last;
+    }
+    const n = Math.max(4, Math.min(40, Number(steps) || 18));
+    const frame = Math.max(8, Math.round((Number(durationMs) || 280) / n));
+    for (let i = 1; i <= n; i += 1) {
+      // Ease-out cubic so it decelerates into the target.
+      const t = i / n;
+      const e = 1 - Math.pow(1 - t, 3);
+      await this._send({
+        op: "move",
+        x: Math.round(p0.x + dx * e),
+        y: Math.round(p0.y + dy * e),
+      });
+      if (i < n) await sleep(frame);
+    }
+    return this.last;
+  }
+
   async clickAt(x, y, { button = "left", double = false } = {}) {
     const xi = Math.round(Number(x));
     const yi = Math.round(Number(y));
@@ -554,21 +601,24 @@ class InputDriver {
       case "movecursor":
       case "hover":
         if (sx == null || sy == null) return { ok: false, error: "missing coordinates" };
-        await this.moveTo(sx, sy);
+        await this.moveToAnimated(sx, sy);
         return { ok: true, type, x: sx, y: sy };
 
       case "click":
         if (sx == null || sy == null) return { ok: false, error: "missing coordinates for click" };
+        await this.moveToAnimated(sx, sy, { durationMs: 220 });
         await this.clickAt(sx, sy, { button: "left" });
         return { ok: true, type, x: sx, y: sy };
 
       case "doubleclick":
         if (sx == null || sy == null) return { ok: false, error: "missing coordinates" };
+        await this.moveToAnimated(sx, sy, { durationMs: 220 });
         await this.clickAt(sx, sy, { double: true });
         return { ok: true, type, x: sx, y: sy };
 
       case "rightclick":
         if (sx == null || sy == null) return { ok: false, error: "missing coordinates" };
+        await this.moveToAnimated(sx, sy, { durationMs: 220 });
         await this.clickAt(sx, sy, { button: "right" });
         return { ok: true, type, x: sx, y: sy };
 
@@ -579,6 +629,7 @@ class InputDriver {
         // wrong window is the classic blind-agent failure.
         let focused = false;
         if (sx != null && sy != null) {
+          await this.moveToAnimated(sx, sy, { durationMs: 220 });
           await this.clickAt(sx, sy, { button: "left" });
           if (!this.dryRun) await sleep(120);
           focused = true;
@@ -596,6 +647,7 @@ class InputDriver {
       case "clipboard_paste": {
         // Prefer clipboard + Ctrl+V (OpenClaw-style) — more reliable than Unicode typing.
         if (sx != null && sy != null) {
+          await this.moveToAnimated(sx, sy, { durationMs: 220 });
           await this.clickAt(sx, sy, { button: "left" });
           if (!this.dryRun) await sleep(80);
         }

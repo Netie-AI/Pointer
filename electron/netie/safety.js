@@ -157,10 +157,23 @@ function targetsSecret(action) {
 function decide(action, policy = {}) {
   const tier = classifyAction(action);
   const irreversible = isIrreversible(action);
-  const secret = targetsSecret(action);
+  /**
+   * `_custody` is set by vault-fill when a `{{vault.*}}` path resolved to a
+   * secret. Trust it over the text heuristic: by the time we get here the value
+   * has been blanked, so `_hay()` sees only the verb and the on-screen label —
+   * and a label like "Recovery words" or "Code" does not match
+   * SECRET_TARGET_WORDS. Without this the step is silently downgraded to
+   * "approve", never reaches OpenVault custody, and executes as a zero-length
+   * type that the driver reports as success.
+   *
+   * The heuristic still runs; it can only add secrecy, never remove it.
+   */
+  const secret = Boolean(action && action._custody) || targetsSecret(action);
 
   let disposition;
-  if (tier === ActionTier.PROHIBITED) {
+  if (secret && action && action._custody) {
+    disposition = "custody";
+  } else if (tier === ActionTier.PROHIBITED) {
     disposition = secret ? "custody" : "refuse";
   } else if (action && action._requireConfirm) {
     // Set by plan-guard for launches (open/navigate). Start-Process hands the
