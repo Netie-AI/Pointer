@@ -550,6 +550,50 @@ class InputDriver {
   }
 
   /** Open URL or local path via Start-Process (ShellExecute). */
+  /**
+   * Prove a copy actually happened, when there is no source text to compare
+   * against (#16).
+   *
+   * The signal available is the baseline recorded by `clipboard_baseline`: if
+   * the clipboard still holds exactly what it held before the copy, the copy did
+   * not fire. That is the normal case in a terminal, where Ctrl+C sends SIGINT
+   * rather than copying - and it is precisely the case the old code accepted,
+   * writing unrelated stale clipboard content into a .docx with ok: true.
+   *
+   * Re-copies once before refusing, matching the behaviour the explicit-source
+   * path already had.
+   *
+   * @returns {Promise<{ok:boolean, text:string, reason?:string, baselineLen?:number, clipLen?:number}>}
+   */
+  async _provenCopy(current) {
+    const baseline = this.clipboardBaseline ? this.clipboardBaseline.text : "";
+    let text = current;
+    if (text !== baseline && text.length) return { ok: true, text };
+
+    // One retry, same as the explicit-source path.
+    await this.press("ctrl+a");
+    if (!this.dryRun) await sleep(80);
+    await this.press("ctrl+c");
+    if (!this.dryRun) await sleep(120);
+    const again = await this.clipboardGet();
+    text = again.text || "";
+    if (text !== baseline && text.length) return { ok: true, text };
+
+    if (this.dryRun) return { ok: true, text: text || baseline };
+    return {
+      ok: false,
+      text: "",
+      baselineLen: baseline.length,
+      clipLen: text.length,
+      // Name the mismatch and the likely cause - a refusal the customer cannot
+      // act on is barely better than the silent success it replaced (R-0011).
+      reason:
+        `clipboard unchanged after copy (${baseline.length} chars before, ` +
+        `${text.length} after) - the copy did not happen. In a terminal Ctrl+C ` +
+        `interrupts rather than copies; select and copy manually, then retry.`,
+    };
+  }
+
   async openTarget(target) {
     const s = String(target || "").trim();
     if (!s) throw new Error("empty open target");
@@ -739,12 +783,31 @@ class InputDriver {
         return { ok: true, type, ...result };
       }
 
+      case "clipboard_baseline": {
+        // #16: the integrity gate had no source to compare against, because at
+        // recipe-definition time the text does not exist yet - it only exists
+        // after the ctrl+a/ctrl+c whose success is the thing in doubt. So record
+        // what was on the clipboard BEFORE the copy. If it is still there
+        // afterwards, the copy did not happen.
+        const got = await this.clipboardGet();
+        this.clipboardBaseline = { text: got.text || "", at: Date.now() };
+        this.last = { op: "clipboard_baseline", len: this.clipboardBaseline.text.length };
+        return { ok: true, type, baselineLen: this.clipboardBaseline.text.length };
+      }
+
       case "word_from_clipboard": {
         // API-first coworker: clipboard → .docx (no Word focus steal).
         const { writeDocx, clipboardMatchesSource } = require("./word-coworker");
         const expected = action.value != null ? String(action.value) : null;
         const got = await this.clipboardGet();
         let text = got.text || "";
+
+        // No explicit source, but a baseline was recorded: prove the copy fired.
+        if (expected == null && this.clipboardBaseline) {
+          const proof = await this._provenCopy(text);
+          if (!proof.ok) return { ok: false, type, error: proof.reason, ...proof };
+          text = proof.text;
+        }
         if (expected != null && expected.length) {
           let check = clipboardMatchesSource(expected, text);
           if (!check.ok) {
@@ -779,6 +842,13 @@ class InputDriver {
         const text = got.text || "";
         const source = action.value ?? action.source;
         if (source == null || source === "") {
+          // Without a source this degraded to "the clipboard is not empty",
+          // which stale content passes trivially. Use the baseline instead (#16).
+          if (this.clipboardBaseline) {
+            const proof = await this._provenCopy(text);
+            if (!proof.ok) return { ok: false, type, error: proof.reason, ...proof };
+            return { ok: true, type, clipLen: proof.text.length, text: proof.text };
+          }
           if (!text.length && !this.dryRun) {
             return { ok: false, type, error: "clipboard empty after copy", clipLen: 0 };
           }

@@ -2,6 +2,41 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-07 - The clipboard integrity gate could never fire
+
+Ticket #16. Not closed - needs a different run to verify (R-0003).
+
+`clipboardMatchesSource` and its driver wiring implemented exactly what #11 asked
+for, including re-copy-once-then-refuse, and every shipped recipe emitted the
+consuming action with no `value` - so `expected` was null and the whole block was
+skipped. The gate degraded to "the clipboard is not empty", which stale content
+passes trivially.
+
+That matters most in the context the recipe is named for: in a terminal Ctrl+C is
+SIGINT, not copy, so the clipboard routinely still holds unrelated earlier
+content - and it was written into the .docx with `ok: true`.
+
+The trap was that there is no source text at recipe-definition time; it only
+exists after the Ctrl+C whose success is the thing in doubt. So the signal used is
+the one that does exist: a new READ-tier `clipboard_baseline` verb records what
+was on the clipboard BEFORE the copy, and the consuming step refuses if it is
+still there afterwards. The refusal names the length mismatch and the likely
+cause. One retry first, matching the explicit-source path.
+
+- `terminal_to_word`, `terminal_to_word_ui` and `claude_to_cursor` all record a
+  baseline. `claude_to_cursor` gained a `clipboard_verify` too - pasting whatever
+  happened to be on the clipboard into a Cursor chat is the same defect wearing a
+  different hat.
+- `test/clipboard-integrity.test.js` asserts the acceptance directly: a recipe
+  that consumes the clipboard with nothing to compare against fails the suite, and
+  a baseline recorded but never read fails it too. The old assertions were
+  presence-only (`actions.some(a => a.type === ...)`), which is what let a gate
+  that cannot fire report green (KB F-0005).
+- Verified the gate fails: with the baselines stripped it names all three
+  offending recipes.
+
+Pack: `npm run test:agentic-pack` 435 assertions, `npm run test:smoke` 24.
+
 ## 2026-08-07 - Governance gates, CI, and a .docx Word could not open
 
 Tickets #12, #13, #14. Not closed - each needs a different run to verify (R-0003).

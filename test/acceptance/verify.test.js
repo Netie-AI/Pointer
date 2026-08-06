@@ -43,6 +43,10 @@ const has = (action, opts) => shouldVerifyStep(action, { hasRegion: true, ...opt
         "observe", "read", "wait", "hover", "movecursor", "scroll",
         "clipboard_get", "copy_clipboard", "copy", "select_copy", "select_all",
         "clipboard_set",
+        // Reads the clipboard to record a pre-copy baseline (#16). Changes
+        // nothing on screen, so a screenshot diff would report "nothing
+        // happened" for a step that did its job.
+        "clipboard_baseline",
         // The API-first coworker verbs (EPIC-P03). These deliberately change
         // nothing on screen — that is the whole point of writing .docx through
         // OOXML instead of driving Word's UI — so a screenshot diff would

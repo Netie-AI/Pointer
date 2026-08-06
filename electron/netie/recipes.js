@@ -86,6 +86,10 @@ const RECIPES = Object.freeze({
     id: "terminal_to_word",
     label: "Copy into Word (.docx)",
     actions: Object.freeze([
+      // Record the clipboard BEFORE the copy, so the consuming step can prove
+      // the copy fired (#16). Without it the integrity gate had nothing to
+      // compare against and degraded to "the clipboard is not empty".
+      { type: "clipboard_baseline" },
       { type: "press", value: "ctrl+a" },
       { type: "wait", ms: 80 },
       { type: "press", value: "ctrl+c" },
@@ -99,6 +103,10 @@ const RECIPES = Object.freeze({
     id: "terminal_to_word_ui",
     label: "Copy into Word (UI hotkeys)",
     actions: Object.freeze([
+      // Record the clipboard BEFORE the copy, so the consuming step can prove
+      // the copy fired (#16). Without it the integrity gate had nothing to
+      // compare against and degraded to "the clipboard is not empty".
+      { type: "clipboard_baseline" },
       { type: "press", value: "ctrl+a" },
       { type: "wait", ms: 80 },
       { type: "press", value: "ctrl+c" },
@@ -137,10 +145,17 @@ const RECIPES = Object.freeze({
     id: "claude_to_cursor",
     label: "Hand off Claude → Cursor",
     actions: Object.freeze([
+      // Record the clipboard BEFORE the copy, so the consuming step can prove
+      // the copy fired (#16). Without it the integrity gate had nothing to
+      // compare against and degraded to "the clipboard is not empty".
+      { type: "clipboard_baseline" },
       { type: "press", value: "ctrl+a" },
       { type: "wait", ms: 80 },
       { type: "press", value: "ctrl+c" },
       { type: "wait", ms: 120 },
+      // Same gate as the Word path: pasting whatever happened to be on the
+      // clipboard into a Cursor chat is the same defect wearing a different hat.
+      { type: "clipboard_verify" },
       { type: "open", target: "Cursor" },
       { type: "wait", ms: 1800 },
       { type: "press", value: "ctrl+l" },

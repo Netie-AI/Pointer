@@ -99,6 +99,7 @@ function classifyAction(action) {
     case "clipboard_get":
     case "copy_clipboard":
     case "clipboard_verify":
+    case "clipboard_baseline":
       return ActionTier.READ;
 
     case "copy":

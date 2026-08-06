@@ -34,6 +34,9 @@ const DRIVER_ACTIONS = Object.freeze([
   "press", "keypress", "scroll", "drag",
   "navigate", "open",
   "word_docx_write", "word_from_clipboard", "clipboard_verify",
+  // Records what was on the clipboard BEFORE a copy, so the copy can be proven
+  // to have happened (#16). Read-only.
+  "clipboard_baseline",
 ]);
 
 /** Verbs that hand control to another application. */
