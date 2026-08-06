@@ -31,12 +31,23 @@ async function main() {
 
   const word = expandRecipe(matchRecipe("copy this into word"), {});
   if (!word || word.id !== "terminal_to_word") fails.push("terminal_to_word recipe missing");
-  else {
+  else if (!word.actions.some((a) => a.type === "word_from_clipboard")) {
+    fails.push("terminal_to_word must be API-first (word_from_clipboard)");
+  } else {
     const reviewed = reviewPlan(word.actions, { autoRunSensible: true, autoRunBenign: true });
-    const launch = reviewed.actions.find((a) => a.type === "open");
-    if (!launch || !launch._requireConfirm) fails.push("open must require confirm after guard");
     console.log(
-      `OK recipe terminal_to_word steps=${reviewed.actions.length} needsApproval=${reviewed.needsApproval}`
+      `OK recipe terminal_to_word API-first steps=${reviewed.actions.length} needsApproval=${reviewed.needsApproval}`
+    );
+  }
+
+  const wordUi = expandRecipe(matchRecipe("paste into word window"), {});
+  if (!wordUi || wordUi.id !== "terminal_to_word_ui") fails.push("terminal_to_word_ui recipe missing");
+  else {
+    const reviewed = reviewPlan(wordUi.actions, { autoRunSensible: true, autoRunBenign: true });
+    const launch = reviewed.actions.find((a) => a.type === "open");
+    if (!launch || !launch._requireConfirm) fails.push("UI open winword must require confirm after guard");
+    console.log(
+      `OK recipe terminal_to_word_ui steps=${reviewed.actions.length} needsApproval=${reviewed.needsApproval}`
     );
   }
 
@@ -73,7 +84,8 @@ async function main() {
   }
   console.log("\nRehearsal green.");
   console.log("Live demo: enable Demo screenshots in HUD menu, then Act:");
-  console.log('  "copy this into word"  → recipe (confirms open winword)');
+  console.log('  "copy this into word"  → API .docx (no winword focus)');
+  console.log('  "paste into word window" → UI hotkey fallback (confirms open)');
   console.log('  "create camera hand detection web app" → which-app fork');
   console.log("OpenVault /v1/chat may be 503 until keys are set — recipes still run.");
   process.exit(0);

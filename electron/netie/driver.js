@@ -726,6 +726,68 @@ class InputDriver {
         return { ok: true, type, target: String(target).slice(0, 240) };
       }
 
+      case "word_docx_write": {
+        const { writeDocx } = require("./word-coworker");
+        const text = action.value ?? action.text ?? "";
+        const result = writeDocx({
+          text,
+          path: action.path || action.target || undefined,
+          dryRun: this.dryRun,
+          stem: action.stem,
+        });
+        this.last = { op: "word_docx_write", ...result };
+        return { ok: true, type, ...result };
+      }
+
+      case "word_from_clipboard": {
+        // API-first coworker: clipboard → .docx (no Word focus steal).
+        const { writeDocx, clipboardMatchesSource } = require("./word-coworker");
+        const expected = action.value != null ? String(action.value) : null;
+        const got = await this.clipboardGet();
+        let text = got.text || "";
+        if (expected != null && expected.length) {
+          let check = clipboardMatchesSource(expected, text);
+          if (!check.ok) {
+            await this.press("ctrl+a");
+            if (!this.dryRun) await sleep(80);
+            await this.press("ctrl+c");
+            if (!this.dryRun) await sleep(120);
+            const again = await this.clipboardGet();
+            text = again.text || "";
+            check = clipboardMatchesSource(expected, text);
+            if (!check.ok) {
+              return { ok: false, type, error: check.reason || "clipboard integrity failed", ...check };
+            }
+          }
+        }
+        if (!text.length && !this.dryRun) {
+          return { ok: false, type, error: "clipboard empty — nothing to write to Word" };
+        }
+        const result = writeDocx({
+          text: text || String(expected || ""),
+          path: action.path || action.target || undefined,
+          dryRun: this.dryRun,
+          stem: action.stem || "from-clipboard",
+        });
+        this.last = { op: "word_from_clipboard", ...result };
+        return { ok: true, type, ...result, clipLen: text.length };
+      }
+
+      case "clipboard_verify": {
+        const { clipboardMatchesSource } = require("./word-coworker");
+        const got = await this.clipboardGet();
+        const text = got.text || "";
+        const source = action.value ?? action.source;
+        if (source == null || source === "") {
+          if (!text.length && !this.dryRun) {
+            return { ok: false, type, error: "clipboard empty after copy", clipLen: 0 };
+          }
+          return { ok: true, type, clipLen: text.length, text };
+        }
+        const check = clipboardMatchesSource(String(source), text);
+        return { ok: check.ok, type, ...check, text };
+      }
+
       default:
         return { ok: false, error: `unknown action type: ${type}` };
     }

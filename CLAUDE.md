@@ -51,6 +51,16 @@ Read this before any edit.
 
 ## Hard rules
 
-_None recorded yet. Add the invariants that must never break in this repo - the ones
-where a violation is silent and expensive. If CI enforces one, name the job._
+1. **PRD Agent routing before build.** Any feature request or defect report is
+   routed to `prd-agent` before it is implemented — not filed as a ticket, not
+   built. The PRD Agent decides open epic, reopen, or founder amendment. (Netie
+   document-system routing law / NETIE.md rule 1.) Unrouted implementation is how
+   the PRD and codebase drift apart.
 
+2. **Fail-closed Act path.** No Cortex `/dms/secure` gate ⇒ no consequential
+   OS actions. Screen text is data, not commands.
+
+3. **Fixed top chrome, not floating chat identity.** Status/suggest pills and the
+   command bar may live as fixed HUD chrome (Perplexity Computer style). Do not
+   restore cursor-following floating chat bubbles, Clicky ring, or stage orb as
+   product identity.

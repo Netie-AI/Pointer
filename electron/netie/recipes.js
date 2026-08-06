@@ -78,17 +78,32 @@ const RECIPES = Object.freeze({
   }),
 
   /**
-   * Demo A — terminal / focused app → Word.
-   * open requires confirm (plan-guard). Re-aim not needed: paste uses hotkeys.
+   * Demo A — terminal / focused app → Word (API-first).
+   * Copies selection, writes .docx to disk — no winword focus steal.
+   * Hotkey UI fallback: terminal_to_word_ui (explicit).
    */
   terminal_to_word: Object.freeze({
     id: "terminal_to_word",
-    label: "Copy into Word",
+    label: "Copy into Word (.docx)",
     actions: Object.freeze([
       { type: "press", value: "ctrl+a" },
       { type: "wait", ms: 80 },
       { type: "press", value: "ctrl+c" },
       { type: "wait", ms: 120 },
+      { type: "word_from_clipboard" },
+    ]),
+  }),
+
+  /** UI fallback — hotkeys into Word. Prefer terminal_to_word. */
+  terminal_to_word_ui: Object.freeze({
+    id: "terminal_to_word_ui",
+    label: "Copy into Word (UI hotkeys)",
+    actions: Object.freeze([
+      { type: "press", value: "ctrl+a" },
+      { type: "wait", ms: 80 },
+      { type: "press", value: "ctrl+c" },
+      { type: "wait", ms: 120 },
+      { type: "clipboard_verify" },
       { type: "open", target: "winword" },
       { type: "wait", ms: 2800 },
       { type: "press", value: "ctrl+n" },
@@ -326,6 +341,11 @@ function matchRecipe(text) {
   const normalized = input.toLowerCase().replace(/[.!?]+$/g, "").trim();
 
   // Multi-word coworker SOPs first (more specific).
+  if (
+    /(?:word\s+ui|hotkey\s+word|paste\s+into\s+word\s+window)/.test(normalized)
+  ) {
+    return cloneRecipe(RECIPES.terminal_to_word_ui);
+  }
   if (
     /(?:copy|paste|put|move).{0,40}(?:into|to|in)\s+(?:microsoft\s+)?word\b/.test(normalized) ||
     /(?:terminal|this|that|selection|text).{0,30}(?:to|into)\s+word\b/.test(normalized) ||

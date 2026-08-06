@@ -33,6 +33,7 @@ const DRIVER_ACTIONS = Object.freeze([
   "copy_clipboard", "copy", "select_copy", "select_all",
   "press", "keypress", "scroll", "drag",
   "navigate", "open",
+  "word_docx_write", "word_from_clipboard", "clipboard_verify",
 ]);
 
 /** Verbs that hand control to another application. */

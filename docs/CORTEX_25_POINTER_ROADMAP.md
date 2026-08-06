@@ -152,7 +152,8 @@ Until Cortex ships this, `_llmPlan()` remains the implementation behind the same
 
 ## Non-goals (do not regress)
 
-- Do **not** restore floating Clicky ring / stage orb / chat bubbles as identity.
+- Do **not** restore floating Clicky ring / stage orb / **cursor-following chat bubbles** as identity.
+- **Allowed:** fixed top command bar + status/suggest pills (Perplexity Computer style; see `docs/ui-refs/perplexity-computer/`). LIVE subtitle bar is removed — transcripts flip inside insights.
 - Do **not** put provider API keys in Pointer; OpenVault owns them.
 - Do **not** auto-run `open`/`navigate` or irreversible verbs.
 - Do **not** send secrets through the LLM.

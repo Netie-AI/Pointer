@@ -84,6 +84,17 @@ const DEFAULTS = Object.freeze({
    * and costs two full-screen captures per step. Turn on only when debugging verify.
    */
   verifySteps: false,
+  /**
+   * Let the Transcriber fall back to Deepgram (cloud) when no local engine
+   * (whisper-cli / sidecar / openvault) is present, ranked above rough
+   * windows-speech but never above a real local engine.
+   *
+   * Default OFF — this repo's STT chain is deliberately ordered by privacy,
+   * not convenience (see netie/transcriber.js), and cloud means the mic
+   * audio leaves the device. Turning this on is an explicit trade of some
+   * privacy for accuracy over the offline Windows dictation floor.
+   */
+  cloudStt: false,
 });
 
 function defaultPath() {

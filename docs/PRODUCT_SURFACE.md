@@ -12,6 +12,14 @@ One UI: center HUD chat with retrieve roulette and a draggable audio dock.
 
 Approval stays in HUD: nod / Affirm / Ctrl+Y.
 
+## Visual refs (command bar / onboard / status pills)
+
+See [`docs/ui-refs/perplexity-computer/INDEX.md`](ui-refs/perplexity-computer/INDEX.md) before HUD or onboard CSS changes.
+
+## STT / OCR
+
+Baseline probe: `node scripts/stt_baseline.js`. Notes: [`docs/STT_OCR.md`](STT_OCR.md).
+
 ## Windows-safe visual direction
 
 No `backdrop-filter` in core HUD surfaces (Windows Electron corruption risk). Netie Pointer uses solid frosted panels, spring-style transitions, and press-on-down feedback.

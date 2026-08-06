@@ -71,11 +71,18 @@ test("undo and save match", () => {
   assert.strictEqual(matchRecipe("save this file").actions[0].value, "ctrl+s");
 });
 
-test("terminal to word coworker recipe", () => {
+test("terminal to word coworker recipe is API-first", () => {
   const r = matchRecipe("copy this terminal into word");
   assert.strictEqual(r.id, "terminal_to_word");
+  assert.ok(r.actions.some((a) => a.type === "word_from_clipboard"));
+  assert.ok(!r.actions.some((a) => a.type === "open" && a.target === "winword"));
+});
+
+test("terminal to word UI fallback is explicit", () => {
+  const r = matchRecipe("paste into word window");
+  assert.strictEqual(r.id, "terminal_to_word_ui");
   assert.ok(r.actions.some((a) => a.type === "open" && a.target === "winword"));
-  assert.ok(r.actions.some((a) => a.value === "ctrl+v"));
+  assert.ok(r.actions.some((a) => a.type === "clipboard_verify"));
 });
 
 test("claude to cursor and create slides", () => {
