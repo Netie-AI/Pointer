@@ -275,6 +275,189 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
         "FIX-C16: drag transforms must honour the narrow breakpoint centring"
       );
     }),
+    // ── #25 · hold-to-talk lifecycle ────────────────────────────────────────
+    // The gesture is trivial. Every assertion below is about the release paths,
+    // because a hold that loses its keyup leaves the microphone open.
+    T("#25 a hold opens capture and a release closes it", async () => {
+      const log = [];
+      const h = live.createHoldToTalk({
+        engineAvailable: async () => ({ ok: true }),
+        start: async () => { log.push("start"); return { ok: true }; },
+        stop: async () => { log.push("stop"); },
+      });
+      await h.begin();
+      assert.strictEqual(h.holding, true);
+      await h.end();
+      assert.strictEqual(h.holding, false);
+      assert.deepStrictEqual(log, ["start", "stop"]);
+    }),
+
+    T("#25 no engine means no capture at all, and the control is told why", async () => {
+      const log = [];
+      const states = [];
+      const h = live.createHoldToTalk({
+        engineAvailable: async () => ({ ok: false, reason: "no transcription engine" }),
+        start: async () => { log.push("start"); return { ok: true }; },
+        stop: async () => { log.push("stop"); },
+        onState: (s) => states.push(s),
+      });
+      const r = await h.begin();
+      assert.strictEqual(r.ok, false);
+      assert.deepStrictEqual(log, [], "audio was captured with nowhere to send it");
+      assert.strictEqual(h.holding, false);
+      const said = states.find((s) => s.state === "unavailable");
+      assert.ok(said && /engine/i.test(said.detail), "the control was never told why");
+    }),
+
+    T("#25 blur, visibilitychange and pointercancel are all hard stops", async () => {
+      for (const reason of ["blur", "visibilitychange", "pointercancel", "pointerleave"]) {
+        const log = [];
+        const h = live.createHoldToTalk({
+          engineAvailable: async () => ({ ok: true }),
+          start: async () => { log.push("start"); return { ok: true }; },
+          stop: async () => { log.push(`stop:${reason}`); },
+        });
+        await h.begin();
+        await h.end(reason);
+        assert.strictEqual(h.holding, false, `${reason} left the mic open`);
+        assert.deepStrictEqual(log, ["start", `stop:${reason}`]);
+      }
+    }),
+
+    T("#25 end() is idempotent, so overlapping hard stops cannot double-stop", async () => {
+      let stops = 0;
+      const h = live.createHoldToTalk({
+        engineAvailable: async () => ({ ok: true }),
+        start: async () => ({ ok: true }),
+        stop: async () => { stops += 1; },
+      });
+      await h.begin();
+      await Promise.all([h.end("blur"), h.end("pointerup"), h.end("visibilitychange")]);
+      assert.strictEqual(stops, 1, "the mic was stopped more than once");
+      assert.strictEqual(h.holding, false);
+    }),
+
+    T("#25 a watchdog closes a hold whose release never arrives", async () => {
+      let stops = 0;
+      let fire = null;
+      const h = live.createHoldToTalk({
+        engineAvailable: async () => ({ ok: true }),
+        start: async () => ({ ok: true }),
+        stop: async () => { stops += 1; },
+        maxMs: 50,
+        setTimer: (fn) => { fire = fn; return 1; },
+        clearTimer: () => { fire = null; },
+      });
+      await h.begin();
+      assert.ok(fire, "no watchdog was armed");
+      await fire();
+      assert.strictEqual(stops, 1, "the watchdog did not close the microphone");
+      assert.strictEqual(h.holding, false);
+    }),
+
+    T("#25 releasing while capture is still opening does not strand the mic", async () => {
+      let stops = 0;
+      let releaseStart;
+      let sawStart;
+      const startCalled = new Promise((res) => { sawStart = res; });
+      const h = live.createHoldToTalk({
+        engineAvailable: async () => ({ ok: true }),
+        start: () => {
+          sawStart();
+          return new Promise((r) => { releaseStart = () => r({ ok: true }); });
+        },
+        stop: async () => { stops += 1; },
+      });
+      const begun = h.begin();
+      await startCalled;          // capture is opening, not yet open
+      await h.end("pointerup");   // ...and the customer lets go right now
+      releaseStart();             // the mic finally opens, for a gesture that is over
+      await begun;
+      assert.strictEqual(h.holding, false);
+      assert.ok(stops >= 1, "capture opened after release and was never closed");
+    }),
+
+    T("#25 a release during the engine probe cancels the hold entirely", async () => {
+      // A fast tap: pointerdown and pointerup inside one frame, while the STT
+      // probe is still in flight. The mic must never open at all.
+      const log = [];
+      let finishProbe;
+      const probing = new Promise((res) => { finishProbe = () => res({ ok: true }); });
+      const h = live.createHoldToTalk({
+        engineAvailable: () => probing,
+        start: async () => { log.push("start"); return { ok: true }; },
+        stop: async () => { log.push("stop"); },
+      });
+      const begun = h.begin();
+      await h.end("pointerup");
+      finishProbe();
+      const r = await begun;
+      assert.strictEqual(r.ok, false);
+      assert.deepStrictEqual(log, [], "the mic opened after the gesture was over");
+      assert.strictEqual(h.holding, false);
+    }),
+
+    T("#25 a failed mic does not leave the control claiming it is recording", async () => {
+      const states = [];
+      const h = live.createHoldToTalk({
+        engineAvailable: async () => ({ ok: true }),
+        start: async () => ({ ok: false, error: "mic in use" }),
+        stop: async () => {},
+        onState: (s) => states.push(s),
+      });
+      const r = await h.begin();
+      assert.strictEqual(r.ok, false);
+      assert.strictEqual(h.holding, false);
+      assert.ok(states.some((s) => s.state === "unavailable"));
+    }),
+
+    T("#25 the renderer binds every hard stop the module declares", () => {
+      const js = read("electron/hud.js");
+      assert.ok(/createHoldToTalk\(/.test(js), "hold-to-talk is not wired into the HUD at all");
+      for (const evt of ["pointerup", "pointercancel", "pointerleave"]) {
+        assert.ok(js.includes(`"${evt}"`), `${evt} is not bound in the renderer`);
+      }
+      assert.ok(/addEventListener\("blur"/.test(js), "window blur is not a hard stop");
+      assert.ok(/visibilitychange/.test(js), "visibilitychange is not a hard stop");
+    }),
+
+    // ── #23 · attachments reach the payload ─────────────────────────────────
+    T("#23 the renderer sends attachment content, not just a chip", () => {
+      const js = read("electron/hud.js");
+      assert.ok(/attachmentPayload\(\)/.test(js), "no attachment payload is built");
+      assert.ok(
+        /invoke\("hud:ask",\s*\{\s*message,\s*attachments/.test(js),
+        "hud:ask does not carry attachments"
+      );
+      assert.ok(
+        /invoke\("hud:act",\s*\{\s*message,\s*attachments/.test(js),
+        "hud:act does not carry attachments"
+      );
+      assert.ok(/readAsText/.test(js), "file content is never read");
+      assert.ok(/clearAttachments\(\)/.test(js), "attachments leak into the next intent");
+    }),
+
+    T("#23 main includes attachment content and forces the approval beat", () => {
+      const main = read("electron/main.js");
+      assert.ok(/buildAttachmentBlock\(/.test(main), "attachments never reach the request");
+      assert.ok(/forcesApproval\(/.test(main), "attachments can still auto-run");
+      assert.ok(
+        /autoRunSensible:\s*false[\s\S]{0,60}autoRunBenign:\s*false/.test(main),
+        "the attachment policy override does not actually disable auto-run"
+      );
+    }),
+
+    T("#23 attachments.js is loaded by the HUD, not just by the tests", () => {
+      const html = read("electron/hud.html");
+      assert.ok(
+        /<script src="netie\/attachments\.js">/.test(html),
+        "the attachment policy module is never loaded by the renderer"
+      );
+      assert.ok(
+        html.indexOf("netie/attachments.js") < html.indexOf("hud.js\"></script>"),
+        "attachments.js must load before hud.js reads it"
+      );
+    }),
   ];
 
   const ok = await suite.run(tests);

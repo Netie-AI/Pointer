@@ -385,10 +385,125 @@
     };
   }
 
+  // ── #25 · hold-to-talk ────────────────────────────────────────────────────
+  /**
+   * Hold a control, talk, release, get a transcript in the command bar.
+   *
+   * The gesture is trivial; the release lifecycle is the whole ticket. A hold
+   * that loses its keyup — the window blurs, the customer alt-tabs mid-hold, the
+   * pointer is cancelled by a system gesture — leaves the microphone recording
+   * with nothing on screen saying so. That is a privacy defect, not a bug, so:
+   *
+   *   - `end()` is idempotent and safe to call from every one of those paths.
+   *   - a watchdog stops capture even if no release event ever arrives.
+   *   - `begin()` refuses when no engine is available, rather than capturing
+   *     audio that goes nowhere (KB R-0011 — a silent no-op is a lie).
+   *   - state changes are announced through `onState`, so the recording
+   *     indicator can never disagree with whether the mic is actually open.
+   *
+   * No timers are created until a hold starts, and the clock is injected, so
+   * the watchdog can be tested without sleeping.
+   *
+   * @param {{start:function, stop:function, engineAvailable:function,
+   *          onState?:function, maxMs?:number, setTimer?:function,
+   *          clearTimer?:function}} deps
+   */
+  function createHoldToTalk(deps) {
+    const {
+      start,
+      stop,
+      engineAvailable,
+      onState = () => {},
+      maxMs = 120000,
+      setTimer = setTimeout,
+      clearTimer = clearTimeout,
+    } = deps || {};
+
+    let holding = false;
+    let watchdog = null;
+    let generation = 0;
+
+    function announce(state, detail) {
+      onState({ state, holding, detail: detail || "" });
+    }
+
+    function clearWatchdog() {
+      if (watchdog != null) {
+        clearTimer(watchdog);
+        watchdog = null;
+      }
+    }
+
+    async function begin(reason = "press") {
+      if (holding) return { ok: true, already: true };
+      // Claim a generation BEFORE the first await. A release can land while the
+      // engine probe is still in flight — pointerdown/pointerup inside one
+      // animation frame is an ordinary fast tap — and if `begin` only checked
+      // `holding`, that release would be a no-op and the mic would open after
+      // the gesture was already over.
+      const mine = ++generation;
+      const engine = await engineAvailable();
+      if (mine !== generation) {
+        return { ok: false, reason: "released before capture opened" };
+      }
+      if (!engine || engine.ok === false) {
+        // Say it AT the control. The customer is holding a button; a console
+        // line they cannot see is not an answer.
+        announce("unavailable", (engine && engine.reason) || "no transcription engine");
+        return { ok: false, reason: (engine && engine.reason) || "no transcription engine" };
+      }
+      holding = true;
+      announce("holding", reason);
+      const started = await start(reason);
+      // The hold may have ended while start() was in flight; do not leave a
+      // capture running for a gesture that is already over.
+      if (!holding || mine !== generation) {
+        await stop("raced");
+        return { ok: false, reason: "released before capture opened" };
+      }
+      if (!started || started.ok === false) {
+        holding = false;
+        announce("unavailable", (started && started.error) || "mic unavailable");
+        return { ok: false, reason: (started && started.error) || "mic unavailable" };
+      }
+      clearWatchdog();
+      watchdog = setTimer(() => {
+        // No release ever arrived. Stop anyway and say why.
+        end("watchdog");
+      }, maxMs);
+      return { ok: true };
+    }
+
+    /** Idempotent. Every hard-stop path calls this and none of them coordinate. */
+    async function end(reason = "release") {
+      clearWatchdog();
+      // Bump unconditionally, even when nothing is holding: an in-flight
+      // `begin()` compares against this to learn it was released mid-await.
+      generation += 1;
+      if (!holding) return { ok: true, already: true };
+      holding = false;
+      announce("stopping", reason);
+      await stop(reason);
+      announce("idle", reason);
+      return { ok: true, reason };
+    }
+
+    return {
+      begin,
+      end,
+      get holding() {
+        return holding;
+      },
+      /** Every event that must be treated as a hard stop. */
+      hardStopEvents: ["pointerup", "pointercancel", "pointerleave", "blur", "visibilitychange"],
+    };
+  }
+
   return {
     AUTO_SEND_MS,
     INSIGHT_WINDOW_MS,
     SOURCE_LABELS,
+    createHoldToTalk,
     createDragController,
     createAutoSend,
     createLiveLine,

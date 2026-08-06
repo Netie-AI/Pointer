@@ -25,6 +25,8 @@ const chatDock = $("chat-dock");
 const subtitleBar = $("subtitle-bar");
 const autosendChip = $("autosend");
 const autosendCount = $("autosend-count");
+const cleanToast = $("clean-toast");
+const cleanToastText = $("clean-toast-text");
 const clickyOrb = null; // floating Clicky hold removed — Ctrl+Shift+Space arms real OS pointer
 const peekDrop = null;
 const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify")];
@@ -42,6 +44,8 @@ let lastWavePaintAt = 0;
 let activeBucket = "chat";
 let latestRetrieveText = "";
 let mouseOverChrome = false;
+/** @type {{start:number, end:number, raw:string, cleaned:string}|null} */
+let pendingClean = null;
 let clickyHoldTimer = null;
 let agentBusy = false;
 let peekTimer = null;
@@ -54,6 +58,7 @@ const {
   createLiveLine,
   createLiveTranscript,
   createInsightFeed,
+  createHoldToTalk,
   shouldRearmAfterAct,
   AUTO_SEND_MS,
 } = window.NetieHudLive;
@@ -72,25 +77,42 @@ const hudSettings = { autoSend: false, followCursor: true, liveLines: 5 };
  * whatever is playing on screen, and a YouTube title is not markup we control.
  */
 function renderSubtitle() {
-  if (!subtitleText) return;
+  const feed = $("transcript-feed");
   const lines = liveFeed.lines().slice(-hudSettings.liveLines);
-  if (!lines.length) {
-    subtitleText.textContent = listening || systemAudio ? "Listening…" : "";
-    return;
+  // LIVE subtitle bar removed from default chrome — transcripts live in insights flip.
+  if (subtitleText) {
+    if (!lines.length) {
+      subtitleText.textContent = listening || systemAudio ? "Listening…" : "";
+    } else {
+      subtitleText.replaceChildren();
+      for (const line of lines) {
+        const row = document.createElement("div");
+        row.className = `live-line src-${line.source}${line.partial ? " partial" : ""}`;
+        const who = document.createElement("span");
+        who.className = "live-who";
+        who.textContent = line.label;
+        row.appendChild(who);
+        row.appendChild(document.createTextNode(line.text));
+        subtitleText.appendChild(row);
+      }
+    }
   }
-  subtitleText.replaceChildren();
-  for (const line of lines) {
-    const row = document.createElement("div");
-    row.className = `live-line src-${line.source}${line.partial ? " partial" : ""}`;
-    const who = document.createElement("span");
-    who.className = "live-who";
-    who.textContent = line.label;
-    row.appendChild(who);
-    row.appendChild(document.createTextNode(line.text));
-    subtitleText.appendChild(row);
+  if (feed) {
+    feed.replaceChildren();
+    for (const line of lines) {
+      const row = document.createElement("div");
+      row.className = `live-line src-${line.source}${line.partial ? " partial" : ""}`;
+      const who = document.createElement("span");
+      who.className = "live-who";
+      who.textContent = line.label;
+      row.appendChild(who);
+      row.appendChild(document.createTextNode(line.text));
+      feed.appendChild(row);
+    }
+    if (!lines.length) {
+      feed.textContent = listening || systemAudio ? "Listening…" : "No transcripts yet.";
+    }
   }
-  subtitleBar.classList.toggle("multiline", lines.length > 1);
-  subtitleText.scrollTop = subtitleText.scrollHeight;
 }
 
 /**
@@ -301,6 +323,7 @@ async function loadSettings() {
   if ($("set-demo-debug")) $("set-demo-debug").checked = settings.demoDebug === true;
   if ($("set-verify")) $("set-verify").checked = settings.verifySteps === true;
   if ($("set-autosend")) $("set-autosend").checked = settings.autoSend === true;
+  if ($("set-cloud-stt")) $("set-cloud-stt").checked = settings.cloudStt === true;
   if ($("set-follow")) $("set-follow").checked = settings.followCursor !== false;
   if ($("set-capture-visible")) $("set-capture-visible").checked = settings.captureVisible === true;
   hudSettings.autoSend = settings.autoSend === true;
@@ -327,6 +350,7 @@ async function saveSettingsFromUi() {
       demoDebug: $("set-demo-debug") ? $("set-demo-debug").checked : false,
       verifySteps: $("set-verify") ? $("set-verify").checked : false,
       autoSend: $("set-autosend") ? $("set-autosend").checked : false,
+      cloudStt: $("set-cloud-stt") ? $("set-cloud-stt").checked : false,
       followCursor: $("set-follow") ? $("set-follow").checked : true,
       captureVisible: $("set-capture-visible") ? $("set-capture-visible").checked : false,
     },
@@ -487,6 +511,303 @@ bindDrag("subtitle-drag", "subtitle");
 const btnChatClose = $("btn-chat-close");
 if (btnChatClose) btnChatClose.addEventListener("click", () => setChatOpen(false));
 const btnShowTranscript = $("btn-show-transcript");
+let insightView = "ai";
+let statusOpenPath = "";
+
+function setInsightView(view) {
+  insightView = view === "transcripts" ? "transcripts" : "ai";
+  const ai = $("insight-ai-view");
+  const tr = $("insight-transcript-view");
+  if (ai) ai.hidden = insightView !== "ai";
+  if (tr) tr.hidden = insightView !== "transcripts";
+  document.querySelectorAll(".insight-tab").forEach((btn) => {
+    const on = btn.dataset.insightView === insightView;
+    btn.classList.toggle("active", on);
+    btn.setAttribute("aria-selected", on ? "true" : "false");
+  });
+  if (insightView === "transcripts") renderSubtitle();
+}
+
+function showStatusPill({ title, sub, path, ready }) {
+  const pill = $("status-pill");
+  if (!pill) return;
+  $("status-title").textContent = title || "Working…";
+  $("status-sub").textContent = sub || "";
+  statusOpenPath = path || "";
+  $("btn-status-open").hidden = !ready;
+  pill.hidden = false;
+  pill.classList.add("show");
+}
+
+function hideStatusPill() {
+  const pill = $("status-pill");
+  if (!pill) return;
+  pill.classList.remove("show");
+  pill.hidden = true;
+  statusOpenPath = "";
+}
+
+function maybeShowOnboard() {
+  try {
+    if (localStorage.getItem("netie_pointer_onboarded") === "1") {
+      hudRoot.classList.add("onboarded", "theme-onboarded");
+      return;
+    }
+  } catch (_) { /* ignore */ }
+  const el = $("onboard");
+  if (el) el.hidden = false;
+}
+
+document.querySelector(".insight-tabs")?.addEventListener("click", (event) => {
+  const tab = event.target.closest(".insight-tab");
+  if (!tab) return;
+  setInsightView(tab.dataset.insightView);
+});
+
+$("btn-status-cancel")?.addEventListener("click", hideStatusPill);
+$("btn-status-open")?.addEventListener("click", () => {
+  if (statusOpenPath) invoke("hud:openPath", { path: statusOpenPath });
+  hideStatusPill();
+});
+
+$("btn-onboard-done")?.addEventListener("click", () => {
+  try { localStorage.setItem("netie_pointer_onboarded", "1"); } catch (_) { /* ignore */ }
+  hudRoot.classList.add("onboarded", "theme-onboarded");
+  const el = $("onboard");
+  if (el) el.hidden = true;
+});
+
+$("command-bar-tools")?.addEventListener("click", (event) => {
+  const btn = event.target.closest("button[data-cmd]");
+  if (!btn) return;
+  const cmd = btn.dataset.cmd;
+  if (cmd === "attach") $("file-attach")?.click();
+  else if (cmd === "apps") {
+    askInput.value = "List active apps and suggest what I can do next";
+    doAsk();
+  } else if (cmd === "shots") invoke("hud:frameRegion");
+  else if (cmd === "clipboard") {
+    askInput.value = "Summarize my clipboard and offer paste targets";
+    doAsk();
+  }
+});
+
+/**
+ * Attachments the customer has actually staged (#23).
+ *
+ * The old code read `file.name`, built a chip, and then cleared `input.value`,
+ * which destroys the FileList — so nothing could ever recover the selection and
+ * the chip was decoration. State lives here, keyed to its chip element, and is
+ * cleared both when a chip is removed and after a successful submit, so one
+ * intent's attachments cannot leak into the next.
+ *
+ * @type {Array<{name:string, size:number, content:string|null, ok:boolean,
+ *               reason:string, chip:HTMLElement}>}
+ */
+let attachments = [];
+
+const ATTACH = globalThis.NetieAttachments;
+
+function renderAttachmentChip(entry) {
+  const chip = document.createElement("span");
+  chip.className = entry.ok ? "file-chip" : "file-chip refused";
+  const label = document.createElement("span");
+  label.className = "file-chip-name";
+  label.textContent = entry.name;
+  chip.appendChild(label);
+
+  if (!entry.ok) {
+    // R-0011: a refused file must LOOK refused. A chip identical to an accepted
+    // one is the original defect with extra steps.
+    const why = document.createElement("span");
+    why.className = "file-chip-why";
+    why.textContent = entry.reason;
+    chip.appendChild(why);
+    chip.title = `Not attached — ${entry.reason}`;
+  } else {
+    chip.title = `${entry.name} will be sent as reference material`;
+  }
+
+  const x = document.createElement("button");
+  x.type = "button";
+  x.textContent = "×";
+  x.setAttribute("aria-label", `Remove ${entry.name}`);
+  x.addEventListener("click", () => {
+    attachments = attachments.filter((a) => a !== entry);
+    chip.remove();
+  });
+  chip.appendChild(x);
+  entry.chip = chip;
+  return chip;
+}
+
+function clearAttachments() {
+  for (const entry of attachments) entry.chip?.remove();
+  attachments = [];
+  const chips = $("file-chips");
+  if (chips) chips.replaceChildren();
+}
+
+/**
+ * What actually leaves the renderer: accepted files only, with content. A
+ * refused chip contributes nothing, which is the point — the customer can see
+ * at the chip that it was not sent.
+ */
+function attachmentPayload() {
+  return attachments
+    .filter((a) => a.ok && a.content != null)
+    .map((a) => ({ name: a.name, size: a.size, content: a.content, ok: true }));
+}
+
+/** Read an accepted text file. Refusals never get here, so never get read. */
+function readFileText(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => resolve(null);
+    reader.readAsText(file);
+  });
+}
+
+$("file-attach")?.addEventListener("change", async () => {
+  const chips = $("file-chips");
+  const input = $("file-attach");
+  if (!chips || !input?.files?.length) return;
+  const picked = Array.from(input.files);
+  // Clear the input immediately — but only after copying the FileList out, which
+  // is the step the old code was missing.
+  input.value = "";
+
+  const accepted = attachments.filter((a) => a.ok);
+  const verdicts = ATTACH.classifySelection(picked, accepted);
+
+  for (let i = 0; i < picked.length; i += 1) {
+    const file = picked[i];
+    const verdict = verdicts[i];
+    const entry = {
+      name: file.name,
+      size: file.size,
+      content: null,
+      ok: verdict.ok,
+      reason: verdict.reason || "",
+      chip: null,
+    };
+    attachments.push(entry);
+    chips.appendChild(renderAttachmentChip(entry));
+
+    if (verdict.ok) {
+      const text = await readFileText(file);
+      if (text == null) {
+        // Unreadable after acceptance — say so at the chip rather than sending
+        // an intent that silently lost a file.
+        entry.ok = false;
+        entry.reason = "could not be read";
+        entry.chip.replaceWith(renderAttachmentChip(entry));
+      } else {
+        entry.content = text;
+      }
+    }
+  }
+});
+
+// ── #25 · hold-to-talk ──────────────────────────────────────────────────────
+// The gesture lives here; the lifecycle lives in hud-live.js so the hard-stop
+// paths are tested without a browser. What the renderer owns is: which DOM
+// events count as a release, and what the control looks like while the mic is
+// open. Those two must never disagree — an open mic with an idle-looking button
+// is the privacy defect this ticket is actually about.
+const btnHold = $("btn-hold-hint");
+
+const holdToTalk = createHoldToTalk({
+  engineAvailable: async () => {
+    try {
+      const stt = await invoke("hud:sttStatus");
+      if (!stt || !stt.engine || stt.engine === "none") {
+        return { ok: false, reason: (stt && stt.hint) || "no transcription engine" };
+      }
+      return { ok: true, label: stt.label || stt.engine };
+    } catch {
+      return { ok: false, reason: "transcription status unavailable" };
+    }
+  },
+  start: async () => {
+    const started = await capture.start("mic");
+    if (!started.ok) return started;
+    listening = true;
+    await invoke("hud:toggleListen", { on: true });
+    paused = false;
+    updateRecUi();
+    setLive(true);
+    return { ok: true };
+  },
+  stop: async () => {
+    capture.stop("mic");
+    listening = false;
+    try {
+      await invoke("hud:toggleListen", { on: false });
+    } catch {
+      /* the mic is already closed locally; never leave `holding` stuck on it */
+    }
+    updateRecUi();
+    setLive(capture.active("system"));
+    setLivePartial("");
+  },
+  onState: ({ state, detail }) => {
+    if (!btnHold) return;
+    btnHold.classList.toggle("holding", state === "holding");
+    btnHold.classList.toggle("unavailable", state === "unavailable");
+    if (state === "holding") {
+      btnHold.textContent = "Listening — release to send";
+      answerMeta.textContent = "Listening (hold)";
+    } else if (state === "unavailable") {
+      // Said at the control, not only in a log line.
+      btnHold.textContent = "Hold to talk — unavailable";
+      btnHold.title = detail || "No transcription engine";
+      answerMeta.textContent = detail || "No transcription engine";
+    } else if (state === "idle") {
+      btnHold.textContent = "Hold to talk";
+      // A hold that ended because the window went away should say so rather
+      // than looking like a normal release.
+      if (detail && detail !== "release") answerMeta.textContent = `Stopped listening (${detail})`;
+    }
+  },
+});
+
+if (btnHold) {
+  btnHold.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    // Capture the pointer so a drag off the button still delivers pointerup.
+    try { btnHold.setPointerCapture(event.pointerId); } catch { /* not supported */ }
+    holdToTalk.begin("pointer");
+  });
+  for (const evt of ["pointerup", "pointercancel", "pointerleave"]) {
+    btnHold.addEventListener(evt, () => holdToTalk.end(evt));
+  }
+  // Keyboard parity: the control is a button, so Space/Enter must work too, and
+  // must release on keyup like the pointer does.
+  btnHold.addEventListener("keydown", (event) => {
+    if (event.repeat) return;
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      holdToTalk.begin("key");
+    }
+  });
+  btnHold.addEventListener("keyup", (event) => {
+    if (event.key === " " || event.key === "Enter") holdToTalk.end("keyup");
+  });
+}
+
+// The hard stops that have nothing to do with the button. Alt-tab, a system
+// gesture, or the window losing focus must close the microphone — otherwise the
+// hold outlives the UI that says it is happening.
+window.addEventListener("blur", () => holdToTalk.end("window blur"));
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") holdToTalk.end("window hidden");
+});
+
+maybeShowOnboard();
+setInsightView("ai");
+
 if (btnShowTranscript) {
   btnShowTranscript.addEventListener("click", () => {
     setChatOpen(true);
@@ -498,6 +819,7 @@ async function doAsk() {
   const message = askInput.value.trim() || finalBits.slice(-1)[0] || "";
   if (!message) return;
   autoSend.cancel("sent");
+  dismissCleanToast();
   setChatOpen(true);
   appendMessage("user", message, true);
   askInput.value = "";
@@ -505,7 +827,9 @@ async function doAsk() {
   answerMeta.textContent = "Thinking…";
   answerBody.textContent = "…";
   if (window.NetieSound) NetieSound.think();
-  const result = await invoke("hud:ask", { message });
+  const sent = attachmentPayload();
+  const result = await invoke("hud:ask", { message, attachments: sent });
+  if (sent.length) clearAttachments();
   answerMeta.textContent = result.degraded ? "Answered (degraded)" : "AI response";
   appendMessage("assistant", result.ok ? result.reply || "" : result.error || "Failed");
   answerBody.textContent = "";
@@ -523,11 +847,14 @@ async function doAct() {
   const message = askInput.value.trim() || finalBits.slice(-1)[0] || "";
   if (!message) return;
   autoSend.cancel("sent"); // it is going now; no second copy in four seconds
+  dismissCleanToast();
   setChatOpen(true);
   appendMessage("user", message, true);
   askInput.value = "";
   answerMeta.textContent = "Planning…";
-  const result = await invoke("hud:act", { message });
+  const sentAct = attachmentPayload();
+  const result = await invoke("hud:act", { message, attachments: sentAct });
+  if (sentAct.length) clearAttachments();
   // HUD-04 — acting used to end the conversation; the follow-up ("no, the other
   // one") landed on a dead mic. Pick capture back up unless the user paused it.
   await rearmAfterAct();
@@ -536,10 +863,13 @@ async function doAct() {
     if (window.NetieSound) NetieSound.warn();
     return;
   }
+  // The main process already computed the verb/destination disclosure (#20);
+  // repeating a bare count here would put the old lie back in the transcript.
   const n = (result.actions || []).length;
   appendMessage(
     "assistant",
-    result.ran ? `${n} step(s) running.` : `${n} step(s) ready — nod / Affirm / Ctrl+Y.`
+    result.ran ? `Running ${n} step(s) — see the panel for what each one does.`
+               : `${n} step(s) ready — read the steps above, then nod / Affirm / Ctrl+Y.`
   );
 }
 
@@ -713,6 +1043,7 @@ $("btn-clear").addEventListener("click", () => {
   askInput.value = "";
   finalBits = [];
   setLivePartial("");
+  dismissCleanToast();
 });
 $("btn-act").addEventListener("click", doAct);
 $("btn-add-sub").addEventListener("click", () => addTextToChat(latestSystemSubtitle, true));
@@ -725,16 +1056,48 @@ if (btnAutoSendCancel) {
 }
 // Typing is taking control back — a countdown that fires mid-edit sends half a
 // thought. Escape kills it outright.
-askInput.addEventListener("input", () => autoSend.cancel("typing"));
+askInput.addEventListener("input", () => {
+  autoSend.cancel("typing");
+  // The offer only applies to the exact span it was made for — once the user
+  // touches the box, that span may no longer point at the right text.
+  if (pendingClean) dismissCleanToast();
+});
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && autoSend.armed) autoSend.cancel("escape");
 });
+$("btn-clean-yes").addEventListener("click", () => {
+  if (!pendingClean) return;
+  const { start, end, raw, cleaned } = pendingClean;
+  // Re-verify the span still holds exactly the raw text the offer was made
+  // for — if the user edited around it since, don't guess, just back off.
+  if (askInput.value.slice(start, end) !== raw) {
+    dismissCleanToast();
+    return;
+  }
+  askInput.value = askInput.value.slice(0, start) + cleaned + askInput.value.slice(end);
+  askInput.focus();
+  dismissCleanToast();
+});
+$("btn-clean-no").addEventListener("click", dismissCleanToast);
 $("insight-actions").addEventListener("click", (event) => {
+  const confirmBtn = event.target.closest("button[data-confirm]");
+  if (confirmBtn) {
+    askInput.value = confirmBtn.dataset.confirm;
+    showStatusPill({
+      title: confirmBtn.dataset.confirm,
+      sub: "Confirm with Do it / nod",
+      ready: false,
+    });
+    return;
+  }
   const button = event.target.closest("button[data-q]");
   if (!button) return;
   askInput.value = button.dataset.q;
   doAsk();
 });
+if (btnShowTranscript) {
+  btnShowTranscript.addEventListener("click", () => setInsightView("transcripts"));
+}
 $("mode-pill").addEventListener("click", async (event) => {
   if (agentBusy) {
     answerMeta.textContent = "Agent busy — mode locked";
@@ -890,6 +1253,33 @@ askInput.addEventListener("keydown", (event) => {
  * IPC bridge already calls, it can only draw, and anything able to call it can
  * already run script in this renderer.
  */
+/**
+ * Local, no-network disfluency pass: strips filler interjections ("um", "uh")
+ * and immediate word-repetition stutters ("I I I want" -> "I want"). Never an
+ * LLM call, so it runs instantly and the words never leave the device -- same
+ * privacy stance as the mic pipeline itself (netie/transcriber.js).
+ */
+function cleanupTranscript(text) {
+  return String(text || "")
+    .replace(/\b(um+|uh+|erm+|hm+)\b[,.]?/gi, "")
+    .replace(/\b(\w+)(\s+\1\b)+/gi, "$1")
+    .replace(/\s+([,.!?])/g, "$1")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function dismissCleanToast() {
+  pendingClean = null;
+  cleanToast.hidden = true;
+}
+
+/** Offer to clean the segment just inserted at [start,end) of askInput.value. */
+function offerCleanup(start, end, raw, cleaned) {
+  pendingClean = { start, end, raw, cleaned };
+  cleanToastText.textContent = `Clean up "${raw.length > 40 ? `${raw.slice(0, 40)}…` : raw}"?`;
+  cleanToast.hidden = false;
+}
+
 function onHudEvent(event) {
   if (!event?.type) return;
   if (event.type === "mode") applyModeUi(event.mode, event.notesPath);
@@ -929,9 +1319,16 @@ function onHudEvent(event) {
       // "nothing happened" — even though Ask/Do it silently fell back to the
       // last transcript. Accumulate so two sentences make one instruction.
       const existing = askInput.value.trim();
+      const insertStart = existing ? existing.length + 1 : 0;
       askInput.value = existing ? `${existing} ${text}` : text;
       askInput.scrollTop = askInput.scrollHeight;
       insightFeed.push(text, Date.now());
+      // Offer cleanup only when there is actually a filler/stutter to strip —
+      // asking "clean or nah?" after every clean sentence would just be noise.
+      const cleaned = cleanupTranscript(text);
+      if (cleaned && cleaned !== text.trim()) {
+        offerCleanup(insertStart, askInput.value.length, text, cleaned);
+      }
       // HUD-02 — opt-in only. What you say lands in the Ask box and waits there
       // so you can edit it, add to it by typing, and send when you mean to.
       // Auto-sending a half-finished sentence is worse than not sending at all.
@@ -1009,6 +1406,24 @@ function onHudEvent(event) {
   if (event.type === "bg") renderBgStatus(event);
   if (event.type === "pointer") {
     answerMeta.textContent = event.mode ? `Pointer · ${event.mode}` : answerMeta.textContent;
+  }
+  if (event.type === "status" || event.type === "act-status") {
+    showStatusPill({
+      title: event.title || event.label || "Working…",
+      sub: event.sub || event.detail || event.phase || "",
+      path: event.path || "",
+      ready: Boolean(event.ready || event.path),
+    });
+  }
+  if (event.type === "word-docx" && event.path) {
+    showStatusPill({
+      title: "Document ready",
+      // The destination, not a reassurance. #19's acceptance is that the
+      // customer has seen where a path goes BEFORE the Open button acts on it.
+      sub: event.path,
+      path: event.path,
+      ready: true,
+    });
   }
 }
 

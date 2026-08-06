@@ -96,24 +96,141 @@ record("the enquire panel is a real form and starts hidden", async ({ page }) =>
   assert.strictEqual(form.hidden, true, "it must not be in the way at boot");
 });
 
-record("the LIVE bar renders five rolling lines from system audio", async ({ page }) => {
-  // Feed the renderer the same event shape main.js sends, and read the DOM back.
+// ── #22 · the redesigned chrome, asserted against the RENDERED HUD ──────────
+// EPIC-P05's chrome shipped with no assertion covering any of it: nothing failed
+// if the LIVE bar came back, if the insight toggle stopped flipping, or if the
+// status pill stopped rendering. These four run against the real DOM, because a
+// grep for `status-pill` in hud.html passes even though the element ships with
+// `hidden` set — asserting the source would certify a pill nobody can ever see.
+
+record("#22 no separate draggable LIVE subtitle bar is presented", async ({ page }) => {
+  const bar = await page.evaluate(() => {
+    const el = document.getElementById("subtitle-bar");
+    if (!el) return { present: false };
+    const cs = getComputedStyle(el);
+    const box = el.getBoundingClientRect();
+    return {
+      present: true,
+      // Deliberately NOT `el.hidden`. The attribute was set and the bar rendered
+      // anyway, because `.subtitle-live` carries its own `display: flex`. Only
+      // the rendered geometry can answer "can the customer see this".
+      attribute: el.hidden,
+      display: cs.display,
+      visibility: cs.visibility,
+      paintedArea: box.width * box.height,
+      dragHandles: el.querySelectorAll(".drag-handle").length,
+    };
+  });
+  if (bar.present) {
+    assert.strictEqual(
+      bar.paintedArea,
+      0,
+      `the draggable LIVE subtitle bar is painting ${bar.paintedArea}px² ` +
+        `(display:${bar.display}, visibility:${bar.visibility}, hidden attr:${bar.attribute})`
+    );
+    assert.strictEqual(bar.display, "none", "the LIVE bar is still laid out");
+  }
+});
+
+record("#22 transcripts render in the insights panel, not a floating bar", async ({ page }) => {
   const painted = await page.evaluate(() => {
+    // Flip to the transcripts view the way a customer would.
+    [...document.querySelectorAll(".insight-tab")]
+      .find((b) => b.dataset.insightView === "transcripts")
+      .click();
     for (let i = 1; i <= 7; i += 1) {
       window.__netieTestEmit({ type: "transcript", source: "system", text: `caption ${i}` });
     }
-    const rows = [...document.querySelectorAll("#subtitle-text .live-line")];
+    const rows = [...document.querySelectorAll("#transcript-feed .live-line")];
     return {
       count: rows.length,
       first: rows[0] && rows[0].textContent,
       last: rows[rows.length - 1] && rows[rows.length - 1].textContent,
-      multiline: document.getElementById("subtitle-bar").classList.contains("multiline"),
     };
   });
-  assert.strictEqual(painted.count, 5, `expected 5 lines, got ${painted.count}`);
+  assert.strictEqual(painted.count, 5, `expected 5 rolling lines, got ${painted.count}`);
   assert.ok(painted.first.includes("caption 3"), painted.first);
   assert.ok(painted.last.includes("caption 7"), painted.last);
-  assert.ok(painted.multiline, "the bar should switch to its multi-line layout");
+});
+
+record("#22 the insights panel flips between AI insights and transcripts", async ({ page }) => {
+  const flip = await page.evaluate(() => {
+    const tab = (view) =>
+      [...document.querySelectorAll(".insight-tab")].find((b) => b.dataset.insightView === view);
+    const shown = () => ({
+      ai: !document.getElementById("insight-ai-view").hidden,
+      transcripts: !document.getElementById("insight-transcript-view").hidden,
+    });
+    tab("ai").click();
+    const onAi = shown();
+    tab("transcripts").click();
+    const onTranscripts = shown();
+    tab("ai").click();
+    const backToAi = shown();
+    return { onAi, onTranscripts, backToAi, tabs: document.querySelectorAll(".insight-tab").length };
+  });
+  assert.strictEqual(flip.tabs, 2, "the AI | Transcripts toggle is missing");
+  assert.deepStrictEqual(flip.onAi, { ai: true, transcripts: false }, "AI insights view broken");
+  assert.deepStrictEqual(
+    flip.onTranscripts,
+    { ai: false, transcripts: true },
+    "the panel does not flip to transcripts"
+  );
+  assert.deepStrictEqual(flip.backToAi, { ai: true, transcripts: false }, "the flip is one-way");
+});
+
+record("#22 suggest and status render in the fixed top chrome", async ({ page }) => {
+  const chrome = await page.evaluate(() => {
+    const visible = (el) => {
+      if (!el || el.hidden) return false;
+      const cs = getComputedStyle(el);
+      if (cs.display === "none" || cs.visibility === "hidden") return false;
+      return el.getBoundingClientRect().height > 0;
+    };
+    // Suggest: always-on chrome, inside the HUD's own panel.
+    const suggest = document.querySelectorAll("#insight-actions button");
+    const suggestPanel = document.getElementById("insight-panel");
+
+    // Status: ships hidden, so DRIVE it the way main.js does and read it back.
+    window.__netieTestEmit({
+      type: "word-docx",
+      path: "C:\\Users\\demo\\Documents\\NetiePointer\\report.docx",
+      bytes: 4096,
+    });
+    const pill = document.getElementById("status-pill");
+    return {
+      suggestCount: suggest.length,
+      suggestVisible: visible(suggestPanel),
+      suggestIsChrome: suggestPanel.classList.contains("chrome"),
+      pillVisible: visible(pill),
+      pillIsChrome: pill.classList.contains("chrome"),
+      pillTitle: (document.getElementById("status-title") || {}).textContent || "",
+      // #19's acceptance: the destination is shown BEFORE Open is offered.
+      pillSub: (document.getElementById("status-sub") || {}).textContent || "",
+      openOffered: !document.getElementById("btn-status-open").hidden,
+    };
+  });
+  assert.ok(chrome.suggestCount >= 3, `suggest pills missing — got ${chrome.suggestCount}`);
+  assert.strictEqual(chrome.suggestVisible, true, "suggest is not rendered in the chrome");
+  assert.strictEqual(chrome.suggestIsChrome, true, "the suggest panel is not HUD chrome");
+  assert.strictEqual(chrome.pillVisible, true, "the status pill never renders");
+  assert.strictEqual(chrome.pillIsChrome, true, "the status pill is not HUD chrome");
+  assert.ok(/document ready/i.test(chrome.pillTitle), `pill title was "${chrome.pillTitle}"`);
+  assert.strictEqual(chrome.openOffered, true, "a finished document offers no way to open it");
+  assert.ok(
+    chrome.pillSub.includes("report.docx"),
+    `the destination must be shown before Open is offered — sub was "${chrome.pillSub}"`
+  );
+});
+
+record("#22 no cursor-following floating chat identity came back", async ({ page }) => {
+  // DR-0002 / CLAUDE.md Hard rule 3 — these are the shapes that must stay dead.
+  const revived = await page.evaluate(() =>
+    ["clicky-orb", "stage-orb", "peek-drop", "chat-bubble"].filter((id) =>
+      document.getElementById(id)
+    )
+  );
+  assert.deepStrictEqual(revived, [], `floating chat identity is back: ${revived}`);
 });
 
 record("a transcript populates the Ask box and does NOT send itself", async ({ page }) => {

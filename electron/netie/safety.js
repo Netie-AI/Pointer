@@ -98,14 +98,29 @@ function classifyAction(action) {
     case "scroll":
     case "clipboard_get":
     case "copy_clipboard":
+    case "clipboard_verify":
       return ActionTier.READ;
 
     case "copy":
     case "select_copy":
     case "select_all":
     case "clipboard_set":
-      // Local clipboard / selection — reversible, OpenClaw-style easy ops.
       return ActionTier.BENIGN;
+
+    case "word_docx_write":
+    case "word_from_clipboard":
+      // With no destination the write is contained by construction — it can
+      // only land in the sanctioned output folder — so it stays BENIGN and the
+      // ordinary coworker flow keeps running unattended (KB R-0005).
+      //
+      // With an explicit destination the path came from the planner, i.e. from
+      // outside the trust boundary. word-coworker.js refuses anything outside
+      // the sanctioned root, but "where does this file land" is exactly the
+      // thing a customer must be shown before approving, so a pathful write is
+      // never auto-runnable (#15).
+      return action.path || action.target
+        ? ActionTier.CONSEQUENTIAL
+        : ActionTier.BENIGN;
 
     case "type":
     case "fill":
@@ -170,11 +185,26 @@ function decide(action, policy = {}) {
    */
   const secret = Boolean(action && action._custody) || targetsSecret(action);
 
+  /**
+   * A write that names its own destination. `classifyAction` already raises it
+   * to CONSEQUENTIAL, but `autoRunSensible` promotes non-irreversible
+   * CONSEQUENTIAL straight back to "auto" — so the tier alone does not hold the
+   * line. The destination is the single fact a customer must see before
+   * approving a write, so this one is checked here and cannot be policy-flipped
+   * (#15).
+   */
+  const verb = String((action && action.type) || "").toLowerCase();
+  const declaresDestination =
+    (verb === "word_docx_write" || verb === "word_from_clipboard") &&
+    Boolean(action && (action.path || action.target));
+
   let disposition;
   if (secret && action && action._custody) {
     disposition = "custody";
   } else if (tier === ActionTier.PROHIBITED) {
     disposition = secret ? "custody" : "refuse";
+  } else if (declaresDestination) {
+    disposition = "approve";
   } else if (action && action._requireConfirm) {
     // Set by plan-guard for launches (open/navigate). Start-Process hands the
     // machine to another application and is not undone by a second click, so it

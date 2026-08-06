@@ -3,6 +3,13 @@
   --glass-blur: blur(22px) saturate(160%);
 }
 * { box-sizing: border-box; }
+/* Every panel in this HUD is shown and hidden by setting `.hidden` from hud.js,
+   but almost all of them also carry a layout rule with an explicit `display`,
+   which outranks the user-agent `[hidden] { display: none }`. That is how the
+   LIVE subtitle bar kept rendering after c04692f shipped it with `hidden` set —
+   and why an assertion that reads `el.hidden` certifies a bar the customer can
+   plainly see. Fix it once, for the class, rather than per selector (R-0004). */
+[hidden] { display: none !important; }
 html, body {
   width: 100%; height: 100%; margin: 0; overflow: hidden;
   background: transparent; font-family: var(--font); font-size: 13px; user-select: none;
@@ -241,6 +248,86 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   color: var(--muted); font-size: 11px; font-weight: 650;
 }
 .bg-status.show { display: inline-flex; }
+
+/* EPIC-P05 — fixed status pill (Perplexity Computer style); not cursor-following. */
+.status-pill {
+  position: absolute; left: 50%; top: 72px; transform: translateX(-50%);
+  z-index: 28; display: none; align-items: center; gap: 12px;
+  min-width: min(420px, 86vw); max-width: 520px;
+  padding: 12px 14px; border-radius: 999px;
+}
+.status-pill.show { display: inline-flex; }
+.status-ico { font-size: 16px; color: var(--accent); }
+.status-copy { flex: 1; min-width: 0; }
+.status-title { font-weight: 700; font-size: 13px; }
+.status-sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.status-actions { display: flex; gap: 6px; align-items: center; }
+
+.insight-tabs { display: inline-flex; gap: 4px; margin-left: 6px; }
+.insight-tab {
+  border: 0; background: transparent; color: var(--muted);
+  padding: 4px 8px; border-radius: 999px; font-size: 11px; font-weight: 650;
+}
+.insight-tab.active { background: var(--surface); color: var(--text); }
+.transcript-feed {
+  max-height: 220px; overflow: auto; display: flex; flex-direction: column; gap: 6px;
+  padding: 4px 2px 8px;
+}
+.transcript-feed .live-line {
+  padding: 6px 8px; border-radius: 10px; background: var(--surface);
+  font-size: 12px; line-height: 1.35;
+}
+.transcript-feed .live-who { color: var(--muted); margin-right: 6px; font-weight: 650; font-size: 10px; }
+
+.command-bar-tools {
+  display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+  padding: 4px 6px 0;
+}
+.file-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.file-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 999px; background: var(--surface);
+  font-size: 11px; border: 1px solid var(--line-soft);
+}
+.file-chip button { border: 0; background: transparent; color: var(--muted); padding: 0 2px; }
+/* A refused attachment must not look like an accepted one — the whole defect in
+   #23 was a chip that implied success for a file that was thrown away. */
+.file-chip.refused {
+  background: color-mix(in srgb, var(--danger, #e5484d) 14%, transparent);
+  border-color: color-mix(in srgb, var(--danger, #e5484d) 45%, transparent);
+}
+.file-chip.refused .file-chip-name { text-decoration: line-through; opacity: 0.75; }
+.file-chip-why { color: var(--danger, #e5484d); font-size: 10px; }
+
+/* Hold-to-talk (#25): the recording state must be visible whenever it is on —
+   a hold that loses its keyup is a privacy defect, not a cosmetic one. */
+#btn-hold-hint.holding {
+  background: color-mix(in srgb, var(--danger, #e5484d) 22%, transparent);
+  color: var(--text);
+}
+#btn-hold-hint.holding::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--danger, #e5484d); margin-right: 5px;
+  animation: hold-pulse 1s ease-in-out infinite;
+}
+#btn-hold-hint.unavailable { opacity: 0.55; text-decoration: line-through; }
+@keyframes hold-pulse { 50% { opacity: 0.35; } }
+
+.onboard {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  z-index: 40; width: min(420px, 88vw); padding: 28px 24px; border-radius: 22px;
+  text-align: center;
+}
+.hud.onboarded .onboard { display: none !important; }
+.hud.theme-onboarded {
+  --accent: #2f6f5e;
+  --accent-solid: #3d8f78;
+  --good: #4caf8a;
+}
+.onboard-title { font-family: Georgia, "Times New Roman", serif; font-size: 22px; margin: 0 0 10px; }
+.onboard-title em { font-style: italic; color: var(--accent); }
+.onboard-sub { color: var(--muted); margin: 0 0 18px; line-height: 1.45; }
+
 .hud.agent-busy .mode-pill { opacity: 0.55; }
 .hud.agent-busy .mode-pill button { pointer-events: none; }
 
@@ -536,6 +623,13 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 }
 .nod-toast.show { display: flex; }
 .hidden-stub { display: none !important; }
+
+.clean-toast {
+  display: flex; align-items: center; gap: 8px; margin: 0 12px 10px; padding: 8px 12px;
+  border-radius: 14px; font-size: 12.5px;
+}
+.clean-toast[hidden] { display: none; }
+.clean-toast #clean-toast-text { flex: 1; }
 
 @media (max-width: 900px) {
   .top-bar { left: 50%; right: auto; transform: translateX(-50%); flex-wrap: wrap; border-radius: 22px; justify-content: center; }

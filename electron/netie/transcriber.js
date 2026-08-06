@@ -8,12 +8,20 @@
  *   1. whisper-cli     — whisper.cpp binary, fully offline CPU (NETIE_WHISPER_BIN + _MODEL)
  *   2. openvault       — local OpenAI-shaped /v1/audio/transcriptions on :5000
  *   3. sidecar         — RealtimeSTT / Hearsay bridge on NETIE_STT_URL
- *   4. windows-speech  — System.Speech offline dictation; zero install, rough
- *   5. none            — say so out loud; never pretend to be listening
+ *   4. deepgram-cloud  — Deepgram Nova-3, opt-in only (settings.cloudStt), audio
+ *                        leaves the device. Ranked below every local engine, and
+ *                        only above windows-speech because that floor is the one
+ *                        engine explicitly documented as "rough". describe()
+ *                        always reports local:false for this tier — see R-0011,
+ *                        a degraded/off-device path must say so, not just log it.
+ *   5. windows-speech  — System.Speech offline dictation; zero install, rough
+ *   6. none            — say so out loud; never pretend to be listening
  *
- * Deliberately NOT in the chain: Chromium SpeechRecognition. It ships no engine
- * in Electron (dies `error: network`) and routes microphone audio to Google,
- * which contradicts this product's on-device governance.
+ * Deliberately NOT in the automatic chain: Chromium SpeechRecognition. It ships
+ * no engine in Electron (dies `error: network`) and routes microphone audio to
+ * Google with no opt-in, which contradicts this product's on-device governance.
+ * deepgram-cloud is different only because it is opt-in, key-scoped via
+ * OpenVault, and honestly labeled non-local wherever the engine name surfaces.
  */
 
 const fs = require("fs");
@@ -24,6 +32,8 @@ const { encodeWav16, floatToPcm16 } = require("./audio");
 const { WinSpeech } = require("./winspeech");
 
 const DEFAULT_OPENVAULT = "http://127.0.0.1:5000/v1/audio/transcriptions";
+const OPENVAULT_KEYS_URL = "http://127.0.0.1:5000/api/keys";
+const OPENVAULT_PROBE_TIMEOUT_MS = 800;
 
 class Transcriber {
   constructor(opts = {}) {
@@ -44,6 +54,11 @@ class Transcriber {
     // chain only reports "none" when even this is missing or disabled.
     this.allowWindowsSpeech = opts.allowWindowsSpeech !== false && process.platform === "win32";
     this._win = opts.winSpeechImpl || null;
+    // Read live (a function, not a captured boolean) so flipping the Settings
+    // checkbox takes effect on the next probe() without recreating this class.
+    this.allowDeepgramCloud = opts.allowDeepgramCloud || (() => false);
+    this.openvaultKeysUrl = opts.openvaultKeysUrl || OPENVAULT_KEYS_URL;
+    this._deepgramKeyCache = null; // only successful lookups are cached — see _deepgramKey
     this.engine = null; // resolved on first probe
     this.lastError = null;
     this.lastConfidence = null;
@@ -104,6 +119,17 @@ class Transcriber {
    * re-check after the user starts OpenVault or installs a model.
    */
   async probe(force = false) {
+    // Consent is the one input that must never be answered from cache (#21).
+    // Once probe() resolved to "deepgram-cloud" the value stuck on this.engine
+    // and every later call short-circuited below, so turning the setting off
+    // kept shipping audio to Deepgram for the rest of the session. Re-check the
+    // live value first and drop the cached engine the moment consent is gone.
+    if (this.engine === "deepgram-cloud" && !this.allowDeepgramCloud()) {
+      this.engine = null;
+      // The key was resolved under a consent that no longer holds; make the
+      // next opt-in re-fetch it rather than reuse a secret from before.
+      this._deepgramKeyCache = null;
+    }
     if (this.engine && !force) return this.engine;
     if (this.hasLocalWhisper()) {
       this.engine = "whisper-cli";
@@ -134,12 +160,84 @@ class Transcriber {
         /* not up — try next */
       }
     }
+    if (this.allowDeepgramCloud() && (await this._deepgramKey())) {
+      this.engine = "deepgram-cloud";
+      return this.engine;
+    }
     if (this.allowWindowsSpeech) {
       this.engine = "windows-speech";
       return this.engine;
     }
     this.engine = "none";
     return this.engine;
+  }
+
+  /**
+   * Resolve the Deepgram key from OpenVault's loopback-only vault.
+   *
+   * Returns `null` on any failure — OpenVault not running, no deepgram key
+   * stored, network hiccup — so probe() just falls through to windows-speech
+   * rather than throwing. A successful lookup is cached for the process
+   * lifetime; a failed one is never cached, since OpenVault may start later.
+   */
+  async _deepgramKey() {
+    if (this._deepgramKeyCache) return this._deepgramKeyCache;
+    try {
+      const listCtrl = new AbortController();
+      const listTimer = setTimeout(() => listCtrl.abort(), OPENVAULT_PROBE_TIMEOUT_MS);
+      let listRes;
+      try {
+        listRes = await this._fetch(this.openvaultKeysUrl, { signal: listCtrl.signal });
+      } finally {
+        clearTimeout(listTimer);
+      }
+      if (!listRes || !listRes.ok) return null;
+      const { keys } = await listRes.json();
+      const entry = (keys || []).find((k) => k.provider === "deepgram" && k.enabled !== false);
+      if (!entry) return null;
+
+      const secretCtrl = new AbortController();
+      const secretTimer = setTimeout(() => secretCtrl.abort(), OPENVAULT_PROBE_TIMEOUT_MS);
+      let secretRes;
+      try {
+        secretRes = await this._fetch(`${this.openvaultKeysUrl}/${entry.id}/secret`, {
+          headers: { "X-OpenVault-Reveal": "intentional" },
+          signal: secretCtrl.signal,
+        });
+      } finally {
+        clearTimeout(secretTimer);
+      }
+      if (!secretRes || !secretRes.ok) return null;
+      const { secret } = await secretRes.json();
+      if (!secret) return null;
+      this._deepgramKeyCache = secret;
+      return secret;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Pre-recorded Deepgram REST transcription — one full utterance per call. */
+  async _deepgramTranscribe(wav, key) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), Number(process.env.NETIE_STT_TIMEOUT_MS) || 20000);
+    try {
+      const res = await this._fetch(
+        "https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&punctuate=true",
+        {
+          method: "POST",
+          headers: { Authorization: `Token ${key}`, "Content-Type": "audio/wav" },
+          body: wav,
+          signal: ctrl.signal,
+        }
+      );
+      if (!res.ok) throw new Error(`deepgram ${res.status}`);
+      const data = await res.json();
+      const alt = data?.results?.channels?.[0]?.alternatives?.[0];
+      return { text: String((alt && alt.transcript) || ""), language: null };
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   /** Write a wav to the temp dir and hand back its path plus a cleanup fn. */
@@ -218,6 +316,27 @@ class Transcriber {
         const r = await this._postWav(this.openvaultUrl, wav);
         return { ok: true, text: cleanup(r.text), engine, language: r.language };
       }
+      if (engine === "deepgram-cloud") {
+        // Last gate before audio leaves the device. `engine` may have been
+        // resolved before the customer revoked consent, and this is the only
+        // line between that stale value and a network upload (#21).
+        if (!this.allowDeepgramCloud()) {
+          this.engine = null;
+          this._deepgramKeyCache = null;
+          const fallback = await this.probe(true);
+          // probe() cannot return cloud without consent, so this recursion
+          // terminates; the guard is here so a future probe() change cannot
+          // turn that invariant into an infinite loop.
+          if (fallback === "deepgram-cloud") {
+            return { ok: false, text: "", engine: "none", error: "cloud STT consent revoked" };
+          }
+          return this.transcribe(pcm);
+        }
+        const key = await this._deepgramKey();
+        if (!key) throw new Error("deepgram key unavailable");
+        const r = await this._deepgramTranscribe(wav, key);
+        return { ok: true, text: cleanup(r.text), engine, language: r.language, local: false };
+      }
       if (engine === "sidecar") {
         const r = await this._postWav(`${this.sidecarUrl}/v1/audio/transcriptions`, wav);
         return {
@@ -249,6 +368,13 @@ class Transcriber {
           engine: this.engine,
           label: "Faster-Whisper sidecar (zh/en/ms rojak)",
           local: true,
+        };
+      case "deepgram-cloud":
+        return {
+          engine: this.engine,
+          label: "Deepgram (cloud — audio leaves this device)",
+          local: false,
+          hint: "Opted in via Settings > Cloud STT fallback. Turn off to stay fully on-device.",
         };
       case "windows-speech":
         return {

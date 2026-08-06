@@ -243,6 +243,84 @@ test("cleanup strips whisper non-speech tags and collapses whitespace", () => {
   assert.strictEqual(cleanup(null), "");
 });
 
+// --------------------------------------------------------------------- #21 --
+// Revoking cloud consent must stop cloud audio in the same session. The defect
+// was that probe() cached "deepgram-cloud" on this.engine and every later call
+// short-circuited before re-reading consent.
+
+/** A transcriber whose only reachable engine is Deepgram, with live consent. */
+function cloudRig(consent) {
+  const uploads = [];
+  const t = new Transcriber({
+    whisperBin: "",
+    whisperModel: "",
+    fsImpl: fakeFs([]),
+    openvaultUrl: "http://127.0.0.1:7077/v1/audio/transcriptions",
+    openvaultKeysUrl: "http://127.0.0.1:7077/v1/keys",
+    sidecarUrl: "",
+    allowWindowsSpeech: true,
+    allowDeepgramCloud: () => consent.on,
+    fetchImpl: async (url, init) => {
+      const u = String(url);
+      if (u.includes("api.deepgram.com")) {
+        uploads.push(u);
+        return { ok: true, status: 200, json: async () => ({
+          results: { channels: [{ alternatives: [{ transcript: "cloud text" }] }] },
+        }) };
+      }
+      if (u.endsWith("/v1/keys")) {
+        return { ok: true, status: 200, json: async () => ({
+          keys: [{ id: "k1", provider: "deepgram", enabled: true }],
+        }) };
+      }
+      if (u.includes("/secret")) {
+        return { ok: true, status: 200, json: async () => ({ secret: "dg-key" }) };
+      }
+      // OpenVault STT itself is down, so the chain reaches Deepgram.
+      throw new Error("offline");
+    },
+  });
+  // Windows speech would otherwise win the fallback; make it inert and loud.
+  t._winSpeech = () => ({ recognizeFile: async () => ({ text: "local text", confidence: 0.9 }) });
+  t._tempWav = () => ({ path: "C:\\tmp\\x.wav", cleanup() {} });
+  return { t, uploads };
+}
+
+test("#21 consent ON resolves to the cloud engine", async () => {
+  const consent = { on: true };
+  const { t } = cloudRig(consent);
+  assert.strictEqual(await t.probe(), "deepgram-cloud");
+});
+
+test("#21 revoking consent drops the cached cloud engine on the next probe", async () => {
+  const consent = { on: true };
+  const { t } = cloudRig(consent);
+  assert.strictEqual(await t.probe(), "deepgram-cloud");
+  consent.on = false;
+  const after = await t.probe();
+  assert.notStrictEqual(after, "deepgram-cloud", "cached engine survived the revoke");
+});
+
+test("#21 no audio reaches Deepgram after consent is revoked", async () => {
+  const consent = { on: true };
+  const { t, uploads } = cloudRig(consent);
+  await t.probe();
+  consent.on = false;
+  const out = await t.transcribe(pcm());
+  assert.strictEqual(uploads.length, 0, `audio still uploaded: ${uploads.join(", ")}`);
+  assert.notStrictEqual(out.engine, "deepgram-cloud");
+});
+
+test("#21 the revoked key is not reused when consent is granted again", async () => {
+  const consent = { on: true };
+  const { t } = cloudRig(consent);
+  await t.probe();
+  assert.ok(t._deepgramKeyCache, "key cached while consent held");
+  consent.on = false;
+  await t.probe();
+  assert.strictEqual(t._deepgramKeyCache, null, "secret survived the revoke");
+});
+
 (async () => {
   for (const { name, fn } of tests) {
     try {

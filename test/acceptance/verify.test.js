@@ -43,12 +43,40 @@ const has = (action, opts) => shouldVerifyStep(action, { hasRegion: true, ...opt
         "observe", "read", "wait", "hover", "movecursor", "scroll",
         "clipboard_get", "copy_clipboard", "copy", "select_copy", "select_all",
         "clipboard_set",
+        // The API-first coworker verbs (EPIC-P03). These deliberately change
+        // nothing on screen — that is the whole point of writing .docx through
+        // OOXML instead of driving Word's UI — so a screenshot diff would
+        // report "nothing happened" for a step that succeeded. They are not
+        // unverified: they carry their own artifact evidence, asserted below.
+        "word_docx_write", "word_from_clipboard", "clipboard_verify",
       ]);
       const missing = DRIVER_ACTIONS.filter(
         (verb) => !NON_VISUAL.has(verb) && !shouldVerifyStep({ type: verb, target: "Send" }, { hasRegion: true, verifyAll: true }).verify
       );
       assert.deepStrictEqual(missing, [], `driver verbs that can never be verified: ${missing}`);
       assert.strictEqual(has({ type: "keypress", target: "Send" }).reason, "irreversible");
+    }),
+
+    T("the non-visual coworker verbs carry artifact evidence instead of pixels", async () => {
+      // Exempting a verb from screenshot verification is only honest if it
+      // proves itself some other way. A .docx write returns the path, the byte
+      // count and a sha256 of exactly the bytes on disk (KB R-0001 — assert on
+      // the artifact the customer receives).
+      const fs = require("fs");
+      const os = require("os");
+      const path = require("path");
+      const crypto = require("crypto");
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pointer-verify-"));
+      process.env.NETIE_WORD_OUT_DIR = dir;
+      delete require.cache[require.resolve("../../electron/netie/word-coworker")];
+      const { writeDocx } = require("../../electron/netie/word-coworker");
+
+      const out = writeDocx({ text: "evidence", stem: "verify" });
+      assert.strictEqual(out.ok, true, out.reason || "write failed");
+      assert.ok(out.sha256, "a non-visual write must return a digest");
+      assert.strictEqual(out.bytes, fs.statSync(out.path).size, "byte count must match disk");
+      const onDisk = crypto.createHash("sha256").update(fs.readFileSync(out.path)).digest("hex");
+      assert.strictEqual(out.sha256, onDisk, "the digest must describe the bytes on disk");
     }),
 
     T("routine work does not pay for two captures a step", async () => {

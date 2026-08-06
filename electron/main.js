@@ -104,6 +104,11 @@ const {
   describeReplan,
 } = require("./netie/replan");
 const { DemoDebugTrail } = require("./netie/demo-debug");
+const safePath = require("./netie/safe-path");
+const { approvalPrompt, describePlan } = require("./netie/plan-describe");
+const { describeTarget, recognizeApp } = require("./netie/app-target");
+const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
+const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
 const {
   STATES: PresenceStates,
@@ -183,6 +188,11 @@ const chats = new ConversationStore();
 const stt = new SttBridge();
 const transcriber = new Transcriber({
   sidecarUrl: process.env.NETIE_STT_URL || "http://127.0.0.1:8766",
+  // A function, not a captured boolean: `settings` below is declared after this
+  // call but the arrow only runs inside probe(), well after module init — and
+  // it re-reads the live value so toggling the checkbox takes effect without
+  // recreating the Transcriber.
+  allowDeepgramCloud: () => settings.get("cloudStt") === true,
 });
 const notes = new NotesSession();
 const settings = new SettingsStore();
@@ -794,15 +804,20 @@ async function maybeRunPlan(plan, { teach = true } = {}) {
   }
 
   // Needs human judgment — update HUD if open; otherwise stage toast + Ctrl+Y (no force-pop).
+  //
+  // This is the approval moment itself, so it is the one place a step count is
+  // least defensible (#20). Describe only the steps that actually need the nod:
+  // listing the auto ones here would bury the decision in noise.
+  const nodDisclosure = approvalPrompt(needHuman);
   sendHudQuiet({
     type: "answer",
     meta: "Waiting for your nod",
-    text: `${needHuman.length} step(s) need confirmation. Say yes, press Affirm, or Ctrl+Y.`,
+    text: `${nodDisclosure.detail}\n\nSay yes, press Affirm, or Ctrl+Y.`,
   });
   sendHudQuiet({ type: "nod-wait", on: true });
   sendStage({
     type: "subtitle",
-    text: `${needHuman.length} step(s) need nod — Affirm / Ctrl+Y`,
+    text: `${nodDisclosure.summary} — Affirm / Ctrl+Y`,
     ms: 4500,
   });
   return { ran: false, mode: "hud-nod", plan };
@@ -1587,6 +1602,15 @@ async function executeApproved(actions) {
         outcome = { ok: false, error: String(err.message || err) };
       }
 
+      if (
+        outcome &&
+        outcome.ok &&
+        (enriched.type === "word_from_clipboard" || enriched.type === "word_docx_write") &&
+        outcome.path
+      ) {
+        sendHud({ type: "word-docx", path: outcome.path, bytes: outcome.bytes || 0 });
+      }
+
       if (outcome.ok && beforeFp && !driver.dryRun) {
         try {
           await new Promise((r) => setTimeout(r, 200));
@@ -1977,6 +2001,27 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
   // Cheap SOPs still need the security gate (A-0007). Demo-without-LLM is not
   // permission to skip Cortex when the path still clicks the screen.
   if (intent === "act") {
+    // Name the target application before planning anything (#24). If the
+    // customer explicitly asked for an app Pointer cannot drive, say so by name
+    // now — planning on regardless produces a plan that does something else,
+    // which is the silent fallback R-0011 exists to forbid.
+    const target = describeTarget(message);
+    if (target.recognized && target.app.explicit && !target.drivable) {
+      setPresence(PresenceEvents.FAIL);
+      pushTurn("user", message);
+      pushTurn("assistant", target.refusal);
+      sendStage({ type: "bubble", role: "netie", text: target.refusal });
+      sendHud({ type: "answer", meta: `Cannot drive ${target.app.name}`, text: target.refusal });
+      return {
+        ok: false,
+        mode: "act",
+        intent,
+        blocked: true,
+        reason: target.refusal,
+        app: target.app.id,
+        actions: [],
+      };
+    }
     const recipe = expandRecipe(matchRecipe(message), recipeCoordContext());
     if (recipe && recipe.actions && recipe.actions.length) {
       try {
@@ -2004,7 +2049,7 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
           autoOnly: reviewed.autoOnly,
         };
         pendingPlan = plan;
-        const summary = `${recipe.label} · ${recipe.actions.length} step(s)`;
+        const summary = `${recipe.label} · ${approvalPrompt(reviewed.actions || []).summary}`;
         pushTurn("assistant", summary);
         sendStage({ type: "bubble", role: "netie", text: summary });
         sendStage({ type: "subtitle", text: summary, ms: 3500 });
@@ -2094,12 +2139,25 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
       } catch (err) {
         console.error("osr classify:", err.message || err);
       }
+      // A count is not disclosure (#20). Name the verb and the destination for
+      // every step, so approving is a decision rather than a shrug.
+      const disclosure = approvalPrompt(plan.actions || []);
+      // If the customer named a target app, the confirmation leads with it
+      // ("Do you want to type in Notepad?") rather than making them infer the
+      // destination from the step list (#24).
+      const appAsk = target.drivable && target.question ? `${target.question} ` : "";
       const summary = plan.needsApproval
-        ? `${(plan.actions || []).length} step(s) — nod or approve`
-        : `${(plan.actions || []).length} sensible step(s) — auto-running`;
+        ? `${appAsk}${disclosure.prompt}`
+        : `Auto-running: ${disclosure.summary}`;
       pushTurn("assistant", summary);
       sendStage({ type: "bubble", role: "netie", text: summary });
       sendStage({ type: "subtitle", text: summary, ms: 4500 });
+      // The per-step lines go to the panel; the subtitle only has room for one.
+      sendHud({
+        type: "answer",
+        meta: plan.needsApproval ? "Waiting for nod / approve" : "Auto-running",
+        text: disclosure.detail,
+      });
       if (features.isEnabled("fleetTelemetry")) {
         try {
           brain.telemetry.enqueueSessionSketch({
@@ -2370,7 +2428,10 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
   const message = (payload && payload.message) || "";
   const dataUrl = (lastCapture && lastCapture.dataUrl) || null;
   showStage();
-  const r = await askBuddy({ message, dataUrl });
+  // Attached files become part of the question, fenced as data (#23). Before
+  // this the renderer showed a chip and sent nothing at all.
+  const asked = `${message}${buildAttachmentBlock(payload && payload.attachments)}`;
+  const r = await askBuddy({ message: asked, dataUrl });
   // P3-POINT-OVERLAY — "click here" is worth more pointed at than described.
   // The tokens are stripped from the prose either way, so a model that emits
   // them into a chat that cannot draw does not leak `[POINT:…]` at the user.
@@ -2462,7 +2523,20 @@ ipcMain.handle("hud:importMemory", async (_e, payload) => {
 });
 
 ipcMain.handle("hud:act", async (_e, payload) => {
-  const message = (payload && payload.message) || "";
+  const rawMessage = (payload && payload.message) || "";
+  const actAttachments = (payload && payload.attachments) || [];
+  // Attached content is data, not commands (Hard rule 2). The fence tells the
+  // planner so; `forcesApproval` is what makes it true — an intent carrying
+  // attachments can never auto-run, so an imperative buried in a document still
+  // has to get past a human reading the verb-and-destination prompt (#20/#23).
+  const message = `${rawMessage}${buildAttachmentBlock(actAttachments)}`;
+  const attachmentsForceApproval = forcesApproval(actAttachments);
+  // Force the human beat for this whole handler when files are attached. Done
+  // as a policy override rather than a flag on each plan, so a future branch
+  // that builds a plan here inherits it instead of forgetting it.
+  const actPolicy = attachmentsForceApproval
+    ? { ...settings.safetyPolicy(), autoRunSensible: false, autoRunBenign: false }
+    : settings.safetyPolicy();
   // HUD-03 — General/Transcribe/Meeting are listening modes. The renderer also
   // hides the button, but the main process is where "cannot act" has to be true:
   // a hotkey, a recipe or a stale renderer must not get past it either.
@@ -2504,7 +2578,7 @@ ipcMain.handle("hud:act", async (_e, payload) => {
     if (!vault.ok) {
       return { ok: false, needsEnquire: true, fields: vault.fields, recipe: recipe.id };
     }
-    const reviewed = reviewPlan(vault.actions, settings.safetyPolicy());
+    const reviewed = reviewPlan(vault.actions, actPolicy);
     const plan = {
       ok: true,
       blocked: false,
@@ -2518,7 +2592,7 @@ ipcMain.handle("hud:act", async (_e, payload) => {
     sendHud({
       type: "answer",
       meta: plan.needsApproval ? "Waiting for nod / approve" : `Recipe · ${recipe.label}`,
-      text: `${plan.actions.length} step(s) · ${recipe.id}`,
+      text: approvalPrompt(plan.actions || []).detail,
     });
     sendHud({ type: "insight", text: `Recipe ${recipe.id} (no LLM)` });
     const run = await maybeRunPlan(plan);
@@ -2547,7 +2621,7 @@ ipcMain.handle("hud:act", async (_e, payload) => {
         }
         const reviewed = reviewPlan(
           resolveVaultTemplates(expanded, settings.vaultProfile()),
-          settings.safetyPolicy()
+          actPolicy
         );
         const plan = {
           ok: true,
@@ -2568,7 +2642,7 @@ ipcMain.handle("hud:act", async (_e, payload) => {
         sendHud({
           type: "answer",
           meta: plan.needsApproval ? "Waiting for nod / approve" : `Skill · ${plan.skill}`,
-          text: `${plan.actions.length} step(s) · ${plan.skill}`,
+          text: approvalPrompt(plan.actions || []).detail,
         });
         const run = await maybeRunPlan(plan);
         return {
@@ -2590,7 +2664,7 @@ ipcMain.handle("hud:act", async (_e, payload) => {
     instruction: message,
     dataUrl,
     hotContext: [preamble, plannerContext(message)].filter(Boolean).join("\n\n"),
-    policy: settings.safetyPolicy(),
+    policy: actPolicy,
     profile: settings.vaultProfile(),
   });
   pendingPlan = plan;
@@ -2622,7 +2696,7 @@ ipcMain.handle("hud:act", async (_e, payload) => {
     sendHud({
       type: "answer",
       meta: plan.needsApproval ? "Waiting for nod / approve" : "Auto-running",
-      text: `${plan.actions.length} step(s)${plan.osr ? ` · ${plan.osr.band}` : ""}${plan.model ? ` · ${plan.model}` : ""}`,
+      text: approvalPrompt(plan.actions || []).detail,
     });
 
     let active = plan;
@@ -2659,7 +2733,7 @@ ipcMain.handle("hud:act", async (_e, payload) => {
         instruction: replanInstruction(message, observation),
         dataUrl: fresh || dataUrl,
         hotContext: [preamble, plannerContext(message)].filter(Boolean).join("\n\n"),
-        policy: settings.safetyPolicy(),
+        policy: actPolicy,
         profile: settings.vaultProfile(),
         prior,
       });
@@ -3298,6 +3372,64 @@ ipcMain.handle("hud:retrieveRead", async (_e, payload) => {
     bucket,
     markdown: "Preview unavailable for this bucket.",
   };
+});
+
+/**
+ * The folders Pointer may hand to the shell (#19).
+ *
+ * Derived from the legitimate callers, not invented: the started notes folder
+ * (`:408`), the chats root (`:2359`), the demo-debug folder (`:3094`), and the
+ * retrieve flow's source roots (`:3179-3184`) — conversations, notes, the
+ * NetieClicks data dir and the recall dir under it — plus the Word coworker's
+ * output dir, which is where the "Open" button on a finished .docx points.
+ *
+ * Recomputed per call because `notes.root` and the vault data dir are resolved
+ * lazily and a cached list would go stale after a mode switch.
+ */
+function sanctionedOpenRoots() {
+  const roots = [];
+  const push = (p) => {
+    if (p && typeof p === "string") roots.push(p);
+  };
+  try { push(chats.root); } catch { /* store not ready */ }
+  try { push(notes.root); } catch { /* store not ready */ }
+  try { push(demoDebug.root); } catch { /* store not ready */ }
+  try { push(wordCoworker.sanctionedRoot()); } catch { /* ok */ }
+  try {
+    // The recall dir lives under this, so the parent covers both.
+    push(brain.vault ? brain.vault.dataDir : path.join(os.homedir(), "AppData", "Roaming", "NetieClicks"));
+  } catch {
+    push(path.join(os.homedir(), "AppData", "Roaming", "NetieClicks"));
+  }
+  return roots;
+}
+
+/**
+ * `shell.openPath` is not a viewer — for `.exe/.bat/.cmd/.ps1/.lnk/.msi` it
+ * launches the target. The renderer's `path` originates outside the trust
+ * boundary (screen-derived and model-derived values reach it through the
+ * retrieve payloads), so an unchecked channel here is an execution primitive,
+ * which CLAUDE.md Hard rule 2 forbids: screen text is data, not commands.
+ *
+ * Directories under a sanctioned root open in Explorer; files need to be both
+ * contained and on the viewable-extension allowlist. Everything else is refused
+ * with a reason that names the path (#19).
+ */
+ipcMain.handle("hud:openPath", async (_e, payload) => {
+  const requested = payload && payload.path;
+  const verdict = safePath.classifyOpen(requested, sanctionedOpenRoots());
+  if (!verdict.ok) {
+    // Visible refusal, not a console line — a silent no-op reads as "the button
+    // is broken" and hides the fact that a control fired (KB R-0011).
+    sendHud({ type: "answer", meta: "Refused", text: verdict.reason });
+    return { ok: false, error: verdict.reason, path: requested || "" };
+  }
+  try {
+    await shell.openPath(verdict.path);
+    return { ok: true, path: verdict.path, display: verdict.display };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
 });
 
 ipcMain.handle("hud:retrieveOpen", async (_e, payload) => {

@@ -64,6 +64,7 @@
               <label>Demo screenshots <input type="checkbox" id="set-demo-debug" /></label>
               <label>Verify steps (slow) <input type="checkbox" id="set-verify" /></label>
               <label>Auto-send after speaking <input type="checkbox" id="set-autosend" /></label>
+              <label>Cloud STT fallback (Deepgram, audio leaves device) <input type="checkbox" id="set-cloud-stt" /></label>
               <label>Subtitle follows cursor <input type="checkbox" id="set-follow" /></label>
               <label>Visible to screen capture <input type="checkbox" id="set-capture-visible" /></label>
               <div class="menu-actions">
@@ -84,7 +85,7 @@
         </div>
       </header>
 
-      <div class="subtitle-live glass chrome" id="subtitle-bar" aria-live="polite">
+      <div class="subtitle-live glass chrome" id="subtitle-bar" hidden aria-hidden="true">
         <span class="subtitle-grip drag-handle" id="subtitle-drag" title="Drag the LIVE line"></span>
         <span class="subtitle-label">Live</span>
         <span id="subtitle-text">Listening…</span>
@@ -95,20 +96,40 @@
         <button type="button" id="btn-add-sub">Add</button>
       </div>
 
+      <div class="status-pill glass chrome" id="status-pill" hidden>
+        <span class="status-ico" aria-hidden="true">✦</span>
+        <div class="status-copy">
+          <div class="status-title" id="status-title">Working…</div>
+          <div class="status-sub" id="status-sub">Thinking…</div>
+        </div>
+        <div class="status-actions">
+          <button type="button" class="act-button" id="btn-status-open">Open</button>
+          <button type="button" class="text-btn" id="btn-status-cancel">Cancel</button>
+        </div>
+      </div>
+
       <aside class="insight-panel glass chrome" id="insight-panel">
         <header class="panel-head drag-handle" id="insight-drag">
           <span class="spark">✦</span>
-          <span>Live insights</span>
-          <button type="button" class="text-btn" id="btn-show-transcript" title="Focus transcript">Show transcript</button>
+          <div class="insight-tabs" role="tablist">
+            <button type="button" class="insight-tab active" data-insight-view="ai" role="tab" aria-selected="true">AI insights</button>
+            <button type="button" class="insight-tab" data-insight-view="transcripts" role="tab" aria-selected="false">Transcripts</button>
+          </div>
         </header>
-        <div class="section-label" id="insight-topic">Discussion</div>
-        <p class="insight-summary" id="insight-summary">Listening for speech or a typed request.</p>
-        <div class="section-label">Actions</div>
-        <div class="quick-actions" id="insight-actions">
-          <button type="button" data-q="Summarize what I am looking at"><span class="q-ico">✦</span> Summarize screen</button>
-          <button type="button" data-q="What should I click next?"><span class="q-ico">›</span> What next?</button>
-          <button type="button" data-q="Suggest follow-up questions"><span class="q-ico">?</span> Suggest follow-ups</button>
-          <button type="button" data-q="Give me helpful information"><span class="q-ico">✦</span> Helpful info</button>
+        <div id="insight-ai-view">
+          <div class="section-label" id="insight-topic">Discussion</div>
+          <p class="insight-summary" id="insight-summary">Listening for speech or a typed request.</p>
+          <div class="section-label">Suggest</div>
+          <div class="quick-actions" id="insight-actions">
+            <button type="button" data-q="Summarize what I am looking at"><span class="q-ico">✦</span> Summarize screen</button>
+            <button type="button" data-q="What should I click next?"><span class="q-ico">›</span> What next?</button>
+            <button type="button" data-q="Suggest follow-up questions"><span class="q-ico">?</span> Suggest follow-ups</button>
+            <button type="button" data-confirm="Type this into Notes?"><span class="q-ico">N</span> Type in Notes?</button>
+          </div>
+        </div>
+        <div id="insight-transcript-view" hidden>
+          <div class="section-label">Live transcripts</div>
+          <div class="transcript-feed" id="transcript-feed" aria-live="polite"></div>
         </div>
       </aside>
 
@@ -126,13 +147,33 @@
           <div class="msg live" id="live-transcript" hidden>…</div>
           <div class="answer-body" id="answer-body"></div>
         </div>
+        <div class="clean-toast glass chrome" id="clean-toast" hidden>
+          <span id="clean-toast-text">Clean up the transcript?</span>
+          <button type="button" class="text-btn" id="btn-clean-no">Leave it</button>
+          <button type="button" class="act-button" id="btn-clean-yes">Clean it up</button>
+        </div>
         <div class="composer">
-          <textarea id="ask-input" rows="2" placeholder="Ask AI — Enter to send" aria-label="Ask AI"></textarea>
+          <div class="command-bar-tools" id="command-bar-tools">
+            <button type="button" class="text-btn" data-cmd="attach" title="Attach files">Attach</button>
+            <button type="button" class="text-btn" data-cmd="apps" title="Active apps">Apps</button>
+            <button type="button" class="text-btn" data-cmd="shots" title="Screenshots">Shots</button>
+            <button type="button" class="text-btn" data-cmd="clipboard" title="Clipboard history">Clipboard</button>
+            <input type="file" id="file-attach" hidden multiple />
+            <div class="file-chips" id="file-chips"></div>
+          </div>
+          <textarea id="ask-input" rows="2" placeholder="Ask anything… recognize an app name, then confirm" aria-label="Ask AI"></textarea>
           <div class="composer-actions">
+            <button type="button" class="text-btn" id="btn-hold-hint" title="Hold Clicky or Ctrl+Shift+Space">Hold to talk</button>
             <button type="button" class="act-button" id="btn-act">Do it</button>
           </div>
         </div>
       </section>
+
+      <div class="onboard glass chrome" id="onboard" hidden>
+        <p class="onboard-title">Start sessions from <em>anywhere</em></p>
+        <p class="onboard-sub">Hold Clicky (or Ctrl+Shift+Space) to activate — Windows map of Perplexity fn/⌘.</p>
+        <button type="button" class="act-button" id="btn-onboard-done">Got it</button>
+      </div>
 
       <button type="button" class="shot-btn chrome" id="btn-shot" title="Save a screenshot to the demo folder" aria-label="Screenshot">Shot</button>
 
@@ -212,6 +253,7 @@
     </div>
     <script src="netie-sound.js"></script>
     <script src="netie/hud-live.js"></script>
+    <script src="netie/attachments.js"></script>
     <script src="hud-audio.js"></script>
     <script src="hud.js"></script>
   </body>
