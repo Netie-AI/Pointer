@@ -82,6 +82,76 @@ check("the allowlist does not widen the bridge beyond what main handles", () => 
   assert.deepStrictEqual(dangling, [], `allowlisted but unhandled: ${dangling.join(", ")}`);
 });
 
+// ---------------------------------------------------------- event types -----
+// The other direction of the same class. A renderer branch for an event main
+// never sends is UI that cannot appear: the status pill shipped with an element,
+// CSS and a handler, and nothing drove it, so an Act run showed no progress.
+
+/** Event types the renderer paints. */
+const painted = uniq([...hud.matchAll(/event\.type === "([^"]+)"/g)].map((m) => m[1]));
+
+/**
+ * Event types main emits TO THE HUD. `sendStage` is a different window with a
+ * different renderer (`stage.js`) — lumping the two together compares each
+ * against the wrong consumer.
+ */
+const emitted = uniq([...main.matchAll(/sendHud(?:Quiet)?\(\{\s*type:\s*"([^"]+)"/g)].map((m) => m[1]));
+
+/**
+ * Types that reach the HUD through a helper rather than an object literal, so
+ * the regex above cannot see them. Each needs a reason, or it is just an
+ * exemption list that grows until the check means nothing.
+ */
+const INDIRECT = Object.freeze({
+  point: "sent as sendHud(toOverlayEvent(...)) — point-overlay owns the TTL",
+  "act-status": "accepted alias of `status`, so a future sender can use either name",
+});
+
+check("every event type the renderer paints is one main can actually send", () => {
+  const dead = painted.filter((t) => !emitted.includes(t) && !(t in INDIRECT));
+  assert.deepStrictEqual(
+    dead,
+    [],
+    `renderer branches that can never fire — the UI cannot appear: ${dead.join(", ")}`
+  );
+});
+
+check("every event main sends to the HUD is one the HUD paints", () => {
+  const ignored = emitted.filter((t) => !painted.includes(t));
+  assert.deepStrictEqual(ignored, [], `sent but silently dropped by the HUD: ${ignored.join(", ")}`);
+});
+
+check("the stage window ignores the floating-identity events on purpose", () => {
+  // `sendStage` targets stage.js, not the HUD. It deliberately drops bubbles,
+  // orb, mood and cursor-guide — DR-0002 / CLAUDE.md Hard rule 3: the pointer is
+  // the identity, not a floating chat companion. This asserts that the drop is
+  // still deliberate rather than something that rotted into a silent no-op.
+  const stage = read("electron/stage.js");
+  const stageSends = uniq(
+    [...main.matchAll(/sendStage\(\{\s*type:\s*"([^"]+)"/g)].map((m) => m[1])
+  );
+  const stagePaints = uniq([...stage.matchAll(/ev\.type === "([^"]+)"/g)].map((m) => m[1]));
+  for (const t of ["subtitle", "nod-wait"]) {
+    assert.ok(stagePaints.includes(t), `stage.js stopped painting "${t}"`);
+    assert.ok(stageSends.includes(t), `main stopped sending "${t}" to the stage`);
+  }
+  assert.ok(
+    /intentionally ignored/i.test(stage),
+    "the deliberate-drop comment is gone — the ignored events are now an accident, not a decision"
+  );
+});
+
+check("the status pill is driven by a run, not only by a finished document", () => {
+  // The regression this check exists for: the pill only ever appeared for
+  // `word-docx`, so a plan executed with no visible progress at all.
+  assert.ok(
+    /sendHud\(\{\s*\n?\s*type: "status"/.test(main) || /type: "status"/.test(main),
+    "nothing in main raises the status pill"
+  );
+  assert.ok(/type: "status", done: true/.test(main), "the pill is never taken back down");
+  assert.ok(/hideStatusPill\(\)/.test(hud), "the renderer cannot dismiss the pill");
+});
+
 check("hud:openPath specifically is reachable (the regression that started this)", () => {
   assert.ok(invoked.includes("hud:openPath"), "the status pill no longer opens anything");
   assert.ok(allowed.includes("hud:openPath"), "hud:openPath is blocked by the preload allowlist");

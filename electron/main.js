@@ -105,7 +105,7 @@ const {
 } = require("./netie/replan");
 const { DemoDebugTrail } = require("./netie/demo-debug");
 const safePath = require("./netie/safe-path");
-const { approvalPrompt, describePlan } = require("./netie/plan-describe");
+const { approvalPrompt, describePlan, describeAction } = require("./netie/plan-describe");
 const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
@@ -1397,6 +1397,15 @@ async function executeApproved(actions) {
   grabKillSwitch();
   setPresence(PresenceEvents.START);
   sendHud({ type: "plan-running", on: true });
+  // The status pill (Perplexity refs 08/09) shipped with an element, CSS and a
+  // renderer branch, and nothing ever sent it — so a run showed no progress at
+  // all. Drive it from the run itself: what is happening now, and how far in.
+  const runTotal = (actions || []).length;
+  sendHud({
+    type: "status",
+    title: "Working...",
+    sub: describePlan(actions || []).summary,
+  });
   agentPointer.enabled = settings.get("cursorBubble") !== false;
   try {
     await agentPointer.set("agent");
@@ -1476,11 +1485,20 @@ async function executeApproved(actions) {
   }
 
   try {
+    let runStep = 0;
     for (const action of capped) {
       if (abortPlan) {
         results.push({ action, ok: false, skipped: "aborted" });
         break;
       }
+      runStep += 1;
+      // Same describer as the approval prompt (#20), so what the customer
+      // approved and what they watch happen are worded identically.
+      sendHudQuiet({
+        type: "status",
+        title: `Step ${runStep} of ${runTotal}`,
+        sub: describeAction(action).text,
+      });
       const d = action.safety && action.safety.disposition;
       if (d === "refuse") {
         results.push({ action, ok: false, skipped: "refused" });
@@ -1717,6 +1735,10 @@ async function executeApproved(actions) {
       steps: results.length,
     });
     sendHud({ type: "plan-running", on: false });
+    // A pill left on "Working..." after the work finished is worse than never
+    // showing one (R-0011). `word-docx` re-raises it with the artifact if a
+    // document was produced.
+    sendHud({ type: "status", done: true });
     try {
       await agentPointer.restore();
     } catch {

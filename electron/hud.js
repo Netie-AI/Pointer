@@ -1426,12 +1426,19 @@ function onHudEvent(event) {
     answerMeta.textContent = event.mode ? `Pointer · ${event.mode}` : answerMeta.textContent;
   }
   if (event.type === "status" || event.type === "act-status") {
-    showStatusPill({
-      title: event.title || event.label || "Working…",
-      sub: event.sub || event.detail || event.phase || "",
-      path: event.path || "",
-      ready: Boolean(event.ready || event.path),
-    });
+    // `done` is what lets a run take the pill back down. Without it the pill
+    // would sit on "Working…" forever after the work finished, which is worse
+    // than never showing it (R-0011).
+    if (event.done) {
+      hideStatusPill();
+    } else {
+      showStatusPill({
+        title: event.title || event.label || "Working…",
+        sub: event.sub || event.detail || event.phase || "",
+        path: event.path || "",
+        ready: Boolean(event.ready || event.path),
+      });
+    }
   }
   if (event.type === "word-docx" && event.path) {
     showStatusPill({

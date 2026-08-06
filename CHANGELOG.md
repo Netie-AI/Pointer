@@ -25,8 +25,17 @@ Append-only. Never edited, only added to. Newest first.
   a single-instance lock, so a surviving tree makes the next launch quit windowless
   and hang the run.
 
-Whole pack green: `npm run test:agentic-pack` 415 assertions, plus `npm run
-test:smoke` 22.
+- **The status pill was never driven by a run.** It shipped with an element, CSS
+  and a renderer branch for `status` / `act-status`, and nothing in `main.js` ever
+  sent one - so an Act run showed no progress at all, and the pill only appeared
+  for a finished `.docx`. `executeApproved` now raises it on start, updates it per
+  step using the same describer as the approval prompt (#20), and takes it down
+  when the run ends. The bridge invariant now covers event types in both
+  directions, with the stage window's deliberate drops (DR-0002 - the pointer is
+  the identity) asserted as deliberate rather than assumed.
+
+Whole pack green: `npm run test:agentic-pack` 419 assertions, plus `npm run
+test:smoke` 23.
 
 ## 2026-08-06 - EPIC-P02 boundary, plus the P05/P06 gaps the sweep found
 

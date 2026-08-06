@@ -134,6 +134,31 @@ record("the status pill's Open button is wired to a channel that answers", async
   assert.ok(outcome.sub && outcome.sub.length, "the refusal reason was never shown");
 });
 
+record("a run raises the status pill and takes it back down", async ({ page }) => {
+  // The pill only ever appeared for a finished .docx, so an Act run showed no
+  // progress at all. main.js now drives it from executeApproved; this asserts
+  // the renderer honours both halves, including `done`.
+  const seen = await page.evaluate(async () => {
+    const pill = document.getElementById("status-pill");
+    window.__netieTestEmit({ type: "status", title: "Working...", sub: "3 steps: launch, type, write" });
+    const during = {
+      visible: !pill.hidden,
+      title: document.getElementById("status-title").textContent,
+      sub: document.getElementById("status-sub").textContent,
+    };
+    window.__netieTestEmit({ type: "status", title: "Step 2 of 3", sub: 'Click "Send"' });
+    const mid = document.getElementById("status-title").textContent;
+    window.__netieTestEmit({ type: "status", done: true });
+    await new Promise((r) => setTimeout(r, 100));
+    return { during, mid, afterHidden: pill.hidden };
+  });
+  assert.strictEqual(seen.during.visible, true, "a run shows no progress at all");
+  assert.ok(/working/i.test(seen.during.title), `title was "${seen.during.title}"`);
+  assert.ok(seen.during.sub.length, "the pill says nothing about what is happening");
+  assert.ok(/step 2 of 3/i.test(seen.mid), `per-step progress missing — got "${seen.mid}"`);
+  assert.strictEqual(seen.afterHidden, true, "the pill sat on Working... after the run finished");
+});
+
 (async () => {
   const app = await electron.launch({ args: [path.join(ROOT, "electron", "main.js")], cwd: ROOT });
   let page;
