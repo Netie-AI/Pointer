@@ -134,6 +134,66 @@ record("the status pill's Open button is wired to a channel that answers", async
   assert.ok(outcome.sub && outcome.sub.length, "the refusal reason was never shown");
 });
 
+record("#14 a generated .docx parses in a REAL XML parser", async ({ page }) => {
+  // The unit test checks the corpus round-trips and carries no forbidden
+  // characters; this is the layer the customer actually receives it at
+  // (KB R-0001). A real parser is used rather than a regex approximation - and
+  // rather than adding a parser dependency, since a browser is already booted
+  // here and ships one.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pointer-xml-"));
+  process.env.NETIE_WORD_OUT_DIR = dir;
+  delete require.cache[require.resolve(path.join(ROOT, "electron", "netie", "word-coworker.js"))];
+  const { writeDocx } = require(path.join(ROOT, "electron", "netie", "word-coworker.js"));
+
+  // The exact input the ticket reproduced the failure with, plus metacharacters
+  // and CJK. Built from char codes so this file holds no literal control bytes.
+  const ESC = String.fromCharCode(0x1b);
+  const text = `a ${ESC}[32mPASS${ESC}[0m b & <tag> "q" 你好 ${String.fromCharCode(0x00, 0x0b)}end`;
+  const out = path.join(dir, "parse-me.docx");
+  const r = writeDocx({ text, path: out });
+  assert.strictEqual(r.ok, true, `write refused: ${r.reason}`);
+
+  // Unzip in the harness (stdlib), parse in the page (real DOMParser).
+  const zlib = require("zlib");
+  const buf = fs.readFileSync(out);
+  const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  const count = buf.readUInt16LE(eocd + 10);
+  let p = buf.readUInt32LE(eocd + 16);
+  let xml = null;
+  for (let i = 0; i < count; i += 1) {
+    const compSize = buf.readUInt32LE(p + 20);
+    const nameLen = buf.readUInt16LE(p + 28);
+    const extraLen = buf.readUInt16LE(p + 30);
+    const commentLen = buf.readUInt16LE(p + 32);
+    const localOff = buf.readUInt32LE(p + 42);
+    if (buf.subarray(p + 46, p + 46 + nameLen).toString("utf8") === "word/document.xml") {
+      const start = localOff + 30 + buf.readUInt16LE(localOff + 26) + buf.readUInt16LE(localOff + 28);
+      xml = zlib.inflateRawSync(buf.subarray(start, start + compSize)).toString("utf8");
+      break;
+    }
+    p += 46 + nameLen + extraLen + commentLen;
+  }
+  assert.ok(xml, "word/document.xml is not in the package");
+
+  const verdict = await page.evaluate((doc) => {
+    const parsed = new DOMParser().parseFromString(doc, "application/xml");
+    const err = parsed.querySelector("parsererror");
+    return {
+      error: err ? err.textContent.slice(0, 200) : null,
+      root: parsed.documentElement && parsed.documentElement.nodeName,
+      text: [...parsed.getElementsByTagNameNS("*", "t")].map((n) => n.textContent).join("\n"),
+    };
+  }, xml);
+
+  assert.strictEqual(verdict.error, null, `a real XML parser rejected it: ${verdict.error}`);
+  assert.ok(/document$/.test(verdict.root || ""), `unexpected root element: ${verdict.root}`);
+  // The forbidden characters are gone; everything else survived verbatim.
+  assert.ok(verdict.text.includes("[32mPASS"), "the visible ANSI remainder was lost");
+  assert.ok(verdict.text.includes("& <tag> \"q\""), "metacharacters did not round-trip");
+  assert.ok(verdict.text.includes("你好"), "CJK did not round-trip");
+  assert.ok(!verdict.text.includes(ESC), "an ESC survived into the parsed document");
+});
+
 record("a run raises the status pill and takes it back down", async ({ page }) => {
   // The pill only ever appeared for a finished .docx, so an Act run showed no
   // progress at all. main.js now drives it from executeApproved; this asserts

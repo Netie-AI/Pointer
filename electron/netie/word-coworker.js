@@ -10,8 +10,36 @@ const zlib = require("zlib");
 const crypto = require("crypto");
 const { containPath } = require("./safe-path");
 
+/**
+ * Remove the characters XML 1.0 forbids outright (#14).
+ *
+ * Escaping `& < > "` is not enough. XML 1.0 section 2.2 permits only
+ *   #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
+ * and there is no escape that smuggles a forbidden one back in - `&#x1B;` is
+ * exactly as illegal as a raw 0x1B - so they have to be dropped, not encoded.
+ *
+ * Not hypothetical: the `terminal_to_word` recipe feeds this module terminal
+ * output via `word_from_clipboard`, terminal output carries ANSI escape
+ * sequences, and their 0x1B introducer made Word refuse to open the document
+ * while `writeDocx` still returned ok: true.
+ *
+ * ONLY the forbidden characters are removed. The visible remainder of an ANSI
+ * sequence ("[32m") is legal text and is preserved, so the document round-trips
+ * to the input rather than to something this module decided looked tidier.
+ */
+function stripXmlForbidden(s) {
+  return String(s ?? "")
+    // C0 controls except tab, LF and CR.
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+    // Lone surrogates - neither half can be encoded as well-formed UTF-8.
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, "")
+    .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "")
+    // Permanently unassigned noncharacters.
+    .replace(/[\uFFFE\uFFFF]/g, "");
+}
+
 function xmlEscape(s) {
-  return String(s)
+  return stripXmlForbidden(s)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")

@@ -2,6 +2,53 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-07 - Governance gates, CI, and a .docx Word could not open
+
+Tickets #12, #13, #14. Not closed - each needs a different run to verify (R-0003).
+
+- **#12 the routing gate had a false negative.** `claude-contract.test.js` did
+  `text.slice(hardIdx)`, which runs to end of file - so it asserted "prd-agent
+  appears anywhere at or after the Hard rules heading", not "Hard rules contains
+  the invariant". Latent only because Hard rules is currently last. The slice is
+  now bounded at the next `##`, and the test carries the decoy case: a mutation
+  that deletes the rule from Hard rules while leaving `prd-agent` in a later
+  section. Executed both ways - old gate exit 0 (green with the rule deleted),
+  bounded gate exit 1. The `None recorded yet` check, keyed to one old stub's
+  exact wording, is replaced by a substance check.
+- **#12 CI exists** (`.github/workflows/ci.yml`): invariant pack, unit, acceptance,
+  e2e, contracts and stress, on windows-latest and ubuntu-latest - `safe-path.js`
+  branches per platform, so one runner would leave half the containment logic
+  unexercised. The strict acceptance flags are set via `env:` rather than the
+  cmd-only `set VAR=` in `test:acceptance:strict`, which would have silently done
+  nothing on Linux. A final step names what CI does NOT cover (the smoke lane
+  needs a desktop session), because a gap nobody states is a gap nobody sees
+  (R-0002).
+- **#13 laptop-ASCII is now enforced** (`test/invariants/governed-docs.test.js`)
+  across all five governed files, naming file, line, column and what to type
+  instead. Nine violations fixed. `CHANGELOG.md` is in scope by decision: its one
+  violation was an em dash in a heading, and replacing it preserves the entry's
+  meaning exactly, so append-only is not broken - scoping the rule around one
+  character would have left the largest governed file unenforced forever. The
+  scanner proves itself against a planted violation (R-0007). `docs/ACTIVE.md`
+  now tells a cold-start reader that `gh issue list` is the ticket source of truth.
+- **#14 `writeDocx` produced documents Word refuses to open.** `xmlEscape` escaped
+  `& < > "` but left the control characters XML 1.0 forbids - and terminal output,
+  which `terminal_to_word` feeds it, carries ANSI escape sequences whose 0x1B
+  introducer is one of them. It returned `ok: true` regardless, because the entire
+  correctness assertion on the artifact was that the bytes start with `PK`.
+  `stripXmlForbidden` removes exactly the forbidden characters and nothing else,
+  so the visible remainder of an ANSI sequence still round-trips. The test now
+  unzips the package with stdlib `zlib`, pulls `word/document.xml` back out and
+  compares text across a seven-case corpus; `ipc-live.smoke.js` parses it with a
+  real `DOMParser` in the booted renderer - the layer the customer receives it at
+  (R-0001), and no parser dependency added.
+- **#14 dry-run no longer touches disk** - `defaultDocxPath()` used to mkdir before
+  the dryRun early return. The production dry-run path (no explicit `path`) had
+  never been executed by any test; it is now, and asserts the directory tree is
+  byte-for-byte unchanged.
+
+Pack: `npm run test:agentic-pack` 426 assertions, `npm run test:smoke` 24.
+
 ## 2026-08-07 - The Open button never worked: IPC bridge completeness
 
 - **`hud:openPath` was blocked at the preload** - `main.js` had the handler and
@@ -80,7 +127,7 @@ run to verify (KB R-0003).
 - Verify lane: the three non-visual coworker verbs are classified as such and now
   assert artifact evidence (sha256 of the bytes on disk) instead of pixels.
 
-## 2026-08-04 — Coworker Word API + Perplexity HUD chrome
+## 2026-08-04 - Coworker Word API + Perplexity HUD chrome
 
 - PRD-anchored: Hard rules require `prd-agent` before build; `test/invariants/claude-contract.test.js`.
 - Safe Word path: `electron/netie/word-coworker.js`, driver `word_docx_write` / `word_from_clipboard`;
