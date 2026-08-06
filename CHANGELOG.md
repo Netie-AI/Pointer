@@ -2,6 +2,32 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-07 - The Open button never worked: IPC bridge completeness
+
+- **`hud:openPath` was blocked at the preload** - `main.js` had the handler and
+  `hud.js` made the call, but the channel was never added to the `INVOKE`
+  allowlist in `hud-preload.js`, so every click on the status pill's Open button
+  was rejected as a blocked channel. Three files have to agree for a HUD button
+  to work and nothing checked that they did.
+- **Fixed for the class** (R-0004): `test/invariants/ipc-bridge.test.js`
+  cross-checks every channel the renderer invokes against both the preload
+  allowlist and the `ipcMain.handle` table, in both directions. Verified it fails
+  when the entry is removed (R-0007).
+- **The Open button now reports refusals** instead of dismissing itself. It used
+  to hide the pill unconditionally, so a containment refusal from #19 took the
+  only surface that could report it (R-0011).
+- **`test/smoke/ipc-live.smoke.js`** drives the real bridge in a booted app: every
+  invoked channel survives the allowlist, `hud:openPath` refuses a `.bat` inside a
+  sanctioned folder, a `.docx` outside every root, and `C:\Windows\System32\cmd.exe`;
+  `hud:sttStatus` answers so hold-to-talk can gate on a real engine; cloud STT
+  consent round-trips and defaults to off.
+- Teardown: `ipc-live` kills its Electron tree like `hud-boot` does. `main.js` takes
+  a single-instance lock, so a surviving tree makes the next launch quit windowless
+  and hang the run.
+
+Whole pack green: `npm run test:agentic-pack` 415 assertions, plus `npm run
+test:smoke` 22.
+
 ## 2026-08-06 - EPIC-P02 boundary, plus the P05/P06 gaps the sweep found
 
 Adversarial sweep tickets #19-#25, implemented. Not closed: each needs a different

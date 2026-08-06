@@ -4,6 +4,12 @@
 
 ## Now
 
+0. **The status pill's Open button never worked** - `hud:openPath` had a handler
+   and a caller but no preload allowlist entry, so every click was rejected as a
+   blocked channel while the suite stayed green. Fixed, and the class is now
+   pinned by `test/invariants/ipc-bridge.test.js` (renderer calls vs allowlist vs
+   handlers, both directions) plus `test/smoke/ipc-live.smoke.js`, which drives
+   the real bridge in a booted app.
 1. **EPIC-P02 boundary implemented on branch** - one path resolver
    (`electron/netie/safe-path.js`) closes both #15 (write anywhere) and #19
    (`hud:openPath` executing anything). Approval now names the verb and the

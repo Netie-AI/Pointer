@@ -565,9 +565,27 @@ document.querySelector(".insight-tabs")?.addEventListener("click", (event) => {
 });
 
 $("btn-status-cancel")?.addEventListener("click", hideStatusPill);
-$("btn-status-open")?.addEventListener("click", () => {
-  if (statusOpenPath) invoke("hud:openPath", { path: statusOpenPath });
-  hideStatusPill();
+$("btn-status-open")?.addEventListener("click", async () => {
+  if (!statusOpenPath) {
+    hideStatusPill();
+    return;
+  }
+  // Keep the pill up until the open actually succeeds. Dismissing first meant a
+  // containment refusal (#19) took the only surface that could report it with
+  // it, and the customer saw a button that did nothing (R-0011).
+  let result;
+  try {
+    result = await invoke("hud:openPath", { path: statusOpenPath });
+  } catch (err) {
+    result = { ok: false, error: String((err && err.message) || err) };
+  }
+  if (result && result.ok) {
+    hideStatusPill();
+    return;
+  }
+  $("status-title").textContent = "Could not open";
+  $("status-sub").textContent = (result && result.error) || "refused";
+  $("btn-status-open").hidden = true;
 });
 
 $("btn-onboard-done")?.addEventListener("click", () => {

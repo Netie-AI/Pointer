@@ -18,6 +18,11 @@ const INVOKE = [
   "hud:retrieveList",
   "hud:retrieveRead",
   "hud:retrieveOpen",
+  // The status pill's Open button. Shipped with a main-process handler and a
+  // renderer call but no allowlist entry, so every click was rejected as a
+  // blocked channel and the button did nothing. Containment for what it may
+  // open lives in main.js (#19); this list only decides which channels exist.
+  "hud:openPath",
   "hud:openInSpace",
   "hud:affirm",
   "hud:openPanel",
