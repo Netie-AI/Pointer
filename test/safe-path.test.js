@@ -88,8 +88,11 @@ check("a refusal names the rejected path", () => {
   const bad = path.join(OUTSIDE, "x.docx");
   const r = containPath(bad, [SANCTIONED]);
   assert.strictEqual(r.ok, false);
-  // canonical() lowercases on Windows, so compare the way the filesystem does.
-  assert.ok(r.reason.toLowerCase().includes(canonical(bad)), "reason must name the path");
+  // Compare BOTH sides through canonical(), never one. The reason embeds
+  // canonical(raw) verbatim, so this matches on every platform. Lowercasing only
+  // the reason passed on Windows (where canonical() lowercases too) and failed
+  // on Linux (where it does not, and mkdtemp can hand back uppercase).
+  assert.ok(r.reason.includes(canonical(bad)), "reason must name the path");
 });
 
 // ------------------------------------------------------- #15 docx writes ----
