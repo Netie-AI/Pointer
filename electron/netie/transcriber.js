@@ -52,8 +52,21 @@ class Transcriber {
     this._fs = opts.fsImpl || fs;
     // Windows dictation is the floor: available on any Windows box, so the
     // chain only reports "none" when even this is missing or disabled.
-    this.allowWindowsSpeech = opts.allowWindowsSpeech !== false && process.platform === "win32";
+    //
+    // Two separate questions, which used to be one expression. `opts` answers
+    // the POLICY question (may we use it); the platform answers the CAPABILITY
+    // question (is it there). Conflating them meant an explicit
+    // `allowWindowsSpeech: true` was silently ignored off Windows even when the
+    // caller had injected a working implementation - which is how the CI Linux
+    // runner failed two tests that pass on the Windows runner.
+    //
+    // An injected `winSpeechImpl` IS the capability, so it satisfies the second
+    // question on any platform. Production behaviour is unchanged: nobody
+    // injects one, so off-Windows still resolves to false.
     this._win = opts.winSpeechImpl || null;
+    const winSpeechAllowed = opts.allowWindowsSpeech !== false;
+    const winSpeechAvailable = process.platform === "win32" || Boolean(this._win);
+    this.allowWindowsSpeech = winSpeechAllowed && winSpeechAvailable;
     // Read live (a function, not a captured boolean) so flipping the Settings
     // checkbox takes effect on the next probe() without recreating this class.
     this.allowDeepgramCloud = opts.allowDeepgramCloud || (() => false);
