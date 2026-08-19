@@ -109,6 +109,7 @@ function classifyAction(action) {
       return ActionTier.BENIGN;
 
     case "word_docx_write":
+    case "word_docx_append":
     case "word_from_clipboard":
       // With no destination the write is contained by construction — it can
       // only land in the sanctioned output folder — so it stays BENIGN and the
@@ -196,7 +197,9 @@ function decide(action, policy = {}) {
    */
   const verb = String((action && action.type) || "").toLowerCase();
   const declaresDestination =
-    (verb === "word_docx_write" || verb === "word_from_clipboard") &&
+    (verb === "word_docx_write" ||
+      verb === "word_docx_append" ||
+      verb === "word_from_clipboard") &&
     Boolean(action && (action.path || action.target));
 
   let disposition;

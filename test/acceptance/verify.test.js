@@ -52,7 +52,10 @@ const has = (action, opts) => shouldVerifyStep(action, { hasRegion: true, ...opt
         // OOXML instead of driving Word's UI — so a screenshot diff would
         // report "nothing happened" for a step that succeeded. They are not
         // unverified: they carry their own artifact evidence, asserted below.
-        "word_docx_write", "word_from_clipboard", "clipboard_verify",
+        // #17 adds `word_docx_append`, which is non-visual for the same reason
+        // and earns the exemption the same way - see the artifact-evidence test
+        // below, which asserts its digest describes the bytes after the append.
+        "word_docx_write", "word_docx_append", "word_from_clipboard", "clipboard_verify",
       ]);
       const missing = DRIVER_ACTIONS.filter(
         (verb) => !NON_VISUAL.has(verb) && !shouldVerifyStep({ type: verb, target: "Send" }, { hasRegion: true, verifyAll: true }).verify
@@ -81,6 +84,18 @@ const has = (action, opts) => shouldVerifyStep(action, { hasRegion: true, ...opt
       assert.strictEqual(out.bytes, fs.statSync(out.path).size, "byte count must match disk");
       const onDisk = crypto.createHash("sha256").update(fs.readFileSync(out.path)).digest("hex");
       assert.strictEqual(out.sha256, onDisk, "the digest must describe the bytes on disk");
+
+      // #17: append claims the same exemption, so it owes the same evidence.
+      // The digest must describe the document AFTER the append - a carried-over
+      // digest would certify the version the customer no longer has.
+      const { appendDocx } = require("../../electron/netie/word-coworker");
+      const app = appendDocx({ text: "more evidence", path: out.path });
+      assert.strictEqual(app.ok, true, app.reason || "append failed");
+      assert.ok(app.sha256, "a non-visual append must return a digest");
+      assert.strictEqual(app.bytes, fs.statSync(app.path).size, "append byte count must match disk");
+      const afterAppend = crypto.createHash("sha256").update(fs.readFileSync(app.path)).digest("hex");
+      assert.strictEqual(app.sha256, afterAppend, "the append digest must describe the bytes on disk");
+      assert.notStrictEqual(app.sha256, out.sha256, "the digest did not change when the document did");
     }),
 
     T("routine work does not pay for two captures a step", async () => {

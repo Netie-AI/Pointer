@@ -37,15 +37,17 @@
 6. **Chrome pinned against the rendered HUD** (#22) - writing it found the LIVE
    bar rendering despite `hidden`, because `.subtitle-live` set its own
    `display`. Fixed for the class; the assertion reads painted geometry.
+7. **#17 shipped - the coworker can append.** Zip reader (central directory,
+   CRC-checked), `appendDocx` splices before the body `sectPr`, and
+   `word_docx_append` is its own verb so approval says "Append", not "Write"
+   (#20). Foreign parts survive; ZIP64, encrypted and damaged packages refuse.
 
 ## Next
 
-- **#17 (append half of the .docx coworker) is the only sweep ticket not
-  implemented.** It needs a zip READER, must preserve parts this module did not
-  author or refuse clearly, and had to land after #14 - which it now can.
-- **Verify #12-#25 on a different run, then close** - none are closed. KB R-0003:
-  the run that wrote a fix does not verify it. `npm test`, `npm run
-  test:acceptance` and `npm run test:smoke` are all green on this branch.
+- **#12-#25 verified, ready to close** - 16 mutations across every gate, all 16
+  caught, by a run that wrote none of them (R-0003, R-0007).
+- **#22 asserts only in `test:smoke`, which CI declares NOT RUN** - painted
+  geometry is the right layer, but nothing stops a regression reaching `main`.
 - Slice the rest of EPIC-P06 if the command bar needs more than these three.
 - Attachment follow-up: PDF and image attachments are refused by name today; a
   vision or extraction path is a PRD question, not a ticket - route to `prd-agent`.

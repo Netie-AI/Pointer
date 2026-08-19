@@ -134,6 +134,33 @@ record("the status pill's Open button is wired to a channel that answers", async
   assert.ok(outcome.sub && outcome.sub.length, "the refusal reason was never shown");
 });
 
+/**
+ * Pull `word/document.xml` out of a package using only stdlib, so the harness
+ * never leans on the module it is testing to read that module's own output.
+ */
+function documentXmlOf(buf) {
+  const zlib = require("zlib");
+  const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  if (eocd < 0) return null;
+  const count = buf.readUInt16LE(eocd + 10);
+  let p = buf.readUInt32LE(eocd + 16);
+  for (let i = 0; i < count; i += 1) {
+    const method = buf.readUInt16LE(p + 10);
+    const compSize = buf.readUInt32LE(p + 20);
+    const nameLen = buf.readUInt16LE(p + 28);
+    const extraLen = buf.readUInt16LE(p + 30);
+    const commentLen = buf.readUInt16LE(p + 32);
+    const localOff = buf.readUInt32LE(p + 42);
+    if (buf.subarray(p + 46, p + 46 + nameLen).toString("utf8") === "word/document.xml") {
+      const start = localOff + 30 + buf.readUInt16LE(localOff + 26) + buf.readUInt16LE(localOff + 28);
+      const raw = buf.subarray(start, start + compSize);
+      return method === 0 ? raw.toString("utf8") : zlib.inflateRawSync(raw).toString("utf8");
+    }
+    p += 46 + nameLen + extraLen + commentLen;
+  }
+  return null;
+}
+
 record("#14 a generated .docx parses in a REAL XML parser", async ({ page }) => {
   // The unit test checks the corpus round-trips and carries no forbidden
   // characters; this is the layer the customer actually receives it at
@@ -154,25 +181,7 @@ record("#14 a generated .docx parses in a REAL XML parser", async ({ page }) => 
   assert.strictEqual(r.ok, true, `write refused: ${r.reason}`);
 
   // Unzip in the harness (stdlib), parse in the page (real DOMParser).
-  const zlib = require("zlib");
-  const buf = fs.readFileSync(out);
-  const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
-  const count = buf.readUInt16LE(eocd + 10);
-  let p = buf.readUInt32LE(eocd + 16);
-  let xml = null;
-  for (let i = 0; i < count; i += 1) {
-    const compSize = buf.readUInt32LE(p + 20);
-    const nameLen = buf.readUInt16LE(p + 28);
-    const extraLen = buf.readUInt16LE(p + 30);
-    const commentLen = buf.readUInt16LE(p + 32);
-    const localOff = buf.readUInt32LE(p + 42);
-    if (buf.subarray(p + 46, p + 46 + nameLen).toString("utf8") === "word/document.xml") {
-      const start = localOff + 30 + buf.readUInt16LE(localOff + 26) + buf.readUInt16LE(localOff + 28);
-      xml = zlib.inflateRawSync(buf.subarray(start, start + compSize)).toString("utf8");
-      break;
-    }
-    p += 46 + nameLen + extraLen + commentLen;
-  }
+  const xml = documentXmlOf(fs.readFileSync(out));
   assert.ok(xml, "word/document.xml is not in the package");
 
   const verdict = await page.evaluate((doc) => {
@@ -192,6 +201,53 @@ record("#14 a generated .docx parses in a REAL XML parser", async ({ page }) => 
   assert.ok(verdict.text.includes("& <tag> \"q\""), "metacharacters did not round-trip");
   assert.ok(verdict.text.includes("你好"), "CJK did not round-trip");
   assert.ok(!verdict.text.includes(ESC), "an ESC survived into the parsed document");
+});
+
+record("#17 an APPENDED .docx still parses in a REAL XML parser", async ({ page }) => {
+  // Append splices XML into a document that already exists rather than
+  // generating one from a template, so it is the likelier of the two to produce
+  // something Word refuses. The unit tests read the result back with a regex -
+  // which is the approximation #14 was filed for - so the append path is
+  // asserted here at the layer the customer receives it, with a real parser.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pointer-xml-append-"));
+  process.env.NETIE_WORD_OUT_DIR = dir;
+  delete require.cache[require.resolve(path.join(ROOT, "electron", "netie", "word-coworker.js"))];
+  const { writeDocx, appendDocx } = require(path.join(ROOT, "electron", "netie", "word-coworker.js"));
+
+  const ESC = String.fromCharCode(0x1b);
+  const out = path.join(dir, "append-me.docx");
+  const first = writeDocx({ text: "original paragraph", path: out });
+  assert.strictEqual(first.ok, true, `write refused: ${first.reason}`);
+
+  const added = appendDocx({ text: `appended ${ESC}[31m& <b> "q" 世界`, path: out });
+  assert.strictEqual(added.ok, true, `append refused: ${added.reason}`);
+
+  const xml = documentXmlOf(fs.readFileSync(out));
+  assert.ok(xml, "word/document.xml is not in the appended package");
+
+  const verdict = await page.evaluate((doc) => {
+    const parsed = new DOMParser().parseFromString(doc, "application/xml");
+    const err = parsed.querySelector("parsererror");
+    const body = parsed.getElementsByTagNameNS("*", "body")[0];
+    const kids = body ? [...body.children].map((n) => n.localName) : [];
+    return {
+      error: err ? err.textContent.slice(0, 200) : null,
+      text: [...parsed.getElementsByTagNameNS("*", "t")].map((n) => n.textContent).join("\n"),
+      lastChild: kids.length ? kids[kids.length - 1] : null,
+      paragraphs: kids.filter((n) => n === "p").length,
+    };
+  }, xml);
+
+  assert.strictEqual(verdict.error, null, `a real XML parser rejected the appended document: ${verdict.error}`);
+  assert.ok(verdict.text.includes("original paragraph"), "the paragraph that was already there did not survive");
+  assert.ok(verdict.text.includes("世界"), "the appended CJK did not round-trip");
+  assert.ok(verdict.text.includes('& <b> "q"'), "appended metacharacters did not round-trip");
+  assert.ok(!verdict.text.includes(ESC), "an ESC survived into the appended document");
+  // Word treats content after the body-level sectPr as malformed. Only a real
+  // parser can say the TREE ends that way - a regex reads the string, and the
+  // string can look right while the tree is wrong.
+  assert.strictEqual(verdict.lastChild, "sectPr", `the body ends with <${verdict.lastChild}>, not sectPr`);
+  assert.strictEqual(verdict.paragraphs, 2, `expected 2 paragraphs after one append, got ${verdict.paragraphs}`);
 });
 
 record("a run raises the status pill and takes it back down", async ({ page }) => {

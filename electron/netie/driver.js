@@ -783,6 +783,23 @@ class InputDriver {
         return { ok: true, type, ...result };
       }
 
+      // #17: append is a separate verb, not a mode flag on the write. A plan
+      // the customer approved as "Write a Word document" must not be able to
+      // modify a document they already have - #20 requires the approval text to
+      // name the verb, and a mode flag hides the verb inside the payload.
+      case "word_docx_append": {
+        const { appendDocx } = require("./word-coworker");
+        const text = action.value ?? action.text ?? "";
+        const result = appendDocx({
+          text,
+          path: action.path || action.target || undefined,
+          dryRun: this.dryRun,
+          stem: action.stem,
+        });
+        this.last = { op: "word_docx_append", ...result };
+        return { ok: true, type, ...result };
+      }
+
       case "clipboard_baseline": {
         // #16: the integrity gate had no source to compare against, because at
         // recipe-definition time the text does not exist yet - it only exists

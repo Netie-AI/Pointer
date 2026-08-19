@@ -62,6 +62,15 @@ function describeAction(action) {
   let destination = "";
 
   switch (type) {
+    case "word_docx_append": {
+      verb = "Append";
+      destination = destinationOf(a);
+      text = destination
+        ? `Append to the Word document at ${destination}`
+        : "Append to a Word document in the Pointer documents folder";
+      break;
+    }
+
     case "word_docx_write":
     case "word_from_clipboard": {
       verb = "Write";

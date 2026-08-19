@@ -2,6 +2,84 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-20 - The .docx coworker can append, and every #12-#25 gate was mutation-tested
+
+Ticket #17, plus a verification pass over #12-#25. Not closed - closing is the
+epic's call, and #22 has a caveat below.
+
+**Append.** `writeDocx` always built a fresh package and `fs.writeFileSync` on top
+of whatever was there, so a second coworker action aimed at the same document
+destroyed the first one's output. Appending to OOXML is not concatenation, so this
+is a zip reader plus a splice:
+
+- `zipRead` parses the **central directory**, not the local file headers. Word sets
+  general-purpose bit 3, which leaves zeroes in the local header's CRC and size
+  fields and moves the real values into a trailing data descriptor - a reader that
+  trusts local headers gets nothing from a real Word document. Every entry's CRC is
+  verified on the way in, so appending to an already-damaged package refuses
+  instead of preserving the damage and returning `ok: true`.
+- `appendDocx` splices before the body-level `<w:sectPr>`, because Word treats
+  content after it as malformed. The anchor is deliberately "a sectPr immediately
+  before `</w:body>`" rather than "the last sectPr in the string": a paragraph can
+  carry its own inside `<w:pPr>`, and the looser anchor would splice new text into
+  that paragraph's properties - producing a corrupt document whose old text still
+  round-trips, so a text-only assertion would pass while Word refused the file.
+- Parts this module never authors - styles, numbering, images, headers - are carried
+  through with their **content** byte-for-byte identical. The package is rebuilt, so
+  its size on disk may change while no part's content does. Stated narrowly on
+  purpose: "byte-for-byte" about a zip is ambiguous, and this is the honest half.
+- ZIP64 and encrypted packages refuse by name rather than being half-read. A
+  partially understood package is how a part goes missing silently (KB R-0011).
+
+**`word_docx_append` is its own verb, not a `mode` flag on the write.** A plan the
+customer approved as "Write a Word document" must not be able to modify a document
+they already have. #20 requires the approval text to name the verb, and a mode flag
+hides the verb inside the payload where approval never sees it. It is registered in
+`plan-guard` (an unsupported verb is refused, so this is the fail-closed direction),
+tiered in `safety.js` alongside its siblings, and `plan-describe` renders it as
+"Append to the Word document at <path>".
+
+`test/acceptance/verify.test.js` refused the new verb until it earned its exemption
+from screenshot verification - the suite already asserted that every observable
+driver verb is verifiable. The API-first coworker verbs are exempt because they
+change nothing on screen, but the exemption is only honest if they prove themselves
+another way, so the artifact-evidence test now also asserts the append digest
+describes the bytes on disk *after* the append, and differs from the one before.
+
+**Verification of #12-#25.** Sixteen mutations, each disabling one gate, each
+required to turn its suite red (KB R-0007 - verify a gate can fail before trusting
+it green). All sixteen were caught. Two things that pass only look like they pass:
+
+- Six of the sixteen were the #17 gates written in this same pass, and two of those
+  were **blind on the first run**. The containment test used a path that did not
+  exist, so it fell through to `writeDocx` and tested that function's boundary
+  rather than `appendDocx`'s - the dangerous case is appending to a file outside the
+  root that *already exists*, which never reaches `writeDocx`. And ZIP64 refusal had
+  no fixture at all. Both now have tests that fail when the gate is removed.
+- The pre-existing `docxText` helper matched `<w:t[^>]*>`, which also matches
+  `<w:type w:val="nextPage"/>` - an element real Word documents carry inside their
+  section properties. It returned markup as if it were the customer's prose. Fixed
+  at the pattern rather than worked around in the fixture.
+
+**#21 is covered, but not where its comment claims.** The transcribe-time guard says
+it is "the only line between that stale value and a network upload". It is not:
+`transcribe()` calls `probe()` first, and `probe()` re-reads consent and drops a
+cached cloud engine before the branch is ever evaluated. Mutating the transcribe
+guard leaves the suite green; mutating `probe()`'s check turns two tests red. The
+enforcement is real and tested - the comment overstates which line does it.
+
+**#22's caveat.** Its painted-geometry assertion lives only in `test/smoke`, which
+`.github/workflows/ci.yml` explicitly declares NOT RUN (Electron needs a desktop
+session). That is the right layer to assert at - only rendered geometry can answer
+"can the customer see this" - but nothing stops a regression reaching `main`. Either
+smoke runs in CI or it is accepted as a pre-merge local gate; it should not stay
+unstated.
+
+Also records the founder ruling on `DR-0003`: option C, harvested skills may occupy
+the trusted actions slot under governance. The record is amended to say what that
+obligates - the authoring path does not exist in Cortex yet, so no Pointer ticket
+under it can be written, and `EPIC-P08` lands first.
+
 ## 2026-08-07 - The clipboard integrity gate could never fire
 
 Ticket #16. Not closed - needs a different run to verify (R-0003).
