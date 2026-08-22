@@ -27,6 +27,18 @@ test("imperatives → act", () => {
   assert.strictEqual(classifyIntent("type hello in the box"), "act");
 });
 
+test("Word coworker phrases are act, not ask or code", () => {
+  // Go only runs recipes on "act". "write a" is a CODE_CUE, so
+  // "write a word document..." was classified as code and never wrote.
+  // "write this in Word" matched neither list and defaulted to ask.
+  assert.strictEqual(classifyIntent("write this in Word"), "act");
+  assert.strictEqual(classifyIntent("write a word document that says Hello Pointer"), "act");
+  assert.strictEqual(classifyIntent('write "Hello Pointer" into word'), "act");
+  assert.strictEqual(classifyIntent("word: Hello Pointer"), "act");
+  assert.strictEqual(classifyIntent("copy this into word"), "act");
+  assert.strictEqual(classifyIntent("write a python script to sort a list"), "code");
+});
+
 test("coding questions → code", () => {
   assert.strictEqual(classifyIntent("write a python script to sort a list"), "code");
   assert.strictEqual(classifyIntent("debug this traceback please"), "code");

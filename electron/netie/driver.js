@@ -245,6 +245,23 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/**
+ * Map a word-coworker structured refusal onto the driver contract.
+ *
+ * writeDocx/appendDocx return `{ ok:false, reason }` with no `error`.
+ * perform used to `return { ok: true, type, ...result }`, which only became a
+ * failure because result.ok overwrote the literal true. executeApproved then
+ * did `outcome.error || "unknown"`, so a real empty/containment refusal showed
+ * "failed: unknown" and Plan finished (R-0011).
+ */
+function coworkerOutcome(type, result, extra = {}) {
+  const ok = Boolean(result && result.ok);
+  const error = ok
+    ? undefined
+    : String((result && (result.error || result.reason)) || extra.error || "unknown");
+  return { type, ...result, ...extra, ok, ...(error ? { error } : {}) };
+}
+
 class InputDriver {
   /**
    * @param {object} [opts]
@@ -780,7 +797,7 @@ class InputDriver {
           stem: action.stem,
         });
         this.last = { op: "word_docx_write", ...result };
-        return { ok: true, type, ...result };
+        return coworkerOutcome(type, result);
       }
 
       // #17: append is a separate verb, not a mode flag on the write. A plan
@@ -797,7 +814,7 @@ class InputDriver {
           stem: action.stem,
         });
         this.last = { op: "word_docx_append", ...result };
-        return { ok: true, type, ...result };
+        return coworkerOutcome(type, result);
       }
 
       case "clipboard_baseline": {
@@ -856,7 +873,7 @@ class InputDriver {
           stem: action.stem || "from-clipboard",
         });
         this.last = { op: "word_from_clipboard", ...result };
-        return { ok: true, type, ...result, clipLen: text.length };
+        return coworkerOutcome(type, result, { clipLen: text.length });
       }
 
       case "clipboard_verify": {
@@ -887,4 +904,4 @@ class InputDriver {
   }
 }
 
-module.exports = { InputDriver, VK, MOD_VK, parseKeyCombo, vkOf };
+module.exports = { InputDriver, coworkerOutcome, VK, MOD_VK, parseKeyCombo, vkOf };

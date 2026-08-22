@@ -1732,9 +1732,10 @@ async function executeApproved(actions) {
         ? `${enriched.type}${outcome.x != null ? ` @ (${Math.round(outcome.x)},${Math.round(outcome.y)})` : ""}${
             enriched._targeted ? " [aimed]" : ""
           }${driver.dryRun ? " [dry-run]" : ""}`
-        : `failed: ${outcome.error || outcome.skipped || "unknown"}`;
+        : `failed: ${outcome.error || outcome.reason || outcome.skipped || "unknown"}`;
       results.push({ action: enriched, ...outcome, message });
       if (!outcome.ok && !outcome.noop) {
+        sendHud({ type: "insight", text: message });
         setPresence(PresenceEvents.FAIL);
         break;
       }
@@ -2100,7 +2101,17 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
         sendStage({ type: "subtitle", text: summary, ms: 3500 });
         const run = await maybeRunPlan(plan);
         if (settings.get("saveAllMarkdown")) saveCurrentConversation(message.slice(0, 60), "act");
-        return { ...plan, mode: "act", intent, ran: run.ran, runMode: run.mode || "recipe" };
+        const failed = (run.results || []).find((r) => r && r.ok === false && !r.noop && r.skipped !== "refused");
+        return {
+          ...plan,
+          ok: !failed,
+          mode: "act",
+          intent,
+          ran: run.ran,
+          runMode: run.mode || "recipe",
+          run,
+          reason: failed ? (failed.message || failed.error || failed.reason) : plan.reason,
+        };
       } catch (err) {
         setPresence(PresenceEvents.FAIL);
         return { ok: false, mode: "act", intent, reason: String(err.message || err), actions: [] };
@@ -2641,7 +2652,17 @@ ipcMain.handle("hud:act", async (_e, payload) => {
     });
     sendHud({ type: "insight", text: `Recipe ${recipe.id} (no LLM)` });
     const run = await maybeRunPlan(plan);
-    return { ok: true, plan, run, recipe: recipe.id };
+    const failed = (run.results || []).find((r) => r && r.ok === false && !r.noop && r.skipped !== "refused");
+    return {
+      ok: !failed,
+      plan,
+      run,
+      recipe: recipe.id,
+      actions: plan.actions,
+      ran: run.ran,
+      runMode: run.mode || "recipe",
+      reason: failed ? (failed.message || failed.error || failed.reason) : undefined,
+    };
   }
 
   // WP-P1-SKILLS-EXEC — a catalogued skill used to produce a toast and nothing

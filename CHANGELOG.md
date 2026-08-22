@@ -2,6 +2,27 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-22 - Word Go/Act still skipped the coworker, then hid the reason
+
+After #27, "write this in Word" still never became a coworker verb on the
+live path. `classifyIntent` treated "write a word document..." as code
+(CODE_CUES includes "write a") and "write this in Word" as ask (write is
+not an ACT_VERB). `clicks:go` only runs recipes on act. `matchRecipe`
+required quotes / "that says" / "word:" and the this/that clipboard
+pattern demanded to/into, not in, so hud:act fell through to the LLM
+click/type planner.
+
+Separately, writeDocx refusals use `reason`. The driver returned
+`{ ok: true, ...result }` and executeApproved printed
+`failed: ${outcome.error || "unknown"}`, then "Plan finished." Real use:
+empty/containment refusal, HUD silent.
+
+Fix (new unused branch, cherry-picks #30 Document-ready teardown; does
+not reimplement #31 purgeExpired): Word phrases are act; "write this in
+Word" is terminal_to_word; unquoted "write Hello in Word" is
+word_docx_write; coworkerOutcome maps reason to error; executeApproved
+shows the insight. Closed #3 #10 #11 #14 #17 stay closed.
+
 ## 2026-08-22 - Document ready / Open survives the Act teardown
 
 `executeApproved` sent `word-docx` mid-run, then `status done: true` in

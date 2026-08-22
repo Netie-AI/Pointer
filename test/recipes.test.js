@@ -99,6 +99,19 @@ test("explicit prose uses word_docx_write, not the clipboard stub path", () => {
   const copy = matchRecipe("copy this into word");
   assert.strictEqual(copy.id, "terminal_to_word");
   assert.ok(copy.actions.some((a) => a.type === "word_from_clipboard"));
+
+  // The live phrase: "write this in Word" used to miss every pattern
+  // (this...in word, not this...to/into word) and fall through to the LLM.
+  const thisIn = matchRecipe("write this in Word");
+  assert.ok(thisIn, "write this in Word matched nothing");
+  assert.strictEqual(thisIn.id, "terminal_to_word");
+  assert.ok(thisIn.actions.some((a) => a.type === "word_from_clipboard"));
+  assert.ok(!thisIn.actions.some((a) => a.type === "click" || a.type === "type"));
+
+  const unquoted = matchRecipe("write Hello Pointer in Word");
+  assert.ok(unquoted, "unquoted write-in-Word matched nothing");
+  assert.strictEqual(unquoted.id, "word_write_text");
+  assert.deepStrictEqual(unquoted.actions, [{ type: "word_docx_write", value: "Hello Pointer" }]);
 });
 
 test("terminal to word UI fallback is explicit", () => {

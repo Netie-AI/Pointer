@@ -75,6 +75,7 @@ function plannerGrounding(instruction) {
       "3. For coding apps, ask Netie vs Cursor vs Claude Code when ambiguous.",
       "4. If Cursor context looks full (token circle), open a new chat and continue with @ past chats / STATUS.md.",
       "5. Expand hidden panels like a human - Window menu, enable, expand.",
+      "6. Word documents: word_docx_write (or word_from_clipboard for a selection). Do not click the Word UI.",
     ].join("\n")
   );
   return parts.join("\n\n");

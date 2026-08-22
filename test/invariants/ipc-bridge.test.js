@@ -155,6 +155,14 @@ check("the status pill is driven by a run, not only by a finished document", () 
   const doneAt = main.indexOf('type: "status", done: true');
   const reraiseAt = main.lastIndexOf("sendWordDocxReady(lastWordDocx)");
   assert.ok(doneAt >= 0 && reraiseAt > doneAt, "word-docx is not re-raised after the run teardown");
+  assert.ok(
+    /outcome\.error \|\| outcome\.reason/.test(main),
+    "executeApproved still swallows coworker reason as failed: unknown"
+  );
+  assert.ok(
+    /sendHud\(\{\s*type: "insight",\s*text: message \}\)/.test(main),
+    "a failed coworker step never reaches the HUD"
+  );
 });
 
 check("hud:openPath specifically is reachable (the regression that started this)", () => {

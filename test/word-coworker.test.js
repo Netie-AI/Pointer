@@ -513,6 +513,17 @@ const driver = new InputDriver({ dryRun: true });
   });
   assert.strictEqual(appRefused.ok, false, "driver must surface the append refusal");
   assert.ok(appRefused.reason, "append refusal must reach the driver result");
+  assert.ok(appRefused.error, "executeApproved reads error, not reason - swallowing reason as unknown");
+  assert.match(String(appRefused.error), /outside|refused/i);
+
+  const emptyWrite = await driver.perform({
+    type: "word_docx_write",
+    value: "\n  \t",
+    path: path.join(tmp, "empty-driver.docx"),
+  });
+  assert.strictEqual(emptyWrite.ok, false, "driver treated whitespace as a successful write");
+  assert.ok(/empty Word document/i.test(emptyWrite.error), `driver hid the empty-write reason: ${emptyWrite.error}`);
+  assert.ok(!fs.existsSync(path.join(tmp, "empty-driver.docx")), "empty driver write still touched disk");
 
   const emptyAppend = appendDocx({ text: "\n", path: path.join(tmp, "empty-append.docx") });
   assert.strictEqual(emptyAppend.ok, false, "append of whitespace created a document");
