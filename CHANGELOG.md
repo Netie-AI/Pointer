@@ -2,6 +2,33 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-22 - The smoke lane runs in CI, and the verified wave is closed
+
+The 2026-08-20 entry ended on a caveat: #22's painted-geometry assertions lived
+only in `test:smoke`, which CI declared NOT RUN, so a HUD regression could reach
+`main` green. That caveat is resolved - `.github/workflows/ci.yml` gained a
+dedicated `smoke` job on `windows-latest` (the OS the customer receives) that
+downloads the Electron binary this one job needs and boots the real app. Run
+32558187957 is green on all three jobs, and the smoke log shows all 25
+assertions (15 hud-boot + 10 ipc-live) actually ran - not a degenerate pass.
+The unit job's honest-coverage step now names what is still uncovered: smoke on
+Linux, where no build ships.
+
+With the caveat gone, `epic-agent` re-derived completeness from the code (not
+from checkboxes) and closed tickets #8-#17, #19, #21-#25 and epics P01, P02,
+P03, P05, P06 - each close citing its pinning suite, the mutation pass, and CI
+run 32558187957. EPIC-P04 stays open on the founder's engine choice (OpenWillow
+vs TurboOCR); EPIC-P07 stays open, blocked cross-repo (AirGPT / DMS).
+
+One correction to the 2026-08-20 claim, found in the closing pass: six of the
+sixteen mutations were the #17 gates written in that same pass, so "verified by
+a run that wrote none of them" overstates #17. Its independent verification
+(R-0003) is CI run 32558187957 plus a re-run by a session that wrote none of
+it, and the close comment cites it that way rather than repeating the claim.
+
+Full local pack green in the same session: `npm test` (26 suites), `test:e2e`,
+`test:contracts`, `test:stress`, `test:acceptance:strict`, `test:smoke`.
+
 ## 2026-08-20 - The .docx coworker can append, and every #12-#25 gate was mutation-tested
 
 Ticket #17, plus a verification pass over #12-#25. Not closed - closing is the
