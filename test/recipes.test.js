@@ -78,6 +78,29 @@ test("terminal to word coworker recipe is API-first", () => {
   assert.ok(!r.actions.some((a) => a.type === "open" && a.target === "winword"));
 });
 
+test("explicit prose uses word_docx_write, not the clipboard stub path", () => {
+  const quoted = matchRecipe('write "Hello Pointer" into word');
+  assert.ok(quoted, "quoted write should match");
+  assert.strictEqual(quoted.id, "word_write_text");
+  assert.deepStrictEqual(quoted.actions, [{ type: "word_docx_write", value: "Hello Pointer" }]);
+
+  const says = matchRecipe("write a word document that says Hello Pointer");
+  assert.ok(says, "that-says write should match");
+  assert.strictEqual(says.id, "word_write_text");
+  assert.strictEqual(says.actions[0].type, "word_docx_write");
+  assert.strictEqual(says.actions[0].value, "Hello Pointer");
+
+  const colon = matchRecipe("word: Hello Pointer");
+  assert.ok(colon, "word: payload should match");
+  assert.strictEqual(colon.actions[0].type, "word_docx_write");
+  assert.strictEqual(colon.actions[0].value, "Hello Pointer");
+
+  // Selection phrasing still goes through the clipboard recipe.
+  const copy = matchRecipe("copy this into word");
+  assert.strictEqual(copy.id, "terminal_to_word");
+  assert.ok(copy.actions.some((a) => a.type === "word_from_clipboard"));
+});
+
 test("terminal to word UI fallback is explicit", () => {
   const r = matchRecipe("paste into word window");
   assert.strictEqual(r.id, "terminal_to_word_ui");

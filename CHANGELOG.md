@@ -2,6 +2,44 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-22 - Test fixture "recovered selection" must not land in Documents\\NetiePointer
+
+Live confirm (file:line): customer artifact
+`C:\\Users\\OoiJianHong\\Documents\\NetiePointer\\from-clipboard-1787382254896.docx`
+body text is exactly `recovered selection`. That string is the retry fixture at
+`test/clipboard-integrity.test.js:121` (af25bb0 `onCopy` return). Writer:
+`electron/netie/word-coworker.js:133-141` `sanctionedRoot` ->
+`Documents\\NetiePointer` when `NETIE_WORD_OUT_DIR` is unset.
+`word_from_clipboard` ran with `dryRun: false` and asserted only `r.ok`.
+Suites passed while real use opened the fixture. Closed #3 #10 #11 #14 #17
+are not reopened.
+
+Fix: `writeDocx` / `appendDocx` refuse when a `node test/....js` process has
+no `NETIE_WORD_OUT_DIR`. `clipboard-integrity` now contains its sink and
+asserts the unzipped `w:t` plus "customer folder unchanged".
+`test/invariants/word-sink.test.js` pins both.
+
+## 2026-08-22 - Word coworker real-use no longer writes a stub .docx
+
+Laptop evidence (22 Aug 2026 MYT): `Documents\\NetiePointer\\from-clipboard-*.docx`
+were all ~1158 bytes. Unzipping the latest showed an empty-looking
+`word/document.xml` (`<w:t xml:space="preserve"></w:t>`). The HUD still said
+Document ready. Closed tickets #3 #10 #11 #14 #17 are not reopened.
+
+Cause, reproduced from this branch: `writeDocx` treated empty / whitespace as
+success and built a 4-part OOXML stub Word does not render. The only shipped
+Act path was the `terminal_to_word` recipe (`word_from_clipboard`). The
+OpenVault planner prompt listed click/type/press only, so "write this in Word"
+could not emit `word_docx_write`. A newline that differed from the clipboard
+baseline passed `_provenCopy` and wrote the stub.
+
+Fix (new ticket, new branch): refuse writes with no visible text; emit styles,
+settings, and docProps so Word shows the body; route quoted / `word:` / "that
+says" prose to `word_docx_write`; tell `_llmPlan` about the coworker verbs
+(omit path). Tests assert the unzipped `w:t` the customer receives. R-0002:
+no skipped tests. CI now also runs on PRs to `netie-ecosystem-contracts`
+(the feature-PR base); a PR that never ran the matrix was a skipped test.
+
 ## 2026-08-22 - The smoke lane runs in CI, and the verified wave is closed
 
 The 2026-08-20 entry ended on a caveat: #22's painted-geometry assertions lived

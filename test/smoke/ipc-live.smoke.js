@@ -180,8 +180,36 @@ record("#14 a generated .docx parses in a REAL XML parser", async ({ page }) => 
   const r = writeDocx({ text, path: out });
   assert.strictEqual(r.ok, true, `write refused: ${r.reason}`);
 
+  // The 4-part stub Word showed as a blank page. The customer artifact is a
+  // package Word will render, so styles + a styles relationship must be present.
+  const pkgBuf = fs.readFileSync(out);
+  const stylesXml = (() => {
+    const zlib = require("zlib");
+    const eocd = pkgBuf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+    const count = pkgBuf.readUInt16LE(eocd + 10);
+    let p = pkgBuf.readUInt32LE(eocd + 16);
+    for (let i = 0; i < count; i += 1) {
+      const method = pkgBuf.readUInt16LE(p + 10);
+      const compSize = pkgBuf.readUInt32LE(p + 20);
+      const nameLen = pkgBuf.readUInt16LE(p + 28);
+      const extraLen = pkgBuf.readUInt16LE(p + 30);
+      const commentLen = pkgBuf.readUInt16LE(p + 32);
+      const localOff = pkgBuf.readUInt32LE(p + 42);
+      const name = pkgBuf.subarray(p + 46, p + 46 + nameLen).toString("utf8");
+      if (name === "word/styles.xml") {
+        const start = localOff + 30 + pkgBuf.readUInt16LE(localOff + 26) + pkgBuf.readUInt16LE(localOff + 28);
+        const raw = pkgBuf.subarray(start, start + compSize);
+        return (method === 0 ? raw : zlib.inflateRawSync(raw)).toString("utf8");
+      }
+      p += 46 + nameLen + extraLen + commentLen;
+    }
+    return null;
+  })();
+  assert.ok(stylesXml, "word/styles.xml is not in the package Word receives");
+  assert.ok(/w:styleId="Normal"/.test(stylesXml), "styles.xml has no Normal style");
+
   // Unzip in the harness (stdlib), parse in the page (real DOMParser).
-  const xml = documentXmlOf(fs.readFileSync(out));
+  const xml = documentXmlOf(pkgBuf);
   assert.ok(xml, "word/document.xml is not in the package");
 
   const verdict = await page.evaluate((doc) => {

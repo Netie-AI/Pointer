@@ -5,9 +5,11 @@ name: CI
 # customer receives the artifact - for a repo, that is a push to `main`.
 on:
   push:
-    branches: [main]
+    # Feature PRs land on netie-ecosystem-contracts until PR #1 merges. A PR
+    # that never runs this workflow is a skipped test (R-0002).
+    branches: [main, netie-ecosystem-contracts]
   pull_request:
-    branches: [main]
+    branches: [main, netie-ecosystem-contracts]
   # Feature branches carry the same invariants; running them here is what stops a
   # branch from arriving at `main` already broken.
   workflow_dispatch:
@@ -59,6 +61,7 @@ jobs:
           node test/invariants/claude-contract.test.js
           node test/invariants/governed-docs.test.js
           node test/invariants/ipc-bridge.test.js
+          node test/invariants/word-sink.test.js
 
       - name: Unit suite
         run: npm test

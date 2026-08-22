@@ -814,7 +814,7 @@ class InputDriver {
 
       case "word_from_clipboard": {
         // API-first coworker: clipboard → .docx (no Word focus steal).
-        const { writeDocx, clipboardMatchesSource } = require("./word-coworker");
+        const { writeDocx, clipboardMatchesSource, visibleDocxText } = require("./word-coworker");
         const expected = action.value != null ? String(action.value) : null;
         const got = await this.clipboardGet();
         let text = got.text || "";
@@ -840,11 +840,17 @@ class InputDriver {
             }
           }
         }
-        if (!text.length && !this.dryRun) {
-          return { ok: false, type, error: "clipboard empty — nothing to write to Word" };
+        const payload = visibleDocxText(text) || visibleDocxText(expected || "");
+        if (!payload && !this.dryRun) {
+          return {
+            ok: false,
+            type,
+            error: "clipboard has no visible text - nothing to write to Word",
+            clipLen: text.length,
+          };
         }
         const result = writeDocx({
-          text: text || String(expected || ""),
+          text: payload || String(expected || text || ""),
           path: action.path || action.target || undefined,
           dryRun: this.dryRun,
           stem: action.stem || "from-clipboard",

@@ -52,9 +52,91 @@ function paragraphsXml(text) {
   return lines
     .map(
       (line) =>
-        `<w:p><w:r><w:t xml:space="preserve">${xmlEscape(line)}</w:t></w:r></w:p>`
+        `<w:p><w:pPr><w:pStyle w:val="Normal"/></w:pPr>` +
+        `<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Calibri" w:cs="Calibri"/></w:rPr>` +
+        `<w:t xml:space="preserve">${xmlEscape(line)}</w:t></w:r></w:p>`
     )
     .join("");
+}
+
+/**
+ * Text that will actually appear in Word after XML sanitizing.
+ *
+ * Real use (22 Aug 2026) wrote many from-clipboard-*.docx of ~1158 bytes whose
+ * document.xml was an empty <w:t/>. writeDocx treated "" / "\\n" / " " as
+ * success, so the HUD said "Document ready" while Word showed a blank page.
+ * Whitespace and control-only input is not a document the customer can see.
+ */
+function visibleDocxText(s) {
+  return stripXmlForbidden(String(s ?? "")).replace(/\s+/g, " ").trim();
+}
+
+function emptyWriteReason() {
+  return "refusing to write an empty Word document - no visible text";
+}
+
+/** Parts Word needs before it will show the body instead of a repair/blank page. */
+function wordPackageParts(documentXml) {
+  const contentTypes =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+    `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+    `<Default Extension="xml" ContentType="application/xml"/>` +
+    `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
+    `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
+    `<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>` +
+    `<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>` +
+    `<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>` +
+    `</Types>`;
+  const rels =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>` +
+    `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>` +
+    `<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>` +
+    `</Relationships>`;
+  const docRels =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
+    `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>` +
+    `</Relationships>`;
+  const styles =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
+    `<w:docDefaults><w:rPrDefault><w:rPr>` +
+    `<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="Calibri" w:cs="Calibri"/>` +
+    `<w:sz w:val="22"/><w:szCs w:val="22"/>` +
+    `</w:rPr></w:rPrDefault></w:docDefaults>` +
+    `<w:style w:type="paragraph" w:default="1" w:styleId="Normal">` +
+    `<w:name w:val="Normal"/><w:qFormat/>` +
+    `</w:style></w:styles>`;
+  const settings =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
+    `<w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat>` +
+    `</w:settings>`;
+  const core =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ` +
+    `xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" ` +
+    `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">` +
+    `<dc:title>Pointer</dc:title><dc:creator>Pointer</dc:creator>` +
+    `</cp:coreProperties>`;
+  const app =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">` +
+    `<Application>Pointer</Application></Properties>`;
+  return [
+    { name: "[Content_Types].xml", data: contentTypes },
+    { name: "_rels/.rels", data: rels },
+    { name: "docProps/core.xml", data: core },
+    { name: "docProps/app.xml", data: app },
+    { name: "word/document.xml", data: documentXml },
+    { name: "word/_rels/document.xml.rels", data: docRels },
+    { name: "word/styles.xml", data: styles },
+    { name: "word/settings.xml", data: settings },
+  ];
 }
 
 /** Minimal store+deflate ZIP (local file headers + central directory). */
@@ -125,13 +207,37 @@ function crc32(buf) {
   return ~c;
 }
 
+/** Default customer folder. Tests must never write here (laptop 22 Aug 2026). */
+function customerWordRoot() {
+  return path.join(os.homedir(), "Documents", "NetiePointer");
+}
+
+/**
+ * True when this process is a suite file (`node test/....js`). Production
+ * Electron argv is `electron electron/main.js` and must not match.
+ */
+function isTestProcess() {
+  return process.argv.some((a) => /(^|[\\/])test[\\/].+\.js$/i.test(String(a).replace(/\\/g, "/")));
+}
+
 /**
  * The one directory this module may write into. Read at call time, not at
  * module load, so a test (or a settings change) can move it without having to
  * re-require the module.
  */
 function sanctionedRoot() {
-  return process.env.NETIE_WORD_OUT_DIR || path.join(os.homedir(), "Documents", "NetiePointer");
+  return process.env.NETIE_WORD_OUT_DIR || customerWordRoot();
+}
+
+function refuseUncontainedTest(outPath) {
+  if (process.env.NETIE_WORD_OUT_DIR || !isTestProcess()) return null;
+  return {
+    ok: false,
+    reason:
+      "test write refused: NETIE_WORD_OUT_DIR unset - will not write fixtures into the customer Word folder",
+    path: outPath,
+    bytes: 0,
+  };
 }
 
 function defaultDocxPath(stem) {
@@ -160,31 +266,21 @@ function writeDocx(opts = {}) {
     // the customer instead of turning it into a generic step failure.
     return { ok: false, reason: contained.reason, path: outPath, bytes: 0 };
   }
+  // Live laptop: test/clipboard-integrity.test.js:121 returned
+  // "recovered selection", word_from_clipboard wrote it into
+  // Documents\NetiePointer\from-clipboard-*.docx, and the suite still passed
+  // because it only checked r.ok. A test that forgets NETIE_WORD_OUT_DIR
+  // must refuse rather than pollute the folder the customer opens (R-0001).
+  const uncontained = refuseUncontainedTest(outPath);
+  if (uncontained) return uncontained;
+  if (!visibleDocxText(text)) {
+    return { ok: false, reason: emptyWriteReason(), path: outPath, bytes: 0 };
+  }
   const documentXml =
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
     `<w:body>${paragraphsXml(text)}<w:sectPr/></w:body></w:document>`;
-  const contentTypes =
-    `<?xml version="1.0" encoding="UTF-8"?>` +
-    `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
-    `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
-    `<Default Extension="xml" ContentType="application/xml"/>` +
-    `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
-    `</Types>`;
-  const rels =
-    `<?xml version="1.0" encoding="UTF-8"?>` +
-    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
-    `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>` +
-    `</Relationships>`;
-  const docRels =
-    `<?xml version="1.0" encoding="UTF-8"?>` +
-    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`;
-  const buf = zipStore([
-    { name: "[Content_Types].xml", data: contentTypes },
-    { name: "_rels/.rels", data: rels },
-    { name: "word/document.xml", data: documentXml },
-    { name: "word/_rels/document.xml.rels", data: docRels },
-  ]);
+  const buf = zipStore(wordPackageParts(documentXml));
   if (opts.dryRun) {
     return { ok: true, path: outPath, bytes: buf.length, dryRun: true };
   }
@@ -351,6 +447,11 @@ function appendDocx(opts = {}) {
   if (!contained.ok) {
     return { ok: false, reason: contained.reason, path: outPath, bytes: 0 };
   }
+  const uncontained = refuseUncontainedTest(outPath);
+  if (uncontained) return uncontained;
+  if (!visibleDocxText(text)) {
+    return { ok: false, reason: emptyWriteReason(), path: outPath, bytes: 0 };
+  }
 
   // Appending to something that is not there yet is a create. One code path
   // produces fresh packages, so dry-run and containment behave identically
@@ -431,4 +532,8 @@ module.exports = {
   defaultDocxPath,
   paragraphsXml,
   sanctionedRoot,
+  customerWordRoot,
+  isTestProcess,
+  visibleDocxText,
+  wordPackageParts,
 };

@@ -35,23 +35,22 @@
 6. **Chrome pinned against the rendered HUD** (#22) - writing it found the LIVE
    bar rendering despite `hidden`, because `.subtitle-live` set its own
    `display`. Fixed for the class; the assertion reads painted geometry.
-7. **#17 shipped - the coworker can append.** Zip reader (central directory,
-   CRC-checked), `appendDocx` splices before the body `sectPr`, and
-   `word_docx_append` is its own verb so approval says "Append", not "Write"
-   (#20). Foreign parts survive; ZIP64, encrypted and damaged packages refuse.
+7. **Word coworker real-use leaked a test fixture.** Laptop
+   `from-clipboard-1787382254896.docx` body is exactly `recovered selection`
+   (`test/clipboard-integrity.test.js:121` on af25bb0). Uncontained test
+   writes now refuse; suites must set `NETIE_WORD_OUT_DIR`. Closed #3 #10
+   #11 #14 #17 stay closed.
 
 ## Next
 
-- **Tickets #8-#25 and epics P01/P02/P03/P05/P06 are closed** - completeness
-  re-derived from the code by `epic-agent`, closes cite the pinning suites, the
-  mutation pass, and CI run 32558187957. Only EPIC-P04 (founder call: OpenWillow
-  vs TurboOCR engine choice) and EPIC-P07 (blocked cross-repo) remain open.
+- **Tickets #8-#25 and epics P01/P02/P03/P05/P06 stay closed** - this is a
+  new real-use Word coworker defect, not a reopen. EPIC-P04 (OpenWillow vs
+  TurboOCR) and EPIC-P07 (blocked cross-repo) remain open.
 - Route the recall retention defect (Now item 1) through `prd-agent` - it fits
   no open epic, and it must not be lost now the wave is closed.
 - Attachment follow-up: PDF and image attachments are refused by name today; a
   vision or extraction path is a PRD question, not a ticket - route to `prd-agent`.
-- Merge PR #1 or rebase (CI is green on all three jobs, smoke included).
-- Measure STT: `node scripts/stt_baseline.js` (see `docs/STT_OCR.md`).
+- Do not merge PR #1 from this lane. Measure STT: `node scripts/stt_baseline.js`.
 
 ## Later
 

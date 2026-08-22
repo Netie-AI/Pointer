@@ -355,6 +355,38 @@ function matchRecipe(text) {
 
   const normalized = input.toLowerCase().replace(/[.!?]+$/g, "").trim();
 
+  function wordWriteTextRecipe(text) {
+    const value = String(text || "").trim().replace(/^["']|["']$/g, "");
+    if (!value) return null;
+    return {
+      id: "word_write_text",
+      label: "Write a Word document",
+      actions: [{ type: "word_docx_write", value }],
+    };
+  }
+
+  const quotedWord = input.match(
+    /^(?:please\s+)?(?:write|put|create|make)\s+["']([^"']+)["']\s+(?:into|to|in)\s+(?:a\s+)?(?:microsoft\s+)?word(?:\s+doc(?:ument)?)?$/i
+  );
+  if (quotedWord) {
+    const r = wordWriteTextRecipe(quotedWord[1]);
+    if (r) return r;
+  }
+  const saysWord = input.match(
+    /^(?:please\s+)?(?:write|create|make)\s+(?:a\s+|an\s+)?(?:microsoft\s+)?word\s+(?:doc(?:ument)?|file)\s+(?:that\s+(?:says|contains)|with(?:\s+the\s+text)?|saying)\s+(.+)$/i
+  );
+  if (saysWord) {
+    const r = wordWriteTextRecipe(saysWord[1]);
+    if (r) return r;
+  }
+  const wordColon = input.match(
+    /^(?:please\s+)?(?:write\s+(?:it\s+)?(?:to|into)\s+(?:a\s+)?(?:microsoft\s+)?word(?:\s+doc(?:ument)?)?|word)\s*:\s*([\s\S]+)$/i
+  );
+  if (wordColon) {
+    const r = wordWriteTextRecipe(wordColon[1]);
+    if (r) return r;
+  }
+
   // Multi-word coworker SOPs first (more specific).
   if (
     /(?:word\s+ui|hotkey\s+word|paste\s+into\s+word\s+window)/.test(normalized)
