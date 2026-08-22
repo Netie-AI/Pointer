@@ -1441,8 +1441,9 @@ function onHudEvent(event) {
     }
   }
   if (event.type === "word-docx" && event.path) {
+    const preview = String(event.preview || "").trim();
     showStatusPill({
-      title: "Document ready",
+      title: preview ? `Document ready - ${preview}` : "Document ready",
       // The destination, not a reassurance. #19's acceptance is that the
       // customer has seen where a path goes BEFORE the Open button acts on it.
       sub: event.path,

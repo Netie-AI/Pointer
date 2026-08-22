@@ -303,6 +303,43 @@ record("a run raises the status pill and takes it back down", async ({ page }) =
   assert.strictEqual(seen.afterHidden, true, "the pill sat on Working... after the run finished");
 });
 
+record("Document ready is re-raised after the run teardown", async ({ page }) => {
+  // The executor sends done:true (hides Working...) then word-docx again.
+  // Without the second raise the customer never sees Open.
+  const seen = await page.evaluate(async () => {
+    const pill = document.getElementById("status-pill");
+    const openBtn = document.getElementById("btn-status-open");
+    window.__netieTestEmit({
+      type: "word-docx",
+      path: "C:\\Users\\x\\Documents\\NetiePointer\\from-clipboard-1.docx",
+      bytes: 2000,
+      preview: "recovered selection",
+      chars: 19,
+    });
+    window.__netieTestEmit({ type: "status", done: true });
+    const hiddenAfterDone = pill.hidden;
+    window.__netieTestEmit({
+      type: "word-docx",
+      path: "C:\\Users\\x\\Documents\\NetiePointer\\from-clipboard-1.docx",
+      bytes: 2000,
+      preview: "recovered selection",
+      chars: 19,
+    });
+    return {
+      hiddenAfterDone,
+      visible: !pill.hidden,
+      title: document.getElementById("status-title").textContent,
+      sub: document.getElementById("status-sub").textContent,
+      openShown: !openBtn.hidden,
+    };
+  });
+  assert.strictEqual(seen.hiddenAfterDone, true, "done must still dismiss Working");
+  assert.strictEqual(seen.visible, true, "word-docx after teardown left the pill down");
+  assert.ok(/recovered selection/i.test(seen.title), `title hid the written text: "${seen.title}"`);
+  assert.ok(/NetiePointer/.test(seen.sub), `sub must still name the destination: "${seen.sub}"`);
+  assert.strictEqual(seen.openShown, true, "Open vanished with the teardown");
+});
+
 (async () => {
   const app = await electron.launch({ args: [path.join(ROOT, "electron", "main.js")], cwd: ROOT });
   let page;

@@ -24,6 +24,8 @@ const written = writeDocx({ text: "Hello Pointer\nLine 2", path: out });
 assert.ok(fs.existsSync(out));
 assert.strictEqual(written.bytes, fs.statSync(out).size);
 assert.ok(written.sha256);
+assert.strictEqual(written.preview, "Hello Pointer Line 2");
+assert.strictEqual(written.chars, "Hello Pointer Line 2".length);
 
 const zipMagic = fs.readFileSync(out).subarray(0, 2).toString("binary");
 assert.strictEqual(zipMagic, "PK", "docx is a zip");
