@@ -2,6 +2,18 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-22 - Document ready / Open survives the Act teardown
+
+`executeApproved` sent `word-docx` mid-run, then `status done: true` in
+`finally`, which hid the pill. The comment already said we re-raise the
+artifact; the call was missing. Real use: file written, Open gone.
+Closed #3 #10 #11 #14 #17 are not reopened. PR #27 is merged; this is the
+next unused branch.
+
+Fix: track `lastWordDocx`, call `sendWordDocxReady` AFTER `done`. The HUD
+title carries the written preview (R-0001) and the sub still names the
+destination (#19).
+
 ## 2026-08-22 - Test fixture "recovered selection" must not land in Documents\\NetiePointer
 
 Live confirm (file:line): customer artifact

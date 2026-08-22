@@ -331,6 +331,18 @@ function sendHud(event) {
   }
 }
 
+/** Re-raise after `status done` so Document ready / Open is not torn down. */
+function sendWordDocxReady(artifact) {
+  if (!artifact || !artifact.path) return;
+  sendHud({
+    type: "word-docx",
+    path: artifact.path,
+    bytes: artifact.bytes || 0,
+    chars: artifact.chars || 0,
+    preview: artifact.preview || "",
+  });
+}
+
 function createHud() {
   if (hudWindow && !hudWindow.isDestroyed()) return hudWindow;
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
@@ -1381,6 +1393,7 @@ async function executeApproved(actions) {
   }
   abortPlan = false;
   planRunning = true;
+  let lastWordDocx = null;
   const needsVeil = (actions || []).some(
     (a) =>
       a &&
@@ -1628,7 +1641,13 @@ async function executeApproved(actions) {
           enriched.type === "word_docx_append") &&
         outcome.path
       ) {
-        sendHud({ type: "word-docx", path: outcome.path, bytes: outcome.bytes || 0 });
+        lastWordDocx = {
+          path: outcome.path,
+          bytes: outcome.bytes || 0,
+          chars: outcome.chars || 0,
+          preview: outcome.preview || "",
+        };
+        sendWordDocxReady(lastWordDocx);
       }
 
       if (outcome.ok && beforeFp && !driver.dryRun) {
@@ -1738,9 +1757,11 @@ async function executeApproved(actions) {
     });
     sendHud({ type: "plan-running", on: false });
     // A pill left on "Working..." after the work finished is worse than never
-    // showing one (R-0011). `word-docx` re-raises it with the artifact if a
-    // document was produced.
+    // showing one (R-0011). `done` hides the pill; if a document was produced
+    // we re-raise `word-docx` AFTER that hide so Open stays up. The old order
+    // sent word-docx mid-run and then done, so Document ready vanished.
     sendHud({ type: "status", done: true });
+    if (lastWordDocx) sendWordDocxReady(lastWordDocx);
     try {
       await agentPointer.restore();
     } catch {

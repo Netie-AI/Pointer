@@ -150,6 +150,11 @@ check("the status pill is driven by a run, not only by a finished document", () 
   );
   assert.ok(/type: "status", done: true/.test(main), "the pill is never taken back down");
   assert.ok(/hideStatusPill\(\)/.test(hud), "the renderer cannot dismiss the pill");
+  // Real use: word-docx fired mid-run, then done hid Document ready / Open.
+  // The comment already said we re-raise; this asserts the call sits AFTER done.
+  const doneAt = main.indexOf('type: "status", done: true');
+  const reraiseAt = main.lastIndexOf("sendWordDocxReady(lastWordDocx)");
+  assert.ok(doneAt >= 0 && reraiseAt > doneAt, "word-docx is not re-raised after the run teardown");
 });
 
 check("hud:openPath specifically is reachable (the regression that started this)", () => {
