@@ -178,6 +178,10 @@ check("the status pill is driven by a run, not only by a finished document", () 
     /sendHud\(\{\s*type: "insight",\s*text: message \}\)/.test(main),
     "a failed coworker step never reaches the HUD"
   );
+  assert.ok(
+    /ok: !failed/.test(main),
+    "Go/hud:act still returns ok:true after a coworker refusal"
+  );
 });
 
 check("hud:openPath specifically is reachable (the regression that started this)", () => {

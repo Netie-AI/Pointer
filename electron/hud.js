@@ -881,9 +881,17 @@ async function doAct() {
     if (window.NetieSound) NetieSound.warn();
     return;
   }
+  const failed = ((result.run && result.run.results) || []).find(
+    (r) => r && r.ok === false && !r.noop && r.skipped !== "refused"
+  );
+  if (failed) {
+    appendMessage("assistant", failed.message || failed.error || failed.reason || "Step failed");
+    if (window.NetieSound) NetieSound.warn();
+    return;
+  }
   // The main process already computed the verb/destination disclosure (#20);
   // repeating a bare count here would put the old lie back in the transcript.
-  const n = (result.actions || []).length;
+  const n = (result.actions || (result.plan && result.plan.actions) || []).length;
   appendMessage(
     "assistant",
     result.ran ? `Running ${n} step(s) — see the panel for what each one does.`

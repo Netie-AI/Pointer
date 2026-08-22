@@ -387,6 +387,22 @@ function matchRecipe(text) {
     if (r) return r;
   }
 
+  // Unquoted "write this in Word" / "write Hello Pointer in Word".
+  // Selection pronouns go through the clipboard recipe; any other body is
+  // the document text. Without this, hud:act fell through to the LLM, which
+  // still likes click/type even after the coworker verbs were named.
+  const writeIntoWord = input.match(
+    /^(?:please\s+)?(?:write|put|create|make)\s+(.+?)\s+(?:into|to|in)\s+(?:a\s+)?(?:microsoft\s+)?word(?:\s+doc(?:ument)?)?$/i
+  );
+  if (writeIntoWord) {
+    const body = writeIntoWord[1].trim();
+    if (/^(?:this|that|it|the\s+selection|the\s+text|selection|clipboard)$/i.test(body)) {
+      return cloneRecipe(RECIPES.terminal_to_word);
+    }
+    const r = wordWriteTextRecipe(body);
+    if (r) return r;
+  }
+
   // Multi-word coworker SOPs first (more specific).
   if (
     /(?:word\s+ui|hotkey\s+word|paste\s+into\s+word\s+window)/.test(normalized)
@@ -395,7 +411,7 @@ function matchRecipe(text) {
   }
   if (
     /(?:copy|paste|put|move).{0,40}(?:into|to|in)\s+(?:microsoft\s+)?word\b/.test(normalized) ||
-    /(?:terminal|this|that|selection|text).{0,30}(?:to|into)\s+word\b/.test(normalized) ||
+    /(?:terminal|this|that|selection|text).{0,30}(?:to|into|in)\s+word\b/.test(normalized) ||
     /^(?:please\s+)?(?:terminal\s+)?(?:to\s+)?word$/.test(normalized)
   ) {
     return cloneRecipe(RECIPES.terminal_to_word);

@@ -35,9 +35,10 @@
 6. **Chrome pinned against the rendered HUD** (#22) - writing it found the LIVE
    bar rendering despite `hidden`, because `.subtitle-live` set its own
    `display`. Fixed for the class; the assertion reads painted geometry.
-7. **Word coworker: Document ready survived write then vanished.** `done:true`
-   hid the Open pill after `word-docx`. Teardown now re-raises it with the
-   written preview. Fixture sink refuse from #27 stays. Closed #3 #10 #11
+7. **Word coworker real-use on this branch (includes #30).** Document ready
+   is re-raised after `done`. Go/Act "write this in Word" is a recipe, not
+   ask/code/LLM click. Coworker refusals surface `reason` instead of
+   "failed: unknown". #27 fixture-sink refuse stays. Closed #3 #10 #11
    #14 #17 stay closed.
 
 ## Next
