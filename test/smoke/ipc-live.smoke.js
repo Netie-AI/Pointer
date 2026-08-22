@@ -325,16 +325,25 @@ record("Document ready is re-raised after the run teardown", async ({ page }) =>
       preview: "recovered selection",
       chars: 19,
     });
+    const cs = getComputedStyle(pill);
     return {
       hiddenAfterDone,
-      visible: !pill.hidden,
+      hiddenAttr: pill.hidden,
+      hasShow: pill.classList.contains("show"),
+      display: cs.display,
       title: document.getElementById("status-title").textContent,
       sub: document.getElementById("status-sub").textContent,
       openShown: !openBtn.hidden,
     };
   });
   assert.strictEqual(seen.hiddenAfterDone, true, "done must still dismiss Working");
-  assert.strictEqual(seen.visible, true, "word-docx after teardown left the pill down");
+  assert.strictEqual(seen.hiddenAttr, false, "word-docx after teardown left hidden=true");
+  assert.strictEqual(
+    seen.hasShow,
+    true,
+    "word-docx after teardown did not restore .show (CSS still display:none)"
+  );
+  assert.notStrictEqual(seen.display, "none", "pill stayed display:none after word-docx");
   assert.ok(/recovered selection/i.test(seen.title), `title hid the written text: "${seen.title}"`);
   assert.ok(/NetiePointer/.test(seen.sub), `sub must still name the destination: "${seen.sub}"`);
   assert.strictEqual(seen.openShown, true, "Open vanished with the teardown");

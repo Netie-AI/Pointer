@@ -1636,6 +1636,7 @@ async function executeApproved(actions) {
       if (
         outcome &&
         outcome.ok &&
+        !outcome.dryRun &&
         (enriched.type === "word_from_clipboard" ||
           enriched.type === "word_docx_write" ||
           enriched.type === "word_docx_append") &&
@@ -1732,10 +1733,11 @@ async function executeApproved(actions) {
         ? `${enriched.type}${outcome.x != null ? ` @ (${Math.round(outcome.x)},${Math.round(outcome.y)})` : ""}${
             enriched._targeted ? " [aimed]" : ""
           }${driver.dryRun ? " [dry-run]" : ""}`
-        : `failed: ${outcome.error || outcome.skipped || "unknown"}`;
+        : `failed: ${outcome.error || outcome.reason || outcome.skipped || "unknown"}`;
       results.push({ action: enriched, ...outcome, message });
       if (!outcome.ok && !outcome.noop) {
         setPresence(PresenceEvents.FAIL);
+        sendHud({ type: "insight", text: message });
         break;
       }
       await new Promise((r) => setTimeout(r, 120));

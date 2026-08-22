@@ -278,6 +278,7 @@ const para = (t) => `<w:p><w:r><w:t xml:space="preserve">${t}</w:t></w:r></w:p>`
   const a = appendDocx({ text: "second", path: doc });
   assert.strictEqual(a.ok, true, `first append refused: ${a.reason}`);
   assert.strictEqual(a.appended, true);
+  assert.strictEqual(a.preview, "second", "append preview was empty (not the appended slice)");
   const b = appendDocx({ text: "third", path: doc });
   assert.strictEqual(b.ok, true, `second append refused: ${b.reason}`);
 
@@ -539,6 +540,11 @@ const driver = new InputDriver({ dryRun: true });
   const received = fs.readFileSync(landed.path);
   assertWordShell(received, "from-clipboard real write");
   assert.strictEqual(docxText(received).text, "Hello from the coworker");
+  assert.strictEqual(
+    landed.preview,
+    "Hello from the coworker",
+    "HUD preview did not match unzipped w:t"
+  );
 
   const written = await live.perform({
     type: "word_docx_write",
