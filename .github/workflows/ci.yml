@@ -44,8 +44,8 @@ jobs:
           cache: npm
 
       # Electron's postinstall downloads a ~100MB binary that only the smoke lane
-      # needs, and the smoke lane cannot run here (see the final step). Skip it so
-      # CI is not paying for, or flaking on, a download it never uses.
+      # needs, and the smoke lane runs in its own job below. Skip it so this job
+      # is not paying for, or flaking on, a download it never uses.
       - name: Install dependencies
         run: npm ci
         env:
@@ -80,8 +80,37 @@ jobs:
       # cannot silently rot into a pass - it names the gap on every run.
       - name: Coverage this job does not provide
         run: |
-          echo "NOT RUN IN CI: npm run test:smoke"
-          echo "  hud-boot.smoke.js and ipc-live.smoke.js boot real Electron and need a"
-          echo "  desktop session. They are the only lane that proves the HUD renders and"
-          echo "  that the IPC bridge answers, so they must be run locally before merge."
-          echo "  Electron's binary is deliberately not downloaded in this job."
+          echo "NOT RUN IN THIS JOB: npm run test:smoke - it boots real Electron and"
+          echo "  runs in the dedicated 'smoke' job on windows-latest, where the customer"
+          echo "  artifact actually ships. Smoke is NOT run on Linux: there is no shipped"
+          echo "  Linux build, and the harness teardown is taskkill (Windows-only)."
+
+  # #22's rendered-HUD assertions and the live IPC bridge only exist in the smoke
+  # lane. Until this job existed, CI declared that lane NOT RUN, which meant a HUD
+  # regression could reach main green (STATUS.md carried this as a known hole).
+  # KB R-0001: the gate now asserts on the booted app - the artifact the customer
+  # receives - on the OS the customer receives it on.
+  smoke:
+    name: smoke - real Electron boot (windows-latest)
+    runs-on: windows-latest
+    # A hung Electron teardown must not burn the runner for the default 6 hours.
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # This job is the one place the Electron binary is genuinely needed.
+      # Playwright's bundled browsers still are not - _electron.launch drives the
+      # app's own binary, not Chromium.
+      - name: Install dependencies (with the Electron binary)
+        run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+      - name: Smoke - HUD boots, renders #22 chrome, IPC bridge answers live
+        run: npm run test:smoke
