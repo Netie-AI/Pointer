@@ -414,7 +414,7 @@ function matchRecipe(text) {
   }
   if (
     /(?:copy|paste|put|move).{0,40}(?:into|to|in)\s+(?:microsoft\s+)?word\b/.test(normalized) ||
-    /(?:terminal|this|that|selection|text).{0,30}(?:to|into)\s+word\b/.test(normalized) ||
+    /(?:terminal|this|that|selection|text).{0,30}(?:to|into|in)\s+word\b/.test(normalized) ||
     /^(?:please\s+)?(?:terminal\s+)?(?:to\s+)?word$/.test(normalized)
   ) {
     return cloneRecipe(RECIPES.terminal_to_word);

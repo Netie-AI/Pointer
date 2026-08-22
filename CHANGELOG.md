@@ -2,6 +2,21 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-22 - Go/Act "write this in Word" must hit the coworker
+
+`classifyIntent` treated "write a word document..." as code (`CODE_CUES`
+includes "write a") and "write this in Word" as ask (`write` is not an
+ACT_VERB). `clicks:go` only runs recipes on act. `matchRecipe` required
+quotes / "that says" / `word:` and the clipboard pattern demanded to/into,
+not in, so hud:act fell through to the LLM click/type planner.
+
+The driver still returned `{ ok: true, ...result }` around a `reason`
+refusal. executeApproved on PR #30 already prefers `outcome.reason`; this
+maps `reason` to `error` at the driver and returns the failed step from
+Go/hud:act so the HUD does not say Plan finished.
+
+Closed #3 #10 #11 #14 #17 stay closed. Does not reimplement #31.
+
 ## 2026-08-22 - Merge-gate #30+#31 and pin unquoted write-in-Word
 
 PR #30 (HUD Document ready) and PR #31 (recall 60s expiry) were both
