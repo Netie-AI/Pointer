@@ -262,3 +262,13 @@ This does not change the decision this record asks for. It confirms the prerequi
 widening capture into a durable learning corpus cannot honestly proceed while the capture
 already performed is undisclosed, uncontrolled and never purged. The gap is disclosure,
 retention and a control - not encryption, which is already in place.
+
+## Retention follow-up (2026-08-22)
+
+The disk-growth half of fact 4 is closed in `electron/netie/clicky/recall.js`.
+`retentionMs` defaults to `windowMs` (the advertised 60s ring) and is capped at
+the DATA_GOVERNANCE Tier X ceiling of 14 days. Time-expired evictions are
+dropped instead of sealed; `purgeExpired` unlinks `recall-<t>-<uuid>.enc.json`
+older than the cutoff on construct, trim, and `stopFlush`. Enforcer:
+`test/clicky.test.js`. Disclosure (HUD control) and the harvest block itself
+are unchanged - this follow-up is retention only.

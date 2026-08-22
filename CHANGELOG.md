@@ -2,6 +2,35 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-22 - Sealed recall records expire with the 60s ring
+
+DR-0003 fact 4, the named prerequisite for any skill-harvesting work. Not
+harvest, not P-05, not a HUD toggle.
+
+The advertised feature is a "Background 60s Clicky recall ring". The in-memory
+ring already bounded itself (`maxFrames` + `windowMs`) by calling
+`_sealEviction`, which wrote the evicted frame to `<dataDir>/recall/`. Nothing
+unlinked those files. Independently verified earlier as R-0003: 4177 sealed
+records, 20 MB, window-title timeline every 5-15s, on by default.
+
+Two mechanics close it, both required so either regression turns the suite red:
+
+- Time-expired evictions are dropped, not filed. Eviction is no longer
+  persistence for a frame that has already aged out of the ring.
+- `purgeExpired` sweeps `recall-<epochMs>-<uuid>.enc.json` older than
+  `retentionMs` (default `windowMs`, fail-closed, hard-capped at the
+  DATA_GOVERNANCE Tier X ceiling of 14 days) on construct, trim, and
+  `stopFlush`. Foreign names in that directory are left alone. A leftover
+  corpus from before this change is removed on the next launch.
+
+`test/clicky.test.js` plants aged files, runs a 200-frame eviction, and
+asserts the directory does not keep them. The stress burst does the same
+with a vaulted ring. In-window count-eviction still dual-wraps (the existing
+seal test still requires that).
+
+Disclosure - a HUD control, off-by-default - remains open and is a PRD-agent
+question, not this change.
+
 ## 2026-08-22 - The smoke lane runs in CI, and the verified wave is closed
 
 The 2026-08-20 entry ended on a caveat: #22's painted-geometry assertions lived
