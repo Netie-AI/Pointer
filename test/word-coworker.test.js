@@ -96,16 +96,42 @@ const CORPUS = [
   { name: "other forbidden control characters", input: "x\u0000y\u0008z\u000Bw\u001Fv", expect: "xyzwv" },
   { name: "XML metacharacters", input: `a & b < c > d "e" 'f' &amp; &#x1B;`, expect: `a & b < c > d "e" 'f' &amp; &#x1B;` },
   { name: "non-ASCII including CJK", input: "hello 你好 café åäö", expect: "hello 你好 café åäö" },
-  { name: "empty input", input: "", expect: "" },
   { name: "multi-line with tabs preserved", input: "one\n\ttwo\nthree", expect: "one\n\ttwo\nthree" },
   { name: "an emoji (surrogate pair must survive intact)", input: "ship it \u{1F680}", expect: "ship it \u{1F680}" },
 ];
+
+const { zipRead, visibleDocxText } = require("../electron/netie/word-coworker");
+
+const WORD_SHELL_PARTS = [
+  "[Content_Types].xml",
+  "_rels/.rels",
+  "docProps/core.xml",
+  "docProps/app.xml",
+  "word/document.xml",
+  "word/_rels/document.xml.rels",
+  "word/styles.xml",
+  "word/settings.xml",
+];
+
+function assertWordShell(buf, label) {
+  const pkg = zipRead(buf);
+  assert.strictEqual(pkg.ok, true, `${label}: zipRead refused the package - ${pkg.reason}`);
+  const names = pkg.entries.map((e) => e.name);
+  for (const need of WORD_SHELL_PARTS) {
+    assert.ok(names.includes(need), `${label}: missing ${need} - Word will not show the body`);
+  }
+  const rels = unzipEntry(buf, "word/_rels/document.xml.rels").toString("utf8");
+  assert.ok(/styles\.xml/.test(rels), `${label}: document.xml.rels does not point at styles.xml`);
+  const styles = unzipEntry(buf, "word/styles.xml").toString("utf8");
+  assert.ok(/w:styleId="Normal"/.test(styles), `${label}: styles.xml has no Normal style`);
+}
 
 for (const c of CORPUS) {
   const p = path.join(tmp, `corpus-${CORPUS.indexOf(c)}.docx`);
   const r = writeDocx({ text: c.input, path: p });
   assert.strictEqual(r.ok, true, `${c.name}: write refused - ${r.reason}`);
-  const { xml, text } = docxText(fs.readFileSync(p));
+  const onDisk = fs.readFileSync(p);
+  const { xml, text } = docxText(onDisk);
 
   assert.ok(!XML_FORBIDDEN.test(xml), `${c.name}: an XML-forbidden character reached document.xml`);
   assert.ok(xml.startsWith("<?xml"), `${c.name}: document.xml lost its declaration`);
@@ -116,7 +142,20 @@ for (const c of CORPUS) {
   const closes = (xml.match(/<\/w:p>/g) || []).length;
   assert.strictEqual(opens, closes, `${c.name}: unbalanced <w:p> tags`);
   assert.strictEqual(text, c.expect, `${c.name}: text did not round-trip`);
+  assertWordShell(onDisk, c.name);
 }
+
+// Real-use stub: empty / whitespace used to write a ~1158-byte package with
+// an empty <w:t/>. Word showed a blank page; the HUD said Document ready.
+for (const blank of ["", " ", "\n", "\r\n", "\t", "   \n  "]) {
+  const p = path.join(tmp, `blank-${Buffer.from(blank).toString("hex") || "empty"}.docx`);
+  const r = writeDocx({ text: blank, path: p });
+  assert.strictEqual(r.ok, false, `blank ${JSON.stringify(blank)} was written`);
+  assert.ok(/empty Word document/i.test(r.reason), `unhelpful reason: ${r.reason}`);
+  assert.ok(!fs.existsSync(p), `blank ${JSON.stringify(blank)} still created a file`);
+}
+assert.strictEqual(visibleDocxText("\n  \t"), "");
+assert.ok(visibleDocxText("Hello Pointer"));
 
 // The production dry-run path: no explicit `path`, so `defaultDocxPath()` runs.
 // Every earlier test passed an explicit path, so this branch had never executed.
@@ -148,7 +187,7 @@ assert.strictEqual(clipboardMatchesSource("abcdef", "ab").ok, false);
 // unzip the package and read `word/document.xml` back - never on zip magic.
 
 const crypto = require("crypto");
-const { appendDocx, zipRead } = require("../electron/netie/word-coworker");
+const { appendDocx } = require("../electron/netie/word-coworker");
 
 /**
  * A zip writer that is NOT this module's, using STORE where the module uses
@@ -225,7 +264,7 @@ const para = (t) => `<w:p><w:r><w:t xml:space="preserve">${t}</w:t></w:r></w:p>`
   assert.strictEqual(pkg.ok, true, `zipRead refused its own writer: ${pkg.reason}`);
   assert.deepStrictEqual(
     pkg.entries.map((e) => e.name),
-    ["[Content_Types].xml", "_rels/.rels", "word/document.xml", "word/_rels/document.xml.rels"],
+    WORD_SHELL_PARTS,
     "the reader lost or reordered the parts"
   );
 }
@@ -472,6 +511,41 @@ const driver = new InputDriver({ dryRun: true });
   });
   assert.strictEqual(appRefused.ok, false, "driver must surface the append refusal");
   assert.ok(appRefused.reason, "append refusal must reach the driver result");
+
+  const emptyAppend = appendDocx({ text: "\n", path: path.join(tmp, "empty-append.docx") });
+  assert.strictEqual(emptyAppend.ok, false, "append of whitespace created a document");
+  assert.ok(/empty Word document/i.test(emptyAppend.reason), `unhelpful reason: ${emptyAppend.reason}`);
+
+  // The laptop failure: word_from_clipboard wrote a stub when the copy landed
+  // whitespace (or nothing visible). Assert the artifact the customer receives
+  // (KB R-0001) - unzip document.xml and read the w:t, never zip magic.
+  const live = new InputDriver({ dryRun: false });
+  let clip = "\n";
+  live.clipboardGet = async () => ({ ok: true, text: clip });
+  live.press = async () => ({ ok: true });
+  live._send = async () => ({ ok: true });
+  const stub = await live.perform({ type: "word_from_clipboard" });
+  assert.strictEqual(stub.ok, false, "whitespace clipboard wrote a stub .docx");
+  assert.ok(/visible text/i.test(stub.error), `unhelpful reason: ${stub.error}`);
+
+  clip = "Hello from the coworker";
+  const landed = await live.perform({
+    type: "word_from_clipboard",
+    path: path.join(tmp, "from-clipboard-real.docx"),
+  });
+  assert.strictEqual(landed.ok, true, `real clipboard write failed: ${landed.reason || landed.error}`);
+  const received = fs.readFileSync(landed.path);
+  assertWordShell(received, "from-clipboard real write");
+  assert.strictEqual(docxText(received).text, "Hello from the coworker");
+
+  const written = await live.perform({
+    type: "word_docx_write",
+    value: "Direct coworker write",
+    path: path.join(tmp, "direct-write.docx"),
+  });
+  assert.strictEqual(written.ok, true, `word_docx_write failed: ${written.reason || written.error}`);
+  assert.strictEqual(docxText(fs.readFileSync(written.path)).text, "Direct coworker write");
+  assertWordShell(fs.readFileSync(written.path), "word_docx_write");
 
   console.log("PASS word-coworker writeDocx + dry-run driver");
 })().catch((err) => {

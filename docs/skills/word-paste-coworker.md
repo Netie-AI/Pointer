@@ -4,8 +4,8 @@ Prefer API over OS clicks when putting text into Word.
 
 ## Prefer
 
-1. Capture source text (selection / clipboard / chat payload).
-2. `word_docx_write` → `electron/netie/word-coworker.js` writes a `.docx` to disk (no focus steal).
+1. Capture source text (chat payload first; clipboard only when the source is a selection).
+2. `word_docx_write` -> `electron/netie/word-coworker.js` writes a Word-openable `.docx` (styles + Normal) to disk (no focus steal). Empty or whitespace input is refused - do not write a stub.
 3. Optional: ask user to Open the path (or driver `open` the file after nod).
 
 ## Fallback (dedicated desktop / Act mode only)

@@ -182,6 +182,22 @@ test("visionChat blocked gate does not reach OpenVault", async () => {
   assert.ok(!f.calls.some((c) => c.url.includes("/v1/chat/completions")));
 });
 
+test("the OpenVault planner is told about the Word coworker verbs", () => {
+  // Real use could not emit word_docx_write: the system prompt only listed
+  // click/type/press, so "write this in Word" never became a coworker write.
+  const src = require("fs").readFileSync(
+    require("path").join(__dirname, "../electron/netie/ecosystem.js"),
+    "utf8"
+  );
+  const start = src.indexOf("async _llmPlan");
+  assert.ok(start >= 0, "_llmPlan missing");
+  const prompt = src.slice(start, start + 2500);
+  assert.ok(/word_docx_write/.test(prompt), "_llmPlan never names word_docx_write");
+  assert.ok(/word_docx_append/.test(prompt), "_llmPlan never names word_docx_append");
+  assert.ok(/word_from_clipboard/.test(prompt), "_llmPlan never names word_from_clipboard");
+  assert.ok(/Omit path/.test(prompt), "_llmPlan must not invite a model-supplied path");
+});
+
 // ── driver: run sequentially, await each ─────────────────────────────────────
 (async () => {
   for (const { name, fn } of tests) {

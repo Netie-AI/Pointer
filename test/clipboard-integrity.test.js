@@ -102,6 +102,20 @@ function rig({ initial = "", onCopy = null } = {}) {
     assert.ok(/terminal/i.test(r.error), "the refusal should say why this happens");
   });
 
+  await check("a whitespace-only copy is refused, not written as a stub", async () => {
+    const fs = require("fs");
+    const os = require("os");
+    const path = require("path");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pointer-clip-stub-"));
+    process.env.NETIE_WORD_OUT_DIR = dir;
+    const { driver } = rig({ initial: "", onCopy: () => "\n" });
+    await driver.perform({ type: "clipboard_baseline" });
+    const r = await driver.perform({ type: "word_from_clipboard" });
+    assert.strictEqual(r.ok, false, "whitespace clipboard wrote a stub .docx");
+    assert.ok(/visible text/i.test(r.error), `reason was: ${r.error}`);
+    assert.deepStrictEqual(fs.readdirSync(dir), [], "a refused stub still created a file");
+  });
+
   await check("a copy that DOES land is accepted (R-0005)", async () => {
     const { driver } = rig({ initial: "old", onCopy: () => "the actual selection" });
     await driver.perform({ type: "clipboard_baseline" });

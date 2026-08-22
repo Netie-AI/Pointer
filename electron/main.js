@@ -1623,7 +1623,9 @@ async function executeApproved(actions) {
       if (
         outcome &&
         outcome.ok &&
-        (enriched.type === "word_from_clipboard" || enriched.type === "word_docx_write") &&
+        (enriched.type === "word_from_clipboard" ||
+          enriched.type === "word_docx_write" ||
+          enriched.type === "word_docx_append") &&
         outcome.path
       ) {
         sendHud({ type: "word-docx", path: outcome.path, bytes: outcome.bytes || 0 });
