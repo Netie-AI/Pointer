@@ -496,6 +496,15 @@ const driver = new InputDriver({ dryRun: true });
   assert.strictEqual(refused.ok, false, "driver must surface the refusal");
   assert.ok(refused.reason, "refusal must reach the driver result");
 
+  const emptyWrite = await driver.perform({
+    type: "word_docx_write",
+    value: "\n",
+    path: path.join(tmp, "empty-via-driver.docx"),
+  });
+  assert.strictEqual(emptyWrite.ok, false, "driver must not flip an empty-write refusal to ok");
+  assert.ok(emptyWrite.reason, "empty-write reason must reach the HUD");
+  assert.ok(!fs.existsSync(path.join(tmp, "empty-via-driver.docx")), "empty write still touched disk");
+
   // #17: the same two properties through the driver - the dry run reports and
   // does not write, and a contained-out append surfaces its refusal.
   const app = await driver.perform({

@@ -31,7 +31,7 @@ While working: crazy smile orb + soft matrix rain on the stage. Cursor bubble hi
 | **Ctrl+Shift+Space** | Toggle Clicky |
 | Esc (when Clicky on) | Exit Clicky first, then hide |
 
-Background **Recall** runs only while session is active or Clicky is armed: rolling 60s thumbs + cursor + foreground window. Evicted frames dual-wrap into the vault. Pixel seal to disk needs `NETIE_RECALL_PIXELS=1`.
+Background **Recall** runs only while session is active or Clicky is armed: rolling 60s thumbs + cursor + foreground window. In-window evictions dual-wrap into the vault; sealed files expire with the same 60s window (DR-0003). Pixel seal to disk needs `NETIE_RECALL_PIXELS=1`.
 
 ## Review canvas
 

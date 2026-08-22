@@ -5,10 +5,23 @@ const path = require("path");
 const crypto = require("crypto");
 const { sealRecord } = require("../crypto/envelope");
 
+/** Sealed recall filenames: recall-<epochMs>-<uuid>.enc.json */
+const SEALED_NAME = /^recall-(\d+)-[0-9a-fA-F-]+\.enc\.json$/;
+
+/** DATA_GOVERNANCE Tier X ceiling. A huge retentionMs must not un-bound the dir. */
+const MAX_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
+
+function clampRetentionMs(retentionMs, windowMs) {
+  const fallback = Number.isFinite(windowMs) && windowMs > 0 ? windowMs : 60_000;
+  const raw = Number.isFinite(retentionMs) && retentionMs > 0 ? retentionMs : fallback;
+  return Math.min(raw, MAX_RETENTION_MS);
+}
+
 class RecallRing {
   constructor({
     windowMs = 60000,
     maxFrames = 60,
+    retentionMs,
     dataDir,
     vault,
     sealPixels = false,
@@ -18,6 +31,7 @@ class RecallRing {
   } = {}) {
     this.windowMs = windowMs;
     this.maxFrames = maxFrames;
+    this.retentionMs = clampRetentionMs(retentionMs, windowMs);
     this.dataDir = dataDir;
     this.vault = vault || null;
     this.sealPixels = sealPixels;
@@ -27,15 +41,35 @@ class RecallRing {
     this.frames = [];
     this.recallDir = dataDir ? path.join(dataDir, "recall") : null;
     this._ensureDir();
+    this.purgeExpired();
   }
 
   _ensureDir() {
     if (this.recallDir) this.fs.mkdirSync(this.recallDir, { recursive: true });
   }
 
+  /** Integer epoch ms from the injected clock. Does not fall back to Date.now(). */
+  _now() {
+    const n = Number(this.clock());
+    return Number.isFinite(n) ? Math.trunc(n) : 0;
+  }
+
+  _epoch(value) {
+    if (Number.isFinite(value)) return Math.trunc(value);
+    return this._now();
+  }
+
+  _cutoff() {
+    return this._now() - this.retentionMs;
+  }
+
+  _isExpired(t) {
+    return !Number.isFinite(t) || t < this._cutoff();
+  }
+
   push(frame = {}) {
     const normalized = {
-      t: Number.isFinite(frame.t) ? frame.t : this.clock(),
+      t: this._epoch(frame.t),
       cx: frame.cx,
       cy: frame.cy,
       displayId: frame.displayId,
@@ -52,13 +86,17 @@ class RecallRing {
 
   _trim() {
     if (!this.frames.length) return;
-    const cutoff = this.clock() - this.windowMs;
+    const cutoff = this._now() - this.windowMs;
     while (this.frames.length && this.frames[0].t < cutoff) this._sealEviction(this.frames.shift());
     while (this.frames.length > this.maxFrames) this._sealEviction(this.frames.shift());
+    this.purgeExpired();
   }
 
   _sealEviction(frame) {
     if (!this.vault || !this.recallDir) return null;
+    // Time-expired frames are dropped. Eviction used to *be* persistence, which
+    // is how <dataDir>/recall/ grew without a bound (DR-0003 fact 4).
+    if (this._isExpired(frame.t)) return null;
     const hasPixels = this.sealPixels && Buffer.isBuffer(frame.thumbJpeg);
     const payload = {
       t: frame.t,
@@ -71,7 +109,9 @@ class RecallRing {
       height: frame.height,
     };
     if (hasPixels) payload.thumbJpegBase64 = frame.thumbJpeg.toString("base64");
-    const id = `recall-${frame.t}-${crypto.randomUUID()}`;
+    // Integer epoch only. A decimal t used to write recall-90000.7-*.enc.json,
+    // which SEALED_NAME cannot parse, so purgeExpired never unlinked it.
+    const id = `recall-${this._epoch(frame.t)}-${crypto.randomUUID()}`;
     const sealed = this.sealFn({
       id,
       type: hasPixels ? "recall-frame" : "recall-meta",
@@ -82,6 +122,42 @@ class RecallRing {
     this._ensureDir();
     this.fs.writeFileSync(path.join(this.recallDir, `${id}.enc.json`), JSON.stringify(sealed), "utf8");
     return sealed;
+  }
+
+  /**
+   * Unlink sealed recall-* files whose capture timestamp is older than
+   * retentionMs. Foreign names are left alone. Returns how many files went.
+   */
+  purgeExpired() {
+    if (!this.recallDir || typeof this.fs.readdirSync !== "function") return 0;
+    let names;
+    try {
+      names = this.fs.readdirSync(this.recallDir);
+    } catch {
+      return 0;
+    }
+    const cutoff = this._cutoff();
+    let removed = 0;
+    for (const name of names) {
+      if (name !== path.basename(name)) continue;
+      const match = SEALED_NAME.exec(name);
+      if (!match) continue;
+      const t = Number(match[1]);
+      if (!Number.isFinite(t) || t >= cutoff) continue;
+      const full = path.join(this.recallDir, name);
+      try {
+        if (typeof this.fs.lstatSync === "function") {
+          const st = this.fs.lstatSync(full);
+          if (typeof st.isSymbolicLink === "function" && st.isSymbolicLink()) continue;
+          if (typeof st.isFile === "function" && !st.isFile()) continue;
+        }
+        this.fs.unlinkSync(full);
+        removed += 1;
+      } catch {
+        /* leftover we could not drop is not a reason to throw */
+      }
+    }
+    return removed;
   }
 
   snapshot() {
@@ -107,8 +183,9 @@ class RecallRing {
   stopFlush() {
     const pending = this.frames.splice(0);
     for (const frame of pending) this._sealEviction(frame);
+    this.purgeExpired();
     return pending.length;
   }
 }
 
-module.exports = { RecallRing };
+module.exports = { RecallRing, MAX_RETENTION_MS };

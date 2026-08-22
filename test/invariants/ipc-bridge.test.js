@@ -159,14 +159,18 @@ check("the status pill is driven by a run, not only by a finished document", () 
   // capture still leaves the after-done call, so this check would pass while
   // real use never re-raised Open.
   const captureStart = main.indexOf('enriched.type === "word_from_clipboard"');
-  const captureEnd = main.indexOf("sendWordDocxReady(lastWordDocx)");
-  assert.ok(captureStart >= 0 && captureEnd > captureStart, "lastWordDocx capture block missing");
-  const capture = main.slice(captureStart, captureEnd);
+  const assignAt = main.indexOf("lastWordDocx = {");
+  assert.ok(captureStart >= 0 && assignAt > captureStart, "lastWordDocx capture block missing");
+  const capture = main.slice(captureStart, assignAt);
   assert.ok(capture.includes("word_docx_write"), "lastWordDocx misses word_docx_write");
   assert.ok(capture.includes("word_docx_append"), "lastWordDocx misses word_docx_append");
   assert.ok(
     /!outcome\.dryRun/.test(capture),
     "dry-run still raises Document ready for a file that was not written"
+  );
+  assert.ok(
+    /!driver\.dryRun/.test(capture),
+    "driver.dryRun still raises Document ready when outcome forgets the flag"
   );
   // writeDocx refusals carry `reason`, not `error`. Reading only error made
   // every empty/contained-out write show as "failed: unknown" (R-0011).

@@ -2,6 +2,24 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-22 - Merge-gate #30+#31 and pin unquoted write-in-Word
+
+PR #30 (HUD Document ready) and PR #31 (recall 60s expiry) were both
+CI-green and MERGEABLE alone. They conflict on STATUS and CHANGELOG.
+This unused branch is the combined tree so a merge of one does not
+drop the other. Closed #3 #10 #11 #14 #17 stay closed. Not PR #26. Not PR #1.
+
+Attack pass on the combined tree:
+
+- "write hello in Word" / "put hello in word" (no quotes) used to miss
+  `word_docx_write` or take the clipboard stub. Deictic this/that/it
+  still copies.
+- `word_docx_*` driver returns now keep a refusal `ok: false` instead of
+  writing `ok: true` first and hoping the spread overwrites it.
+- Document ready now also requires `!driver.dryRun`. The ipc-bridge pin
+  reads the `lastWordDocx = {` block, not the first `sendWordDocxReady`
+  (that slice missed the dry-run guard on `4d57438`).
+
 ## 2026-08-22 - Dry-run must not raise Document ready; coworker refusals name the reason
 
 `writeDocx({ dryRun: true })` returns ok + path without touching disk.
@@ -23,6 +41,53 @@ next unused branch.
 Fix: track `lastWordDocx`, call `sendWordDocxReady` AFTER `done`. The HUD
 title carries the written preview (R-0001) and the sub still names the
 destination (#19).
+
+## 2026-08-22 - Recall retention clamp covers fallback; filenames stay integer epoch
+
+Two remaining holes in the 60s-ring sweep on PR #31:
+
+- `clampRetentionMs` capped only an explicit huge `retentionMs`. `0` / `NaN` /
+  omitted fell back to `windowMs` uncapped, so a 99-day window with fail-closed
+  retention unbounded the dir again.
+- `_sealEviction` interpolated `frame.t` into the filename. A non-integer t
+  wrote `recall-90000.7-*.enc.json`, which `SEALED_NAME` cannot parse, so
+  `purgeExpired` never unlinked it. The ring now truncates to integer epoch ms
+  from the injected clock (production stays on `Date.now()`; tests stay on the
+  fake clock) and ignores readdir names that are not a basename.
+
+Enforcer: `test/clicky.test.js`. Still not harvest, not a HUD toggle, not PR #26.
+
+## 2026-08-22 - Sealed recall records expire with the 60s ring
+
+DR-0003 fact 4, the named prerequisite for any skill-harvesting work. Not
+harvest, not P-05, not a HUD toggle. New unused branch off
+`netie-ecosystem-contracts` after #27. Does not attach to PR #26 (that
+branch is based on pre-#27 `af25bb0` and is merge-dirty). Closed #3 #10
+#11 #14 #17 stay closed.
+
+The advertised feature is a 60s ring. The in-memory ring already bounded
+itself (`maxFrames` + `windowMs`) by calling `_sealEviction`, which wrote
+the evicted frame to `<dataDir>/recall/`. Nothing unlinked those files.
+Independently verified earlier as R-0003: 4177 sealed records, 20 MB,
+window-title timeline every 5-15s, on by default.
+
+Two mechanics close it, both required so either regression turns the suite red:
+
+- Time-expired evictions are dropped, not filed. Eviction is no longer
+  persistence for a frame that has already aged out of the ring.
+- `purgeExpired` sweeps `recall-<epochMs>-<uuid>.enc.json` older than
+  `retentionMs` (default `windowMs`, fail-closed, hard-capped at the
+  DATA_GOVERNANCE Tier X ceiling of 14 days) on construct, trim, and
+  `stopFlush`. Foreign names in that directory are left alone. A leftover
+  corpus from before this change is removed on the next launch.
+
+`test/clicky.test.js` plants aged files, runs a 200-frame eviction, and
+asserts the directory does not keep them. The stress burst does the same
+with a vaulted ring. In-window count-eviction still dual-wraps (the existing
+seal test still requires that).
+
+Disclosure - a HUD control, off-by-default - remains open and is a PRD-agent
+question, not this change.
 
 ## 2026-08-22 - Test fixture "recovered selection" must not land in Documents\\NetiePointer
 

@@ -99,6 +99,23 @@ test("explicit prose uses word_docx_write, not the clipboard stub path", () => {
   const copy = matchRecipe("copy this into word");
   assert.strictEqual(copy.id, "terminal_to_word");
   assert.ok(copy.actions.some((a) => a.type === "word_from_clipboard"));
+
+  // Real-use coworkerist: unquoted prose must not take the clipboard stub path.
+  const unquoted = matchRecipe("write hello in Word");
+  assert.ok(unquoted, "unquoted write-in-word should match");
+  assert.strictEqual(unquoted.id, "word_write_text");
+  assert.deepStrictEqual(unquoted.actions, [{ type: "word_docx_write", value: "hello" }]);
+
+  const putProse = matchRecipe("put hello in word");
+  assert.strictEqual(putProse.id, "word_write_text");
+  assert.strictEqual(putProse.actions[0].value, "hello");
+
+  const deictic = matchRecipe("write this in Word");
+  assert.strictEqual(deictic.id, "terminal_to_word");
+  assert.ok(deictic.actions.some((a) => a.type === "word_from_clipboard"));
+
+  const putThis = matchRecipe("put this in word");
+  assert.strictEqual(putThis.id, "terminal_to_word");
 });
 
 test("terminal to word UI fallback is explicit", () => {
