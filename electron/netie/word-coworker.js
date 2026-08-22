@@ -207,13 +207,37 @@ function crc32(buf) {
   return ~c;
 }
 
+/** Default customer folder. Tests must never write here (laptop 22 Aug 2026). */
+function customerWordRoot() {
+  return path.join(os.homedir(), "Documents", "NetiePointer");
+}
+
+/**
+ * True when this process is a suite file (`node test/....js`). Production
+ * Electron argv is `electron electron/main.js` and must not match.
+ */
+function isTestProcess() {
+  return process.argv.some((a) => /(^|[\\/])test[\\/].+\.js$/i.test(String(a).replace(/\\/g, "/")));
+}
+
 /**
  * The one directory this module may write into. Read at call time, not at
  * module load, so a test (or a settings change) can move it without having to
  * re-require the module.
  */
 function sanctionedRoot() {
-  return process.env.NETIE_WORD_OUT_DIR || path.join(os.homedir(), "Documents", "NetiePointer");
+  return process.env.NETIE_WORD_OUT_DIR || customerWordRoot();
+}
+
+function refuseUncontainedTest(outPath) {
+  if (process.env.NETIE_WORD_OUT_DIR || !isTestProcess()) return null;
+  return {
+    ok: false,
+    reason:
+      "test write refused: NETIE_WORD_OUT_DIR unset - will not write fixtures into the customer Word folder",
+    path: outPath,
+    bytes: 0,
+  };
 }
 
 function defaultDocxPath(stem) {
@@ -242,6 +266,13 @@ function writeDocx(opts = {}) {
     // the customer instead of turning it into a generic step failure.
     return { ok: false, reason: contained.reason, path: outPath, bytes: 0 };
   }
+  // Live laptop: test/clipboard-integrity.test.js:121 returned
+  // "recovered selection", word_from_clipboard wrote it into
+  // Documents\NetiePointer\from-clipboard-*.docx, and the suite still passed
+  // because it only checked r.ok. A test that forgets NETIE_WORD_OUT_DIR
+  // must refuse rather than pollute the folder the customer opens (R-0001).
+  const uncontained = refuseUncontainedTest(outPath);
+  if (uncontained) return uncontained;
   if (!visibleDocxText(text)) {
     return { ok: false, reason: emptyWriteReason(), path: outPath, bytes: 0 };
   }
@@ -416,6 +447,8 @@ function appendDocx(opts = {}) {
   if (!contained.ok) {
     return { ok: false, reason: contained.reason, path: outPath, bytes: 0 };
   }
+  const uncontained = refuseUncontainedTest(outPath);
+  if (uncontained) return uncontained;
   if (!visibleDocxText(text)) {
     return { ok: false, reason: emptyWriteReason(), path: outPath, bytes: 0 };
   }
@@ -499,6 +532,8 @@ module.exports = {
   defaultDocxPath,
   paragraphsXml,
   sanctionedRoot,
+  customerWordRoot,
+  isTestProcess,
   visibleDocxText,
   wordPackageParts,
 };

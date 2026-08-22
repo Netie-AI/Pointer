@@ -2,6 +2,23 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-22 - Test fixture "recovered selection" must not land in Documents\\NetiePointer
+
+Live confirm (file:line): customer artifact
+`C:\\Users\\OoiJianHong\\Documents\\NetiePointer\\from-clipboard-1787382254896.docx`
+body text is exactly `recovered selection`. That string is the retry fixture at
+`test/clipboard-integrity.test.js:121` (af25bb0 `onCopy` return). Writer:
+`electron/netie/word-coworker.js:133-141` `sanctionedRoot` ->
+`Documents\\NetiePointer` when `NETIE_WORD_OUT_DIR` is unset.
+`word_from_clipboard` ran with `dryRun: false` and asserted only `r.ok`.
+Suites passed while real use opened the fixture. Closed #3 #10 #11 #14 #17
+are not reopened.
+
+Fix: `writeDocx` / `appendDocx` refuse when a `node test/....js` process has
+no `NETIE_WORD_OUT_DIR`. `clipboard-integrity` now contains its sink and
+asserts the unzipped `w:t` plus "customer folder unchanged".
+`test/invariants/word-sink.test.js` pins both.
+
 ## 2026-08-22 - Word coworker real-use no longer writes a stub .docx
 
 Laptop evidence (22 Aug 2026 MYT): `Documents\\NetiePointer\\from-clipboard-*.docx`

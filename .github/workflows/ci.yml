@@ -61,6 +61,7 @@ jobs:
           node test/invariants/claude-contract.test.js
           node test/invariants/governed-docs.test.js
           node test/invariants/ipc-bridge.test.js
+          node test/invariants/word-sink.test.js
 
       - name: Unit suite
         run: npm test

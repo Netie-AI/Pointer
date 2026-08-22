@@ -17,9 +17,34 @@
  * action existing is not the same as an action that can do its job (KB F-0005).
  */
 const assert = require("assert");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const { RECIPES, expandRecipe, matchRecipe } = require("../electron/netie/recipes");
 const { InputDriver } = require("../electron/netie/driver");
 const { reviewPlan } = require("../electron/netie/safety");
+const { zipRead, customerWordRoot } = require("../electron/netie/word-coworker");
+
+// Live laptop (22 Aug 2026): this suite wrote "recovered selection" into
+// Documents\NetiePointer because NETIE_WORD_OUT_DIR was unset. Contain first.
+const SINK = fs.mkdtempSync(path.join(os.tmpdir(), "pointer-clip-"));
+process.env.NETIE_WORD_OUT_DIR = SINK;
+const CUSTOMER = customerWordRoot();
+
+function fromClipboardNames(dir) {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir).filter((n) => n.startsWith("from-clipboard-") && n.endsWith(".docx")).sort();
+}
+
+function docxBody(file) {
+  const pkg = zipRead(fs.readFileSync(file));
+  assert.strictEqual(pkg.ok, true, `zipRead refused ${file}: ${pkg.reason}`);
+  const doc = pkg.entries.find((e) => e.name === "word/document.xml");
+  assert.ok(doc, `${file} has no word/document.xml`);
+  return [...doc.data.toString("utf8").matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)]
+    .map((m) => m[1])
+    .join("\n");
+}
 
 let failures = 0;
 function check(name, fn) {
@@ -103,17 +128,13 @@ function rig({ initial = "", onCopy = null } = {}) {
   });
 
   await check("a whitespace-only copy is refused, not written as a stub", async () => {
-    const fs = require("fs");
-    const os = require("os");
-    const path = require("path");
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pointer-clip-stub-"));
-    process.env.NETIE_WORD_OUT_DIR = dir;
+    const before = fs.readdirSync(SINK).sort();
     const { driver } = rig({ initial: "", onCopy: () => "\n" });
     await driver.perform({ type: "clipboard_baseline" });
     const r = await driver.perform({ type: "word_from_clipboard" });
     assert.strictEqual(r.ok, false, "whitespace clipboard wrote a stub .docx");
     assert.ok(/visible text/i.test(r.error), `reason was: ${r.error}`);
-    assert.deepStrictEqual(fs.readdirSync(dir), [], "a refused stub still created a file");
+    assert.deepStrictEqual(fs.readdirSync(SINK).sort(), before, "a refused stub still created a file");
   });
 
   await check("a copy that DOES land is accepted (R-0005)", async () => {
@@ -127,6 +148,10 @@ function rig({ initial = "", onCopy = null } = {}) {
   await check("the retry recovers a copy the plan's own Ctrl+C missed", async () => {
     // The plan pressed ctrl+c and nothing landed (clipboard still == baseline).
     // The driver gets exactly one more go before refusing; here it lands.
+    // R-0001: assert the artifact the customer would receive, and that it did
+    // not land in Documents\NetiePointer (laptop from-clipboard-1787382254896.docx).
+    const customerBefore = fromClipboardNames(CUSTOMER);
+    const sinkBefore = fs.readdirSync(SINK).sort();
     let retries = 0;
     const { driver } = rig({
       initial: "old",
@@ -139,6 +164,16 @@ function rig({ initial = "", onCopy = null } = {}) {
     const r = await driver.perform({ type: "word_from_clipboard" });
     assert.strictEqual(retries, 1, "the driver did not retry exactly once");
     assert.strictEqual(r.ok, true, `the retry did not recover: ${r.error}`);
+    assert.ok(r.path, "a successful write must name the artifact");
+    assert.ok(r.path.startsWith(SINK), `wrote outside the test sink: ${r.path}`);
+    assert.ok(!r.path.startsWith(CUSTOMER), `wrote into the customer sink: ${r.path}`);
+    assert.strictEqual(docxBody(r.path), "recovered selection");
+    assert.deepStrictEqual(
+      fromClipboardNames(CUSTOMER),
+      customerBefore,
+      "the retry fixture wrote a from-clipboard-*.docx into the customer Word folder"
+    );
+    assert.notDeepStrictEqual(fs.readdirSync(SINK).sort(), sinkBefore, "the test sink was not written");
   });
 
   await check("an explicit source still wins over the baseline", async () => {

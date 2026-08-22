@@ -2,6 +2,7 @@
 
 | Date | Topic | Keywords | Main idea | Path |
 |------|-------|----------|-----------|------|
+| 2026-08-22 | word-coworker-fixture-sink | recovered selection, NETIE_WORD_OUT_DIR, R-0001 | clipboard-integrity wrote the retry fixture into Documents\\NetiePointer; uncontained test writes must refuse | `2026-08-22_word-coworker-fixture-sink.md` |
 | 2026-08-22 | word-coworker-stub | word_docx_write, from-clipboard, R-0001 | Real-use wrote ~1158-byte empty w:t stubs; refuse empty, emit Word shell, route prose to write | `2026-08-22_word-coworker-stub.md` |
 | 2026-07-31 | adversarial-residuals | A-0005, A-0007, recipe, secure | Confirmed 20; recipe must fail-closed on /dms/secure | `../findings/ADVERSARIAL_2026-07-31.md` |
 | 2026-07-31 | claude-code-memory | MEMORY.md, identity, no-secrets | Index + topic files; never store PII/secrets in Claude memory | `2026-07-31_claude-code-memory.md` |
