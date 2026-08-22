@@ -243,10 +243,11 @@ const agentPointer = new Pointer({
 // If a previous crash left a Netie face on, put the user cursor back.
 agentPointer.restore().catch(() => {});
 
-/** Rolling 60s screen memory — thumbs in RAM; sealed dual-wrap on eviction. */
+/** Rolling 60s screen memory - thumbs in RAM; sealed dual-wrap on eviction; disk expires with the ring. */
 const recall = new RecallRing({
   windowMs: 60_000,
   maxFrames: 60,
+  retentionMs: 60_000,
   dataDir: brain.vault ? brain.vault.dataDir : path.join(os.homedir(), "AppData", "Roaming", "NetieClicks"),
   vault: brain.vault || null,
   // Pixel seal is HQ/trainer lane — default metadata-only to keep laptops light.
