@@ -13,8 +13,8 @@ const MAX_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 
 function clampRetentionMs(retentionMs, windowMs) {
   const fallback = Number.isFinite(windowMs) && windowMs > 0 ? windowMs : 60_000;
-  if (!Number.isFinite(retentionMs) || retentionMs <= 0) return fallback;
-  return Math.min(retentionMs, MAX_RETENTION_MS);
+  const raw = Number.isFinite(retentionMs) && retentionMs > 0 ? retentionMs : fallback;
+  return Math.min(raw, MAX_RETENTION_MS);
 }
 
 class RecallRing {
@@ -48,8 +48,19 @@ class RecallRing {
     if (this.recallDir) this.fs.mkdirSync(this.recallDir, { recursive: true });
   }
 
+  /** Integer epoch ms from the injected clock. Does not fall back to Date.now(). */
+  _now() {
+    const n = Number(this.clock());
+    return Number.isFinite(n) ? Math.trunc(n) : 0;
+  }
+
+  _epoch(value) {
+    if (Number.isFinite(value)) return Math.trunc(value);
+    return this._now();
+  }
+
   _cutoff() {
-    return this.clock() - this.retentionMs;
+    return this._now() - this.retentionMs;
   }
 
   _isExpired(t) {
@@ -58,7 +69,7 @@ class RecallRing {
 
   push(frame = {}) {
     const normalized = {
-      t: Number.isFinite(frame.t) ? frame.t : this.clock(),
+      t: this._epoch(frame.t),
       cx: frame.cx,
       cy: frame.cy,
       displayId: frame.displayId,
@@ -75,7 +86,7 @@ class RecallRing {
 
   _trim() {
     if (!this.frames.length) return;
-    const cutoff = this.clock() - this.windowMs;
+    const cutoff = this._now() - this.windowMs;
     while (this.frames.length && this.frames[0].t < cutoff) this._sealEviction(this.frames.shift());
     while (this.frames.length > this.maxFrames) this._sealEviction(this.frames.shift());
     this.purgeExpired();
@@ -98,7 +109,9 @@ class RecallRing {
       height: frame.height,
     };
     if (hasPixels) payload.thumbJpegBase64 = frame.thumbJpeg.toString("base64");
-    const id = `recall-${frame.t}-${crypto.randomUUID()}`;
+    // Integer epoch only. A decimal t used to write recall-90000.7-*.enc.json,
+    // which SEALED_NAME cannot parse, so purgeExpired never unlinked it.
+    const id = `recall-${this._epoch(frame.t)}-${crypto.randomUUID()}`;
     const sealed = this.sealFn({
       id,
       type: hasPixels ? "recall-frame" : "recall-meta",
@@ -126,6 +139,7 @@ class RecallRing {
     const cutoff = this._cutoff();
     let removed = 0;
     for (const name of names) {
+      if (name !== path.basename(name)) continue;
       const match = SEALED_NAME.exec(name);
       if (!match) continue;
       const t = Number(match[1]);

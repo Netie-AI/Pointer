@@ -259,6 +259,42 @@ test("Recall retentionMs is fail-closed and capped", () => {
     assert.strictEqual(huge.retentionMs, MAX_RETENTION_MS, "a century of retention is the unbounded dir again");
     const nan = new RecallRing({ dataDir, windowMs: 60_000, retentionMs: Number.NaN, clock: () => 1 });
     assert.strictEqual(nan.retentionMs, 60_000);
+    const zeroHuge = new RecallRing({
+      dataDir,
+      windowMs: 99 * 24 * 60 * 60 * 1000,
+      retentionMs: 0,
+      clock: () => 1,
+    });
+    assert.strictEqual(
+      zeroHuge.retentionMs,
+      MAX_RETENTION_MS,
+      "fail-closed fallback must still honour the 14-day cap"
+    );
+  } finally {
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("Recall writes integer epoch names so float t cannot leak past purge", () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "netie-clicky-"));
+  try {
+    const { ring, setNow, sealedNames } = sealedVaultRing(dataDir, {
+      now: 90_000.7,
+      maxFrames: 1,
+      windowMs: 60_000,
+      retentionMs: 60_000,
+    });
+    ring.push({ t: 90_000.7, cx: 1, cy: 1 });
+    ring.push({ t: 90_001.2, cx: 2, cy: 2 });
+    const afterEvict = sealedNames();
+    assert.strictEqual(afterEvict.length, 1, "count-eviction still seals an in-window frame");
+    assert.ok(
+      /^recall-\d+-[0-9a-fA-F-]+\.enc\.json$/.test(afterEvict[0]),
+      `filename ${afterEvict[0]} must be purgeable (no decimal epoch)`
+    );
+    setNow(200_000);
+    ring.purgeExpired();
+    assert.strictEqual(sealedNames().length, 0, "a float t must not outlive retention");
   } finally {
     fs.rmSync(dataDir, { recursive: true, force: true });
   }

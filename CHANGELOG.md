@@ -2,6 +2,21 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-22 - Recall retention clamp covers fallback; filenames stay integer epoch
+
+Two remaining holes in the 60s-ring sweep on PR #31:
+
+- `clampRetentionMs` capped only an explicit huge `retentionMs`. `0` / `NaN` /
+  omitted fell back to `windowMs` uncapped, so a 99-day window with fail-closed
+  retention unbounded the dir again.
+- `_sealEviction` interpolated `frame.t` into the filename. A non-integer t
+  wrote `recall-90000.7-*.enc.json`, which `SEALED_NAME` cannot parse, so
+  `purgeExpired` never unlinked it. The ring now truncates to integer epoch ms
+  from the injected clock (production stays on `Date.now()`; tests stay on the
+  fake clock) and ignores readdir names that are not a basename.
+
+Enforcer: `test/clicky.test.js`. Still not harvest, not a HUD toggle, not PR #26.
+
 ## 2026-08-22 - Sealed recall records expire with the 60s ring
 
 DR-0003 fact 4, the named prerequisite for any skill-harvesting work. Not
