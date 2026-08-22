@@ -20,7 +20,8 @@ Fix (new ticket, new branch): refuse writes with no visible text; emit styles,
 settings, and docProps so Word shows the body; route quoted / `word:` / "that
 says" prose to `word_docx_write`; tell `_llmPlan` about the coworker verbs
 (omit path). Tests assert the unzipped `w:t` the customer receives. R-0002:
-no skipped tests.
+no skipped tests. CI now also runs on PRs to `netie-ecosystem-contracts`
+(the feature-PR base); a PR that never ran the matrix was a skipped test.
 
 ## 2026-08-22 - The smoke lane runs in CI, and the verified wave is closed
 
