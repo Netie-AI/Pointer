@@ -1636,11 +1636,11 @@ async function executeApproved(actions) {
       if (
         outcome &&
         outcome.ok &&
-        !outcome.dryRun &&
         (enriched.type === "word_from_clipboard" ||
           enriched.type === "word_docx_write" ||
           enriched.type === "word_docx_append") &&
-        outcome.path
+        outcome.path &&
+        !outcome.dryRun
       ) {
         lastWordDocx = {
           path: outcome.path,
