@@ -2,6 +2,28 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-22 - Dry-run must not raise Document ready; coworker refusals name the reason
+
+`writeDocx({ dryRun: true })` returns ok + path without touching disk.
+`executeApproved` still armed `lastWordDocx`, so Open pointed at a file
+that was not written. Separately, coworker refusals carry `reason` and the
+executor only read `error`, so the HUD said "failed: unknown" (R-0011).
+
+Fix: skip `lastWordDocx` when `dryRun`; prefer `outcome.reason`; send the
+failure as an insight. Closed #3 #10 #11 #14 #17 stay closed.
+
+## 2026-08-22 - Document ready / Open survives the Act teardown
+
+`executeApproved` sent `word-docx` mid-run, then `status done: true` in
+`finally`, which hid the pill. The comment already said we re-raise the
+artifact; the call was missing. Real use: file written, Open gone.
+Closed #3 #10 #11 #14 #17 are not reopened. PR #27 is merged; this is the
+next unused branch.
+
+Fix: track `lastWordDocx`, call `sendWordDocxReady` AFTER `done`. The HUD
+title carries the written preview (R-0001) and the sub still names the
+destination (#19).
+
 ## 2026-08-22 - Test fixture "recovered selection" must not land in Documents\\NetiePointer
 
 Live confirm (file:line): customer artifact

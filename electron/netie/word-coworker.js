@@ -75,6 +75,11 @@ function emptyWriteReason() {
   return "refusing to write an empty Word document - no visible text";
 }
 
+function writtenEvidence(text) {
+  const preview = visibleDocxText(text);
+  return { chars: preview.length, preview: preview.slice(0, 80) };
+}
+
 /** Parts Word needs before it will show the body instead of a repair/blank page. */
 function wordPackageParts(documentXml) {
   const contentTypes =
@@ -282,7 +287,7 @@ function writeDocx(opts = {}) {
     `<w:body>${paragraphsXml(text)}<w:sectPr/></w:body></w:document>`;
   const buf = zipStore(wordPackageParts(documentXml));
   if (opts.dryRun) {
-    return { ok: true, path: outPath, bytes: buf.length, dryRun: true };
+    return { ok: true, path: outPath, bytes: buf.length, dryRun: true, ...writtenEvidence(text) };
   }
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, buf);
@@ -291,6 +296,7 @@ function writeDocx(opts = {}) {
     path: outPath,
     bytes: buf.length,
     sha256: crypto.createHash("sha256").update(buf).digest("hex"),
+    ...writtenEvidence(text),
   };
 }
 
@@ -490,7 +496,7 @@ function appendDocx(opts = {}) {
   const buf = zipStore(entries);
 
   if (opts.dryRun) {
-    return { ok: true, path: outPath, bytes: buf.length, dryRun: true, appended: true, parts: entries.length };
+    return { ok: true, path: outPath, bytes: buf.length, dryRun: true, appended: true, parts: entries.length, ...writtenEvidence(text) };
   }
   fs.writeFileSync(outPath, buf);
   return {
@@ -500,6 +506,7 @@ function appendDocx(opts = {}) {
     appended: true,
     parts: entries.length,
     sha256: crypto.createHash("sha256").update(buf).digest("hex"),
+    ...writtenEvidence(text),
   };
 }
 

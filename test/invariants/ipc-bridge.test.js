@@ -150,6 +150,34 @@ check("the status pill is driven by a run, not only by a finished document", () 
   );
   assert.ok(/type: "status", done: true/.test(main), "the pill is never taken back down");
   assert.ok(/hideStatusPill\(\)/.test(hud), "the renderer cannot dismiss the pill");
+  // Real use: word-docx fired mid-run, then done hid Document ready / Open.
+  // The comment already said we re-raise; this asserts the call sits AFTER done.
+  const doneAt = main.indexOf('type: "status", done: true');
+  const reraiseAt = main.lastIndexOf("sendWordDocxReady(lastWordDocx)");
+  assert.ok(doneAt >= 0 && reraiseAt > doneAt, "word-docx is not re-raised after the run teardown");
+  // The shipped recipe is word_from_clipboard. Dropping that verb from the
+  // capture still leaves the after-done call, so this check would pass while
+  // real use never re-raised Open.
+  const captureStart = main.indexOf('enriched.type === "word_from_clipboard"');
+  const captureEnd = main.indexOf("sendWordDocxReady(lastWordDocx)");
+  assert.ok(captureStart >= 0 && captureEnd > captureStart, "lastWordDocx capture block missing");
+  const capture = main.slice(captureStart, captureEnd);
+  assert.ok(capture.includes("word_docx_write"), "lastWordDocx misses word_docx_write");
+  assert.ok(capture.includes("word_docx_append"), "lastWordDocx misses word_docx_append");
+  assert.ok(
+    /!outcome\.dryRun/.test(capture),
+    "dry-run still raises Document ready for a file that was not written"
+  );
+  // writeDocx refusals carry `reason`, not `error`. Reading only error made
+  // every empty/contained-out write show as "failed: unknown" (R-0011).
+  assert.ok(
+    /outcome\.error \|\| outcome\.reason/.test(main),
+    "executeApproved still swallows coworker reason as failed: unknown"
+  );
+  assert.ok(
+    /sendHud\(\{\s*type: "insight",\s*text: message \}\)/.test(main),
+    "a failed coworker step never reaches the HUD"
+  );
 });
 
 check("hud:openPath specifically is reachable (the regression that started this)", () => {

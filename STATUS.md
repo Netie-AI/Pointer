@@ -35,11 +35,10 @@
 6. **Chrome pinned against the rendered HUD** (#22) - writing it found the LIVE
    bar rendering despite `hidden`, because `.subtitle-live` set its own
    `display`. Fixed for the class; the assertion reads painted geometry.
-7. **Word coworker real-use leaked a test fixture.** Laptop
-   `from-clipboard-1787382254896.docx` body is exactly `recovered selection`
-   (`test/clipboard-integrity.test.js:121` on af25bb0). Uncontained test
-   writes now refuse; suites must set `NETIE_WORD_OUT_DIR`. Closed #3 #10
-   #11 #14 #17 stay closed.
+7. **Word coworker: Document ready survived write then vanished.** `done:true`
+   hid the Open pill after `word-docx`. Teardown now re-raises it with the
+   written preview. Fixture sink refuse from #27 stays. Closed #3 #10 #11
+   #14 #17 stay closed.
 
 ## Next
 
