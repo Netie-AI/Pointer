@@ -365,22 +365,33 @@ function matchRecipe(text) {
     };
   }
 
-  const quotedWord = input.match(
+  // Typed/STT coworker requests end the sentence. Word-write recipes anchored
+  // `$` on the raw input, so "write hello in Word." missed word_docx_write
+  // and "put hello in word." fell through to the clipboard stub. The suite
+  // used the unpunctuated form and stayed green (R-0001).
+  const spoken = input
+    .replace(/[.!?]+$/g, "")
+    .replace(/\s+please$/i, "")
+    .replace(/[.!?]+$/g, "")
+    .replace(/^(?:(?:please|can you|could you)\s+)+/i, "")
+    .trim();
+
+  const quotedWord = spoken.match(
     /^(?:please\s+)?(?:write|put|create|make)\s+["']([^"']+)["']\s+(?:into|to|in)\s+(?:a\s+)?(?:microsoft\s+)?word(?:\s+doc(?:ument)?)?$/i
   );
   if (quotedWord) {
     const r = wordWriteTextRecipe(quotedWord[1]);
     if (r) return r;
   }
-  const saysWord = input.match(
+  const saysWord = spoken.match(
     /^(?:please\s+)?(?:write|create|make)\s+(?:a\s+|an\s+)?(?:microsoft\s+)?word\s+(?:doc(?:ument)?|file)\s+(?:that\s+(?:says|contains)|with(?:\s+the\s+text)?|saying)\s+(.+)$/i
   );
   if (saysWord) {
     const r = wordWriteTextRecipe(saysWord[1]);
     if (r) return r;
   }
-  const wordColon = input.match(
-    /^(?:please\s+)?(?:write\s+(?:it\s+)?(?:to|into)\s+(?:a\s+)?(?:microsoft\s+)?word(?:\s+doc(?:ument)?)?|word)\s*:\s*([\s\S]+)$/i
+  const wordColon = spoken.match(
+    /^(?:please\s+)?(?:write\s+(?:it\s+)?(?:in|to|into)\s+(?:a\s+)?(?:microsoft\s+)?word(?:\s+doc(?:ument)?)?|word)\s*:\s*([\s\S]+)$/i
   );
   if (wordColon) {
     const r = wordWriteTextRecipe(wordColon[1]);
@@ -396,7 +407,7 @@ function matchRecipe(text) {
       String(text || "").trim()
     );
   }
-  const writeInWord = input.match(
+  const writeInWord = spoken.match(
     /^(?:please\s+)?(?:write|create|make|put)\s+(.+?)\s+(?:into|to|in)\s+(?:a\s+)?(?:microsoft\s+)?word(?:\s+doc(?:ument)?)?$/i
   );
   if (writeInWord) {

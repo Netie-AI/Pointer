@@ -123,6 +123,34 @@ test("explicit prose uses word_docx_write, not the clipboard stub path", () => {
   assert.ok(titled, "unquoted write-in-Word matched nothing");
   assert.strictEqual(titled.id, "word_write_text");
   assert.deepStrictEqual(titled.actions, [{ type: "word_docx_write", value: "Hello Pointer" }]);
+
+  // Live customer: trailing .!? / please / "can you". The unpunctuated
+  // strings above used to pass while "put hello in word." took the clipboard
+  // stub (R-0001).
+  for (const live of [
+    "write hello in Word.",
+    "write hello in Word?",
+    "Write hello in word please",
+    "please write hello in Word.",
+    "can you write hello in Word",
+    "could you write hello in Word?",
+    "put hello in word.",
+    "create hello in Word!",
+    "make hello in Word please",
+    'write "Hello Pointer" into word.',
+    "write in Word: hello",
+    "write a word document that says Hello.",
+  ]) {
+    const r = matchRecipe(live);
+    assert.ok(r, `${JSON.stringify(live)} matched nothing`);
+    assert.strictEqual(r.id, "word_write_text", `${JSON.stringify(live)} took ${r.id}`);
+    assert.strictEqual(r.actions[0].type, "word_docx_write");
+  }
+  assert.strictEqual(matchRecipe("write hello in Word.").actions[0].value, "hello");
+  assert.strictEqual(matchRecipe("put hello in word.").actions[0].value, "hello");
+  assert.strictEqual(matchRecipe("write in Word: hello").actions[0].value, "hello");
+  assert.strictEqual(matchRecipe("write a word document that says Hello.").actions[0].value, "Hello");
+  assert.strictEqual(matchRecipe("write this in Word.").id, "terminal_to_word");
 });
 
 test("terminal to word UI fallback is explicit", () => {

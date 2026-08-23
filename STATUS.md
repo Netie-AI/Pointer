@@ -4,16 +4,15 @@
 
 ## Now
 
-0. **PR #30 is on contracts.** Document ready re-raises after `done`;
-   dry-run does not arm Open; refusals name `reason`.
-1. **PR #31 recall expiry + unquoted write-in-Word landed here.** Sweep
-   `recall-<t>-*.enc.json` (default 60s, cap 14 days). Unquoted
-   "write hello in Word" is `word_docx_write`; deictic this/that copies.
-2. **Go/Act "write this in Word" is act, not ask/code.** `classifyIntent`
-   no longer sends Word coworker phrases to chat. Driver maps `reason`
-   to `error`; hud:act returns the failed step. Closed #3 #10 #11 #14
-   #17 stay closed. Not PR #26. Not PR #1.
-3. **Tickets #8-#25 and epics P01-P03/P05/P06 stay closed.** EPIC-P04
+0. **Punctuated write-in-Word is a recipe, not the clipboard stub.**
+   "write hello in Word." / "put hello in word please" used to miss
+   `word_docx_write` (tests had no trailing punct). hud:act skills/LLM
+   now return the failed step; Plan finished does not overwrite a
+   coworker refusal. Closed #3 #10 #11 #14 #17 stay closed.
+1. **PR #30/#31/#32/#33 are on contracts.** Document ready re-raises
+   after `done`; recall 60s expiry; unquoted write-in-Word;
+   Go classifies Word coworker as act.
+2. **Tickets #8-#25 and epics P01-P03/P05/P06 stay closed.** EPIC-P04
    and EPIC-P07 remain open.
 
 ## Next

@@ -37,7 +37,7 @@ const CODE_CUES = [
 function isWordCoworkerIntent(t) {
   if (/^word\s*:/.test(t)) return true;
   if (!/\b(?:microsoft\s+)?word\b/.test(t)) return false;
-  return /\b(?:write|put|create|make|copy|paste|append)\b/.test(t);
+  return /\b(?:write|put|create|make|copy|paste|append|add|insert)\b/.test(t);
 }
 
 /**

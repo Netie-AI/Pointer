@@ -2,6 +2,22 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-23 - Punctuated write-in-Word must not take the clipboard stub
+
+`matchRecipe` anchored Word-write `$` on the raw input. Tests used
+"write hello in Word" and passed. Live "write hello in Word." missed
+the recipe (Go fell through to the LLM click/type planner). Live
+"put hello in word." missed the write verb and matched the clipboard
+stub, so the customer got from-clipboard-*.docx instead of "hello"
+(R-0001).
+
+Strip trailing .!? / please and leading can/could you / please before
+the Word-write matchers. hud:act skills and LLM paths now return the
+failed step the same way the recipe path does. `executeApproved` no
+longer overwrites a coworker refusal insight with "Plan finished."
+
+Closed #3 #10 #11 #14 #17 stay closed. Not harvest. Not PR #1 / #26.
+
 ## 2026-08-22 - Go/Act "write this in Word" must hit the coworker
 
 `classifyIntent` treated "write a word document..." as code (`CODE_CUES`

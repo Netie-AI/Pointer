@@ -186,6 +186,18 @@ check("the status pill is driven by a run, not only by a finished document", () 
     /ok: !failed/.test(main),
     "Go/hud:act still returns ok:true after a coworker refusal"
   );
+  const okFailedN = (main.match(/ok: !failed/g) || []).length;
+  assert.ok(
+    okFailedN >= 5,
+    `hud:act skills/LLM still return ok:true (${okFailedN} ok:!failed; need recipe+skills+LLM plus Go)`
+  );
+  const finishedAt = main.indexOf('text: "Plan finished."');
+  assert.ok(finishedAt >= 0, "Plan finished insight is gone");
+  const finishedGuard = main.slice(Math.max(0, finishedAt - 280), finishedAt);
+  assert.ok(
+    /if \(!failedStep\)/.test(finishedGuard),
+    "Plan finished still overwrites the coworker refusal insight"
+  );
 });
 
 check("hud:openPath specifically is reachable (the regression that started this)", () => {

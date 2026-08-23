@@ -1772,8 +1772,14 @@ async function executeApproved(actions) {
       /* ok */
     }
     setTimeout(() => setPresence(PresenceEvents.RESET), 1600);
-    // Stay invisible after plans — do not force-pop the HUD.
-    sendHudQuiet({ type: "insight", text: "Plan finished." });
+    // Stay invisible after plans - do not force-pop the HUD.
+    // The failure insight already named the coworker reason. Sending
+    // "Plan finished." here used to overwrite it, so the bar said the
+    // run succeeded after an empty/contained-out write (R-0011).
+    const failedStep = results.find((r) => r && r.ok === false && !r.noop && r.skipped !== "refused");
+    if (!failedStep) {
+      sendHudQuiet({ type: "insight", text: "Plan finished." });
+    }
   }
   return results;
 }
@@ -2724,13 +2730,17 @@ ipcMain.handle("hud:act", async (_e, payload) => {
           text: approvalPrompt(plan.actions || []).detail,
         });
         const run = await maybeRunPlan(plan);
+        const failed = (run.results || []).find((r) => r && r.ok === false && !r.noop && r.skipped !== "refused");
         return {
-          ok: true,
+          ok: !failed,
+          plan,
+          run,
           actions: plan.actions,
           needsApproval: plan.needsApproval,
           ran: run.ran,
           runMode: run.mode,
           skill: plan.skill,
+          reason: failed ? (failed.message || failed.error || failed.reason) : undefined,
         };
       }
       preamble = skillPreamble(hits);
@@ -2838,8 +2848,11 @@ ipcMain.handle("hud:act", async (_e, payload) => {
       observation = observeResults(run.results);
     }
 
+    const failed = (run.results || []).find((r) => r && r.ok === false && !r.noop && r.skipped !== "refused");
     return {
-      ok: true,
+      ok: !failed,
+      plan: active,
+      run,
       actions: active.actions,
       needsApproval: active.needsApproval,
       ran: run.ran,
@@ -2847,6 +2860,7 @@ ipcMain.handle("hud:act", async (_e, payload) => {
       osr: plan.osr || null,
       planner: active.planner || plan.planner || null,
       replans: replanN,
+      reason: failed ? (failed.message || failed.error || failed.reason) : undefined,
     };
   }
   sendHud({ type: "answer", meta: "Blocked", text: plan.reason || "Blocked" });
