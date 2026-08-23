@@ -387,6 +387,25 @@ function matchRecipe(text) {
     if (r) return r;
   }
 
+  // Real-use coworkerist: "write hello in Word" has no quotes and is not
+  // "that says". The old clipboard regex treated "put hello in word" as a
+  // selection copy, so the customer got from-clipboard-*.docx instead of the
+  // named prose. Deictic "this/that/it/selection" still means copy.
+  function deicticSelection(text) {
+    return /^(?:this|that|it|the\s+(?:selection|text|terminal|clipboard)|selection|clipboard)$/i.test(
+      String(text || "").trim()
+    );
+  }
+  const writeInWord = input.match(
+    /^(?:please\s+)?(?:write|create|make|put)\s+(.+?)\s+(?:into|to|in)\s+(?:a\s+)?(?:microsoft\s+)?word(?:\s+doc(?:ument)?)?$/i
+  );
+  if (writeInWord) {
+    const payload = String(writeInWord[1] || "").trim().replace(/^["']|["']$/g, "");
+    if (deicticSelection(payload)) return cloneRecipe(RECIPES.terminal_to_word);
+    const r = wordWriteTextRecipe(payload);
+    if (r) return r;
+  }
+
   // Multi-word coworker SOPs first (more specific).
   if (
     /(?:word\s+ui|hotkey\s+word|paste\s+into\s+word\s+window)/.test(normalized)

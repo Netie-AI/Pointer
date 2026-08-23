@@ -5,6 +5,9 @@
  */
 
 const assert = require("assert");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const { NetieEcosystem } = require("../../electron/netie/ecosystem");
 const { guardPlan, DRIVER_ACTIONS } = require("../../electron/netie/plan-guard");
 const { reviewPlan } = require("../../electron/netie/safety");
@@ -85,16 +88,31 @@ function longPlan(n) {
     }),
 
     T("stress: recall ring under burst push stays capped", async () => {
-      let now = 1_000_000;
-      const ring = new RecallRing({ maxFrames: 60, windowMs: 60_000, clock: () => now });
-      for (let i = 0; i < 500; i += 1) {
-        now += 1000;
-        ring.push({ t: now, cx: i, cy: i, fgProc: "app.exe", thumbJpeg: Buffer.alloc(64, i % 255) });
+      const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "netie-recall-stress-"));
+      try {
+        let now = 1_000_000;
+        const ring = new RecallRing({
+          maxFrames: 60,
+          windowMs: 60_000,
+          retentionMs: 60_000,
+          clock: () => now,
+          dataDir,
+          vault: { userKek: Buffer.alloc(32, 1), netieKek: Buffer.alloc(32, 2) },
+          sealFn: (opts) => ({ id: opts.id, type: opts.type }),
+        });
+        for (let i = 0; i < 500; i += 1) {
+          now += 1000;
+          ring.push({ t: now, cx: i, cy: i, fgProc: "app.exe", thumbJpeg: Buffer.alloc(64, i % 255) });
+        }
+        const snap = ring.snapshot();
+        assert.ok(snap.length <= 60);
+        const sealed = fs.readdirSync(path.join(dataDir, "recall")).filter((n) => n.endsWith(".enc.json"));
+        assert.ok(sealed.length <= 60, `sealed ${sealed.length} must not track the 500-frame burst`);
+        const summary = ring.summaryText();
+        assert.ok(!summary.includes(Buffer.alloc(64, 1).toString("base64")));
+      } finally {
+        fs.rmSync(dataDir, { recursive: true, force: true });
       }
-      const snap = ring.snapshot();
-      assert.ok(snap.length <= 60);
-      const summary = ring.summaryText();
-      assert.ok(!summary.includes(Buffer.alloc(64, 1).toString("base64")));
     }),
 
     T("stress: 50 concurrent planAttempts serialize without throw", async () => {

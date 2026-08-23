@@ -20,7 +20,7 @@ Branch `netie-ecosystem-contracts`.
 | Custody client | ✅ | soft-fail until OV ships inject |
 | **Agent presence** | ✅ | crazy smile + matrix rain while working |
 | **Clicky hold mode** | ✅ | hold topbar / Ctrl+Shift+Space → cursor overlay |
-| **Recall 60s ring** | ✅ | gated by active session or Clicky; dual-wrap on eviction |
+| **Recall 60s ring** | ✅ | gated by active session or Clicky; dual-wrap on eviction; sealed files expire with the ring |
 | **Finite horizon** | ✅ | `NETIE_MAX_STEPS` (default 24) |
 | **Light mode** | ✅ | `NETIE_LIGHT=1` disables systemAudio/canvas/hotTicks |
 | Dual vault + consent purge | ✅ | opt-out purges queue + clears fleet KEK |

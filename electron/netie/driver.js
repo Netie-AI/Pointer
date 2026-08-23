@@ -780,6 +780,7 @@ class InputDriver {
           stem: action.stem,
         });
         this.last = { op: "word_docx_write", ...result };
+        if (!result.ok) return { type, ...result };
         return { ok: true, type, ...result };
       }
 
@@ -797,6 +798,7 @@ class InputDriver {
           stem: action.stem,
         });
         this.last = { op: "word_docx_append", ...result };
+        if (!result.ok) return { type, ...result };
         return { ok: true, type, ...result };
       }
 
@@ -856,6 +858,7 @@ class InputDriver {
           stem: action.stem || "from-clipboard",
         });
         this.last = { op: "word_from_clipboard", ...result };
+        if (!result.ok) return { type, ...result, clipLen: text.length };
         return { ok: true, type, ...result, clipLen: text.length };
       }
 
