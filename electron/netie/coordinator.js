@@ -1,0 +1,223 @@
+"use strict";
+/**
+ * Live agent coordinator - local-first (DR-0004).
+ *
+ * Cursor Cloud, Cortex, and Pointer Act each take a named lane. A second
+ * owner is refused so two agents do not click the same desktop. Pages are
+ * short paths for host.netie.ai (and 127.0.0.1:18010 until that exists).
+ */
+
+const http = require("http");
+const fs = require("fs");
+const path = require("path");
+
+const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
+const PAGES = Object.freeze({
+  "/": "home",
+  "/today": "today",
+  "/lanes": "lanes",
+  "/skills": "skills",
+});
+
+const HOST_DIR = path.resolve(__dirname, "..", "..", "host");
+
+function nowMs(clock) {
+  return typeof clock === "function" ? clock() : Date.now();
+}
+
+function createCoordinator(opts = {}) {
+  const clock = opts.clock || Date.now;
+  const lanes = Object.fromEntries(LANES.map((id) => [id, null]));
+  const drafts = [];
+  const today = [];
+  let lastSearch = [];
+  let server = null;
+
+  function snapshot() {
+    return {
+      pages: { ...PAGES },
+      lanes: Object.fromEntries(
+        LANES.map((id) => [id, lanes[id] ? { ...lanes[id] } : null])
+      ),
+      drafts: drafts.slice(-20),
+      lastSearch: lastSearch.slice(),
+      today: today.slice(-40),
+      bind: server ? server.address() : null,
+    };
+  }
+
+  function note(kind, detail) {
+    today.push({ t: nowMs(clock), kind, detail: String(detail || "").slice(0, 240) });
+    if (today.length > 80) today.splice(0, today.length - 80);
+  }
+
+  function pageFor(pathname) {
+    const raw = String(pathname || "/").split("?")[0];
+    const clean = raw.replace(/\/+$/, "") || "/";
+    return PAGES[clean] || null;
+  }
+
+  function claim(lane, spec = {}) {
+    const id = String(lane || "").trim();
+    if (!LANES.includes(id)) {
+      return { ok: false, reason: `unknown lane: ${id || "(empty)"}` };
+    }
+    const owner = String(spec.owner || "").trim();
+    if (!owner) return { ok: false, reason: "lane claim needs an owner" };
+    const held = lanes[id];
+    if (held && held.owner !== owner) {
+      return {
+        ok: false,
+        conflict: true,
+        reason: `${id} is held by ${held.owner}`,
+        held: { ...held },
+      };
+    }
+    lanes[id] = {
+      owner,
+      goal: String(spec.goal || held && held.goal || "").slice(0, 240),
+      since: held && held.owner === owner ? held.since : nowMs(clock),
+    };
+    note("claim", `${id} -> ${owner}`);
+    return { ok: true, lane: id, claim: { ...lanes[id] } };
+  }
+
+  function release(lane, spec = {}) {
+    const id = String(lane || "").trim();
+    if (!LANES.includes(id)) return { ok: false, reason: `unknown lane: ${id}` };
+    const held = lanes[id];
+    if (!held) return { ok: true, lane: id, released: false };
+    const owner = String(spec.owner || "").trim();
+    if (owner && held.owner !== owner) {
+      return { ok: false, conflict: true, reason: `${id} is held by ${held.owner}` };
+    }
+    lanes[id] = null;
+    note("release", `${id} <- ${held.owner}`);
+    return { ok: true, lane: id, released: true };
+  }
+
+  function rememberSearch(hits) {
+    lastSearch = Array.isArray(hits) ? hits.slice(0, 8) : [];
+    note("search", `${lastSearch.length} hit(s)`);
+    return lastSearch;
+  }
+
+  function noteDraft(draft) {
+    if (!draft || typeof draft !== "object") return { ok: false, reason: "empty draft" };
+    const row = {
+      id: String(draft.id || "draft").slice(0, 80),
+      title: String(draft.title || draft.id || "untitled").slice(0, 120),
+      tier: "hint",
+      preamble: String(draft.preamble || "").slice(0, 800),
+      t: nowMs(clock),
+    };
+    drafts.push(row);
+    if (drafts.length > 40) drafts.splice(0, drafts.length - 40);
+    note("craft", row.id);
+    return { ok: true, draft: row };
+  }
+
+  function handleHttp(req, res) {
+    const url = new URL(req.url || "/", "http://127.0.0.1");
+    if (req.method === "GET" && url.pathname === "/api/state") {
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(snapshot()));
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/mcp") {
+      const chunks = [];
+      req.on("data", (c) => chunks.push(c));
+      req.on("end", () => {
+        let body = {};
+        try {
+          body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+        } catch {
+          res.writeHead(400, { "content-type": "application/json" });
+          res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32700, message: "parse error" } }));
+          return;
+        }
+        const mcp = opts.mcp;
+        const out = mcp ? mcp.handle(body, { coordinator: api }) : {
+          jsonrpc: "2.0",
+          id: body.id ?? null,
+          error: { code: -32601, message: "mcp not wired" },
+        };
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(out));
+      });
+      return;
+    }
+    const page = pageFor(url.pathname);
+    if (req.method === "GET") {
+      const asset = path.basename(url.pathname);
+      if (asset === "style.css" || asset === "app.js") {
+        const abs = path.resolve(HOST_DIR, asset);
+        if (!abs.startsWith(path.resolve(HOST_DIR)) || !fs.existsSync(abs)) {
+          res.writeHead(404).end("missing asset");
+          return;
+        }
+        const type = asset.endsWith(".css") ? "text/css" : "text/javascript";
+        res.writeHead(200, { "content-type": `${type}; charset=utf-8` });
+        res.end(fs.readFileSync(abs));
+        return;
+      }
+    }
+    if (req.method === "GET" && page) {
+      const file = page === "home" ? "index.html" : `${page}.html`;
+      const abs = path.resolve(HOST_DIR, file);
+      if (!abs.startsWith(path.resolve(HOST_DIR)) || !fs.existsSync(abs)) {
+        res.writeHead(404).end("missing page");
+        return;
+      }
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      res.end(fs.readFileSync(abs));
+      return;
+    }
+    res.writeHead(404).end("not a coordinator page");
+  }
+
+  function listen(spec = {}) {
+    if (server) return Promise.resolve({ ok: true, already: true, address: server.address() });
+    const host = spec.host || "127.0.0.1";
+    if (host !== "127.0.0.1" && host !== "localhost") {
+      return Promise.resolve({ ok: false, reason: "coordinator binds loopback only" });
+    }
+    const port = Number.isFinite(Number(spec.port)) ? Number(spec.port) : 18010;
+    server = http.createServer(handleHttp);
+    return new Promise((resolve, reject) => {
+      server.once("error", (err) => {
+        server = null;
+        reject(err);
+      });
+      server.listen(port, host, () => {
+        resolve({ ok: true, address: server.address() });
+      });
+    });
+  }
+
+  function close() {
+    return new Promise((resolve) => {
+      if (!server) return resolve({ ok: true, closed: false });
+      server.close(() => {
+        server = null;
+        resolve({ ok: true, closed: true });
+      });
+    });
+  }
+
+  const api = {
+    LANES,
+    PAGES,
+    snapshot,
+    pageFor,
+    claim,
+    release,
+    rememberSearch,
+    noteDraft,
+    listen,
+    close,
+  };
+  return api;
+}
+
+module.exports = { createCoordinator, LANES, PAGES };

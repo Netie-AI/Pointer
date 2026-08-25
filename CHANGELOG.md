@@ -2,6 +2,18 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-25 - Generative tool ABI and local coordinator (DR-0004)
+
+Stop enumerating a skill per scenario. Search Cortex
+`/api/discovery/find-skills` plus local recipes; a miss writes a hint
+draft with no executable actions (DR-0003 option B). First-party
+JSON-RPC tools: skills.search / skills.craft / lanes.* / tools.list.
+Unknown methods refuse. Loopback coordinator (`127.0.0.1:18010`)
+serves `/` `/today` `/lanes` `/skills` for host.netie.ai. Lanes
+pointer-act, cursor-cloud, cortex, craft claim/release so Cursor Cloud
+and Cortex do not share the Act surface. Cloudflare/MacBook/VPS compute
+box is P-06, not this PR. P-05 stays parked.
+
 ## 2026-08-25 - Merge PR #1; finish spoken-strip for comma+please Word writes
 
 PR #1 (`netie-ecosystem-contracts` -> `main`) merged with CI green
