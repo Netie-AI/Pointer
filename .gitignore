@@ -1,6 +1,10 @@
 node_modules/
 dist/
 out/
+# Downloaded STT weights (~467MB). Fetched by scripts/, never versioned.
+models/
+# Local transcripts and demo screenshots — user data, not source.
+demo-shots/
 *.log
 .DS_Store
 .env

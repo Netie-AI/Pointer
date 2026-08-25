@@ -37,7 +37,7 @@ sequenceDiagram
 | `AssemblyAI*.swift`, `BuddyDictation*.swift` | — | Deferred (mic / PTT) |
 | `ElevenLabsTTSClient.swift` | — | Deferred |
 | `OverlayWindow.swift`, blue cursor / POINT tags | — | Deferred |
-| `ScreenCaptureKit` pipeline | `desktopCapturer.getSources` | MVP (primary display) |
+| `ScreenCaptureKit` pipeline | `desktopCapturer.getSources` | Done (per-display, follows cursor/region) |
 | `GlobalPushToTalkShortcutMonitor` | `globalShortcut.register` | MVP (fixed chord) |
 
 ## IPC surface (`preload.js`)
@@ -71,7 +71,7 @@ From `apps/shell/electron/main-openvault.js`:
 1. **Overlay + `[POINT:x,y:label:screenN]`** — parse model output, animate cursor across monitors (`OverlayWindow.swift` equivalent).
 2. **AssemblyAI** — streaming transcription + `/transcribe-token` worker route.
 3. **ElevenLabs TTS** — `/tts` proxy route and audio playback.
-4. **Multi-monitor** — per-display capture, cursor fly target screen index.
+4. **Multi-monitor** — done: overlay/capture follow the cursor's display, DIP→physical mapping in the DPI-aware input worker (`netie/geometry.js`, `netie/driver.js`).
 5. **Push-to-talk** — global PTT chord, mic permission, waveform UI.
 6. **Configurable hotkey** — settings UI + persisted accelerator.
 7. **macOS Electron** — dock hide, template tray icon, Screen Recording permission UX.

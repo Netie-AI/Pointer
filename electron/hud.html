@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob: mediastream:; worker-src 'self' blob:; connect-src 'self' http://127.0.0.1:*"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Netie Pointer HUD</title>
+    <link rel="stylesheet" href="hud.css" />
+  </head>
+  <body>
+    <div class="hud theme-dark mode-agent chat-open" id="hud">
+      <header class="top-bar chrome drag-surface" id="top-bar">
+        <div class="top-cluster">
+          <button type="button" class="rec-button" id="btn-listen" title="Microphone">
+            <span class="rec-dot" aria-hidden="true"></span>
+            <span class="rec-label" id="rec-label">Record</span>
+          </button>
+          <button type="button" class="icon-btn" id="btn-pause" title="Pause" aria-label="Pause">
+            <svg class="ico-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+            <svg class="ico-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <div class="wave" id="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <span class="timer" id="timer">00:00</span>
+          <span class="notes-chip" id="notes-chip">Notes live</span>
+        </div>
+        <div class="top-cluster mode-pill" id="mode-pill">
+          <button type="button" data-mode="agent" class="active">Agent</button>
+          <button type="button" data-mode="general">General</button>
+          <button type="button" data-mode="transcribe">Transcribe</button>
+          <button type="button" data-mode="meeting">Meeting</button>
+        </div>
+        <div class="top-cluster top-actions">
+          <button type="button" class="ask-pill" id="btn-chat-toggle" title="Ask AI">
+            <span>Ask AI</span>
+            <kbd>Ctrl</kbd><kbd>Enter</kbd>
+          </button>
+          <button type="button" class="icon-btn sys-btn" id="btn-system" title="System audio">
+            <img class="sys-icon sys-dark" src="assets/icons/system-audio-dark.png" alt="" />
+            <img class="sys-icon sys-light" src="assets/icons/system-audio-light.png" alt="" />
+          </button>
+          <button type="button" class="icon-btn" id="btn-roulette" title="Retrieve">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+          </button>
+          <div class="menu-anchor">
+            <button type="button" class="icon-btn more-button" id="btn-more" aria-label="Settings" aria-expanded="false">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+            </button>
+            <div class="menu" id="settings-menu">
+              <h3>Appearance</h3>
+              <div class="theme-row" id="theme-row">
+                <button type="button" data-theme="dark">Dark</button>
+                <button type="button" data-theme="light">Light</button>
+                <button type="button" data-theme="gra">Gra</button>
+              </div>
+              <h3>Agent settings</h3>
+              <label>Auto-run sensible <input type="checkbox" id="set-auto" /></label>
+              <label>Nod confirm <input type="checkbox" id="set-nod" /></label>
+              <label>Netie pointer <input type="checkbox" id="set-cursor" /></label>
+              <label>Save markdown <input type="checkbox" id="set-md" /></label>
+              <label>Python checks <input type="checkbox" id="set-py" /></label>
+              <label>Demo screenshots <input type="checkbox" id="set-demo-debug" /></label>
+              <label>Verify steps (slow) <input type="checkbox" id="set-verify" /></label>
+              <label>Auto-send after speaking <input type="checkbox" id="set-autosend" /></label>
+              <label>Cloud STT fallback (Deepgram, audio leaves device) <input type="checkbox" id="set-cloud-stt" /></label>
+              <label>Subtitle follows cursor <input type="checkbox" id="set-follow" /></label>
+              <label>Visible to screen capture <input type="checkbox" id="set-capture-visible" /></label>
+              <div class="menu-actions">
+                <button type="button" id="btn-canvas">History</button>
+                <button type="button" id="btn-frame">Frame</button>
+                <button type="button" id="btn-frame-top">Frame region</button>
+                <button type="button" id="btn-affirm">Affirm</button>
+                <button type="button" id="btn-space">Space</button>
+                <button type="button" id="btn-demo-debug">Debug shots</button>
+                <button type="button" id="btn-hide">Hide</button>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="ask-pill ghost" id="btn-hide-top" title="Show / Hide">
+            <span>Show/Hide</span>
+            <kbd>Ctrl</kbd><kbd>`</kbd>
+          </button>
+        </div>
+      </header>
+
+      <div class="subtitle-live glass chrome" id="subtitle-bar" hidden aria-hidden="true">
+        <span class="subtitle-grip drag-handle" id="subtitle-drag" title="Drag the LIVE line"></span>
+        <span class="subtitle-label">Live</span>
+        <span id="subtitle-text">Listening…</span>
+        <span class="autosend" id="autosend">
+          <span class="autosend-count" id="autosend-count">4</span>
+          <button type="button" id="btn-autosend-cancel" title="Don't send that">Cancel</button>
+        </span>
+        <button type="button" id="btn-add-sub">Add</button>
+      </div>
+
+      <div class="status-pill glass chrome" id="status-pill" hidden>
+        <span class="status-ico" aria-hidden="true">✦</span>
+        <div class="status-copy">
+          <div class="status-title" id="status-title">Working…</div>
+          <div class="status-sub" id="status-sub">Thinking…</div>
+        </div>
+        <div class="status-actions">
+          <button type="button" class="act-button" id="btn-status-open">Open</button>
+          <button type="button" class="text-btn" id="btn-status-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <aside class="insight-panel glass chrome" id="insight-panel">
+        <header class="panel-head drag-handle" id="insight-drag">
+          <span class="spark">✦</span>
+          <div class="insight-tabs" role="tablist">
+            <button type="button" class="insight-tab active" data-insight-view="ai" role="tab" aria-selected="true">AI insights</button>
+            <button type="button" class="insight-tab" data-insight-view="transcripts" role="tab" aria-selected="false">Transcripts</button>
+          </div>
+        </header>
+        <div id="insight-ai-view">
+          <div class="section-label" id="insight-topic">Discussion</div>
+          <p class="insight-summary" id="insight-summary">Listening for speech or a typed request.</p>
+          <div class="section-label">Suggest</div>
+          <div class="quick-actions" id="insight-actions">
+            <button type="button" data-q="Summarize what I am looking at"><span class="q-ico">✦</span> Summarize screen</button>
+            <button type="button" data-q="What should I click next?"><span class="q-ico">›</span> What next?</button>
+            <button type="button" data-q="Suggest follow-up questions"><span class="q-ico">?</span> Suggest follow-ups</button>
+            <button type="button" data-confirm="Type this into Notes?"><span class="q-ico">N</span> Type in Notes?</button>
+          </div>
+        </div>
+        <div id="insight-transcript-view" hidden>
+          <div class="section-label">Live transcripts</div>
+          <div class="transcript-feed" id="transcript-feed" aria-live="polite"></div>
+        </div>
+      </aside>
+
+      <section class="chat-dock glass chrome" id="chat-dock" aria-label="AI response">
+        <header class="panel-head drag-handle" id="chat-drag">
+          <span>AI response</span>
+          <span class="answer-meta" id="answer-meta">Ready</span>
+          <button type="button" class="text-btn" id="btn-clear">Clear</button>
+          <button type="button" class="icon-btn tiny" id="btn-chat-close" title="Close chat" aria-label="Close">×</button>
+        </header>
+        <div class="chat-stream" id="chat-stream">
+          <div class="messages" id="messages">
+            <div class="msg assistant">Speak or type. Transcribe arms the mic automatically. Drag this panel anywhere.</div>
+          </div>
+          <div class="msg live" id="live-transcript" hidden>…</div>
+          <div class="answer-body" id="answer-body"></div>
+        </div>
+        <div class="clean-toast glass chrome" id="clean-toast" hidden>
+          <span id="clean-toast-text">Clean up the transcript?</span>
+          <button type="button" class="text-btn" id="btn-clean-no">Leave it</button>
+          <button type="button" class="act-button" id="btn-clean-yes">Clean it up</button>
+        </div>
+        <div class="composer">
+          <div class="command-bar-tools" id="command-bar-tools">
+            <button type="button" class="text-btn" data-cmd="attach" title="Attach files">Attach</button>
+            <button type="button" class="text-btn" data-cmd="apps" title="Active apps">Apps</button>
+            <button type="button" class="text-btn" data-cmd="shots" title="Screenshots">Shots</button>
+            <button type="button" class="text-btn" data-cmd="clipboard" title="Clipboard history">Clipboard</button>
+            <input type="file" id="file-attach" hidden multiple />
+            <div class="file-chips" id="file-chips"></div>
+          </div>
+          <textarea id="ask-input" rows="2" placeholder="Ask anything… recognize an app name, then confirm" aria-label="Ask AI"></textarea>
+          <div class="composer-actions">
+            <button type="button" class="text-btn" id="btn-hold-hint" title="Hold Clicky or Ctrl+Shift+Space">Hold to talk</button>
+            <button type="button" class="act-button" id="btn-act">Do it</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="onboard glass chrome" id="onboard" hidden>
+        <p class="onboard-title">Start sessions from <em>anywhere</em></p>
+        <p class="onboard-sub">Hold Clicky (or Ctrl+Shift+Space) to activate — Windows map of Perplexity fn/⌘.</p>
+        <button type="button" class="act-button" id="btn-onboard-done">Got it</button>
+      </div>
+
+      <button type="button" class="shot-btn chrome" id="btn-shot" title="Save a screenshot to the demo folder" aria-label="Screenshot">Shot</button>
+
+      <section class="roulette glass chrome" id="roulette-panel" aria-label="Retrieve Roulette">
+        <div class="dial-wrap">
+          <div class="roulette-dial" id="roulette-wheel">
+            <button type="button" class="dial-slice slice active" data-bucket="chat" title="Chat">
+              <span class="dial-ico">C</span><span class="dial-label">Chat</span>
+            </button>
+            <button type="button" class="dial-slice slice" data-bucket="notes" title="Notes">
+              <span class="dial-ico">N</span><span class="dial-label">Notes</span>
+            </button>
+            <button type="button" class="dial-slice slice" data-bucket="assets" title="Assets">
+              <span class="dial-ico">A</span><span class="dial-label">Assets</span>
+            </button>
+            <button type="button" class="dial-slice slice" data-bucket="memory" title="Memory">
+              <span class="dial-ico">M</span><span class="dial-label">Memory</span>
+            </button>
+            <button type="button" class="dial-slice slice" data-bucket="source" title="Original file source">
+              <span class="dial-ico">S</span><span class="dial-label">Source</span>
+            </button>
+            <button type="button" class="dial-slice slice" data-bucket="fleet" title="Dual Brain / Fleet">
+              <span class="dial-ico">F</span><span class="dial-label">Fleet</span>
+            </button>
+            <div class="dial-core" id="dial-core" aria-hidden="true">
+              <span class="dial-glow"></span>
+              <span class="dial-arrow up"></span>
+              <span class="dial-arrow right"></span>
+              <span class="dial-arrow down"></span>
+              <span class="dial-arrow left"></span>
+            </div>
+          </div>
+        </div>
+        <div class="roulette-list">
+          <div class="section-label" id="roulette-label">Chat</div>
+          <div id="roulette-items" class="roulette-items"></div>
+          <pre id="roulette-preview" class="roulette-preview">Spin the roulette — Chat, Notes, Assets, Memory, Source, Fleet.</pre>
+          <div class="retrieve-actions">
+            <button type="button" id="btn-retrieve-open" title="Open in Explorer / Cortex">Open</button>
+            <button type="button" id="btn-retrieve-add">Add to chat</button>
+            <button type="button" id="btn-retrieve-act" class="act-button">Do with Cortex</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="nod-toast glass chrome" id="nod-toast">
+        <span>Nod / say yes / Ctrl+Y</span>
+        <button type="button" id="btn-nod-go">Go</button>
+      </div>
+
+      <!-- P5-ENQUIRE: a real <form>, so Enter submits, <label for> binds to the
+           input, and focus order is the browser's job rather than ours. Fields
+           are built at runtime from the missing vault keys. -->
+      <form class="enquire glass chrome" id="enquire-panel" hidden>
+        <header class="panel-head">
+          <span class="spark">✦</span>
+          <span>Netie needs a few details</span>
+        </header>
+        <p class="enquire-why">
+          I won't type placeholders into a form. Tell me these once — they stay on this device.
+        </p>
+        <div id="enquire-fields"></div>
+        <div class="enquire-actions">
+          <button type="submit" class="act-button" id="btn-enquire-save">Save &amp; continue</button>
+          <button type="button" class="text-btn" id="btn-enquire-cancel">Not now</button>
+        </div>
+      </form>
+
+      <!-- P3-POINT-OVERLAY: a crosshair and a label, nothing that could grow
+           back into a floating companion. Never .chrome — it must not eat clicks. -->
+      <div class="point-layer" id="point-layer" aria-hidden="true"></div>
+
+      <div class="bg-status chrome" id="bg-status">
+        <span id="bg-status-text"></span>
+        <button type="button" class="text-btn" id="btn-bg-cancel">Stop</button>
+      </div>
+    </div>
+    <script src="netie-sound.js"></script>
+    <script src="netie/hud-live.js"></script>
+    <script src="netie/attachments.js"></script>
+    <script src="hud-audio.js"></script>
+    <script src="hud.js"></script>
+  </body>
+</html>

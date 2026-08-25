@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+"""
+Netie Clicks STT sidecar — faster-whisper, Malaysian rojak ready (zh/en/ms mix).
+
+Endpoints (OpenAI-shaped + health):
+  GET  /health
+  GET  /v1/models
+  POST /v1/audio/transcriptions   multipart file=audio.wav
+
+Env:
+  NETIE_STT_MODEL   default small (multilingual — NOT *.en)
+  NETIE_STT_DEVICE  cpu|cuda  default cpu
+  NETIE_STT_PORT    default 8766
+"""
+
+from __future__ import annotations
+
+import os
+import tempfile
+import threading
+from pathlib import Path
+
+from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.responses import JSONResponse
+import uvicorn
+
+MODEL_NAME = os.environ.get("NETIE_STT_MODEL", "small")
+DEVICE = os.environ.get("NETIE_STT_DEVICE", "cpu")
+COMPUTE = os.environ.get("NETIE_STT_COMPUTE", "int8" if DEVICE == "cpu" else "float16")
+PORT = int(os.environ.get("NETIE_STT_PORT", "8766"))
+# MEASURED on this box (small/int8, Windows TTS clips): auto-detect costs
+# 5.6-10.0s per utterance, a pinned language 3.1-3.4s — roughly 2-3x. Auto-detect
+# also runs PER SEGMENT, and on short or noisy real-mic audio it can land on the
+# wrong language and then decode English as Malay-sounding text ("how are you
+# doing" -> "apa khabar"). Pin the language when you know it; leave empty for
+# true rojak code-switching and accept the cost.
+DEFAULT_LANG = (os.environ.get("NETIE_STT_LANG", "") or "").strip()
+# MEASURED on Ryzen 780M (8c/16t), small int8, 3.6s clip — more threads is
+# catastrophically worse, not better, because CTranslate2 oversubscribes:
+#   threads=4  -> 10.9s (3.1x realtime)   <- optimum
+#   threads=8  -> 21.6s (6.1x realtime)
+#   threads=16 -> 261.9s (73x realtime)
+# Beam size is nearly free at 4 threads (beam1 10.90s vs beam5 11.14s), so we
+# keep beam=5 for accuracy. Re-benchmark before changing either on new hardware.
+CPU_THREADS = int(os.environ.get("NETIE_STT_THREADS", "4"))
+BEAM = int(os.environ.get("NETIE_STT_BEAM", "5"))
+
+app = FastAPI(title="Netie STT", version="1.0")
+_model = None
+# Startup warmup and the first request can race; without this both would
+# construct a WhisperModel and hold two copies of the weights in RAM.
+_model_lock = threading.Lock()
+
+
+def get_model():
+    global _model
+    if _model is None:
+        with _model_lock:
+            if _model is None:
+                from faster_whisper import WhisperModel
+
+                # Default cpu_threads=4 leaves most of a 16-thread laptop idle;
+                # this is the single biggest lever on per-utterance latency.
+                _model = WhisperModel(
+                    MODEL_NAME,
+                    device=DEVICE,
+                    compute_type=COMPUTE,
+                    cpu_threads=CPU_THREADS,
+                )
+    return _model
+
+
+@app.on_event("startup")
+def _preload() -> None:
+    """
+    Load weights before serving. Otherwise the first transcription pays the
+    download+load cost inside the request, which blows past the client timeout
+    and makes Netie demote the sidecar on its very first use.
+    """
+    import threading
+
+    def _load():
+        try:
+            get_model()
+            print(f"[netie-stt] model ready: {MODEL_NAME} ({DEVICE}/{COMPUTE})", flush=True)
+        except Exception as exc:  # noqa: BLE001 - report, don't crash the server
+            print(f"[netie-stt] model load FAILED: {exc}", flush=True)
+
+    threading.Thread(target=_load, daemon=True).start()
+
+
+@app.get("/health")
+def health():
+    return {
+        "ok": True,
+        "product": "netie-clicks-stt",
+        "model": MODEL_NAME,
+        "device": DEVICE,
+        # Netie's probe uses this to avoid selecting an engine that cannot
+        # answer yet (weights still downloading on a cold first run).
+        "model_loaded": _model is not None,
+        "rojak": True,
+        "languages": ["zh", "en", "ms", "auto"],
+    }
+
+
+@app.get("/v1/models")
+def models():
+    return {"data": [{"id": MODEL_NAME, "object": "model"}]}
+
+
+@app.post("/v1/audio/transcriptions")
+def transcribe(
+    file: UploadFile = File(...),
+    model: str = Form(None),
+    language: str = Form(None),
+):
+    """
+    Sync handler so Whisper load/inference runs in uvicorn's threadpool
+    and does not freeze /health on the event loop.
+    Multilingual + code-switch friendly:
+      language=None → auto
+      multilingual=True → re-detect across segments (zh/en/ms rojak)
+      condition_on_previous_text=False → don't lock onto wrong language
+    """
+    raw = file.file.read()
+    suffix = Path(file.filename or "audio.wav").suffix or ".wav"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(raw)
+        path = tmp.name
+
+    try:
+        m = get_model()
+        lang = (language or "").strip() or DEFAULT_LANG or None
+        if lang in ("auto", "mixed", "rojak"):
+            lang = None  # explicit request for full code-switch detection
+        # task is pinned to "transcribe": Whisper's "translate" task only ever
+        # targets English, so it can never be the cause of English-in/Malay-out,
+        # but pinning removes the doubt entirely.
+        segments, info = m.transcribe(
+            path,
+            language=lang,
+            multilingual=True,
+            condition_on_previous_text=False,
+            vad_filter=True,
+            beam_size=BEAM,
+            task="transcribe",
+        )
+        parts = []
+        for seg in segments:
+            t = (seg.text or "").strip()
+            if t:
+                parts.append(t)
+        text = " ".join(parts).strip()
+        return {
+            "text": text,
+            "language": getattr(info, "language", None),
+            "language_probability": getattr(info, "language_probability", None),
+            "model": MODEL_NAME,
+        }
+    except Exception as e:
+        return JSONResponse({"error": str(e), "text": ""}, status_code=500)
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+def _warmup():
+    try:
+        get_model()
+        print("[netie-stt] model warm")
+    except Exception as e:
+        print("[netie-stt] warmup failed:", e)
+
+
+if __name__ == "__main__":
+    import threading
+
+    print(f"[netie-stt] model={MODEL_NAME} device={DEVICE} port={PORT}")
+    print("[netie-stt] first load may download weights — /health stays responsive")
+    threading.Thread(target=_warmup, daemon=True).start()
+    uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="info")

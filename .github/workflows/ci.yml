@@ -1,0 +1,119 @@
+name: CI
+
+# Ticket #12: the EPIC-P01 routing invariant only ran if a contributor happened to
+# run `npm test` locally. KB R-0001 says a gate must assert at the layer the
+# customer receives the artifact - for a repo, that is a push to `main`.
+on:
+  push:
+    # Feature PRs land on netie-ecosystem-contracts until PR #1 merges. A PR
+    # that never runs this workflow is a skipped test (R-0002).
+    branches: [main, netie-ecosystem-contracts]
+  pull_request:
+    branches: [main, netie-ecosystem-contracts]
+  # Feature branches carry the same invariants; running them here is what stops a
+  # branch from arriving at `main` already broken.
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: invariants + suites (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # This is Windows-authored code, and `safe-path.js` takes a different
+        # branch per platform (case-insensitive comparison, 8.3 short names). One
+        # runner would leave half of that containment logic unexercised.
+        os: [windows-latest, ubuntu-latest]
+
+    env:
+      # The strict acceptance gates, set here rather than via the `set VAR=` in
+      # package.json's `test:acceptance:strict` script - that syntax is cmd-only
+      # and would silently do nothing on Linux, which is exactly the shape of
+      # "green because it skipped" that KB R-0002 forbids.
+      NETIE_ACCEPTANCE_STRICT: "1"
+      NETIE_ACCEPTANCE_HUD: "1"
+      NETIE_ACCEPTANCE_CU: "1"
+      NETIE_ACCEPTANCE_IMPORT: "1"
+      NETIE_ACCEPTANCE_CUSTODY: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # Electron's postinstall downloads a ~100MB binary that only the smoke lane
+      # needs, and the smoke lane runs in its own job below. Skip it so this job
+      # is not paying for, or flaking on, a download it never uses.
+      - name: Install dependencies
+        run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+      # First and separately, so a governance failure is legible in the job list
+      # rather than buried in the middle of 200 unit assertions.
+      - name: Invariant pack
+        run: |
+          node test/invariants/claude-contract.test.js
+          node test/invariants/governed-docs.test.js
+          node test/invariants/ipc-bridge.test.js
+          node test/invariants/word-sink.test.js
+
+      - name: Unit suite
+        run: npm test
+
+      - name: Acceptance suite (strict via env)
+        run: npm run test:acceptance
+
+      - name: Golden end-to-end
+        run: npm run test:e2e
+
+      - name: Computer-use contracts
+        run: npm run test:contracts
+
+      - name: Stress
+        run: npm run test:stress
+
+      # KB R-0002: a skipped test is a failing test, so what CI does NOT cover is
+      # stated out loud instead of being an absence nobody notices. This step
+      # cannot silently rot into a pass - it names the gap on every run.
+      - name: Coverage this job does not provide
+        run: |
+          echo "NOT RUN IN THIS JOB: npm run test:smoke - it boots real Electron and"
+          echo "  runs in the dedicated 'smoke' job on windows-latest, where the customer"
+          echo "  artifact actually ships. Smoke is NOT run on Linux: there is no shipped"
+          echo "  Linux build, and the harness teardown is taskkill (Windows-only)."
+
+  # #22's rendered-HUD assertions and the live IPC bridge only exist in the smoke
+  # lane. Until this job existed, CI declared that lane NOT RUN, which meant a HUD
+  # regression could reach main green (STATUS.md carried this as a known hole).
+  # KB R-0001: the gate now asserts on the booted app - the artifact the customer
+  # receives - on the OS the customer receives it on.
+  smoke:
+    name: smoke - real Electron boot (windows-latest)
+    runs-on: windows-latest
+    # A hung Electron teardown must not burn the runner for the default 6 hours.
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # This job is the one place the Electron binary is genuinely needed.
+      # Playwright's bundled browsers still are not - _electron.launch drives the
+      # app's own binary, not Chromium.
+      - name: Install dependencies (with the Electron binary)
+        run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+      - name: Smoke - HUD boots, renders #22 chrome, IPC bridge answers live
+        run: npm run test:smoke
