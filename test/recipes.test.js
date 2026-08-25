@@ -137,6 +137,14 @@ test("explicit prose uses word_docx_write, not the clipboard stub path", () => {
     "put hello in word.",
     "create hello in Word!",
     "make hello in Word please",
+    "put hello in word, please",
+    'put "Hello Pointer" in word, please',
+    "write hello in Word, please",
+    "make hello in Word, please",
+    "create hello in Word, please",
+    "add hello to Word",
+    "append hello to Word",
+    "insert hello in Word",
     'write "Hello Pointer" into word.',
     "write in Word: hello",
     "write a word document that says Hello.",
@@ -151,6 +159,9 @@ test("explicit prose uses word_docx_write, not the clipboard stub path", () => {
   assert.strictEqual(matchRecipe("write in Word: hello").actions[0].value, "hello");
   assert.strictEqual(matchRecipe("write a word document that says Hello.").actions[0].value, "Hello");
   assert.strictEqual(matchRecipe("write this in Word.").id, "terminal_to_word");
+  assert.strictEqual(matchRecipe("put hello in word, please").actions[0].value, "hello");
+  assert.strictEqual(matchRecipe("add hello to Word").actions[0].value, "hello");
+  assert.strictEqual(matchRecipe("append hello to Word").actions[0].value, "hello");
 });
 
 test("terminal to word UI fallback is explicit", () => {

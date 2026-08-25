@@ -38,6 +38,12 @@ test("Word coworker phrases are act, not ask or code", () => {
   assert.strictEqual(classifyIntent("copy this into word"), "act");
   assert.strictEqual(classifyIntent("write hello in Word."), "act");
   assert.strictEqual(classifyIntent("add this to Word"), "act");
+  assert.strictEqual(classifyIntent("please word: hello"), "act");
+  assert.strictEqual(classifyIntent("can you word: hello"), "act");
+  assert.strictEqual(classifyIntent("write hello in Word, please"), "act");
+  assert.strictEqual(classifyIntent("how do I write this in Word?"), "ask");
+  assert.strictEqual(classifyIntent("why write this in Word?"), "ask");
+  assert.strictEqual(classifyIntent("can you explain how to write this in Word?"), "ask");
   assert.strictEqual(classifyIntent("write a python script to sort a list"), "code");
 });
 

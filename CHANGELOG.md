@@ -2,6 +2,17 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-25 - Merge PR #1; finish spoken-strip for comma+please Word writes
+
+PR #1 (`netie-ecosystem-contracts` -> `main`) merged with CI green
+(c9801ae). Remaining live miss after ee59600: trailing ", please"
+left a comma so `writeInWord` failed `$` and "put hello in word,
+please" took the clipboard stub. Strip optional comma before please.
+Go now spoken-strips before `word:`, so "please word: hello" is act.
+How/why Word questions stay ask instead of running the clipboard SOP.
+add/append/insert prose uses `word_docx_write` (intent already claimed
+those verbs). Closed #3 #8-#25 stay closed. Not harvest. Not #26.
+
 ## 2026-08-23 - Punctuated write-in-Word must not take the clipboard stub
 
 `matchRecipe` anchored Word-write `$` on the raw input. Tests used
