@@ -34,10 +34,32 @@ const CODE_CUES = [
  * coworker verbs and the customer got a chat reply (or, on Act, an LLM
  * click/type plan).
  */
+function spokenCoworkerForm(text) {
+  return String(text || "")
+    .replace(/[.!?]+$/g, "")
+    .replace(/\s*,?\s*please$/i, "")
+    .replace(/[.!?,]+$/g, "")
+    .replace(/^(?:(?:please|can you|could you)\s+)+/i, "")
+    .trim()
+    .toLowerCase();
+}
+
+function isHowWhyQuestion(t) {
+  return (
+    /^(?:how|why|who|when|where|which|what|explain|describe|tell me|help me understand)\b/.test(t) ||
+    /\bhow (?:do i|to)\b/.test(t) ||
+    /\bcan you explain\b/.test(t)
+  );
+}
+
 function isWordCoworkerIntent(t) {
-  if (/^word\s*:/.test(t)) return true;
-  if (!/\b(?:microsoft\s+)?word\b/.test(t)) return false;
-  return /\b(?:write|put|create|make|copy|paste|append|add|insert)\b/.test(t);
+  const s = spokenCoworkerForm(t);
+  // "how do I write this in Word?" is a question. Force-act would run the
+  // clipboard SOP. "can you write hello in Word" is still an imperative.
+  if (isHowWhyQuestion(s)) return false;
+  if (/^word\s*:/.test(s)) return true;
+  if (!/\b(?:microsoft\s+)?word\b/.test(s)) return false;
+  return /\b(?:write|put|create|make|copy|paste|append|add|insert)\b/.test(s);
 }
 
 /**

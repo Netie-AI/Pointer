@@ -5,8 +5,8 @@ name: CI
 # customer receives the artifact - for a repo, that is a push to `main`.
 on:
   push:
-    # Feature PRs land on netie-ecosystem-contracts until PR #1 merges. A PR
-    # that never runs this workflow is a skipped test (R-0002).
+    # PR #1 merged 2026-08-25. Feature PRs target main. The contracts
+    # branch name stays so leftover PRs still run CI (R-0002).
     branches: [main, netie-ecosystem-contracts]
   pull_request:
     branches: [main, netie-ecosystem-contracts]

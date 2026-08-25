@@ -2,6 +2,7 @@
 
 | Date | Topic | Keywords | Main idea | Path |
 |------|-------|----------|-----------|------|
+| 2026-08-25 | word-comma-please | spoken-strip, comma-please, word_docx_write, classifyIntent | ee59600 missed trailing comma before please; Go skipped spoken-strip on word:; how/why Word questions stay ask | `2026-08-25_word-comma-please.md` |
 | 2026-08-22 | merge-gate-unquoted-word | merge-gate, word_write_text, lastWordDocx | #30+#31 conflict STATUS/CHANGELOG; unquoted write-in-Word missed the write verb; pin lastWordDocx assignment | `2026-08-22_merge-gate-unquoted-word.md` |
 | 2026-08-22 | recall-retention-bound | recall, retentionMs, purgeExpired, DR-0003 | Eviction persisted aged-out frames; drop + sweep recall-*.enc.json to the 60s ring. New branch, not #26 | `2026-08-22_recall-retention-bound.md` |
 | 2026-08-22 | word-coworker-fixture-sink | recovered selection, NETIE_WORD_OUT_DIR, R-0001 | clipboard-integrity wrote the retry fixture into Documents\\NetiePointer; uncontained test writes must refuse | `2026-08-22_word-coworker-fixture-sink.md` |

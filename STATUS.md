@@ -4,22 +4,20 @@
 
 ## Now
 
-0. **Punctuated write-in-Word is a recipe, not the clipboard stub.**
-   "write hello in Word." / "put hello in word please" used to miss
-   `word_docx_write` (tests had no trailing punct). hud:act skills/LLM
-   now return the failed step; Plan finished does not overwrite a
-   coworker refusal. Closed #3 #10 #11 #14 #17 stay closed.
-1. **PR #30/#31/#32/#33 are on contracts.** Document ready re-raises
-   after `done`; recall 60s expiry; unquoted write-in-Word;
-   Go classifies Word coworker as act.
-2. **Tickets #8-#25 and epics P01-P03/P05/P06 stay closed.** EPIC-P04
-   and EPIC-P07 remain open.
+0. **PR #1 is on main.** `netie-ecosystem-contracts` merged 2026-08-25
+   (`c9801ae`). Feature work targets `main`. Closed #3 #8-#25 and PRs
+   #27 #30-#34 stay closed. Do not attach work to PR #26.
+1. **Comma+please write-in-Word is the same spoken-strip class as
+   ee59600.** "put hello in word, please" took the clipboard stub;
+   "write hello in Word, please" missed the recipe. Go treats
+   "please word:" as act. How/why Word questions stay ask.
+   add/append/insert prose uses `word_docx_write`.
+2. **EPIC-P04 and EPIC-P07 remain open.** P01-P03/P05/P06 stay closed.
 
 ## Next
 
 - Recall HUD disclosure / off-by-default and PDF/image extraction are
   `prd-agent` questions.
-- Do not merge PR #1. Do not attach work to PR #26.
 - Measure STT: `node scripts/stt_baseline.js`.
 
 ## Later

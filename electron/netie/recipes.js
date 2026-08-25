@@ -368,16 +368,18 @@ function matchRecipe(text) {
   // Typed/STT coworker requests end the sentence. Word-write recipes anchored
   // `$` on the raw input, so "write hello in Word." missed word_docx_write
   // and "put hello in word." fell through to the clipboard stub. The suite
-  // used the unpunctuated form and stayed green (R-0001).
+  // used the unpunctuated form and stayed green (R-0001). A later live miss:
+  // "put hello in word, please" left the comma, so writeInWord failed `$`
+  // and the clipboard regex still matched.
   const spoken = input
     .replace(/[.!?]+$/g, "")
-    .replace(/\s+please$/i, "")
-    .replace(/[.!?]+$/g, "")
+    .replace(/\s*,?\s*please$/i, "")
+    .replace(/[.!?,]+$/g, "")
     .replace(/^(?:(?:please|can you|could you)\s+)+/i, "")
     .trim();
 
   const quotedWord = spoken.match(
-    /^(?:please\s+)?(?:write|put|create|make)\s+["']([^"']+)["']\s+(?:into|to|in)\s+(?:a\s+)?(?:microsoft\s+)?word(?:\s+doc(?:ument)?)?$/i
+    /^(?:please\s+)?(?:write|put|create|make|add|append|insert)\s+["']([^"']+)["']\s+(?:into|to|in)\s+(?:a\s+)?(?:microsoft\s+)?word(?:\s+doc(?:ument)?)?$/i
   );
   if (quotedWord) {
     const r = wordWriteTextRecipe(quotedWord[1]);
@@ -408,7 +410,7 @@ function matchRecipe(text) {
     );
   }
   const writeInWord = spoken.match(
-    /^(?:please\s+)?(?:write|create|make|put)\s+(.+?)\s+(?:into|to|in)\s+(?:a\s+)?(?:microsoft\s+)?word(?:\s+doc(?:ument)?)?$/i
+    /^(?:please\s+)?(?:write|create|make|put|add|append|insert)\s+(.+?)\s+(?:into|to|in)\s+(?:a\s+)?(?:microsoft\s+)?word(?:\s+doc(?:ument)?)?$/i
   );
   if (writeInWord) {
     const payload = String(writeInWord[1] || "").trim().replace(/^["']|["']$/g, "");
