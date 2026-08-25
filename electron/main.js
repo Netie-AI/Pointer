@@ -40,6 +40,9 @@ const { createNodGate, isAffirmation } = require("./netie/affirm");
 const { checkMarkdownPython } = require("./netie/coderun");
 const { matchRecipe, expandRecipe, RECIPES } = require("./netie/recipes");
 const { expandSkillsToActions, skillPreamble, describeExpansion } = require("./netie/skills-exec");
+const { createCoordinator } = require("./netie/coordinator");
+const { createMcpAbi } = require("./netie/mcp-abi");
+const { searchThenCraft, craftHint } = require("./netie/skill-search");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
 const { shouldAcceptFrame, detectCaptureCommand } = require("./netie/capture-gate");
@@ -156,6 +159,16 @@ const HOTKEY = process.env.NETIE_CLICK_HOTKEY || "Control+`";
 const TEMP_DIR = path.join(os.tmpdir(), "netie-clicks");
 const hot = new HotMemory();
 const eco = new NetieEcosystem({ deviceId: `netie-clicks:${hot.deviceId}` });
+const liveMcp = createMcpAbi({
+  search: (goal, params) =>
+    searchThenCraft(goal, {
+      findSkills: (g, o) => eco.findSkills(g, o),
+      recipes: RECIPES,
+      limit: params && params.limit,
+    }),
+  craft: craftHint,
+});
+const liveCoordinator = createCoordinator({ mcp: liveMcp });
 const brain = new PersonalBrain({
   deviceId: `netie-clicks:${hot.deviceId}`,
   cortexUrl: process.env.NETIE_CORTEX_URL || `http://${API_HOST}:${CORTEX_PORT}`,
@@ -2052,6 +2065,15 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
     (payload && payload.dataUrl) || (lastCapture && lastCapture.dataUrl) || null;
   if (!dataUrl) dataUrl = await ensureCaptureForPlan();
   const intent = classifyIntent(message);
+  let claimedAct = false;
+  if (intent === "act") {
+    const lane = liveCoordinator.claim("pointer-act", { owner: "pointer-hud", goal: message });
+    if (!lane.ok) {
+      return { ok: false, mode: "act", intent, conflict: true, reason: lane.reason, actions: [] };
+    }
+    claimedAct = true;
+  }
+  try {
 
   // Cheap SOPs still need the security gate (A-0007). Demo-without-LLM is not
   // permission to skip Cortex when the path still clicks the screen.
@@ -2255,6 +2277,9 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
   } catch (err) {
     setPresence(PresenceEvents.FAIL);
     return { ok: false, mode: "act", reason: String(err.message || err), actions: [] };
+  }
+  } finally {
+    if (claimedAct) liveCoordinator.release("pointer-act", { owner: "pointer-hud" });
   }
 });
 
@@ -2624,6 +2649,12 @@ ipcMain.handle("hud:act", async (_e, payload) => {
     });
     return { ok: false, reason: `mode:${appMode} does not act`, mode: appMode };
   }
+  const actLane = liveCoordinator.claim("pointer-act", { owner: "pointer-hud", goal: rawMessage });
+  if (!actLane.ok) {
+    sendHud({ type: "answer", meta: "Lane busy", text: actLane.reason });
+    return { ok: false, conflict: true, reason: actLane.reason, held: actLane.held };
+  }
+  try {
   let dataUrl = (lastCapture && lastCapture.dataUrl) || null;
   if (!dataUrl) dataUrl = await ensureCaptureForPlan();
   showStage();
@@ -2690,9 +2721,17 @@ ipcMain.handle("hud:act", async (_e, payload) => {
   // prefer. Soft-fail throughout: discovery being down never blocks Act.
   let preamble = "";
   try {
-    const found = await eco.findSkills(message);
-    const hits = (found && found.ok && found.hits) || [];
+    const found = await searchThenCraft(message, {
+      findSkills: (g, o) => eco.findSkills(g, o),
+      recipes: RECIPES,
+    });
+    const hits = (found && found.hits) || [];
+    if (found && found.draft) {
+      liveCoordinator.noteDraft(found.draft);
+      preamble = found.draft.preamble;
+    }
     if (hits.length) {
+      liveCoordinator.rememberSearch(hits);
       const expanded = expandSkillsToActions(hits, {
         instruction: message,
         profile: settings.vaultProfile(),
@@ -2865,6 +2904,9 @@ ipcMain.handle("hud:act", async (_e, payload) => {
   }
   sendHud({ type: "answer", meta: "Blocked", text: plan.reason || "Blocked" });
   return { ok: false, reason: plan.reason || "Blocked", error: plan.reason };
+  } finally {
+    liveCoordinator.release("pointer-act", { owner: "pointer-hud" });
+  }
 });
 
 ipcMain.handle("hud:clickyHold", async (_e, payload) => {
@@ -3673,12 +3715,24 @@ app.whenReady().then(() => {
   createHud();
   setupMediaCapture();
   registerHotkey();
+  if (process.env.NETIE_COORDINATOR !== "0" && process.env.NETIE_SMOKE !== "1") {
+    liveCoordinator
+      .listen({ host: "127.0.0.1", port: Number(process.env.NETIE_COORDINATOR_PORT) || 18010 })
+      .then((r) => {
+        const addr = r && r.address;
+        console.log(
+          `Coordinator on http://127.0.0.1:${addr && addr.port ? addr.port : 18010} (/ /today /lanes /skills)`
+        );
+      })
+      .catch((err) => console.error("coordinator listen:", err.message || err));
+  }
   console.log(
     "Netie Pointer ready - tray-first. Ctrl+` toggles session. Ctrl+Shift+Space arms Clicky (real OS pointer)."
   );
 });
 
 app.on("will-quit", () => {
+  liveCoordinator.close().catch(() => {});
   globalShortcut.unregisterAll();
   stopTicks();
   stopRecallDaemon();

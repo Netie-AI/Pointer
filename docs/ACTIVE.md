@@ -26,6 +26,8 @@ the issue wins.
 | Electron main / Act loop | `electron/main.js` |
 | HUD | `electron/hud.html`, `hud.js`, `hud.css` |
 | Recipes / coworker SOPs | `electron/netie/recipes.js`, `coworker.js` |
+| Skill search / craft hints | `electron/netie/skill-search.js`, `skills-exec.js` |
+| Coordinator + first-party MCP ABI | `electron/netie/coordinator.js`, `mcp-abi.js`; pages in `host/` |
 | Word safe API | `electron/netie/word-coworker.js` |
 | Driver (SendInput) | `electron/netie/driver.js` |
 | Safety / plan-guard | `electron/netie/safety.js`, `plan-guard.js` |
