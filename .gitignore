@@ -9,4 +9,5 @@ demo-shots/
 .DS_Store
 .env
 .dev.vars
+.wrangler/
 %TEMP%/

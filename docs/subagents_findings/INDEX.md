@@ -2,6 +2,7 @@
 
 | Date | Topic | Keywords | Main idea | Path |
 |------|-------|----------|-----------|------|
+| 2026-08-26 | host-netie-worker | host.netie.ai, Worker, localFirst, MCP loopback, DR-0004 | Public Worker serves the same pages; /mcp and live lanes stay on 127.0.0.1; P-06 still parked | `2026-08-26_host-netie-worker.md` |
 | 2026-08-25 | generative-coordinator | coordinator, MCP, skill-search, host.netie.ai, DR-0004 | Search then craft a hint; first-party MCP ABI; loopback coordinator; compute box is P-06 | `2026-08-25_generative-coordinator.md` |
 | 2026-08-25 | word-comma-please | spoken-strip, comma-please, word_docx_write, classifyIntent | ee59600 missed trailing comma before please; Go skipped spoken-strip on word:; how/why Word questions stay ask | `2026-08-25_word-comma-please.md` |
 | 2026-08-22 | merge-gate-unquoted-word | merge-gate, word_write_text, lastWordDocx | #30+#31 conflict STATUS/CHANGELOG; unquoted write-in-Word missed the write verb; pin lastWordDocx assignment | `2026-08-22_merge-gate-unquoted-word.md` |

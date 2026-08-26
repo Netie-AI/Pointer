@@ -4,20 +4,15 @@
  *
  * Cursor Cloud, Cortex, and Pointer Act each take a named lane. A second
  * owner is refused so two agents do not click the same desktop. Pages are
- * short paths for host.netie.ai (and 127.0.0.1:18010 until that exists).
+ * short paths for host.netie.ai (loopback now; Worker is the public shell).
  */
 
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { PAGES, pageFor, fileFor } = require("./host-serve");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
-const PAGES = Object.freeze({
-  "/": "home",
-  "/today": "today",
-  "/lanes": "lanes",
-  "/skills": "skills",
-});
 
 const HOST_DIR = path.resolve(__dirname, "..", "..", "host");
 
@@ -49,12 +44,6 @@ function createCoordinator(opts = {}) {
   function note(kind, detail) {
     today.push({ t: nowMs(clock), kind, detail: String(detail || "").slice(0, 240) });
     if (today.length > 80) today.splice(0, today.length - 80);
-  }
-
-  function pageFor(pathname) {
-    const raw = String(pathname || "/").split("?")[0];
-    const clean = raw.replace(/\/+$/, "") || "/";
-    return PAGES[clean] || null;
   }
 
   function claim(lane, spec = {}) {
@@ -147,29 +136,24 @@ function createCoordinator(opts = {}) {
       });
       return;
     }
-    const page = pageFor(url.pathname);
-    if (req.method === "GET") {
-      const asset = path.basename(url.pathname);
-      if (asset === "style.css" || asset === "app.js") {
-        const abs = path.resolve(HOST_DIR, asset);
-        if (!abs.startsWith(path.resolve(HOST_DIR)) || !fs.existsSync(abs)) {
-          res.writeHead(404).end("missing asset");
-          return;
-        }
-        const type = asset.endsWith(".css") ? "text/css" : "text/javascript";
-        res.writeHead(200, { "content-type": `${type}; charset=utf-8` });
-        res.end(fs.readFileSync(abs));
+    const file = req.method === "GET" ? fileFor(url.pathname) : null;
+    if (file) {
+      const abs = path.resolve(HOST_DIR, file);
+      const root = path.resolve(HOST_DIR);
+      if (!abs.startsWith(root + path.sep) && abs !== root) {
+        res.writeHead(404).end("not a coordinator page");
         return;
       }
-    }
-    if (req.method === "GET" && page) {
-      const file = page === "home" ? "index.html" : `${page}.html`;
-      const abs = path.resolve(HOST_DIR, file);
-      if (!abs.startsWith(path.resolve(HOST_DIR)) || !fs.existsSync(abs)) {
+      if (!fs.existsSync(abs)) {
         res.writeHead(404).end("missing page");
         return;
       }
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      const type = file.endsWith(".css")
+        ? "text/css"
+        : file.endsWith(".js")
+          ? "text/javascript"
+          : "text/html";
+      res.writeHead(200, { "content-type": `${type}; charset=utf-8` });
       res.end(fs.readFileSync(abs));
       return;
     }

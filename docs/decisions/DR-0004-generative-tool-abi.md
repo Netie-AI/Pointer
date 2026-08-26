@@ -42,4 +42,5 @@ marketplace). Harvested skills still cannot fill `hit.actions` (DR-0003).
 
 ## Confirmation
 
-`test/coordinator.test.js` and `test/mcp-abi.test.js`.
+`test/coordinator.test.js`, `test/mcp-abi.test.js`, and `test/host-serve.test.js`
+(public Worker shell; `/mcp` stays 404 off loopback).
