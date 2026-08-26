@@ -9,16 +9,16 @@
 1. **Generative tools, not a skill dump (DR-0004).** Act searches
    Cortex find-skills + local recipes, then crafts a hint draft
    (empty actions). First-party MCP ABI on loopback. Live
-   coordinator at `127.0.0.1:18010` (`/` `/today` `/lanes` `/skills`)
-   for host.netie.ai later. Lanes stop Cursor Cloud vs Cortex vs
-   Pointer Act colliding. P-05 stays parked.
+   coordinator at `127.0.0.1:18010` (`/` `/today` `/lanes` `/skills`).
+   Public Worker `workers/netie-host.js` serves the same pages;
+   `/mcp` and live lanes stay on the laptop. P-05 stays parked.
 2. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next
 
 - Recall HUD disclosure / PDF-image extraction are `prd-agent`.
 - Measure STT: `node scripts/stt_baseline.js`.
-- Public host.netie.ai is the same pages behind a tunnel/Worker.
+- `wrangler deploy` of `netie-host` when DNS/account is ready.
 
 ## Later
 

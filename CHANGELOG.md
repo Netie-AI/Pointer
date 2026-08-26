@@ -2,6 +2,16 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-26 - Public host.netie.ai Worker shell (DR-0004)
+
+Same pages as the loopback coordinator (`/` `/today` `/lanes` `/skills`).
+The Cloudflare Worker (`workers/netie-host.js`, `wrangler.jsonc`) serves
+that shell only. Public `/api/state` is a local-first snapshot with empty
+lanes. Public `/mcp` is 404. Live claim/release and the first-party MCP
+ABI stay on `127.0.0.1:18010`. This is not the compute box (P-06 stays
+parked) and not a third-party MCP marketplace (P-05 stays parked). DNS
+deploy waits on the Cloudflare account.
+
 ## 2026-08-25 - Generative tool ABI and local coordinator (DR-0004)
 
 Stop enumerating a skill per scenario. Search Cortex
