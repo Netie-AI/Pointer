@@ -93,7 +93,7 @@ function test(name, fn) {
 
   await test("live suggest waits for enough new notes and debounce", () => {
     const { shouldRefreshSuggest } = require("../electron/netie/meeting");
-    const notes = "We will ship Friday after the standup and cover the launch checklist in full.";
+    const notes = "We will ship Friday after the standup and cover the launch checklist in full detail.";
     assert.ok(notes.length >= 80);
     assert.strictEqual(shouldRefreshSuggest({ notes, lastNotes: "", lastAt: 0, now: 1000 }).ok, true);
     assert.strictEqual(shouldRefreshSuggest({ notes: "short", lastAt: 0, now: 1000 }).ok, false);
