@@ -243,6 +243,54 @@ function canActOnline() {
 }
 
 /**
+ * Security coworker: a review brief, never a self-approved fix.
+ * Does not scan disk. Does not Act. The fixer is not the only checker.
+ */
+function securityAssist({ text } = {}) {
+  const t = String(text || "").trim();
+  if (!t) {
+    return { ok: false, act: false, desk: "security", reason: "security desk needs a target" };
+  }
+  const q = spoken(t);
+  const explicit = /\b(security review|vuln|cve|semgrep|dependency scan|incident triage|cloud posture)\b/.test(
+    q
+  );
+  const deliverable = [
+    "# Security review",
+    "",
+    "> act: never",
+    "> fixer is not the only checker",
+    "> no Cortex gate => no OS actions",
+    "",
+    "## Target",
+    "",
+    t.slice(0, 800),
+    "",
+    "## Hard floors (human only)",
+    "- secrets, payments, delete, send, sign",
+    "- UAC / registry / firewall / credential manager",
+    "",
+    "## Checks to run (do not auto-approve)",
+    "- Secrets in repo and env files",
+    "- Dependency advisories",
+    "- Authn/authz on new endpoints",
+    "- Fail-closed gates still present",
+    "",
+    "## Verdict",
+    "Draft only. A second reviewer must sign off. Pointer will not execute this.",
+  ].join("\n");
+  return {
+    ok: true,
+    act: false,
+    desk: "security",
+    kind: "review",
+    skipLlm: explicit,
+    title: "Security review",
+    deliverable,
+  };
+}
+
+/**
  * Listening modes finish with a recap, not a click. Empty transcript fails
  * closed. Agent/general sessions are not auto-recapped.
  */
@@ -261,6 +309,7 @@ module.exports = {
   getDesk,
   pickDesk,
   meetingAssist,
+  securityAssist,
   deskGrounding,
   canActOnline,
   finishListeningSession,

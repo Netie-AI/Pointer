@@ -113,7 +113,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
-const { pickDesk, meetingAssist, finishListeningSession } = require("./netie/coworker-desks");
+const { pickDesk, meetingAssist, finishListeningSession, securityAssist } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -264,19 +264,27 @@ function localMeetingReply(message, extraTranscript) {
   const desk = pickDesk(message, { mode: appMode });
   const wantsMeeting =
     desk.id === "meeting" || appMode === "meeting" || appMode === "transcribe";
-  if (!wantsMeeting) return null;
-  const assist = meetingAssist({
-    transcript: heardTranscript(extraTranscript),
-    question: message,
-  });
-  if (!assist.ok) {
-    const q = String(message || "").toLowerCase();
-    if (/\b(recap|what should i say|assist|next steps?|action item)\b/.test(q)) return assist;
-    return null;
+  if (wantsMeeting) {
+    const assist = meetingAssist({
+      transcript: heardTranscript(extraTranscript),
+      question: message,
+    });
+    if (!assist.ok) {
+      const q = String(message || "").toLowerCase();
+      if (/\b(recap|what should i say|assist|next steps?|action item)\b/.test(q)) return assist;
+      return null;
+    }
+    if (!assist.skipLlm) return null;
+    publishBrief(assist);
+    return assist;
   }
-  if (!assist.skipLlm) return null;
-  publishBrief(assist);
-  return assist;
+  if (desk.id === "security") {
+    const assist = securityAssist({ text: message });
+    if (!assist.ok || !assist.skipLlm) return assist.ok ? null : assist;
+    publishBrief(assist);
+    return assist;
+  }
+  return null;
 }
 let sttChild = null;
 let canvasWindow = null;

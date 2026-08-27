@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Security desk ships a review brief, never a self-approved fix
+
+`security review` produces a local checklist: hard floors, checks to run,
+and an explicit "Pointer will not execute this." It publishes to the
+workspace. The fixer is not the only checker. GitHub Actions still
+cannot start (org billing).
+
 ## 2026-08-27 - Public /workspace is a desk catalog, not a JSON dump
 
 host.netie.ai/workspace now paints teach/meeting/document/security cards

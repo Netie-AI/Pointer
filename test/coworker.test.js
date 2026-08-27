@@ -7,6 +7,7 @@ const {
   meetingAssist,
   deskGrounding,
   canActOnline,
+  securityAssist,
 } = require("../electron/netie/coworker-desks");
 const { plannerGrounding } = require("../electron/netie/coworker");
 
@@ -125,6 +126,23 @@ test("notes labels Netie recap separately from You/System", () => {
   assert.match(body, /Netie/);
   assert.match(body, /Meeting brief/);
   n.stop();
+});
+
+test("security assist ships a review and never self-approves", () => {
+  const empty = securityAssist({ text: "" });
+  assert.strictEqual(empty.ok, false);
+  assert.strictEqual(empty.act, false);
+  const review = securityAssist({ text: "security review this repo for leaked keys" });
+  assert.strictEqual(review.ok, true);
+  assert.strictEqual(review.act, false);
+  assert.strictEqual(review.skipLlm, true);
+  assert.match(review.deliverable, /fixer is not the only checker/);
+  assert.match(review.deliverable, /will not execute/);
+  assert.doesNotMatch(review.deliverable, /_approved/);
+  const fs = require("fs");
+  const path = require("path");
+  const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
+  assert.match(main, /securityAssist/);
 });
 
 console.log(`\n${pass} passed, ${fails.length} failed`);
