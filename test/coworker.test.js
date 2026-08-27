@@ -549,6 +549,29 @@ test("inbox assist drafts and never sends", () => {
   assert.match(fromMeet.deliverable, /You \[Friday\]: I will send it Friday/);
   assert.match(fromMeet.deliverable, /You \[Friday\]: We decided to ship/);
   assert.match(fromMeet.deliverable, /will not send/);
+  const named = inboxAssist({
+    text: "draft a follow-up email from this meeting",
+    transcript:
+      "system: Hi this is Sarah Chen.\nsystem: Can you send the deck by Friday for $40k?\nmic: I will send it Friday.",
+  });
+  assert.strictEqual(named.act, false);
+  assert.match(named.deliverable, /Hi Sarah Chen/);
+  assert.match(named.deliverable, /Wanted to confirm/);
+  assert.match(named.deliverable, /Friday/);
+  assert.match(named.deliverable, /\$40k/);
+  assert.match(named.heard, /Sarah Chen/);
+  assert.match(named.cue, /not sent/);
+  const ownName = inboxAssist({
+    text: "draft a follow-up email from this meeting",
+    transcript: "mic: I'm Alex.\nsystem: Can you send the deck Friday?",
+  });
+  assert.doesNotMatch(ownName.deliverable, /Hi Alex/);
+  const notAName = inboxAssist({
+    text: "draft a follow-up email from this meeting",
+    transcript: "system: I'm going Friday.\nmic: I will send it Friday.",
+  });
+  assert.doesNotMatch(notAName.deliverable, /Hi Going/);
+  assert.match(notAName.deliverable, /Friday/);
 });
 
 test("suggestsFromAssist turns transcript questions into HUD chips", () => {
@@ -731,7 +754,7 @@ test("spawn coworker never acts and never claims the pointer-act lane", () => {
 
 test("meeting spawn follow-ons ship inbox and Word drafts without acting", () => {
   const transcript =
-    "system: Can you send the deck Friday for $40k?\nmic: I will send it Friday.\nmic: We decided to ship Friday.";
+    "system: Hi this is Sarah Chen.\nsystem: Can you send the deck Friday for $40k?\nmic: I will send it Friday.\nmic: We decided to ship Friday.";
   const recap = meetingAssist({ transcript, question: "recap this meeting" });
   assert.strictEqual(recap.ok, true);
   assert.strictEqual(recap.desk, "meeting");
@@ -748,6 +771,8 @@ test("meeting spawn follow-ons ship inbox and Word drafts without acting", () =>
   assert.match(mail.deliverable, /not sent/i);
   assert.match(mail.deliverable, /will not send/);
   assert.match(mail.deliverable, /send it Friday/);
+  assert.match(mail.deliverable, /Hi Sarah Chen/);
+  assert.match(mail.deliverable, /\$40k/);
   const doc = follows.find((row) => row.desk === "document");
   assert.strictEqual(doc.id, "live-document");
   assert.strictEqual(doc.skipLlm, true);

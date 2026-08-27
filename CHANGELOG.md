@@ -1,3 +1,10 @@
+## 2026-08-27 - Inbox greets Heard names; Copy session file
+
+Unsent follow-up drafts greet with their name from the ring (`Hi Sarah
+Chen,`) and confirm Heard dates/amounts. Copy session copies the This
+session markdown from `/` and `/workspace` (clipboard, never Act).
+Never sends. Never invents. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Session file on the page and Heard names
 
 Loopback `/` and `/workspace` paint the This session markdown as a

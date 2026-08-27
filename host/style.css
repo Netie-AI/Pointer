@@ -60,6 +60,13 @@ pre {
   font-size: 13px;
   max-height: 240px;
 }
+#session-copy {
+  background: #1a1a1a;
+  color: #9ad;
+  border: 1px solid #345;
+  padding: 6px 10px;
+  cursor: pointer;
+}
 input[type="search"] {
   width: 100%;
   box-sizing: border-box;

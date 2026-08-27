@@ -1009,8 +1009,35 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
   };
 }
 
+function themHeardNames(utterances) {
+  const them = (Array.isArray(utterances) ? utterances : []).filter((row) => row.speaker !== "you");
+  return heardFacts(them).filter(isHeardName);
+}
+
+function inboxGreeting(utterances) {
+  const names = themHeardNames(utterances);
+  if (!names.length) return "Following up from the meeting.";
+  return `Hi ${names[0]},`;
+}
+
+function inboxConfirm(utterances) {
+  const heard = heardFacts(utterances);
+  const times = heard.filter((h) =>
+    /today|tomorrow|day|am|pm|:\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{4}-\d{2}-\d{2}/i.test(
+      h
+    )
+  );
+  const money = heard.filter((h) => /\$|%|percent/i.test(h));
+  const bits = [];
+  if (times.length) bits.push(times.slice(0, 2).join(" / "));
+  if (money.length) bits.push(money.slice(0, 2).join(" / "));
+  if (!bits.length) return "I will confirm the details on this machine.";
+  return `Wanted to confirm ${bits.join(" for ")}. I will confirm the details on this machine.`;
+}
+
 /**
  * Inbox draft. Sending is parked (P-05 / P-02). Never Acts.
+ * Greets with their Heard name from the ring only. Never invents.
  */
 function inboxAssist({ text, transcript } = {}) {
   const t = String(text || "").trim();
@@ -1030,9 +1057,15 @@ function inboxAssist({ text, transcript } = {}) {
     if (blocks.length) blocks.push("");
     blocks.push("What we decided:", ...decided.map((row) => `- ${namedLine(row)}`));
   }
+  const greeting = inboxGreeting(utterances);
+  const confirm = inboxConfirm(utterances);
+  const named = themHeardNames(utterances).length > 0;
   const draft = blocks.length
-    ? ["Following up from the meeting.", "", ...blocks, "", "I will confirm the details on this machine."].join("\n")
-    : "Thanks - I will confirm the details on this machine and follow up.";
+    ? [greeting, "", ...blocks, "", confirm].join("\n")
+    : named
+      ? [greeting, "", "Thanks - I will confirm the details on this machine and follow up."].join("\n")
+      : "Thanks - I will confirm the details on this machine and follow up.";
+  const heard = heardLine(utterances);
   const deliverable = [
     "# Draft (not sent)",
     "",
@@ -1060,6 +1093,7 @@ function inboxAssist({ text, transcript } = {}) {
     title: "Draft reply",
     cue: "not sent - parked P-05",
     cueKind: "warn",
+    heard,
     deliverable,
   };
 }

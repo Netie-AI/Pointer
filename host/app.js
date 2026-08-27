@@ -413,6 +413,11 @@ function paintSession(session, localFirst) {
     mdEl.hidden = !text;
     mdEl.textContent = text || "";
   }
+  function setCopy(on) {
+    const btn = document.getElementById("session-copy");
+    if (!btn) return;
+    btn.hidden = !on;
+  }
   if (localFirst) {
     root.hidden = false;
     setLine(askedEl, "", "");
@@ -420,6 +425,7 @@ function paintSession(session, localFirst) {
     setLine(cueEl, "", "");
     setLine(plateEl, "", "");
     setMarkdown("");
+    setCopy(false);
     if (filesEl) {
       filesEl.replaceChildren();
       const li = el("li", "muted");
@@ -434,6 +440,7 @@ function paintSession(session, localFirst) {
   setLine(cueEl, "Say this: ", cue);
   setLine(plateEl, "Plate: ", plate);
   setMarkdown(markdown);
+  setCopy(Boolean(markdown));
   if (!filesEl) return;
   filesEl.replaceChildren();
   if (!files.length) {
@@ -464,6 +471,18 @@ function paintSession(session, localFirst) {
       li.appendChild(extra);
     }
     filesEl.appendChild(li);
+  });
+}
+
+const sessionCopy = document.getElementById("session-copy");
+if (sessionCopy) {
+  sessionCopy.addEventListener("click", function () {
+    const mdEl = document.getElementById("session-md");
+    const text = mdEl ? String(mdEl.textContent || "") : "";
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(function () {});
+    }
   });
 }
 
