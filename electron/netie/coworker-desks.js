@@ -1531,6 +1531,7 @@ function inboxAssist({ text, transcript } = {}) {
     cue: "not sent - parked P-05",
     cueKind: "warn",
     heard,
+    preview: String(draft || "").slice(0, 400),
     deliverable,
   };
 }
@@ -1810,6 +1811,7 @@ function documentAssist({ text, source, transcript } = {}) {
     cue: about ? `draft for ${about} - not a .docx` : "draft only - not a .docx",
     cueKind: "warn",
     heard: heardLine(utterances),
+    preview: String(draft || "").slice(0, 400),
     deliverable,
   };
 }
@@ -1920,6 +1922,8 @@ function putAssist(workspace, assist) {
     rest: assist.rest || "",
     heard: assist.heard || "",
     notes: Boolean(assist.notes),
+    preview: assist.preview || "",
+    findings: Array.isArray(assist.findings) ? assist.findings : [],
     live: assist.live,
   });
 }
@@ -2410,6 +2414,8 @@ function publicEmptyRoom(desk, title, reason) {
     turns: [],
     notes: false,
     plate: [],
+    findings: [],
+    preview: "",
     coordinator: "http://127.0.0.1:18010",
     reason,
     desk,

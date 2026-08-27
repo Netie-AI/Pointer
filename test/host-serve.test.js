@@ -220,6 +220,8 @@ function readAsset(file) {
     assert.match(cssText, /teach-map-key/);
     assert.match(cssText, /meeting-card-say/);
     assert.match(cssText, /today-plate-kicker/);
+    assert.match(cssText, /work-rail/);
+    assert.match(cssText, /work-card-kicker/);
     assert.match(cssText, /stage \.teach-map/);
     assert.match(cssText, /bottom: 36px/);
     assert.match(app, /They asked/);
@@ -234,6 +236,10 @@ function readAsset(file) {
     assert.match(app, /paintTalk/);
     assert.match(app, /paintMeetingCard/);
     assert.match(app, /paintTodayPlate/);
+    assert.match(app, /paintInboxCard/);
+    assert.match(app, /paintDocumentCard/);
+    assert.match(app, /paintSecurityCard/);
+    assert.match(app, /paintWorkRail/);
     assert.match(app, /paintStage/);
     assert.match(app, /You:/);
     assert.match(app, /meeting-card-say/);
@@ -303,6 +309,9 @@ function readAsset(file) {
     assert.deepStrictEqual(homeBody.rooms.meeting.turns, []);
     assert.strictEqual(homeBody.rooms.meeting.notes, false);
     assert.deepStrictEqual(homeBody.rooms.today.plate, []);
+    assert.deepStrictEqual(homeBody.rooms.security.findings, []);
+    assert.strictEqual(homeBody.rooms.inbox.preview, "");
+    assert.strictEqual(homeBody.rooms.document.preview, "");
     assert.strictEqual(homeBody.rooms.inbox.desk, "inbox");
     assert.strictEqual(homeBody.rooms.document.desk, "document");
     assert.ok(homeBody.session);

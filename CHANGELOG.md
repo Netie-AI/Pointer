@@ -1,3 +1,11 @@
+## 2026-08-27 - Home paints filed inbox, Word, and security cards
+
+Loopback `/` paints unsent follow-up, Word draft, and security review
+cards next to the teach path, meeting say-this, and Today plate (Ask,
+never Act, never a runtime, never send, never a .docx, never self-approve).
+Desk rooms `/inbox` `/document` `/security` show the same cards.
+Public copies stay empty. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Home paints the Today plate
 
 Loopback `/` paints On your plate next to the teach path and meeting

@@ -406,8 +406,9 @@ function test(name, fn) {
       id: "live-security",
       title: "Security review",
       desk: "security",
-      body: "# Security review\n- redacted",
+      body: "# Security review\n## Findings (redacted)\n- .env: aws-access-key (AKIA****)",
       cue: "1 secret pattern(s) - do not approve",
+      findings: [{ file: ".env", kind: "aws-access-key", excerpt: "AKIA****" }],
     });
     const security = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/security" }, (res) => {
@@ -420,6 +421,8 @@ function test(name, fn) {
     assert.strictEqual(security.body.act, false);
     assert.strictEqual(security.body.exec, false);
     assert.match(security.body.cue, /do not approve/);
+    assert.ok(Array.isArray(security.body.findings));
+    assert.ok(security.body.findings.some((row) => row.kind === "aws-access-key"));
     const securityPage = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/security" }, (res) => {
         const chunks = [];
@@ -433,15 +436,17 @@ function test(name, fn) {
       id: "live-document",
       title: "Document draft",
       desk: "document",
-      body: "# Document draft\nhello",
+      body: "# Document draft\n## Draft to write\nhello from the recap",
       cue: "draft only - not a .docx",
+      preview: "hello from the recap",
     });
     c.workspace.put({
       id: "live-inbox",
       title: "Draft reply",
       desk: "inbox",
-      body: "# Draft (not sent)\nhello",
+      body: "# Draft (not sent)\n## Draft\nHi Sarah Chen,\n\nWanted to confirm Friday.",
       cue: "not sent - parked P-05",
+      preview: "Hi Sarah Chen,\n\nWanted to confirm Friday.",
     });
     const document = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/document" }, (res) => {
@@ -454,6 +459,7 @@ function test(name, fn) {
     assert.strictEqual(document.body.act, false);
     assert.strictEqual(document.body.exec, false);
     assert.match(document.body.cue, /not a \.docx/);
+    assert.match(document.body.preview, /hello from the recap/);
     const inbox = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/inbox" }, (res) => {
         const chunks = [];
@@ -463,6 +469,7 @@ function test(name, fn) {
     });
     assert.strictEqual(inbox.status, 200);
     assert.match(inbox.body.cue, /not sent/);
+    assert.match(inbox.body.preview, /Sarah Chen/);
     c.workspace.put({
       id: "brief-notes",
       desk: "document",
@@ -510,7 +517,10 @@ function test(name, fn) {
     assert.ok(Array.isArray(home.body.rooms.today.plate));
     assert.ok(home.body.rooms.today.plate.some((line) => /Friday/.test(line)));
     assert.match(home.body.rooms.document.cue, /not a \.docx/);
+    assert.match(home.body.rooms.document.preview, /hello from the recap/);
     assert.match(home.body.rooms.inbox.cue, /not sent/);
+    assert.match(home.body.rooms.inbox.preview, /Sarah Chen/);
+    assert.ok(home.body.rooms.security.findings.some((row) => row.kind === "aws-access-key"));
     assert.ok(home.body.session);
     assert.strictEqual(home.body.session.exec, false);
     assert.strictEqual(home.body.session.empty, false);

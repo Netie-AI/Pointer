@@ -233,6 +233,43 @@ pre {
   line-height: 1.35;
 }
 .stage .today-plate { margin-top: 12px; }
+.work-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 12px 0 0;
+}
+.work-card {
+  margin: 0 0 12px;
+  padding: 14px 16px;
+  border: 1px solid #345;
+  background: #141414;
+}
+.work-rail .work-card { margin: 0; }
+.work-card-kicker {
+  margin: 0 0 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: #9ad;
+}
+.work-card-body {
+  margin: 0 0 8px;
+  font-size: 15px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.work-card-foot {
+  margin: 0;
+  color: #f88;
+  font-size: 12px;
+}
+.work-hits {
+  margin: 0 0 8px;
+  padding: 0 0 0 18px;
+  color: #eee;
+  font-size: 13px;
+}
 .meeting-talk {
   list-style: none;
   margin: 0 0 12px;

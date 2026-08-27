@@ -580,6 +580,9 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
   paintTeachMap(page, m);
   paintMeetingCard(page, m);
   paintTalk(page, m);
+  paintInboxCard(page, m);
+  paintDocumentCard(page, m);
+  paintSecurityCard(page, m);
   const pre = el("pre");
   pre.textContent = (m && m.deliverable) || "";
   page.appendChild(pre);
@@ -914,6 +917,125 @@ function paintTodayPlate(root, m) {
   root.appendChild(card);
 }
 
+function sectionAfter(body, heading) {
+  const text = String(body || "");
+  const needle = "## " + heading;
+  const idx = text.indexOf(needle);
+  if (idx < 0) return [];
+  const rest = text.slice(idx + needle.length);
+  const chunk = rest.split(/^## /m)[0];
+  return chunk
+    .split("\n")
+    .map(function (line) {
+      return String(line || "")
+        .replace(/^[-*]\s*/, "")
+        .replace(/^>\s*/, "")
+        .trim();
+    })
+    .filter(function (line) {
+      return line && line !== "---" && !/^send is parked/i.test(line) && !/^act:/i.test(line);
+    });
+}
+
+function draftPreview(m) {
+  const ready = String((m && m.preview) || "").trim();
+  if (ready) return ready.slice(0, 400);
+  const write = sectionAfter(m && m.deliverable, "Draft to write");
+  if (write.length) return write.join("\n").slice(0, 400);
+  const draft = sectionAfter(m && m.deliverable, "Draft");
+  return draft.join("\n").slice(0, 400);
+}
+
+function findingItems(m) {
+  if (Array.isArray(m && m.findings) && m.findings.length) {
+    return m.findings.slice(0, 8).map(function (row) {
+      if (typeof row === "string") return row.slice(0, 120);
+      const file = String((row && row.file) || "").trim();
+      const kind = String((row && row.kind) || "").trim();
+      const excerpt = String((row && row.excerpt) || "").trim();
+      return [file, kind, excerpt ? "(" + excerpt + ")" : ""].filter(Boolean).join(" ").slice(0, 120);
+    }).filter(Boolean);
+  }
+  return sectionAfter(m && m.deliverable, "Findings (redacted)").slice(0, 8);
+}
+
+function paintWorkCard(root, cls, label, body, foot) {
+  if (!root) return;
+  const card = el("article", "work-card " + cls);
+  card.setAttribute("role", "region");
+  card.setAttribute("aria-label", label);
+  const kicker = el("p", "work-card-kicker");
+  kicker.textContent = label;
+  card.appendChild(kicker);
+  if (body) {
+    const pre = el("p", "work-card-body");
+    pre.textContent = body;
+    card.appendChild(pre);
+  }
+  if (foot) {
+    const f = el("p", "work-card-foot");
+    f.textContent = foot;
+    card.appendChild(f);
+  }
+  root.appendChild(card);
+}
+
+function paintInboxCard(root, m) {
+  if (!root || !m || m.desk !== "inbox" || m.localFirst) return;
+  const preview = draftPreview(m);
+  const cue = String((m && m.cue) || "").trim();
+  if (!preview && !cue) return;
+  paintWorkCard(root, "work-inbox", "Unsent follow-up", preview || cue, "not sent");
+}
+
+function paintDocumentCard(root, m) {
+  if (!root || !m || m.desk !== "document" || m.localFirst) return;
+  const preview = draftPreview(m);
+  const cue = String((m && m.cue) || "").trim();
+  if (!preview && !cue) return;
+  paintWorkCard(root, "work-document", "Word draft", preview || cue, "not a .docx");
+}
+
+function paintSecurityCard(root, m) {
+  if (!root || !m || m.desk !== "security" || m.localFirst) return;
+  const hits = findingItems(m);
+  const cue = String((m && m.cue) || "").trim();
+  if (!hits.length && !cue) return;
+  const card = el("article", "work-card work-security");
+  card.setAttribute("role", "region");
+  card.setAttribute("aria-label", "Security review");
+  const kicker = el("p", "work-card-kicker");
+  kicker.textContent = "Security review";
+  card.appendChild(kicker);
+  if (cue) {
+    const head = el("p", "work-card-body");
+    head.textContent = cue;
+    card.appendChild(head);
+  }
+  if (hits.length) {
+    const list = el("ul", "work-hits");
+    hits.forEach(function (line) {
+      const li = el("li");
+      li.textContent = line;
+      list.appendChild(li);
+    });
+    card.appendChild(list);
+  }
+  const foot = el("p", "work-card-foot");
+  foot.textContent = "do not approve";
+  card.appendChild(foot);
+  root.appendChild(card);
+}
+
+function paintWorkRail(root, rooms) {
+  if (!root) return;
+  const rail = el("div", "work-rail");
+  paintInboxCard(rail, (rooms && rooms.inbox) || {});
+  paintDocumentCard(rail, (rooms && rooms.document) || {});
+  paintSecurityCard(rail, (rooms && rooms.security) || {});
+  if (rail.childNodes.length) root.appendChild(rail);
+}
+
 function paintStage(rooms, localFirst) {
   const root = document.getElementById("stage");
   if (!root) return;
@@ -925,6 +1047,7 @@ function paintStage(rooms, localFirst) {
   paintTeachMap(root, (rooms && rooms.teach) || {});
   paintMeetingCard(root, (rooms && rooms.meeting) || {});
   paintTodayPlate(root, (rooms && rooms.today) || {});
+  paintWorkRail(root, rooms);
   root.hidden = !root.childNodes.length;
 }
 

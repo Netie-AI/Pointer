@@ -670,6 +670,7 @@ test("inbox assist drafts and never sends", () => {
   assert.doesNotMatch(named.deliverable, /Hi Acme/);
   assert.match(named.heard, /Sarah Chen/);
   assert.match(named.cue, /not sent/);
+  assert.match(named.preview, /Hi Sarah Chen/);
   const ownName = inboxAssist({
     text: "draft a follow-up email from this meeting",
     transcript: "mic: I'm Alex.\nsystem: Can you send the deck Friday?",
@@ -985,6 +986,7 @@ test("document assist drafts and never writes Word", () => {
   assert.strictEqual(fromMeet.skipLlm, true);
   assert.match(fromMeet.deliverable, /ship the deck Friday/);
   assert.match(fromMeet.deliverable, /live-meeting/);
+  assert.match(fromMeet.preview, /ship the deck Friday/);
   assert.doesNotMatch(fromMeet.deliverable, /will execute/i);
   const bare = documentAssist({
     text: "write in Word",

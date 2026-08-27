@@ -65,6 +65,22 @@ test("put lists a brief and never grows a runtime", () => {
   });
   assert.match(meetingLive.artifact.live.transcript, /send it Friday/);
   assert.strictEqual(meetingLive.artifact.notes, true);
+  const review = ws.put({
+    id: "live-security",
+    desk: "security",
+    title: "Security review",
+    body: "# Security review\n- redacted",
+    findings: [{ file: ".env", kind: "aws-access-key", excerpt: "AKIA****" }],
+  });
+  assert.strictEqual(review.artifact.findings[0].kind, "aws-access-key");
+  const mail = ws.put({
+    id: "live-inbox",
+    desk: "inbox",
+    title: "Draft reply",
+    body: "# Draft (not sent)\nHi",
+    preview: "Hi Sarah Chen,",
+  });
+  assert.strictEqual(mail.artifact.preview, "Hi Sarah Chen,");
   assert.ok(!Object.prototype.hasOwnProperty.call(ws.list().find((r) => r.id === "live-meeting"), "live"));
   const exec = ws.exec({ backend: "container" });
   assert.strictEqual(exec.ok, false);

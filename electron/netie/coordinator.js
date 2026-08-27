@@ -139,6 +139,11 @@ function createCoordinator(opts = {}) {
         path,
         turns,
         notes: desk === "meeting" && got.ok ? Boolean(got.artifact.notes) : false,
+        findings: desk === "security" && got.ok && Array.isArray(got.artifact.findings) ? got.artifact.findings.slice(0, 12) : [],
+        preview:
+          got.ok && (desk === "inbox" || desk === "document")
+            ? String(got.artifact.preview || "").slice(0, 600)
+            : "",
         advance: desk === "teach" && got.ok && canAdvanceTeach(got.artifact.live),
         chips:
           got.ok && desk !== "teach"
@@ -169,6 +174,11 @@ function createCoordinator(opts = {}) {
       path: desk === "teach" && got.ok ? teachWalkPath(live) : [],
       turns: desk === "meeting" && got.ok ? liveTalkTurns(got.artifact) : [],
       notes: desk === "meeting" && got.ok ? Boolean(got.artifact.notes) : false,
+      findings: desk === "security" && got.ok && Array.isArray(got.artifact.findings) ? got.artifact.findings.slice(0, 12) : [],
+      preview:
+        got.ok && (desk === "inbox" || desk === "document")
+          ? String(got.artifact.preview || "").slice(0, 600)
+          : "",
     };
   }
 

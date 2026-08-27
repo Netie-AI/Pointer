@@ -14,12 +14,10 @@
 2. **Coworker desks (DR-0005).** Loopback Ask bar plus `/meeting` `/today`
    `/workspace` chips file inbox/Word/security from the open file.
    `/meeting` paints a say-this answer card; open-file notes ground Heard
-   (not talk) and show From the open file. Loopback `/` paints the live
-   teach path, meeting card, and Today plate. HUD insight does the same
-   say-this. `/teach` is a walk path from measured BOX (current hold,
-   later dashed; Back/Got it Ask). This session links open `/workspace?id=`
-   (never send, never a .docx, never Act). Today plate is commitments only.
-   Public catalog empty. P-06 parked.
+   (not talk). Loopback `/` paints teach path, meeting card, Today plate,
+   and filed inbox/Word/security work cards. `/teach` is a measured walk
+   (Back/Got it Ask). This session links `/workspace?id=` (never send,
+   never a .docx, never Act). Public catalog empty. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

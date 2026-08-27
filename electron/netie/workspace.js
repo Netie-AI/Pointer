@@ -58,6 +58,17 @@ function createWorkspace(opts = {}) {
       rest: String(spec.rest || "").slice(0, 160),
       heard: String(spec.heard || "").slice(0, 160),
       notes: Boolean(spec.notes),
+      preview: String(spec.preview || "").slice(0, 600),
+      findings: Array.isArray(spec.findings)
+        ? spec.findings
+            .slice(0, 12)
+            .map((row) => ({
+              file: String((row && row.file) || "").slice(0, 80),
+              kind: String((row && row.kind) || "").slice(0, 40),
+              excerpt: String((row && row.excerpt) || "").slice(0, 80),
+            }))
+            .filter((row) => row.file || row.kind)
+        : [],
       t: nowMs(clock),
     };
     const live = freezeCoworkerLive(spec.live);
