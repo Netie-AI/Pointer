@@ -209,8 +209,12 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 /* General/Scribe are companions, not agents — no act affordance at all. */
 .hud.mode-general .act-button,
 .hud.mode-scribe .act-button { display: none; }
-#btn-suggest { display: none; }
-.hud.mode-meeting #btn-suggest { display: inline-flex; }
+#btn-suggest,
+#btn-recap,
+#btn-followups { display: none; }
+.hud.mode-meeting #btn-suggest,
+.hud.mode-meeting #btn-recap,
+.hud.mode-meeting #btn-followups { display: inline-flex; }
 .suggest-strip {
   display: none; position: absolute; top: 64px; left: 50%; transform: translateX(-50%);
   z-index: 28; max-width: min(720px, 86vw); padding: 7px 12px; border-radius: 12px;

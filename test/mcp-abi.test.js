@@ -51,6 +51,8 @@ function test(name, fn) {
     const observe = r.result.catalog.find((t) => t.name === "computer.observe");
     assert.ok(observe.inputSchema.properties.screenshot);
     assert.ok(observe.inputSchema.properties.clipboard);
+    const meeting = r.result.catalog.find((t) => t.name === "computer.meeting_assist");
+    assert.ok(meeting.inputSchema.properties.kind);
   });
 
   await test("lanes.claim goes through MCP and conflicts", async () => {

@@ -160,6 +160,8 @@ function computerStatus(opts = {}) {
       available: opts.meetingAvailable === true || opts.actAvailable === true,
       gated: true,
       api: "/api/meeting",
+      notes: "GET /api/meeting?notes=1",
+      kinds: ["say", "recap", "followups"],
     },
     drive: {
       loopback: "http://127.0.0.1:18010",
@@ -187,6 +189,9 @@ function computerStatus(opts = {}) {
         "press ctrl+s",
         "GET /api/observe?screenshot=1",
         "GET /api/observe?clipboard=1",
+        "GET /api/meeting?notes=1",
+        "POST /api/meeting kind recap",
+        "POST /api/meeting kind followups",
       ],
       gated: "Cortex /dms/secure. Clicks and launches need approved:true.",
     },

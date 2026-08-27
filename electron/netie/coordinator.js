@@ -12,6 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { TOOLS, CATALOG } = require("./mcp-abi");
+const { publicMeetingNotes } = require("./meeting");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
 
@@ -117,6 +118,17 @@ function createCoordinator(opts = {}) {
     if (req.method === "GET" && url.pathname === "/api/state") {
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(snapshot()));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/meeting" && queryFlag(url, "notes")) {
+      let raw = null;
+      try {
+        raw = typeof opts.meetingNotes === "function" ? opts.meetingNotes() : null;
+      } catch {
+        raw = null;
+      }
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: true, notes: publicMeetingNotes(raw) }));
       return;
     }
     if (

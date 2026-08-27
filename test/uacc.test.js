@@ -110,6 +110,9 @@ function test(name, fn) {
     assert.strictEqual(shown.scribe.api, "/api/scribe");
     assert.strictEqual(shown.meeting.available, true);
     assert.strictEqual(shown.meeting.api, "/api/meeting");
+    assert.strictEqual(shown.meeting.notes, "GET /api/meeting?notes=1");
+    assert.deepStrictEqual(shown.meeting.kinds, ["say", "recap", "followups"]);
+    assert.ok(shown.drive.instructions.includes("GET /api/meeting?notes=1"));
     assert.ok(shown.drive.instructions.includes("focus: notepad"));
     assert.ok(shown.drive.instructions.includes("click: Save"));
     assert.ok(shown.drive.instructions.includes("wait 400"));

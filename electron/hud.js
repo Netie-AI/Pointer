@@ -864,21 +864,28 @@ if (btnShowTranscript) {
   });
 }
 
-async function doAsk() {
+async function doAsk(opts = {}) {
+  const kind = String(opts.kind || "").trim();
   const message = askInput.value.trim() || finalBits.slice(-1)[0] || "";
   if (!message && appMode !== "meeting") return;
-  const asked = message || "what should I say";
+  const label =
+    message ||
+    (kind === "recap" ? "Recap" : kind === "followups" ? "Follow-ups" : "what should I say");
   autoSend.cancel("sent");
   dismissCleanToast();
   setChatOpen(true);
-  appendMessage("user", asked, true);
+  appendMessage("user", label, true);
   askInput.value = "";
   setLivePartial("");
   answerMeta.textContent = "Thinking…";
   answerBody.textContent = "…";
   if (window.NetieSound) NetieSound.think();
   const sent = attachmentPayload();
-  const result = await invoke("hud:ask", { message: asked, attachments: sent });
+  const result = await invoke("hud:ask", {
+    message: kind === "recap" || kind === "followups" ? message : message || label,
+    kind,
+    attachments: sent,
+  });
   if (sent.length) clearAttachments();
   answerMeta.textContent = result.degraded ? "Answered (degraded)" : "AI response";
   appendMessage("assistant", result.ok ? result.reply || "" : result.error || "Failed");
@@ -967,7 +974,21 @@ if ($("btn-suggest")) {
   $("btn-suggest").addEventListener("click", () => {
     askInput.value = "";
     setChatOpen(true);
-    doAsk();
+    doAsk({ kind: "say" });
+  });
+}
+if ($("btn-recap")) {
+  $("btn-recap").addEventListener("click", () => {
+    askInput.value = "";
+    setChatOpen(true);
+    doAsk({ kind: "recap" });
+  });
+}
+if ($("btn-followups")) {
+  $("btn-followups").addEventListener("click", () => {
+    askInput.value = "";
+    setChatOpen(true);
+    doAsk({ kind: "followups" });
   });
 }
 

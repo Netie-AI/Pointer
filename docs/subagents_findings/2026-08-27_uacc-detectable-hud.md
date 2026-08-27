@@ -11,4 +11,6 @@ Shipped: settings v3 captureVisible=true; uacc.js skill catalog; GET/POST /api/c
 
 Observe PNG/clipboard: live `computer.observe` captures `captureDisplayCrop` when `screenshot:true` and `driver.clipboardGet` when `clipboard:true`. Loopback `GET /api/observe?screenshot=1&clipboard=1` forwards those flags. Clipboard is tagged untrusted data. PATH tokens draw click-through polylines. Overlay now fires for LINE/PATH-only answers, not just POINT.
 
-Not done: UACC install on a real Windows laptop; OpenWillow Deepgram default (P-04); third-party MCP (P-05).
+Meeting: Recap and Follow-ups pills in fixed top chrome. `computer.meeting_assist` `kind` say/recap/followups. `GET /api/meeting?notes=1` returns live notes as untrusted data (no Cortex hop).
+
+Not done: UACC install on a real Windows laptop; OpenWillow Deepgram default (P-04); third-party MCP (P-05); Cluely undetectable-in-screenshare stays inverted (DR-0005).

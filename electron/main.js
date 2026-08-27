@@ -358,6 +358,7 @@ const liveMcp = createMcpAbi({
 const liveCoordinator = createCoordinator({
   mcp: liveMcp,
   computerStatus: () => liveComputerStatus(),
+  meetingNotes: () => (notes.file ? notes.tail(8000) : null),
 });
 const brain = new PersonalBrain({
   deviceId: `netie-clicks:${hot.deviceId}`,
@@ -3085,7 +3086,11 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
       : { ok: false, error: r.reason || "Scribe failed", blocked: r.blocked };
   }
   if (appMode === "meeting") {
-    const assist = buildMeetingAssist({ instruction: message, notes: notes.tail(4000) });
+    const assist = buildMeetingAssist({
+      instruction: message,
+      kind: payload && payload.kind,
+      notes: notes.tail(4000),
+    });
     if (!assist.ok) {
       sendHud({ type: "answer", meta: "Meeting", text: assist.reason });
       return { ok: false, error: assist.reason };
@@ -3098,9 +3103,11 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
     const pointedMeet = rMeet.ok ? parsePoints(rMeet.text) : { text: rMeet.text, points: [] };
     const failureMeet = rMeet.ok ? null : humanizeError(rMeet.text || rMeet.error);
     if (failureMeet) console.error("hud:ask meeting failed:", failureMeet.raw);
+    const meetMeta =
+      assist.kind === "recap" ? "Meeting recap" : assist.kind === "followups" ? "Meeting follow-ups" : "Meeting assist";
     sendHud({
       type: "answer",
-      meta: rMeet.ok ? "Meeting assist" : shortError(rMeet.text || rMeet.error),
+      meta: rMeet.ok ? meetMeta : shortError(rMeet.text || rMeet.error),
       text: rMeet.ok ? pointedMeet.text : failureMeet.text,
     });
     if (rMeet.ok && hasPoints(rMeet.text)) sendHud(toOverlayEvent(rMeet.text));

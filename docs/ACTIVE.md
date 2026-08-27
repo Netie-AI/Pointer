@@ -30,7 +30,7 @@ the issue wins.
 | Coordinator + first-party MCP ABI | `electron/netie/coordinator.js`, `mcp-abi.js`, `host-serve.js`; pages in `host/`; public Worker `workers/netie-host.js` |
 | UACC skills + loopback detect | `electron/netie/uacc.js`; MCP `computer.status` / `observe` / `act` / `scribe` / `meeting_assist`; loopback `/api/computer` `/api/observe` `/api/scribe` `/api/meeting` `/api/tools` on `127.0.0.1:18010`; observe optional screenshot + clipboard |
 | Dictation / Scribe | `electron/netie/dictate.js`, `scribe.js`, `delivery.js`, `holdkey.js` |
-| Meeting assist | `electron/netie/meeting.js` |
+| Meeting assist | `electron/netie/meeting.js`; HUD Suggest/Recap/Follow-ups; `GET /api/meeting?notes=1` |
 | Word safe API | `electron/netie/word-coworker.js` |
 | Driver (SendInput) | `electron/netie/driver.js` |
 | Safety / plan-guard | `electron/netie/safety.js`, `plan-guard.js` |

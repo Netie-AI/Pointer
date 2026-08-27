@@ -69,6 +69,7 @@ function test(name, fn) {
     const c = createCoordinator({
       mcp,
       computerStatus: () => ({ ok: true, detectable: true, captureVisible: true }),
+      meetingNotes: () => "We ship Friday after standup.",
     });
     const bad = await Promise.resolve(c.listen({ host: "0.0.0.0", port: 0 }));
     assert.strictEqual(bad.ok, false);
@@ -186,6 +187,18 @@ function test(name, fn) {
     assert.deepStrictEqual(tools.tools, TOOLS.slice());
     assert.strictEqual(tools.catalog.length, TOOLS.length);
     assert.ok(tools.catalog.some((t) => t.name === "computer.act"));
+
+    const meetNotes = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/meeting?notes=1" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      }).on("error", reject);
+    });
+    assert.strictEqual(meetNotes.ok, true);
+    assert.strictEqual(meetNotes.notes.present, true);
+    assert.match(meetNotes.notes.text, /Friday/);
+    assert.match(meetNotes.notes.note, /untrusted/);
 
     await c.close();
   });

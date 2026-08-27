@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Meeting recap, follow-ups, and live notes for agents
+
+Meeting mode adds Recap and Follow-ups pills next to Suggest (fixed top
+chrome, not a companion). `computer.meeting_assist` accepts `kind` say /
+recap / followups. `GET /api/meeting?notes=1` returns the live transcript
+as untrusted data, no model hop. Public Worker still 404s `/api/meeting`.
+No GPLv3 dump. No third-party MCP servers.
+
 ## 2026-08-27 - Observe screenshot/clipboard and PATH teach strokes
 
 `GET /api/observe?screenshot=1` plus MCP `computer.observe` with

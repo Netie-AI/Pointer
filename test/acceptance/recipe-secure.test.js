@@ -42,6 +42,8 @@ async function run() {
       assert.ok(/clipboardGet/.test(observeBody), "observe clipboard uses the driver pasteboard");
       assert.ok(/applyAutostart/.test(main), "OpenWillow autostart must reach login items");
       assert.ok(/buildMeetingAssist/.test(main), "meeting mode must offer Cluely-class assist");
+      assert.ok(/meetingNotes/.test(main), "GET /api/meeting?notes=1 must read live notes");
+      assert.ok(/payload && payload.kind/.test(main), "hud:ask must pass recap/followups kind");
     }),
 
     T("hud:act recipe branch calls secureBeforeAct before maybeRunPlan", () => {

@@ -116,6 +116,11 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
         !/id="clicky-orb"|class="[^"]*clicky-orb|stage-orb|peek-drop/.test(html),
         "the floating Clicky ring / stage orb must not come back as identity"
       );
+      assert.ok(html.includes('id="btn-recap"'), "meeting Recap stays in fixed top chrome");
+      assert.ok(html.includes('id="btn-followups"'), "meeting Follow-ups stays in fixed top chrome");
+      const css = read("electron/hud.css");
+      assert.ok(/\.hud\.mode-meeting #btn-recap/.test(css), "Recap is meeting-only");
+      assert.ok(/\.hud\.mode-meeting #btn-followups/.test(css), "Follow-ups is meeting-only");
     }),
 
     T("every enquire input is labelled and reachable", async () => {
