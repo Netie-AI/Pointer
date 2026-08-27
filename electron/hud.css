@@ -212,6 +212,19 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .enquire-field input::placeholder { color: var(--muted); }
 .enquire-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .enquire-actions .text-btn { margin-left: 0; }
+.enquire-field textarea {
+  width: 100%; min-height: 64px; padding: 8px 10px; border-radius: 12px; resize: vertical;
+  border: 1px solid var(--line-soft); background: var(--field); color: var(--text);
+}
+.enquire-field textarea:focus-visible {
+  outline: 2px solid var(--accent-solid); outline-offset: 1px;
+}
+.bug-report-preview {
+  margin: 0 0 10px; max-height: 120px; overflow: auto; padding: 8px 10px;
+  border-radius: 12px; border: 1px solid var(--line-soft); background: var(--field);
+  color: var(--muted); font-size: 10px; line-height: 1.4; white-space: pre-wrap; user-select: text;
+}
+.hud.morph-hidden #bug-report-panel { display: none !important; }
 
 /* P3-POINT-OVERLAY — a thin teach layer. pointer-events stays none so the
    crosshair can never intercept the click it is pointing at. */

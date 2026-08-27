@@ -14,12 +14,14 @@
    Go classifies Word coworker as act.
 2. **Tickets #8-#25 and epics P01-P03/P05/P06 stay closed.** EPIC-P04
    and EPIC-P07 remain open.
+3. **HUD Report a problem** (#29) - persistent top-chrome `#bugReportBtn`;
+   local copy-only form. Gate: `test/invariants/hud-bug-report.test.js`.
 
 ## Next
 
 - Recall HUD disclosure / off-by-default and PDF/image extraction are
   `prd-agent` questions.
-- Do not merge PR #1. Do not attach work to PR #26.
+- Do not merge PR #1. Do not attach work to PR #26. Do not close #29 here.
 - Measure STT: `node scripts/stt_baseline.js`.
 
 ## Later

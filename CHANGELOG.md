@@ -2,6 +2,18 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - HUD Report a problem control (#29)
+
+`electron/hud.html` on the contracts branch had zero matches for `bugReport` /
+`Report a problem` / `startBugReport`. AirGPT already has `#bugReportBtn`.
+When the Word sink wrote `recovered selection` there was no in-app way to mark
+it. The HUD now has a persistent top-chrome "Report a problem" button that
+opens a local form. Copy diagnostics is human-confirm only; nothing is sent
+off-box. `test/invariants/hud-bug-report.test.js` fails if the control
+disappears, is buried in Settings, ships hidden, or the flow grows a fetch /
+mailto. Region-mark + email recorder stays parked (P-06). Do not close #3 #10
+#11 #14 #17. Do not attach PR #27 / #26 / #1.
+
 ## 2026-08-23 - Punctuated write-in-Word must not take the clipboard stub
 
 `matchRecipe` anchored Word-write `$` on the raw input. Tests used
