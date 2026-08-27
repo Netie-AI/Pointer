@@ -107,7 +107,7 @@ function test(name, fn) {
     );
     assert.strictEqual(
       shouldRefreshSuggest({
-        notes: notes + " extra phrase here for growth.",
+        notes: notes + " Extra spoken turns landed after the last suggest refresh.",
         lastNotes: notes,
         lastAt: 1000,
         now: 20000,
