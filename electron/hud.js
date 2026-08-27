@@ -29,7 +29,7 @@ const cleanToast = $("clean-toast");
 const cleanToastText = $("clean-toast-text");
 const clickyOrb = null; // floating Clicky hold removed — Ctrl+Shift+Space arms real OS pointer
 const peekDrop = null;
-const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify"), $("set-autosend"), $("set-cloud-stt"), $("set-follow"), $("set-capture-visible"), $("set-dictate"), $("set-scribe"), $("set-writing-style"), $("set-personal-context"), $("set-scribe-language")];
+const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify"), $("set-autosend"), $("set-cloud-stt"), $("set-follow"), $("set-capture-visible"), $("set-dictate"), $("set-scribe"), $("set-scribe-screen"), $("set-writing-style"), $("set-personal-context"), $("set-scribe-language")];
 
 let listening = false;
 let systemAudio = false;
@@ -328,6 +328,7 @@ async function loadSettings() {
   if ($("set-capture-visible")) $("set-capture-visible").checked = settings.captureVisible === true;
   if ($("set-dictate")) $("set-dictate").checked = settings.dictateIntoFocus !== false;
   if ($("set-scribe")) $("set-scribe").checked = settings.scribeIntoFocus !== false;
+  if ($("set-scribe-screen")) $("set-scribe-screen").checked = settings.scribeScreenContext === true;
   if ($("set-writing-style")) $("set-writing-style").value = settings.writingStyle || "";
   if ($("set-personal-context")) $("set-personal-context").value = settings.personalContext || "";
   if ($("set-scribe-language")) $("set-scribe-language").value = settings.scribeLanguage === "Traditional Chinese" ? "Traditional Chinese" : "English";
@@ -360,6 +361,7 @@ async function saveSettingsFromUi() {
       captureVisible: $("set-capture-visible") ? $("set-capture-visible").checked : false,
       dictateIntoFocus: $("set-dictate") ? $("set-dictate").checked : true,
       scribeIntoFocus: $("set-scribe") ? $("set-scribe").checked : true,
+      scribeScreenContext: $("set-scribe-screen") ? $("set-scribe-screen").checked : false,
       writingStyle: $("set-writing-style") ? $("set-writing-style").value.trim() : "",
       personalContext: $("set-personal-context") ? $("set-personal-context").value.trim() : "",
       scribeLanguage: $("set-scribe-language") ? $("set-scribe-language").value : "English",
@@ -947,6 +949,14 @@ $("btn-chat-toggle").addEventListener("click", () => {
   setChatOpen(!hudRoot.classList.contains("chat-open"));
 });
 
+if ($("btn-suggest")) {
+  $("btn-suggest").addEventListener("click", () => {
+    askInput.value = "";
+    setChatOpen(true);
+    doAsk();
+  });
+}
+
 $("btn-roulette").addEventListener("click", async () => {
   if (hudRoot.classList.contains("morph-hidden")) {
     setMorphHidden(false);
@@ -1446,7 +1456,7 @@ function onHudEvent(event) {
     subtitleText.textContent = event.text;
   }
   if (event.type === "enquire") renderEnquire(event);
-  if (event.type === "point") renderPoints(event.points, event.ttlMs);
+  if (event.type === "point") renderPoints(event.points, event.ttlMs, event.lines);
   if (event.type === "bg") renderBgStatus(event);
   if (event.type === "pointer") {
     answerMeta.textContent = event.mode ? `Pointer · ${event.mode}` : answerMeta.textContent;
@@ -1591,12 +1601,37 @@ if (enquirePanel) {
  * A crosshair and a label that fade. Not a companion, not a ring that lives on
  * screen; the floating Clicky chrome was removed for good reasons.
  */
-function renderPoints(points, ttlMs) {
+function renderPoints(points, ttlMs, lines) {
   const layer = $("point-layer");
   if (!layer) return;
   layer.innerHTML = "";
   const ttl = Number(ttlMs) > 0 ? Number(ttlMs) : 6000;
-  for (const point of points || []) {
+  const marks = Array.isArray(points) ? points : [];
+  const strokes = Array.isArray(lines) ? lines : [];
+  if (strokes.length) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "point-line");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.setAttribute("preserveAspectRatio", "none");
+    for (const line of strokes) {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      el.setAttribute("x1", String(line.x1Pct));
+      el.setAttribute("y1", String(line.y1Pct));
+      el.setAttribute("x2", String(line.x2Pct));
+      el.setAttribute("y2", String(line.y2Pct));
+      svg.appendChild(el);
+      if (line.label) {
+        const label = document.createElement("span");
+        label.className = "point-line-label";
+        label.textContent = line.label;
+        label.style.left = `${(Number(line.x1Pct) + Number(line.x2Pct)) / 2}%`;
+        label.style.top = `${(Number(line.y1Pct) + Number(line.y2Pct)) / 2}%`;
+        layer.appendChild(label);
+      }
+    }
+    layer.appendChild(svg);
+  }
+  for (const point of marks) {
     const mark = document.createElement("div");
     mark.className = "point-mark";
     mark.style.left = `${point.xPct}%`;
@@ -1617,7 +1652,7 @@ function renderPoints(points, ttlMs) {
   clearTimeout(renderPoints._fadeTimer);
   clearTimeout(renderPoints._wipeTimer);
   renderPoints._fadeTimer = setTimeout(() => {
-    layer.querySelectorAll(".point-mark").forEach((el) => el.classList.add("fading"));
+    layer.querySelectorAll(".point-mark, .point-line, .point-line-label").forEach((el) => el.classList.add("fading"));
     renderPoints._wipeTimer = setTimeout(() => {
       layer.innerHTML = "";
     }, 450);

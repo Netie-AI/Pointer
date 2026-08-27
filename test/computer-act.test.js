@@ -152,6 +152,7 @@ function test(name, fn) {
   await test("dictateIntoFocus is on by default", () => {
     assert.strictEqual(DEFAULTS.dictateIntoFocus, true);
     assert.strictEqual(DEFAULTS.scribeIntoFocus, true);
+    assert.strictEqual(DEFAULTS.scribeScreenContext, false);
   });
 
   await test("planFromInstruction uses recipes then type/click/observe", () => {
@@ -167,6 +168,11 @@ function test(name, fn) {
     const word = planFromInstruction("write hello in Word");
     assert.ok(word.ok);
     assert.ok(word.actions.some((a) => a.type === "word_docx_write"));
+    const opened = planFromInstruction("open: notepad");
+    assert.strictEqual(opened.source, "open");
+    assert.strictEqual(opened.actions[0].type, "open");
+    const focused = planFromInstruction("focus hwnd: 99");
+    assert.strictEqual(focused.actions[0].type, "focus_hwnd");
   });
 
   await test("computer.act instruction type: runs after a green gate and approval", async () => {

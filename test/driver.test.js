@@ -88,6 +88,7 @@ test("dry-run keeps v1 contract: xPct math, type without coords, missing coords 
     { region: { x: 0, y: 0, width: 0, height: 0 } }
   );
   assert.strictEqual(miss.ok, false);
+  assert.deepStrictEqual(await d.listWindows(), []);
 });
 
 test("one persistent worker serves many ops; coords go through toPhysical", async () => {

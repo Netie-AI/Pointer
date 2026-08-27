@@ -176,6 +176,13 @@ while (-not $done) {
         $ok = [NetieInput]::FocusHwnd([int64]$m.hwnd)
         if (-not $ok) { throw 'focus failed' }
       }
+      'windows' {
+        $list = New-Object System.Collections.ArrayList
+        Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle } | Select-Object -First 40 | ForEach-Object {
+          [void]$list.Add(@{ hwnd = [string][int64]$_.MainWindowHandle; title = [string]$_.MainWindowTitle; proc = [string]$_.ProcessName })
+        }
+        $r.windows = @($list)
+      }
       'exit'  { $done = $true }
       default { $r.ok = $false; $r.error = "unknown op: $($m.op)" }
     }
@@ -450,6 +457,22 @@ class InputDriver {
     if (this.dryRun) return { ok: true, ...this.last };
     await this._send({ op: "focus", hwnd: h });
     return { ok: true, ...this.last };
+  }
+
+  /** Visible titled windows for computer.observe. Dry-run stays empty. */
+  async listWindows() {
+    this.last = { op: "windows" };
+    if (this.dryRun) return [];
+    const r = await this._send({ op: "windows" }, { timeoutMs: 4000 });
+    const raw = Array.isArray(r.windows) ? r.windows : [];
+    return raw
+      .filter((w) => w && (w.title || w.hwnd))
+      .slice(0, 40)
+      .map((w) => ({
+        hwnd: String(w.hwnd || "0"),
+        title: String(w.title || "").slice(0, 120),
+        proc: String(w.proc || "").slice(0, 40),
+      }));
   }
 
   async moveTo(x, y) {

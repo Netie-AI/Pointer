@@ -76,6 +76,18 @@ function planFromInstruction(instruction, opts = {}) {
   if (press) {
     return { ok: true, source: "press", actions: [{ type: "press", value: press[1] }] };
   }
+  const opened = text.match(/^(?:please\s+)?open\s*:\s*([\s\S]+)$/i);
+  if (opened && opened[1].trim()) {
+    return { ok: true, source: "open", actions: [{ type: "open", value: opened[1].trim() }] };
+  }
+  const focusHwnd = text.match(/^(?:please\s+)?focus\s+hwnd\s*:\s*(\d+)$/i);
+  if (focusHwnd) {
+    return {
+      ok: true,
+      source: "focus",
+      actions: [{ type: "focus_hwnd", hwnd: focusHwnd[1] }],
+    };
+  }
   const delivered = text.match(/^(?:please\s+)?deliver\s*:\s*([\s\S]+)$/i);
   if (delivered && delivered[1].trim()) {
     const plan = deliverTextActions(delivered[1].trim(), {

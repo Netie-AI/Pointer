@@ -117,6 +117,24 @@ function test(name, fn) {
     assert.strictEqual(obs.ok, true);
     assert.strictEqual(obs.detectable, true);
     assert.deepStrictEqual(obs.elements, []);
+    assert.strictEqual(obs.foreground, null);
+    assert.deepStrictEqual(obs.windows, []);
+  });
+
+  await test("computer.observe includes foreground and window list for agents", () => {
+    const obs = computerObserve({
+      captureVisible: true,
+      uacc: { installed: false },
+      foreground: { hwnd: "42", title: "Untitled - Notepad", proc: "notepad" },
+      windows: [
+        { hwnd: "42", title: "Untitled - Notepad", proc: "notepad" },
+        { hwnd: "0", title: "", proc: "?" },
+      ],
+    });
+    assert.strictEqual(obs.foreground.hwnd, "42");
+    assert.strictEqual(obs.foreground.title, "Untitled - Notepad");
+    assert.strictEqual(obs.windows.length, 1);
+    assert.strictEqual(obs.windows[0].proc, "notepad");
   });
 
   await test("MCP computer.act refuses without a secure gate", async () => {

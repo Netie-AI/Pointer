@@ -111,6 +111,11 @@ const DEFAULTS = Object.freeze({
   personalContext: "",
   /** OpenWillow-class Scribe output language. Ctrl+Alt+L toggles. */
   scribeLanguage: "English",
+  /**
+   * OpenWillow screen context: attach a screenshot to Scribe. Off by default
+   * because the screen is untrusted data and leaves the device with the LLM.
+   */
+  scribeScreenContext: false,
 });
 
 function defaultPath() {

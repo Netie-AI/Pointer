@@ -70,6 +70,7 @@ function readAsset(file) {
     assert.strictEqual(handlePublicRequest({ method: "POST", pathname: "/api/scribe" }).status, 404);
     assert.strictEqual(handlePublicRequest({ method: "POST", pathname: "/api/meeting" }).status, 404);
     assert.strictEqual(handlePublicRequest({ method: "GET", pathname: "/api/computer" }).status, 404);
+    assert.strictEqual(handlePublicRequest({ method: "GET", pathname: "/api/observe" }).status, 404);
   });
 
   await test("public fetch serves /today and style.css from host/", async () => {

@@ -2,6 +2,15 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Live observe, Esc cancel, Scribe screen, meeting Suggest
+
+`GET /api/observe` plus MCP `computer.observe` now return the foreground
+window and a titled-window list so other agents can see this computer.
+`open:` and `focus hwnd:` plan locally. Esc cancels Transcribe/Scribe
+listen without a lifetime global grab. Optional Scribe screen context
+(off by default, OpenWillow-class). Meeting mode has a Suggest pill.
+Teach overlay parses LINE/ARROW strokes. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - Loopback scribe and meeting APIs for other agents
 
 MCP `computer.scribe` and `computer.meeting_assist` plus

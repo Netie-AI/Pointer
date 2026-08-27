@@ -142,6 +142,25 @@ function createCoordinator(opts = {}) {
       });
       return;
     }
+    if (req.method === "GET" && url.pathname === "/api/observe") {
+      const mcp = opts.mcp;
+      const raw = mcp
+        ? mcp.handle(
+            { jsonrpc: "2.0", id: 1, method: "computer.observe", params: {} },
+            { coordinator: api }
+          )
+        : {
+            jsonrpc: "2.0",
+            id: 1,
+            error: { code: -32601, message: "mcp not wired" },
+          };
+      Promise.resolve(raw).then((out) => {
+        const body = out && out.result ? out.result : out;
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(body));
+      });
+      return;
+    }
     if (req.method === "POST" && (url.pathname === "/mcp" || url.pathname === "/api/computer" || url.pathname === "/api/scribe" || url.pathname === "/api/meeting")) {
       const chunks = [];
       req.on("data", (c) => chunks.push(c));

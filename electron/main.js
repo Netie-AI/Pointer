@@ -210,11 +210,27 @@ const liveMcp = createMcpAbi({
     }),
   craft: craftHint,
   status: () => liveComputerStatus(),
-  observe: () =>
-    computerObserve({
+  observe: async () => {
+    let foreground = null;
+    let windows = [];
+    try {
+      foreground = await driver.foreground();
+    } catch {
+      foreground = null;
+    }
+    try {
+      windows = await driver.listWindows();
+    } catch {
+      windows = [];
+    }
+    return computerObserve({
       captureVisible: captureVisible(),
       uacc: detectUacc(),
-    }),
+      foreground,
+      windows,
+      delivery: publicTarget(deliveryTarget),
+    });
+  },
   act: (params) =>
     runComputerAct(params, {
       secure: cortexGate,
@@ -238,32 +254,46 @@ const liveMcp = createMcpAbi({
       },
       execute: (actions) => executeApproved(actions, { ignoreHudMode: true }),
     }),
-  scribe: (params) =>
-    runComputerScribe(params, {
-      secure: cortexGate,
-      language: () => normalizeScribeLanguage(settings.get("scribeLanguage")),
-      writingStyle: () => settings.get("writingStyle") || "",
-      personalContext: () => settings.get("personalContext") || "",
-      copySelection: async () => {
-        try {
-          await driver.perform({ type: "clipboard_baseline" });
-          await driver.perform({ type: "press", value: "ctrl+c" });
-          await driver.perform({ type: "wait", ms: 120 });
-          const clip = await driver.clipboardGet();
-          return String((clip && clip.text) || "").trim();
-        } catch {
-          return "";
-        }
+  scribe: async (params) => {
+    if (settings.get("scribeScreenContext") === true) {
+      try {
+        await captureDisplayCrop(null);
+      } catch {
+        /* screen is optional reference data */
+      }
+    }
+    return runComputerScribe(
+      {
+        ...(params && typeof params === "object" ? params : {}),
+        hasScreenshot: Boolean(lastCapture && lastCapture.dataUrl),
       },
-      complete: async (req) =>
-        eco.visionChat({
-          message: `${req.system}\n\n${req.user}`,
-          dataUrl: lastCapture && lastCapture.dataUrl,
-          hotContext: plannerContext(String((req && req.user) || "")),
-        }),
-      deliver: (text, extra) =>
-        deliverIntoTarget(text, { via: "paste", replace: Boolean(extra && extra.replace) }),
-    }),
+      {
+        secure: cortexGate,
+        language: () => normalizeScribeLanguage(settings.get("scribeLanguage")),
+        writingStyle: () => settings.get("writingStyle") || "",
+        personalContext: () => settings.get("personalContext") || "",
+        copySelection: async () => {
+          try {
+            await driver.perform({ type: "clipboard_baseline" });
+            await driver.perform({ type: "press", value: "ctrl+c" });
+            await driver.perform({ type: "wait", ms: 120 });
+            const clip = await driver.clipboardGet();
+            return String((clip && clip.text) || "").trim();
+          } catch {
+            return "";
+          }
+        },
+        complete: async (req) =>
+          eco.visionChat({
+            message: `${req.system}\n\n${req.user}`,
+            dataUrl: lastCapture && lastCapture.dataUrl,
+            hotContext: plannerContext(String((req && req.user) || "")),
+          }),
+        deliver: (text, extra) =>
+          deliverIntoTarget(text, { via: "paste", replace: Boolean(extra && extra.replace) }),
+      }
+    );
+  },
   meetingAssist: (params) =>
     runMeetingAssist(params, {
       secure: cortexGate,
@@ -604,6 +634,7 @@ function applyAppMode(modeId, { reason = "" } = {}) {
   } else {
     scribeSession = { gated: false };
   }
+  syncDictateCancelHotkey();
   return {
     ok: true,
     mode: appMode,
@@ -1345,6 +1376,7 @@ async function toggleDictateHotkey() {
         ? `Dictation off. Target was ${target.title || "the remembered app"}.`
         : "Dictation off.",
     });
+    syncDictateCancelHotkey();
     return { ok: true, listening: false, target };
   }
   if (!delivering) {
@@ -1363,6 +1395,7 @@ async function toggleDictateHotkey() {
       ? `Dictation on - speaking into ${target.title || "the remembered app"}.`
       : "Dictation on - click an editor, then speak.",
   });
+  syncDictateCancelHotkey();
   return { ok: true, listening: true, target };
 }
 
@@ -1387,6 +1420,13 @@ async function deliverIntoTarget(text, opts = {}) {
 async function runScribeTurn({ instruction, source = "ask" } = {}) {
   const text = cleanTranscript(instruction);
   if (!text) return { ok: false, reason: "empty scribe instruction" };
+  if (settings.get("scribeScreenContext") === true) {
+    try {
+      await captureDisplayCrop(null);
+    } catch {
+      /* screen is optional reference data */
+    }
+  }
   sendHud({ type: "answer", meta: "Scribe", text: "Copying the selection, then rewriting..." });
   const r = await runComputerScribe(
     {
@@ -1668,13 +1708,23 @@ function reconcileRecallDaemon() {
  * the app's whole lifetime would steal Esc from every other app on the system,
  * so we grab it right before actions run and release it right after. The
  * selection overlay handles its own Esc via a window-level keydown.
+ * OpenWillow cancel: while Transcribe/Scribe is listening, Esc stops the
+ * take without inserting text. That grab is also scoped, never lifetime.
  */
+let escapeOwner = "none";
+
 function grabKillSwitch() {
+  try {
+    globalShortcut.unregister("Escape");
+  } catch {
+    /* already gone */
+  }
   const ok = globalShortcut.register("Escape", () => {
     abortPlan = true;
     sendToPanel("clicks:state", { state, hotkey: HOTKEY, aborted: true });
   });
-  if (!ok) console.error("Kill switch: could not grab Esc (owned elsewhere) — hotkey still aborts");
+  escapeOwner = ok ? "plan" : "none";
+  if (!ok) console.error("Kill switch: could not grab Esc (owned elsewhere) - hotkey still aborts");
 }
 
 function releaseKillSwitch() {
@@ -1682,6 +1732,41 @@ function releaseKillSwitch() {
     globalShortcut.unregister("Escape");
   } catch {
     /* already gone */
+  }
+  escapeOwner = "none";
+  syncDictateCancelHotkey();
+}
+
+function cancelDictateListen() {
+  listenMic = false;
+  sendHudQuiet({ type: "auto-listen", mic: false, system: listenSystem, paused: hudPaused });
+  sendHudQuiet({ type: "insight", text: "Dictation cancelled." });
+}
+
+function syncDictateCancelHotkey() {
+  const want =
+    !planRunning && listenMic && (appMode === "transcribe" || appMode === "scribe");
+  if (want) {
+    if (escapeOwner === "plan" || escapeOwner === "dictate") return;
+    try {
+      globalShortcut.unregister("Escape");
+    } catch {
+      /* already gone */
+    }
+    const ok = globalShortcut.register("Escape", () => {
+      cancelDictateListen();
+      syncDictateCancelHotkey();
+    });
+    escapeOwner = ok ? "dictate" : "none";
+    return;
+  }
+  if (escapeOwner === "dictate") {
+    try {
+      globalShortcut.unregister("Escape");
+    } catch {
+      /* already gone */
+    }
+    escapeOwner = "none";
   }
 }
 
@@ -3365,6 +3450,7 @@ ipcMain.handle("hud:toggleListen", async (_e, payload) => {
   listenMic = Boolean(payload && payload.on);
   if (listenMic) ensureSttSidecar();
   if (!listenMic) flushSource("mic");
+  syncDictateCancelHotkey();
   const d = transcriber.describe();
   return {
     ok: true,

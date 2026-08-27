@@ -48,7 +48,9 @@ function test(name, fn) {
   });
 
   await test("loopback HTTP serves /today and refuses 0.0.0.0", async () => {
-    const mcp = createMcpAbi();
+    const mcp = createMcpAbi({
+      observe: () => ({ ok: true, windows: [{ title: "Notepad", hwnd: "1" }], elements: [] }),
+    });
     const c = createCoordinator({
       mcp,
       computerStatus: () => ({ ok: true, detectable: true, captureVisible: true }),
@@ -135,6 +137,16 @@ function test(name, fn) {
       }).on("error", reject);
     });
     assert.strictEqual(scribeGet.ok, true);
+
+    const obs = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/observe" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      }).on("error", reject);
+    });
+    assert.strictEqual(obs.ok, true);
+    assert.strictEqual(obs.windows[0].title, "Notepad");
 
     await c.close();
   });

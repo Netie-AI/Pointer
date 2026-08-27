@@ -8,13 +8,12 @@
    writes stay recipes. Closed #3 #8-#25 stay closed.
 1. **DR-0005 (founder).** HUD is screenshotable (settings v3). UACC READ
    skills in search. Loopback MCP `computer.status` / `observe` / `act` /
-   `scribe` / `meeting_assist` plus `GET|POST /api/computer` `/api/scribe`
-   `/api/meeting`. Act/scribe/meeting fail-closed without Cortex
-   `/dms/secure`. Transcribe types into the remembered window. Scribe
-   rewrites then pastes. Ctrl+Alt+Space dictation, Ctrl+Alt+M
-   transcribe/scribe, Ctrl+Alt+L language. Meeting Ask is Cluely-class
-   assist from live notes. IBM Plex HUD, no liquid glass.
-   P-04 (OpenWillow wholesale) stays parked.
+   `scribe` / `meeting_assist` plus `/api/computer` `/api/observe`
+   `/api/scribe` `/api/meeting`. Observe returns live windows. Act/scribe
+   fail-closed without Cortex. Transcribe types into the remembered window.
+   Scribe rewrites then pastes. Optional screen context. Esc cancels
+   listening. Ctrl+Alt+Space/M/L. Meeting Suggest pill. Teach LINE marks.
+   IBM Plex HUD. P-04 stays parked.
 2. **Generative tools (DR-0004).** Search then craft a hint. Coordinator
    at `127.0.0.1:18010`. Public Worker is pages only. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** No GPLv3 dump.

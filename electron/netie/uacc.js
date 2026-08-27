@@ -164,14 +164,35 @@ function computerStatus(opts = {}) {
   };
 }
 
+function publicWindow(win) {
+  if (!win || typeof win !== "object") return null;
+  const hwnd = String(win.hwnd || "").trim();
+  const title = String(win.title || "").trim();
+  const proc = String(win.proc || "").trim();
+  if ((!hwnd || hwnd === "0") && !title && (!proc || proc === "?")) return null;
+  return {
+    hwnd: hwnd && hwnd !== "0" ? hwnd : "",
+    title: title.slice(0, 80),
+    proc: proc && proc !== "?" ? proc.slice(0, 40) : "",
+  };
+}
+
 function computerObserve(opts = {}) {
   const status = computerStatus(opts);
+  const foreground = publicWindow(opts.foreground);
+  const windows = (Array.isArray(opts.windows) ? opts.windows : [])
+    .map(publicWindow)
+    .filter(Boolean)
+    .slice(0, 40);
   return {
     ok: true,
     detectable: status.detectable,
     captureVisible: status.captureVisible,
     source: status.uacc.installed ? "uacc" : "pointer",
-    elements: Array.isArray(opts.elements) ? opts.elements : [],
+    foreground,
+    delivery: status.delivery,
+    windows,
+    elements: Array.isArray(opts.elements) ? opts.elements.slice(0, 40) : [],
     note: status.detectable
       ? "HUD is visible to screen capture"
       : "HUD is content-protected; turn on captureVisible or NETIE_CAPTURE_VISIBLE=1",
@@ -186,4 +207,5 @@ module.exports = {
   parseProbe,
   computerStatus,
   computerObserve,
+  publicWindow,
 };

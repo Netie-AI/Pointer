@@ -30,6 +30,9 @@ async function run() {
       assert.ok(/Control\+Alt\+L/.test(main), "Ctrl+Alt+L must toggle Scribe language");
       assert.ok(/runComputerScribe/.test(main), "loopback computer.scribe must use the gated runner");
       assert.ok(/runMeetingAssist/.test(main), "loopback computer.meeting_assist must use the gated runner");
+      assert.ok(/listWindows/.test(main), "computer.observe must list live windows");
+      assert.ok(/syncDictateCancelHotkey/.test(main), "Esc must cancel dictation only while listening");
+      assert.ok(/scribeScreenContext/.test(main), "Scribe may attach optional screen context");
       assert.ok(/buildMeetingAssist/.test(main), "meeting mode must offer Cluely-class assist");
     }),
 

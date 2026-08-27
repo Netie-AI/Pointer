@@ -208,6 +208,8 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 /* General/Scribe are companions, not agents — no act affordance at all. */
 .hud.mode-general .act-button,
 .hud.mode-scribe .act-button { display: none; }
+#btn-suggest { display: none; }
+.hud.mode-meeting #btn-suggest { display: inline-flex; }
 .menu label input[type="text"],
 .menu label select {
   display: block; width: 100%; margin-top: 4px; padding: 6px 8px;
@@ -275,6 +277,19 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 }
 @keyframes point-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); } }
 .point-mark.fading { opacity: 0; transition: opacity 420ms ease; }
+.point-line {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  pointer-events: none; overflow: visible;
+}
+.point-line line {
+  stroke: var(--accent); stroke-width: 2; stroke-linecap: round; opacity: 0.9;
+}
+.point-line-label {
+  position: absolute; transform: translate(-50%, -120%);
+  padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+  background: var(--surface); border: 1px solid var(--line-soft);
+  color: var(--text); font-size: 11px; font-weight: 650;
+}
 
 /* P4-BG-AGENTS — background work is a status line, not a stage orb. */
 .bg-status {
