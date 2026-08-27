@@ -31,7 +31,7 @@ the issue wins.
 | Artifact workspace | `electron/netie/workspace.js` (no runtime; public `/workspace` is a catalog with a This computer dock whose Run always refuses; loopback home/workspace paint a This session file) |
 | Skill search / craft hints | `electron/netie/skill-search.js`, `skills-exec.js` |
 | Coordinator + first-party MCP ABI | `electron/netie/coordinator.js`, `mcp-abi.js`, `host-serve.js`; pages in `host/` (`/` `/today` `/meeting` `/teach` `/security` `/document` `/inbox` `/lanes` `/skills` `/workspace`); public Worker `workers/netie-host.js` |
-| Word safe API | `electron/netie/word-coworker.js` |
+| Word safe API | `electron/netie/word-coworker.js` (`buildDocx` in memory; loopback `/document` downloads it; Word.app write still needs Cortex; public 404) |
 | Driver (SendInput) | `electron/netie/driver.js` |
 | Safety / plan-guard | `electron/netie/safety.js`, `plan-guard.js` |
 | STT chain | `electron/netie/transcriber.js` |

@@ -655,6 +655,11 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
   pre.textContent = (m && m.deliverable) || "";
   page.appendChild(pre);
   setBriefButtons((m && m.deliverable) || "", (m && m.desk) || "brief", Boolean(m && m.localFirst));
+  const docxBtn = document.getElementById("docx-download");
+  if (docxBtn) {
+    const hasDraft = Boolean(String((m && m.preview) || "").trim()) && !(m && m.localFirst) && !(m && m.exec);
+    docxBtn.hidden = !hasDraft;
+  }
   return !(m && m.localFirst);
 }
 
@@ -1528,6 +1533,26 @@ const briefDownload = document.getElementById("brief-download");
 if (briefDownload) {
   briefDownload.addEventListener("click", function () {
     downloadMarkdown(lastBriefFile, lastBriefText);
+  });
+}
+
+const docxDownload = document.getElementById("docx-download");
+if (docxDownload) {
+  docxDownload.addEventListener("click", function () {
+    fetch("/api/document.docx")
+      .then(function (r) {
+        if (!r.ok) throw new Error("no draft");
+        return r.blob();
+      })
+      .then(function (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = el("a");
+        a.href = url;
+        a.download = "pointer-draft.docx";
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(function () {});
   });
 }
 

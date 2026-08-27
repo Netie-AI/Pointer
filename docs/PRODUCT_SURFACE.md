@@ -16,7 +16,8 @@ insight (grounded Heard only, never invent, never send), and a 300ms cue when th
 is the standing session brief with On your plate from live commitments
 and filed inbox/Word drafts,
 Document reuses the live recap or Today plate on a bare `write in Word`
-(still not a `.docx` without Cortex), Security
+(still not a `.docx` in Word.app without Cortex; loopback `/document`
+may download a generated package, never Act), Security
 reviews injected files and never self-approves.
 Teach overlay holds the current control until `got it`. Fixed HUD chrome
 has Back / Got it (Ask, never Act) in the top cue bar even when chat is
@@ -36,14 +37,16 @@ it Ask the next step on loopback (never Act). Draw around a control to
 stack a BOX. Copy next / Copy say-this
 copy the cue line. Overlay current BOX shows Click / Type in / Look at
 (not only `1 Save`). Loopback `/meeting` Ask chips file an unsent follow-up
-and a Word draft from the stored transcript (never send, never a `.docx`,
+and a Word draft from the stored transcript (never send, never Word.app,
 teach walks stay on `/teach`). Loopback sticky chrome has a fixed Ask bar
 on every page (`/api/ask`, never Act). `/today` chips file Recap / mail /
 Word / security the same way. Loopback `/workspace` opens a file as the
 working set and Ask chips review/file from that body (`this file` scans
 only the open artifact). This session links open `/workspace?id=` as
 the working set (never exec). `/workspace` This computer dock Run POSTs
-`/api/workspace/exec` and always fails closed (P-06). Loopback `/meeting` paints the You/Them
+`/api/workspace/exec` and always fails closed (P-06). Loopback `/document`
+downloads a generated `.docx` from the live draft (never Act, never
+Word.app). Public `/api/document.docx` is 404. Loopback `/meeting` paints the You/Them
 talk track from the stored ring. HUD insight paints the same You/Them
 turns in fixed chrome. Say-this reuses your overlapping line
 or Heard facts, never an unrelated last-you dump. Loopback `/teach`

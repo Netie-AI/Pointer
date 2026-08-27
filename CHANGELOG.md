@@ -1,3 +1,10 @@
+## 2026-08-27 - Loopback /document downloads a generated .docx
+
+Loopback GET `/api/document.docx` returns a Word-openable package from
+the live document draft (never Act, never Word.app). Empty draft is 404.
+Public catalog stays 404. Cue still says not a .docx. P-05 and P-06 stay
+parked.
+
 ## 2026-08-27 - Teach overlay labels Click/Type in on the current BOX
 
 Click-through teach overlay paints Click / Type in / Look at on the

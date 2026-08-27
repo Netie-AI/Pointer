@@ -2236,7 +2236,8 @@ function documentAssist({ text, source, transcript } = {}) {
     "",
     "> act: laptop-only after Cortex gate + approval",
     "> do not click the Word ribbon",
-    "> this brief is not a .docx",
+    "> this brief is not a .docx in Word.app",
+    "> loopback may download a generated .docx (never Act)",
     origin,
     "",
     "## Request",
@@ -2264,6 +2265,20 @@ function documentAssist({ text, source, transcript } = {}) {
     preview: String(draft || "").slice(0, 400),
     deliverable,
   };
+}
+
+function documentDraftText(artifact) {
+  if (!artifact || typeof artifact !== "object") return "";
+  const body = String(artifact.body || artifact.deliverable || "");
+  const idx = body.indexOf("## Draft to write");
+  if (idx >= 0) {
+    let rest = body.slice(idx + "## Draft to write".length);
+    const next = rest.search(/\n## /);
+    if (next >= 0) rest = rest.slice(0, next);
+    const fromBody = rest.trim().slice(0, 1500);
+    if (fromBody) return fromBody;
+  }
+  return String(artifact.preview || "").trim().slice(0, 1500);
 }
 
 function wantsSpawn(text) {
@@ -2955,6 +2970,7 @@ module.exports = {
   todayAssist,
   publicTodaySnapshot,
   documentAssist,
+  documentDraftText,
   wantsSpawn,
   spawnCoworker,
   spawnFollowOns,

@@ -149,5 +149,8 @@ HUD live cue bar paints last system STT lines as Live captions when
 the rest of HUD hides (duplicate They asked / Them stay off; never a
 floating LIVE bar). Loopback `/workspace` This computer dock Run POSTs `/api/workspace/exec`
 and always fails closed (P-06). Public catalog shows the same refuse.
+Loopback GET `/api/document.docx` returns a generated Word package from
+the live draft (never Act, never Word.app). Public `/api/document.docx`
+stays 404. Cue still says not a .docx.
 Public POST
 `/api/ask` stays 404.

@@ -12,6 +12,7 @@ const {
   inboxAssist,
   todayAssist,
   documentAssist,
+  documentDraftText,
   wantsSpawn,
   spawnCoworker,
   spawnFollowOns,
@@ -1151,7 +1152,8 @@ test("document assist drafts and never writes Word", () => {
   assert.strictEqual(draft.id, "live-document");
   assert.strictEqual(draft.cueKind, "warn");
   assert.match(draft.cue, /not a \.docx/);
-  assert.match(draft.deliverable, /not a \.docx/);
+  assert.match(draft.deliverable, /not a \.docx in Word\.app/);
+  assert.match(draft.deliverable, /generated \.docx/);
   assert.match(draft.deliverable, /word_docx_write/);
   assert.doesNotMatch(draft.deliverable, /will execute/i);
   const fromMeet = documentAssist({
@@ -1190,6 +1192,16 @@ test("document assist drafts and never writes Word", () => {
   assert.match(named.cue, /not a \.docx/);
   assert.match(named.deliverable, /Notes with Sarah Chen at Acme/);
   assert.doesNotMatch(named.deliverable, /will execute/i);
+  assert.strictEqual(documentDraftText({ preview: "Ship Friday for $40k." }), "Ship Friday for $40k.");
+  assert.match(documentDraftText({ body: draft.deliverable }), /hello in Word/i);
+  assert.strictEqual(
+    documentDraftText({
+      preview: "short",
+      body: "## Draft to write\n\nfull draft text\n\n## How\n",
+    }),
+    "full draft text"
+  );
+  assert.strictEqual(documentDraftText({}), "");
 });
 
 test("spawn coworker never acts and never claims the pointer-act lane", () => {

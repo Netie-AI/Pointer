@@ -12,8 +12,9 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
-const { catalog, todayAssist, sessionBundle, advanceLiveTeach, frameLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, teachWalkPath } = require("./coworker-desks");
+const { catalog, todayAssist, sessionBundle, advanceLiveTeach, frameLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, teachWalkPath, documentDraftText } = require("./coworker-desks");
 const { parsePoints } = require("./point-overlay");
+const { buildDocx } = require("./word-coworker");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
 
@@ -325,6 +326,22 @@ function createCoordinator(opts = {}) {
     }
     if (req.method === "GET" && url.pathname === "/api/document") {
       sendLiveRoom(res, "document", "live-document");
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/document.docx") {
+      const got = workspace.get("live-document");
+      const text = documentDraftText(got.ok ? got.artifact : null);
+      const built = buildDocx(text);
+      if (!built.ok) {
+        res.writeHead(404, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, act: false, exec: false, reason: built.reason || "no document draft" }));
+        return;
+      }
+      res.writeHead(200, {
+        "content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "content-disposition": 'attachment; filename="pointer-draft.docx"',
+      });
+      res.end(built.buffer);
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/inbox") {

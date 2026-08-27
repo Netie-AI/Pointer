@@ -22,8 +22,10 @@
    Click-through overlay stays on the display when HUD hides, with
    Click/Type in on the current BOX, fixed Next / Then / Back / Got it
    chrome, plus Draw for a freehand stroke that stores a BOX (Ask, never a buddy).
-   This session links `/workspace?id=` (never send, never a .docx, never
-   Act). `/workspace` Run is a named refuse (P-06). Public catalog empty.
+   This session links `/workspace?id=` (never send, never Act). Loopback
+   `/document` may download a generated .docx (never Act, never Word.app).
+   Public `/api/document.docx` is 404. `/workspace` Run is a named refuse
+   (P-06). Public catalog empty.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

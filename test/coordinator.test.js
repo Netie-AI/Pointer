@@ -628,6 +628,55 @@ function test(name, fn) {
     await c.close();
   });
 
+  await test("loopback document.docx is a generated package and never acts", async () => {
+    const { documentAssist } = require("../electron/netie/coworker-desks");
+    const { zipRead } = require("../electron/netie/word-coworker");
+    const c = createCoordinator({ clock: () => 9 });
+    const on = await c.listen({ host: "127.0.0.1", port: 0 });
+    const port = on.address.port;
+    const miss = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/document.docx" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(miss.status, 404);
+    const missJson = JSON.parse(miss.body.toString("utf8"));
+    assert.strictEqual(missJson.act, false);
+    assert.strictEqual(missJson.exec, false);
+    const draft = documentAssist({ text: "write hello in Word" });
+    c.workspace.put({
+      id: "live-document",
+      desk: "document",
+      title: draft.title,
+      body: draft.deliverable,
+      cue: draft.cue,
+      preview: draft.preview,
+    });
+    const hit = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/document.docx" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () =>
+          resolve({
+            status: res.statusCode,
+            type: String(res.headers["content-type"] || ""),
+            body: Buffer.concat(chunks),
+          })
+        );
+      }).on("error", reject);
+    });
+    assert.strictEqual(hit.status, 200);
+    assert.match(hit.type, /wordprocessingml/);
+    assert.strictEqual(hit.body.subarray(0, 2).toString("binary"), "PK");
+    const pkg = zipRead(hit.body);
+    assert.ok(pkg.ok);
+    const xml = pkg.entries.find((e) => e.name === "word/document.xml").data.toString("utf8");
+    assert.match(xml, /hello in Word/i);
+    await c.close();
+  });
+
   console.log(`\n${pass} passed, ${fails.length} failed`);
   process.exit(fails.length ? 1 : 0);
 })();

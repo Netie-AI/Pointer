@@ -155,6 +155,19 @@ function handlePublicRequest({ method, pathname, search } = {}) {
       body: JSON.stringify(publicSecuritySnapshot()),
     };
   }
+  if (verb === "GET" && (clean === "/api/document.docx" || clean === "/document.docx")) {
+    return {
+      status: 404,
+      headers: jsonHeaders(),
+      body: JSON.stringify({
+        ok: false,
+        localFirst: true,
+        exec: false,
+        act: false,
+        reason: "generated .docx stays on the laptop",
+      }),
+    };
+  }
   if (verb === "GET" && clean === "/api/document") {
     return {
       status: 200,

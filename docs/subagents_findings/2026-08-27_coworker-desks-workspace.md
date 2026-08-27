@@ -1,6 +1,6 @@
 # coworker desks + online workspace
 
-keywords: desks, meeting assist, meeting llm enrich, teach stack boxes, teach overlay click-through, workspace.exec, DR-0005, Clicky, Cluely, OpenWorker, Computer
+keywords: desks, meeting assist, meeting llm enrich, teach stack boxes, teach overlay click-through, workspace.exec, document.docx download, DR-0005, Clicky, Cluely, OpenWorker, Computer
 main_idea: Pointer beats those products with original desks and a public artifact catalog. Do not vendor their source or unlock P-06.
 
 ## What we studied
@@ -56,11 +56,14 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   `Open:` the working set. Ask chips review that body. Public `?id=` 404.
 - Loopback `/` paints the live teach path, meeting say-this, Today
   plate, and filed inbox/Word/security work cards from `/api/home`
-  (Ask, never Act, never a runtime, never send, never a .docx). `/today`
+  (Ask, never Act, never a runtime, never send). `/today`
   shows the same plate hero. Open-file notes stay facts-only.
 - `workspace.js`: artifact catalog. `exec()` always refuses (P-06). `get` is
   loopback-only; public `?id=` is 404. `/workspace` This computer dock
   Run POSTs that named refuse (never a runtime).
+- Loopback GET `/api/document.docx` builds a Word-openable package in
+  memory from the live document draft (never Act, never Word.app).
+  Public `/api/document.docx` stays 404. Cue still says not a .docx.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
 ## Traps

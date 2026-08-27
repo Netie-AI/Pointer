@@ -106,6 +106,8 @@ function readAsset(file) {
     assert.match(app, /paintComputerDock/);
     assert.match(app, /wireComputerRun/);
     assert.match(app, /\/api\/workspace\/exec/);
+    assert.match(app, /docx-download/);
+    assert.match(app, /\/api\/document\.docx/);
     assert.match(app, /act: false/);
     assert.match(app, /textContent/);
     assert.doesNotMatch(app, /innerHTML/);
@@ -346,6 +348,8 @@ function readAsset(file) {
     assert.match(documentHtml, /id="document-brief"/);
     assert.match(documentHtml, /id="document-chips"/);
     assert.match(documentHtml, /id="brief-copy"/);
+    assert.match(documentHtml, /id="docx-download"/);
+    assert.match(documentHtml, /generated \.docx/);
     const inboxPage = await fetch(new Request("https://host.netie.ai/inbox"));
     assert.strictEqual(inboxPage.status, 200);
     const inboxHtml = await inboxPage.text();
@@ -356,6 +360,13 @@ function readAsset(file) {
     const documentApi = handlePublicRequest({ method: "GET", pathname: "/api/document" });
     assert.strictEqual(JSON.parse(documentApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(documentApi.body).exec, false);
+    const docxPublic = handlePublicRequest({ method: "GET", pathname: "/api/document.docx" });
+    assert.strictEqual(docxPublic.status, 404);
+    assert.strictEqual(JSON.parse(docxPublic.body).exec, false);
+    assert.strictEqual(JSON.parse(docxPublic.body).act, false);
+    const docxBare = handlePublicRequest({ method: "GET", pathname: "/document.docx" });
+    assert.strictEqual(docxBare.status, 404);
+    assert.strictEqual(JSON.parse(docxBare.body).act, false);
     const inboxApi = handlePublicRequest({ method: "GET", pathname: "/api/inbox" });
     assert.strictEqual(JSON.parse(inboxApi.body).cue, "");
     const css = await fetch(new Request("https://host.netie.ai/style.css"));
