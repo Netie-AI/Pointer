@@ -137,8 +137,8 @@ Loopback `/teach` paints a walk path from measured
 BOX/POINT (current hold, later dashed, Got it Ask, never Act). Drag
 boxes on that stage to stack numbered regions in display percents
 (never invented, cap 8). A click-through laptop overlay paints that
-walk on the display when HUD hides (never a buddy, never meeting
-say-this). Loopback
+walk on the display when HUD hides, with fixed Next / Then / Back /
+Got it Ask (never a buddy, never meeting say-this). Loopback
 `/` paints that teach path, meeting card, Today plate, and filed
 inbox/Word/security work cards from `/api/home` (never exec).
 Public POST

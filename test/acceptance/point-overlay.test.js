@@ -125,7 +125,9 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       );
       const walk = read("electron/teach-overlay.html");
       assert.ok(/pointer-events:\s*none/.test(walk), "the screen walk must not eat clicks");
-      assert.ok(/point-box\.later/.test(walk), "later boxes stay dashed");
+      assert.ok(/id="walk-chrome"/.test(walk), "fixed overlay chrome advances the walk");
+      assert.ok(/Got it/.test(walk) && /data-q="got it, next"/.test(walk), "Got it Asks, never Acts");
+      assert.ok(/Then:/.test(walk), "Then remaining stays on the overlay");
       assert.ok(!/innerHTML/.test(walk), "the walk paints with createElement");
       assert.ok(
         !/id="clicky-orb"|class="clicky-orb"|stage-orb|chat-bubble/.test(walk),

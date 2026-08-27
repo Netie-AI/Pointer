@@ -13,6 +13,44 @@
         pointer-events: none;
         user-select: none;
       }
+      #walk-chrome {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
+        display: none;
+        align-items: center;
+        gap: 10px;
+        max-width: min(720px, 86vw);
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #111;
+        border: 1px solid #345;
+        color: #eee;
+        font: 650 12px "Segoe UI", system-ui, sans-serif;
+        pointer-events: auto;
+      }
+      #walk-chrome.show { display: inline-flex; }
+      #walk-cue { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #walk-then {
+        margin: 0;
+        color: #9ad;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #walk-chrome button {
+        pointer-events: auto;
+        background: #1a1a1a;
+        color: #9ad;
+        border: 1px solid #345;
+        padding: 4px 10px;
+        border-radius: 999px;
+        cursor: pointer;
+        font: inherit;
+      }
       #point-layer {
         position: absolute;
         inset: 0;
@@ -76,9 +114,20 @@
     </style>
   </head>
   <body>
+    <div id="walk-chrome" class="chrome">
+      <p id="walk-cue"></p>
+      <p id="walk-then" hidden></p>
+      <button type="button" id="walk-back" data-q="back">Back</button>
+      <button type="button" id="walk-next" data-q="got it, next">Got it</button>
+    </div>
     <div id="point-layer" aria-hidden="true"></div>
     <script>
       const layer = document.getElementById("point-layer");
+      const chromeBar = document.getElementById("walk-chrome");
+      const cueEl = document.getElementById("walk-cue");
+      const thenEl = document.getElementById("walk-then");
+      const api = window.netieTeachOverlay;
+      let mouseOverChrome = false;
 
       function paint(points) {
         if (!layer) return;
@@ -115,9 +164,46 @@
         });
       }
 
-      if (window.netieTeachOverlay && typeof window.netieTeachOverlay.onPoint === "function") {
-        window.netieTeachOverlay.onPoint(function (event) {
+      function paintChrome(event) {
+        const cue = String((event && event.cue) || "").trim();
+        const rest = String((event && event.rest) || "").trim();
+        if (cueEl) cueEl.textContent = cue ? "Next: " + cue : "";
+        if (thenEl) {
+          thenEl.hidden = !rest;
+          thenEl.textContent = rest ? "Then: " + rest : "";
+        }
+        if (chromeBar) chromeBar.classList.toggle("show", Boolean(cue));
+      }
+
+      function syncClickThrough(over) {
+        if (over === mouseOverChrome) return;
+        mouseOverChrome = over;
+        if (api && typeof api.invoke === "function") {
+          api.invoke("teach-overlay:setIgnoreMouse", { ignore: !over });
+        }
+      }
+
+      function onAdvance(ev) {
+        const btn = ev.target && ev.target.closest ? ev.target.closest("button[data-q]") : null;
+        const q = btn && String(btn.getAttribute("data-q") || "").trim();
+        if (!q || !api || typeof api.invoke !== "function") return;
+        ev.preventDefault();
+        api.invoke("teach-overlay:ask", { message: q, act: false });
+      }
+
+      if (chromeBar) chromeBar.addEventListener("click", onAdvance);
+      document.addEventListener("pointermove", function (ev) {
+        const over = Boolean(ev.target && ev.target.closest && ev.target.closest(".chrome"));
+        syncClickThrough(over);
+      }, true);
+      document.addEventListener("pointerleave", function () {
+        syncClickThrough(false);
+      }, true);
+
+      if (api && typeof api.onPoint === "function") {
+        api.onPoint(function (event) {
           paint(event && event.points);
+          paintChrome(event);
         });
       }
       if (/(?:^|[?&])demo=1(?:&|$)/.test(location.search)) {
@@ -125,6 +211,10 @@
           { leftPct: 12, topPct: 18, wPct: 28, hPct: 22, label: "1 region 1" },
           { leftPct: 48, topPct: 42, wPct: 30, hPct: 24, label: "2 region 2", later: true },
         ]);
+        paintChrome({
+          cue: "1 of 2 Look at region 1",
+          rest: "Look at region 2",
+        });
       }
     </script>
   </body>

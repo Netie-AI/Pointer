@@ -41,7 +41,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   (Next/Then on the stage, never invented coords, never Act). Drag
   boxes on that stage to stack numbered regions in display percents
   (current hold, later dashed, cap 8). A click-through laptop overlay
-  paints that walk on the display when HUD hides (never a buddy).
+  paints that walk on the display when HUD hides, with fixed Next / Then /
+  Back / Got it Ask (never a buddy).
 - HUD insight paints the same You/Them talk in fixed chrome (never a
   bubble, never a cheater overlay).
 - Loopback `/meeting` paints You/Them turns from the stored ring.

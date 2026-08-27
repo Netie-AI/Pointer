@@ -1,3 +1,10 @@
+## 2026-08-27 - Teach overlay Back / Got it Ask without HUD
+
+Click-through teach overlay keeps a fixed Next / Then bar with
+Back / Got it (Ask, never Act). The rest of the display stays
+click-through. Not a buddy, not a ring, not a stealth meeting
+overlay. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Teach BOX overlay stays click-through on the display
 
 Held teach walks paint current BOX and later dashed boxes on a

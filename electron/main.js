@@ -413,7 +413,12 @@ function publishTeachOverlay(assist) {
   publishLiveCoworker(assist);
   const pointed = parsePoints(assist.deliverable);
   if (pointed.points.length) {
-    publishPointOverlay(assist.deliverable, { hold: true, path: assist.path });
+    publishPointOverlay(assist.deliverable, {
+      hold: true,
+      path: assist.path,
+      cue: assist.cue,
+      rest: assist.rest,
+    });
   }
 }
 function publishLiveMeeting(assist) {
@@ -1256,12 +1261,16 @@ function sendTeachOverlay(event) {
       points,
       hold: Boolean(event && event.hold),
       ttlMs: Number(event && event.ttlMs) || 0,
+      cue: String((event && event.cue) || "").slice(0, 240),
+      rest: String((event && event.rest) || "").slice(0, 160),
     });
   });
 }
 
 function publishPointOverlay(raw, opts) {
   const event = toOverlayEvent(raw, opts);
+  event.cue = String((opts && opts.cue) || "").slice(0, 240);
+  event.rest = String((opts && opts.rest) || "").slice(0, 160);
   sendHud(event);
   if (event.hold) sendTeachOverlay(event);
 }
@@ -2944,7 +2953,14 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
       meta: `${local.desk} · ${local.kind}`,
       text: pointed.text || local.deliverable,
     });
-    if (pointed.points.length) publishPointOverlay(local.deliverable, { hold: true, path: local.path });
+    if (pointed.points.length) {
+      publishPointOverlay(local.deliverable, {
+        hold: true,
+        path: local.path,
+        cue: local.cue,
+        rest: local.rest,
+      });
+    }
     if (local.desk === "teach") {
       armTeachWalk(asked);
     }
@@ -3111,7 +3127,12 @@ function enqueueCoworkerJob(message, extraTranscript, spawn) {
         });
         if (pointed.points.length) {
           if (assist.desk === "teach") {
-            publishPointOverlay(assist.deliverable, { hold: true, path: assist.path });
+            publishPointOverlay(assist.deliverable, {
+              hold: true,
+              path: assist.path,
+              cue: assist.cue,
+              rest: assist.rest,
+            });
           } else {
             sendHud(toOverlayEvent(assist.deliverable, {}));
           }
@@ -3852,6 +3873,30 @@ ipcMain.handle("hud:setPaused", async (_e, payload) => {
 ipcMain.handle("hud:setIgnoreMouse", async (_e, payload) => {
   setHudClickThrough(payload && payload.ignore !== false);
   return { ok: true };
+});
+
+ipcMain.handle("teach-overlay:setIgnoreMouse", async (_e, payload) => {
+  if (!teachOverlayWindow || teachOverlayWindow.isDestroyed()) {
+    return { ok: false, act: false };
+  }
+  const ignore = !(payload && payload.ignore === false);
+  try {
+    teachOverlayWindow.setIgnoreMouseEvents(ignore, { forward: true });
+  } catch {
+    teachOverlayWindow.setIgnoreMouseEvents(ignore);
+  }
+  return { ok: true, act: false, ignore };
+});
+
+ipcMain.handle("teach-overlay:ask", async (_e, payload) => {
+  const asked = String((payload && (payload.message || payload.ask || payload.q)) || "").trim();
+  const adv = teachAdvance(asked);
+  if (!asked || adv === 0) {
+    return { ok: false, act: false, exec: false, reason: "overlay only Back / Got it" };
+  }
+  noteTeachStep(asked);
+  armTeachWalk(asked);
+  return { ok: true, act: false, exec: false };
 });
 
 ipcMain.handle("hud:setMode", async (_e, payload) => {

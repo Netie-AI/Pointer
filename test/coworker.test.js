@@ -756,6 +756,10 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   const openFrame = main.slice(main.indexOf("function openOverlay"), main.indexOf("function sampleForeground"));
   assert.match(openFrame, /closeTeachOverlay/);
   const teachOverlay = fs.readFileSync(path.join(__dirname, "..", "electron", "teach-overlay.html"), "utf8");
+  assert.match(teachOverlay, /id="walk-chrome"/);
+  assert.match(teachOverlay, /Got it/);
+  assert.match(teachOverlay, /Then:/);
+  assert.match(teachOverlay, /got it, next/);
   assert.match(teachOverlay, /pointer-events:\s*none/);
   assert.match(teachOverlay, /point-box\.later/);
   assert.match(teachOverlay, /demo=1/);
@@ -763,7 +767,16 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.doesNotMatch(teachOverlay, /clicky-orb|stage-orb|chat-bubble/);
   const teachPreload = fs.readFileSync(path.join(__dirname, "..", "electron", "teach-overlay-preload.js"), "utf8");
   assert.match(teachPreload, /teach-overlay:point/);
+  assert.match(teachPreload, /teach-overlay:ask/);
+  assert.match(teachPreload, /teach-overlay:setIgnoreMouse/);
   assert.doesNotMatch(teachPreload, /hud:act/);
+  const overlayAsk = main.slice(main.indexOf('ipcMain.handle("teach-overlay:ask"'), main.indexOf('ipcMain.handle("hud:setMode"'));
+  assert.match(overlayAsk, /teachAdvance/);
+  assert.match(overlayAsk, /act: false/);
+  assert.match(overlayAsk, /armTeachWalk/);
+  assert.doesNotMatch(overlayAsk, /driver\./);
+  assert.doesNotMatch(overlayAsk, /spawnCoworker/);
+  assert.doesNotMatch(overlayAsk, /hud:act/);
   const hudHtml = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");
   assert.match(hudHtml, /data-cmd="walk"/);
   const hudJs = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
