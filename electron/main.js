@@ -348,13 +348,16 @@ function publishLiveCoworker(assist) {
   const kind =
     assist.cueKind ||
     (assist.desk === "teach" ? "point" : assist.desk === "security" ? "warn" : "say");
-  const line = assist.cue
-    ? kind === "point"
+  const line =
+    kind === "point" && assist.cue
       ? `Next: ${assist.cue}`
-      : kind === "warn"
+      : kind === "warn" && assist.cue
         ? `Review: ${assist.cue}`
-        : assist.cue
-    : "";
+        : assist.asked
+          ? `They asked: ${assist.asked}`
+          : assist.desk === "today" && assist.cue
+            ? `Plate: ${assist.cue}`
+            : assist.cue || "";
   if (line) sendHudQuiet({ type: "insight", text: line.slice(0, 240) });
 }
 function publishTeachOverlay(assist) {
@@ -403,9 +406,16 @@ function localMeetingReply(message, extraTranscript, extra) {
     return assist;
   }
   if (desk.id === "document") {
-    const assist = documentAssist({ text: message, source: liveArtifactBody("live-meeting") });
-    if (assist.ok) publishBrief(assist);
-    return null;
+    const assist = documentAssist({
+      text: message,
+      source: liveArtifactBody("live-meeting") || liveArtifactBody("standing-today"),
+    });
+    if (!assist.ok || !assist.skipLlm) {
+      if (assist.ok) publishBrief(assist);
+      return assist.ok ? null : assist;
+    }
+    publishLiveCoworker(assist);
+    return assist;
   }
   if (desk.id === "teach") {
     const assist = teachAssist({
@@ -2889,7 +2899,10 @@ async function runDeskAssist(message, extraTranscript) {
   }
   if (desk.id === "today") return todayAssist({ state: sessionCoworkerState(), question: message });
   if (desk.id === "document") {
-    return documentAssist({ text: message, source: liveArtifactBody("live-meeting") });
+    return documentAssist({
+      text: message,
+      source: liveArtifactBody("live-meeting") || liveArtifactBody("standing-today"),
+    });
   }
   const walkHit = teachAssist({ text: message, step: teachStep, live: teachLive });
   if (walkHit.ok) {

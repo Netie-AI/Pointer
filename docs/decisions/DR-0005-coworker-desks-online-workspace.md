@@ -90,5 +90,6 @@ plate. Recap labels You vs Them and tags a weekday when heard; say-this
 is a speakable line from your answer. Meeting questions cue in 300ms. HUD
 and loopback `/meeting` show `They asked` above say-this. Today plates
 live commitments on loopback and stays empty on the public catalog.
+Bare `write in Word` reuses the live recap or Today plate as a draft.
 Loopback `/teach` maps measured BOX markers read-only. Public copies stay
 empty.

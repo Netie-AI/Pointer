@@ -346,6 +346,9 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   const livePub = main.slice(main.indexOf("function publishLiveCoworker"), main.indexOf("function publishTeachOverlay"));
   assert.match(livePub, /type: "insight"/);
   assert.match(livePub, /Review:/);
+  assert.match(livePub, /They asked/);
+  assert.match(livePub, /Plate:/);
+  assert.match(main, /standing-today/);
   const ask = main.slice(main.indexOf('ipcMain.handle("hud:ask"'), main.indexOf("P4-BG-AGENTS"));
   assert.match(ask, /toOverlayEvent/);
   assert.doesNotMatch(ask, /driver\./);
@@ -451,9 +454,25 @@ test("document assist drafts and never writes Word", () => {
     source: "# Meeting brief\n- ship the deck Friday",
   });
   assert.strictEqual(fromMeet.act, false);
+  assert.strictEqual(fromMeet.skipLlm, true);
   assert.match(fromMeet.deliverable, /ship the deck Friday/);
   assert.match(fromMeet.deliverable, /live-meeting/);
   assert.doesNotMatch(fromMeet.deliverable, /will execute/i);
+  const bare = documentAssist({
+    text: "write in Word",
+    source: "# Meeting brief\n- ship the deck Friday",
+  });
+  assert.strictEqual(bare.act, false);
+  assert.strictEqual(bare.skipLlm, true);
+  assert.match(bare.deliverable, /ship the deck Friday/);
+  const fromToday = documentAssist({
+    text: "write in Word",
+    source: "# Today\n## On your plate\n- I'll send it Friday.",
+  });
+  assert.strictEqual(fromToday.act, false);
+  assert.match(fromToday.deliverable, /standing-today/);
+  assert.match(fromToday.deliverable, /send it Friday/);
+  assert.doesNotMatch(fromToday.deliverable, /will execute/i);
 });
 
 test("spawn coworker never acts and never claims the pointer-act lane", () => {

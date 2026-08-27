@@ -10,7 +10,8 @@ advance), Meeting recaps an
 armed transcript (You/Them lines, weekday tags, They asked chrome, a
 speakable say-this from your answer, and a 300ms cue when they ask), Today
 is the standing session brief with On your plate from live commitments,
-Document can reuse the live meeting recap as a Word draft, Security
+Document reuses the live recap or Today plate on a bare `write in Word`
+(still not a `.docx` without Cortex), Security
 reviews injected files and never self-approves.
 Teach overlay holds the current control until `got it`. Fixed HUD chrome
 has Back / Got it (Ask, never Act). Teach cue is `N of M Click Save`. Recap

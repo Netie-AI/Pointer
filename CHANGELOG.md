@@ -1,3 +1,9 @@
+## 2026-08-27 - Word drafts from live recap and They asked insight
+
+Bare `write in Word` reuses the live meeting recap or Today plate as a
+draft, not a `.docx`. Insight chrome prefers They asked / Plate. Never
+Acts. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Teach Then-path and spawn Today plate
 
 Teach HUD shows `Then: Click Save / Click Cancel` for remaining steps.

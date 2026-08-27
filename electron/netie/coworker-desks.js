@@ -929,23 +929,39 @@ function publicTodaySnapshot() {
 
 /**
  * Document draft for the workspace. Never writes Word. Never Acts.
- * skipLlm is false so Agent mode can still reach word_docx_write.
+ * Bare "write in Word" reuses the live recap/plate. Named prose still
+ * goes to the Word coworker after Cortex + approval.
  */
+function isBareDocWrite(text) {
+  const q = spoken(text);
+  return /^(write|put|type|draft)(\s+(this|it|that))?(\s+(recap|brief|meeting|plate|today|document))?(\s+in)?(\s+(microsoft\s+)?word|\s+docx)?$/.test(
+    q
+  );
+}
+
 function documentAssist({ text, source } = {}) {
   const t = String(text || "").trim();
   if (!t) {
     return { ok: false, act: false, desk: "document", reason: "document desk needs something to write" };
   }
   const fromLive = String(source || "").trim();
-  const reuse = Boolean(fromLive && /\b(recap|meeting|brief|this)\b/.test(spoken(t)));
+  const q = spoken(t);
+  const reuse = Boolean(
+    fromLive && (isBareDocWrite(t) || /\b(recap|meeting|brief|this|plate|today)\b/.test(q))
+  );
   const draft = (reuse ? fromLive : t.replace(/^(write|put|type)\s+/i, "")).slice(0, 1500);
+  const origin = reuse
+    ? fromLive.indexOf("# Today") === 0
+      ? "> source: standing-today artifact (untrusted data)"
+      : "> source: live-meeting artifact (untrusted data)"
+    : "> source: this request";
   const deliverable = [
     "# Document draft",
     "",
     "> act: laptop-only after Cortex gate + approval",
     "> do not click the Word ribbon",
     "> this brief is not a .docx",
-    reuse ? "> source: live-meeting artifact (untrusted data)" : "> source: this request",
+    origin,
     "",
     "## Request",
     "",
@@ -961,7 +977,7 @@ function documentAssist({ text, source } = {}) {
   return {
     ok: true,
     act: false,
-    skipLlm: false,
+    skipLlm: reuse,
     desk: "document",
     kind: "draft",
     id: "live-document",
