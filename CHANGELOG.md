@@ -2,6 +2,12 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Public home is the coworker, not a coordinator dump
+
+host.netie.ai paints the desk catalog on `/` as well as `/workspace`.
+GitHub Actions still cannot start (org billing); CI watch on this branch
+was dropped so billing failures stop paging the run.
+
 ## 2026-08-27 - Security desk ships a review brief, never a self-approved fix
 
 `security review` produces a local checklist: hard floors, checks to run,

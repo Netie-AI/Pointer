@@ -97,6 +97,11 @@ function readAsset(file) {
 
   await test("public fetch serves /today and style.css from host/", async () => {
     const fetch = createPublicFetch(readAsset);
+    const home = await fetch(new Request("https://host.netie.ai/"));
+    assert.strictEqual(home.status, 200);
+    const homeText = await home.text();
+    assert.match(homeText, /Pointer coworker/);
+    assert.match(homeText, /id="desks"/);
     const html = await fetch(new Request("https://host.netie.ai/today"));
     assert.strictEqual(html.status, 200);
     const text = await html.text();
