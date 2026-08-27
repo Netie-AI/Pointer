@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Teach walkthroughs, unsent inbox drafts, live follow-up chips
+
+Teach requests publish a POINT-format walkthrough and still go to vision;
+the brief never invents coordinates or restores a floating buddy. Inbox
+drafts say not sent (P-05). Meeting recap paints follow-up questions into
+the fixed HUD suggest row (`suggests` event). Still never Acts.
+
 ## 2026-08-27 - Public home is the coworker, not a coordinator dump
 
 host.netie.ai paints the desk catalog on `/` as well as `/workspace`.

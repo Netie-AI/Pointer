@@ -79,23 +79,27 @@ const MEETING_SUGGESTS = [
   { q: "List next steps", ico: "?", label: "Next steps" },
 ];
 
-function paintSuggests(mode) {
+function paintSuggestItems(items) {
   const root = $("insight-actions");
-  if (!root) return;
-  const rows = mode === "meeting" || mode === "transcribe" ? MEETING_SUGGESTS : AGENT_SUGGESTS;
+  if (!root || !Array.isArray(items) || !items.length) return;
   root.replaceChildren();
-  for (const row of rows) {
+  for (const row of items.slice(0, 6)) {
     const btn = document.createElement("button");
     btn.type = "button";
-    if (row.confirm) btn.dataset.confirm = row.confirm;
-    else btn.dataset.q = row.q;
+    if (row.confirm) btn.dataset.confirm = String(row.confirm).slice(0, 160);
+    else btn.dataset.q = String(row.q || "").slice(0, 160);
     const ico = document.createElement("span");
     ico.className = "q-ico";
-    ico.textContent = row.ico;
+    ico.textContent = String(row.ico || "?").slice(0, 2);
     btn.appendChild(ico);
-    btn.appendChild(document.createTextNode(" " + row.label));
+    btn.appendChild(document.createTextNode(" " + String(row.label || row.q || "").slice(0, 48)));
     root.appendChild(btn);
   }
+}
+
+function paintSuggests(mode) {
+  const rows = mode === "meeting" || mode === "transcribe" ? MEETING_SUGGESTS : AGENT_SUGGESTS;
+  paintSuggestItems(rows);
 }
 
 /** Mirrors the main-process settings the renderer needs each frame. */
@@ -1424,6 +1428,7 @@ function onHudEvent(event) {
     appendMessage("assistant", event.text || "");
   }
   if (event.type === "insight") insightSummary.textContent = event.text || "";
+  if (event.type === "suggests") paintSuggestItems(event.items || []);
   if (event.type === "auto-listen") {
     armCapture({
       mic: Boolean(event.mic),

@@ -302,6 +302,116 @@ function finishListeningSession({ mode, transcript } = {}) {
   return meetingAssist({ transcript, question: "recap this meeting" });
 }
 
+/**
+ * Teach walkthrough. Never invents POINT coordinates. Vision still has to
+ * see the screen. Local brief only names the format and the job.
+ */
+function teachAssist({ text } = {}) {
+  const t = String(text || "").trim();
+  const q = spoken(t);
+  const explicit = /\b(walk me through|teach me|what should i click|click next|point at|on (my )?screen)\b/.test(
+    q
+  );
+  if (!explicit) return { ok: false, act: false, desk: "teach", reason: "not a teach request" };
+  const deliverable = [
+    "# Teach walkthrough",
+    "",
+    "> identity: POINT crosshair, not a floating buddy",
+    "> do not invent coordinates",
+    "> Act only after Cortex gate + human approval",
+    "",
+    "## Request",
+    "",
+    t.slice(0, 800),
+    "",
+    "## How to point",
+    "Emit `[POINT:x,y:label]` with x,y as 0-100 percentages of the screen. Max 8.",
+    "Off-screen points are dropped. The overlay is a crosshair and a label.",
+    "",
+    "## Steps",
+    "1. Name the control you mean.",
+    "2. POINT at it from the screenshot, not from memory.",
+    "3. Say the next move in one short line.",
+  ].join("\n");
+  return {
+    ok: true,
+    act: false,
+    skipLlm: false,
+    desk: "teach",
+    kind: "walkthrough",
+    title: "Teach walkthrough",
+    deliverable,
+  };
+}
+
+/**
+ * Inbox draft. Sending is parked (P-05 / P-02). Never Acts.
+ */
+function inboxAssist({ text } = {}) {
+  const t = String(text || "").trim();
+  if (!t) {
+    return { ok: false, act: false, desk: "inbox", reason: "inbox desk needs something to draft" };
+  }
+  const q = spoken(t);
+  const explicit = /\b(inbox|gmail|outlook|slack reply|draft a reply|email)\b/.test(q);
+  const deliverable = [
+    "# Draft (not sent)",
+    "",
+    "> send is parked (P-05 / P-02)",
+    "> act: never",
+    "",
+    "## Request",
+    "",
+    t.slice(0, 800),
+    "",
+    "## Draft",
+    "",
+    "Thanks - I will confirm the details on this machine and follow up.",
+    "",
+    "---",
+    "Pointer will not send this.",
+  ].join("\n");
+  return {
+    ok: true,
+    act: false,
+    skipLlm: explicit,
+    desk: "inbox",
+    kind: "draft",
+    title: "Draft reply",
+    deliverable,
+  };
+}
+
+/**
+ * Follow-up chips for the HUD suggest row. Transcript questions become
+ * buttons. Never commands. Caps at 6.
+ */
+function suggestsFromAssist(assist) {
+  if (!assist || !assist.ok) return [];
+  const items = [];
+  const seen = new Set();
+  function add(q, label, ico) {
+    const text = String(q || "").replace(/\s+/g, " ").trim();
+    if (!text || text.length > 160) return;
+    const key = text.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    items.push({ q: text, label: String(label || text).slice(0, 48), ico: ico || "?" });
+  }
+  if (assist.desk === "meeting") {
+    add("What should I say?", "Assist", ">");
+    add("List next steps", "Next steps", ">");
+    add("Recap this meeting", "Recap", "*");
+  }
+  const lines = String(assist.deliverable || "").split(/\n/);
+  for (const line of lines) {
+    const m = line.match(/^\s*-\s+(.+\?)\s*$/);
+    if (m) add(m[1], m[1], "?");
+    if (items.length >= 6) break;
+  }
+  return items.slice(0, 6);
+}
+
 module.exports = {
   DESKS,
   DESK_IDS,
@@ -310,6 +420,9 @@ module.exports = {
   pickDesk,
   meetingAssist,
   securityAssist,
+  teachAssist,
+  inboxAssist,
+  suggestsFromAssist,
   deskGrounding,
   canActOnline,
   finishListeningSession,

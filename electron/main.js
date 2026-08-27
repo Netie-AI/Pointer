@@ -113,7 +113,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
-const { pickDesk, meetingAssist, finishListeningSession, securityAssist } = require("./netie/coworker-desks");
+const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, suggestsFromAssist } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -260,6 +260,11 @@ function publishBrief(assist) {
     return null;
   }
 }
+function publishSuggests(assist) {
+  const items = suggestsFromAssist(assist);
+  if (!items.length) return;
+  sendHud({ type: "suggests", items });
+}
 function localMeetingReply(message, extraTranscript) {
   const desk = pickDesk(message, { mode: appMode });
   const wantsMeeting =
@@ -276,6 +281,7 @@ function localMeetingReply(message, extraTranscript) {
     }
     if (!assist.skipLlm) return null;
     publishBrief(assist);
+    publishSuggests(assist);
     return assist;
   }
   if (desk.id === "security") {
@@ -283,6 +289,17 @@ function localMeetingReply(message, extraTranscript) {
     if (!assist.ok || !assist.skipLlm) return assist.ok ? null : assist;
     publishBrief(assist);
     return assist;
+  }
+  if (desk.id === "inbox") {
+    const assist = inboxAssist({ text: message });
+    if (!assist.ok || !assist.skipLlm) return assist.ok ? null : assist;
+    publishBrief(assist);
+    return assist;
+  }
+  if (desk.id === "teach") {
+    const assist = teachAssist({ text: message });
+    if (assist.ok) publishBrief(assist);
+    return null;
   }
   return null;
 }
@@ -2216,8 +2233,8 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
       if (local && local.ok && local.skipLlm) {
         pushTurn("user", message);
         pushTurn("assistant", local.deliverable);
-        sendHud({ type: "answer", meta: `Meeting · ${local.kind}`, text: local.deliverable });
-        return { ok: true, mode: "ask", intent, reply: local.deliverable, desk: "meeting", local: true, act: false };
+        sendHud({ type: "answer", meta: `${local.desk} · ${local.kind}`, text: local.deliverable });
+        return { ok: true, mode: "ask", intent, reply: local.deliverable, desk: local.desk, local: true, act: false };
       }
       const r = await askBuddy({
         message:
@@ -2600,12 +2617,12 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
   const asked = `${message}${buildAttachmentBlock(payload && payload.attachments)}`;
   const local = localMeetingReply(asked, payload && payload.transcript);
   if (local && local.ok && local.skipLlm) {
-    sendHud({ type: "answer", meta: `Meeting · ${local.kind}`, text: local.deliverable });
-    return { ok: true, reply: local.deliverable, desk: "meeting", local: true, act: false };
+    sendHud({ type: "answer", meta: `${local.desk} · ${local.kind}`, text: local.deliverable });
+    return { ok: true, reply: local.deliverable, desk: local.desk, local: true, act: false };
   }
   if (local && !local.ok) {
-    sendHud({ type: "answer", meta: "Meeting", text: local.reason });
-    return { ok: false, error: local.reason, desk: "meeting", local: true, act: false };
+    sendHud({ type: "answer", meta: local.desk || "coworker", text: local.reason });
+    return { ok: false, error: local.reason, desk: local.desk, local: true, act: false };
   }
   const r = await askBuddy({ message: asked, dataUrl });
   // P3-POINT-OVERLAY — "click here" is worth more pointed at than described.
@@ -3159,6 +3176,7 @@ function applyCaptureCommand(command, heard = "") {
     });
     if (recap.ok) {
       publishBrief(recap);
+      publishSuggests(recap);
       try {
         notes.append({ text: recap.deliverable, source: "netie" });
       } catch {

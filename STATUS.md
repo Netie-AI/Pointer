@@ -16,9 +16,11 @@
    `meeting` `document` `security` desks. Meeting Recap/Assist/Next
    from the armed transcript, never Act. Stop on Meeting writes a
    recap into notes + workspace. Security review ships a checklist
-   that cannot self-approve. Public `/workspace` paints the desk
-   catalog in the browser and refuses exec. P-06 stays parked.
-   GitHub Actions is blocked on org billing.
+   that cannot self-approve. Teach walkthroughs never invent POINT
+   coords. Inbox drafts are not sent. Recap paints follow-up chips
+   in the HUD. Public `/workspace` paints the desk catalog and
+   refuses exec. P-06 stays parked. GitHub Actions is blocked on
+   org billing.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

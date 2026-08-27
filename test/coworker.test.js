@@ -8,6 +8,9 @@ const {
   deskGrounding,
   canActOnline,
   securityAssist,
+  teachAssist,
+  inboxAssist,
+  suggestsFromAssist,
 } = require("../electron/netie/coworker-desks");
 const { plannerGrounding } = require("../electron/netie/coworker");
 
@@ -143,6 +146,44 @@ test("security assist ships a review and never self-approves", () => {
   const path = require("path");
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
   assert.match(main, /securityAssist/);
+});
+
+test("teach assist never invents POINT coordinates and never acts", () => {
+  const miss = teachAssist({ text: "hello" });
+  assert.strictEqual(miss.ok, false);
+  const walk = teachAssist({ text: "walk me through this on my screen" });
+  assert.strictEqual(walk.ok, true);
+  assert.strictEqual(walk.act, false);
+  assert.strictEqual(walk.skipLlm, false);
+  assert.match(walk.deliverable, /do not invent coordinates/i);
+  assert.doesNotMatch(walk.deliverable, /\[POINT:\s*\d/);
+});
+
+test("inbox assist drafts and never sends", () => {
+  const draft = inboxAssist({ text: "draft a gmail reply saying we shipped" });
+  assert.strictEqual(draft.ok, true);
+  assert.strictEqual(draft.act, false);
+  assert.strictEqual(draft.skipLlm, true);
+  assert.match(draft.deliverable, /not sent/i);
+  assert.match(draft.deliverable, /will not send/);
+});
+
+test("suggestsFromAssist turns transcript questions into HUD chips", () => {
+  const recap = meetingAssist({
+    transcript: "system: Can you send the deck by Friday?\nmic: Yes I will send it.",
+    question: "recap this meeting",
+  });
+  const items = suggestsFromAssist(recap);
+  assert.ok(items.some((i) => /What should I say/.test(i.q)));
+  assert.ok(items.some((i) => /send the deck/.test(i.q)));
+  assert.ok(items.length <= 6);
+  const fs = require("fs");
+  const path = require("path");
+  const hud = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
+  assert.match(hud, /event\.type === "suggests"/);
+  assert.match(hud, /paintSuggestItems/);
+  const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
+  assert.match(main, /type: "suggests"/);
 });
 
 console.log(`\n${pass} passed, ${fails.length} failed`);
