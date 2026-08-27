@@ -10,10 +10,11 @@ live say-this cue while a question is still open), Today is the standing
 session brief, Document can reuse the live meeting recap as a Word draft,
 Security reviews injected files and never self-approves. Teach Next cue,
 meeting say-this, and security Review live in the fixed insight panel. HUD
-desk chips Ask, never Act. Home `/api/home` lists live rooms. Loopback
-`/meeting` `/teach` `/security` are coworker rooms. Loopback host pages
-poll while live. Online `/workspace` is a read-only artifact catalog with
-a filter. "Spawn a coworker" queues a background brief and never Acts.
+desk chips Ask, never Act. Home `/api/home` lists live rooms for every
+desk. Loopback `/meeting` `/teach` `/security` `/document` `/inbox` are
+coworker rooms. Loopback host pages poll while live. Online `/workspace`
+is a read-only artifact catalog with a filter. Inbox never sends (P-05).
+"Spawn a coworker" queues a background brief and never Acts.
 Act stays on the laptop.
 
 | Action | Result |

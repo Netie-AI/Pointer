@@ -267,7 +267,11 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse) {
         if (cue) {
           cue.hidden = !text;
           const prefix =
-            (m && m.desk) === "teach" ? "Next: " : (m && m.desk) === "security" ? "Review: " : "Say this: ";
+            (m && m.desk) === "teach"
+              ? "Next: "
+              : (m && m.desk) === "meeting"
+                ? "Say this: "
+                : "Review: ";
           cue.textContent = text ? prefix + text : "";
         }
         page.replaceChildren();
@@ -282,12 +286,14 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse) {
 paintLiveRoom("meeting-brief", "/api/meeting", "meeting-cue-web", "refused: meeting must not grow a runtime");
 paintLiveRoom("teach-brief", "/api/teach", "teach-cue-web", "refused: teach must not grow a runtime");
 paintLiveRoom("security-brief", "/api/security", "security-cue-web", "refused: security must not grow a runtime");
+paintLiveRoom("document-brief", "/api/document", "document-cue-web", "refused: document must not grow a runtime");
+paintLiveRoom("inbox-brief", "/api/inbox", "inbox-cue-web", "refused: inbox must not grow a runtime");
 
 function paintRooms(rooms, localFirst) {
   const root = document.getElementById("rooms");
   if (!root) return;
   root.replaceChildren();
-  ["teach", "meeting", "today", "security"].forEach((id) => {
+  ["teach", "meeting", "today", "document", "security", "inbox"].forEach((id) => {
     const r = (rooms && rooms[id]) || {};
     const card = el("article", "desk");
     const h = el("h3");
@@ -298,7 +304,7 @@ function paintRooms(rooms, localFirst) {
     const cue = el("p", "muted");
     const cueText = String(r.cue || "").trim();
     if (cueText) {
-      const prefix = id === "teach" ? "Next: " : id === "security" ? "Review: " : id === "meeting" ? "Say this: " : "";
+      const prefix = id === "teach" ? "Next: " : id === "meeting" ? "Say this: " : id === "today" ? "" : "Review: ";
       cue.textContent = prefix + cueText;
     } else {
       cue.textContent = localFirst ? "Live " + id + " stays on the laptop." : "No live " + id + " yet.";

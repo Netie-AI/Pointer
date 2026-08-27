@@ -6,7 +6,7 @@
  * 127.0.0.1:18010 - this surface never proxies them.
  */
 
-const { catalog, publicTodaySnapshot, publicMeetingSnapshot, publicTeachSnapshot, publicSecuritySnapshot, publicHomeSnapshot } = require("./coworker-desks");
+const { catalog, publicTodaySnapshot, publicMeetingSnapshot, publicTeachSnapshot, publicSecuritySnapshot, publicDocumentSnapshot, publicInboxSnapshot, publicHomeSnapshot } = require("./coworker-desks");
 const { publicWorkspaceSnapshot } = require("./workspace");
 
 const PAGES = Object.freeze({
@@ -15,6 +15,8 @@ const PAGES = Object.freeze({
   "/meeting": "meeting",
   "/teach": "teach",
   "/security": "security",
+  "/document": "document",
+  "/inbox": "inbox",
   "/lanes": "lanes",
   "/skills": "skills",
   "/workspace": "workspace",
@@ -26,6 +28,8 @@ const PAGE_FILES = Object.freeze({
   "/meeting": "meeting.html",
   "/teach": "teach.html",
   "/security": "security.html",
+  "/document": "document.html",
+  "/inbox": "inbox.html",
   "/lanes": "lanes.html",
   "/skills": "skills.html",
   "/workspace": "workspace.html",
@@ -37,6 +41,8 @@ const PUBLIC_FILES = Object.freeze([
   "meeting.html",
   "teach.html",
   "security.html",
+  "document.html",
+  "inbox.html",
   "lanes.html",
   "skills.html",
   "workspace.html",
@@ -147,6 +153,20 @@ function handlePublicRequest({ method, pathname, search } = {}) {
       status: 200,
       headers: jsonHeaders(),
       body: JSON.stringify(publicSecuritySnapshot()),
+    };
+  }
+  if (verb === "GET" && clean === "/api/document") {
+    return {
+      status: 200,
+      headers: jsonHeaders(),
+      body: JSON.stringify(publicDocumentSnapshot()),
+    };
+  }
+  if (verb === "GET" && clean === "/api/inbox") {
+    return {
+      status: 200,
+      headers: jsonHeaders(),
+      body: JSON.stringify(publicInboxSnapshot()),
     };
   }
   if (verb === "GET" && clean === "/api/home") {

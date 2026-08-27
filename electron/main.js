@@ -4121,7 +4121,7 @@ app.whenReady().then(() => {
       .then((r) => {
         const addr = r && r.address;
         console.log(
-          `Coordinator on http://127.0.0.1:${addr && addr.port ? addr.port : 18010} (/ /today /meeting /teach /security /lanes /skills /workspace)`
+          `Coordinator on http://127.0.0.1:${addr && addr.port ? addr.port : 18010} (/ /today /meeting /teach /security /document /inbox /lanes /skills /workspace)`
         );
         standingClock.start({
           brief: () => todayAssist({ state: sessionCoworkerState() }),

@@ -636,16 +636,19 @@ function inboxAssist({ text, transcript } = {}) {
   }
   const q = spoken(t);
   const explicit = /\b(inbox|gmail|outlook|slack reply|draft a reply|email|follow-?up)\b/.test(q);
-  const next = splitLines(transcript).filter(looksAction).slice(-5);
-  const draft = next.length
-    ? [
-        "Following up from the meeting.",
-        "",
-        "What we committed:",
-        ...next.map((line) => `- ${line}`),
-        "",
-        "I will confirm the details on this machine.",
-      ].join("\n")
+  const lines = splitLines(transcript);
+  const next = lines.filter(looksAction).slice(-5);
+  const decided = lines.filter(looksDecision).slice(-5);
+  const blocks = [];
+  if (next.length) {
+    blocks.push("What we committed:", ...next.map((line) => `- ${line}`));
+  }
+  if (decided.length) {
+    if (blocks.length) blocks.push("");
+    blocks.push("What we decided:", ...decided.map((line) => `- ${line}`));
+  }
+  const draft = blocks.length
+    ? ["Following up from the meeting.", "", ...blocks, "", "I will confirm the details on this machine."].join("\n")
     : "Thanks - I will confirm the details on this machine and follow up.";
   const deliverable = [
     "# Draft (not sent)",
@@ -670,7 +673,10 @@ function inboxAssist({ text, transcript } = {}) {
     skipLlm: explicit,
     desk: "inbox",
     kind: "draft",
+    id: "live-inbox",
     title: "Draft reply",
+    cue: "not sent - parked P-05",
+    cueKind: "warn",
     deliverable,
   };
 }
@@ -832,7 +838,10 @@ function documentAssist({ text, source } = {}) {
     skipLlm: false,
     desk: "document",
     kind: "draft",
+    id: "live-document",
     title: "Document draft",
+    cue: "draft only - not a .docx",
+    cueKind: "warn",
     deliverable,
   };
 }
@@ -1069,7 +1078,7 @@ function createBriefClock(opts = {}) {
   return { start, reset };
 }
 
-function publicMeetingSnapshot() {
+function publicEmptyRoom(desk, title, reason) {
   return {
     localFirst: true,
     act: false,
@@ -1077,41 +1086,31 @@ function publicMeetingSnapshot() {
     cue: "",
     deliverable: "",
     coordinator: "http://127.0.0.1:18010",
-    reason: "live meeting stays on the laptop",
-    desk: "meeting",
-    title: "Meeting",
+    reason,
+    desk,
+    title,
     ok: true,
   };
+}
+
+function publicMeetingSnapshot() {
+  return publicEmptyRoom("meeting", "Meeting", "live meeting stays on the laptop");
 }
 
 function publicTeachSnapshot() {
-  return {
-    localFirst: true,
-    act: false,
-    exec: false,
-    cue: "",
-    deliverable: "",
-    coordinator: "http://127.0.0.1:18010",
-    reason: "live teach stays on the laptop",
-    desk: "teach",
-    title: "Teach",
-    ok: true,
-  };
+  return publicEmptyRoom("teach", "Teach", "live teach stays on the laptop");
 }
 
 function publicSecuritySnapshot() {
-  return {
-    localFirst: true,
-    act: false,
-    exec: false,
-    cue: "",
-    deliverable: "",
-    coordinator: "http://127.0.0.1:18010",
-    reason: "live security stays on the laptop",
-    desk: "security",
-    title: "Security",
-    ok: true,
-  };
+  return publicEmptyRoom("security", "Security", "live security stays on the laptop");
+}
+
+function publicDocumentSnapshot() {
+  return publicEmptyRoom("document", "Document", "live document stays on the laptop");
+}
+
+function publicInboxSnapshot() {
+  return publicEmptyRoom("inbox", "Inbox", "live inbox stays on the laptop");
 }
 
 function publicHomeSnapshot() {
@@ -1125,7 +1124,9 @@ function publicHomeSnapshot() {
       teach: publicTeachSnapshot(),
       meeting: publicMeetingSnapshot(),
       today: publicTodaySnapshot(),
+      document: publicDocumentSnapshot(),
       security: publicSecuritySnapshot(),
+      inbox: publicInboxSnapshot(),
     },
     ok: true,
   };
@@ -1162,6 +1163,8 @@ module.exports = {
   publicMeetingSnapshot,
   publicTeachSnapshot,
   publicSecuritySnapshot,
+  publicDocumentSnapshot,
+  publicInboxSnapshot,
   publicHomeSnapshot,
   scanInjectedSecrets,
   teachAdvance,

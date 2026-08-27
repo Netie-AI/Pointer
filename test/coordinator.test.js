@@ -48,6 +48,8 @@ function test(name, fn) {
     assert.strictEqual(c.pageFor("/meeting"), "meeting");
     assert.strictEqual(c.pageFor("/teach"), "teach");
     assert.strictEqual(c.pageFor("/security"), "security");
+    assert.strictEqual(c.pageFor("/document"), "document");
+    assert.strictEqual(c.pageFor("/inbox"), "inbox");
     assert.strictEqual(c.pageFor("/secret"), null);
   });
 
@@ -226,6 +228,40 @@ function test(name, fn) {
     });
     assert.strictEqual(securityPage.status, 200);
     assert.match(securityPage.body, /security-brief/);
+    c.workspace.put({
+      id: "live-document",
+      title: "Document draft",
+      desk: "document",
+      body: "# Document draft\nhello",
+      cue: "draft only - not a .docx",
+    });
+    c.workspace.put({
+      id: "live-inbox",
+      title: "Draft reply",
+      desk: "inbox",
+      body: "# Draft (not sent)\nhello",
+      cue: "not sent - parked P-05",
+    });
+    const document = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/document" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(document.status, 200);
+    assert.strictEqual(document.body.act, false);
+    assert.strictEqual(document.body.exec, false);
+    assert.match(document.body.cue, /not a \.docx/);
+    const inbox = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/inbox" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(inbox.status, 200);
+    assert.match(inbox.body.cue, /not sent/);
     const home = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/home" }, (res) => {
         const chunks = [];
@@ -240,6 +276,8 @@ function test(name, fn) {
     assert.match(home.body.rooms.meeting.cue, /Friday/);
     assert.match(home.body.rooms.security.cue, /do not approve/);
     assert.match(home.body.rooms.today.deliverable, /# Today/);
+    assert.match(home.body.rooms.document.cue, /not a \.docx/);
+    assert.match(home.body.rooms.inbox.cue, /not sent/);
     const homePage = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/" }, (res) => {
         const chunks = [];

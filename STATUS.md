@@ -6,17 +6,16 @@
 
 0. **PR #1 and #35 are on main.** Spoken-strip comma+please Word
    writes stay recipes. Closed #3 #8-#25 stay closed.
-1. **Generative tools, not a skill dump (DR-0004).** Act searches
-   Cortex find-skills + local recipes, then crafts a hint draft
-   (empty actions). First-party MCP ABI on loopback. Live
-   coordinator at `127.0.0.1:18010` (`/` `/today` `/meeting` `/teach`
-   `/security` `/lanes` `/skills` `/workspace`). Public Worker serves the
-   same pages; `/mcp` and live lanes stay on the laptop. P-05 stays parked.
-2. **Coworker desks + online catalog (DR-0005).** Teach walks one
-   measured control at a time. Home `/api/home` lists live rooms.
-   Loopback `/security` is injected-file review (never disk, never
-   approval). Recap lists `## Decisions`. Public catalog stays empty.
-   P-06 parked. GitHub Actions blocked on org billing.
+1. **Generative tools, not a skill dump (DR-0004).** First-party MCP
+   on loopback. Coordinator `127.0.0.1:18010` (`/` `/today` `/meeting`
+   `/teach` `/security` `/document` `/inbox` `/lanes` `/skills`
+   `/workspace`). Public Worker is the same catalog; `/mcp` stays on
+   the laptop. P-05 parked.
+2. **Coworker desks + online catalog (DR-0005).** Home `/api/home`
+   lists every desk room. Inbox drafts ground in commitments and
+   decisions and never send. Document drafts are not a `.docx`.
+   Recap lists `## Decisions`. Public catalog stays empty. P-06 parked.
+   GitHub Actions blocked on org billing.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

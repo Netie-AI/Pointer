@@ -49,6 +49,8 @@ function test(name, fn) {
     assert.ok(r.result.tools.includes("teach.live"));
     assert.ok(r.result.tools.includes("security.review"));
     assert.ok(r.result.tools.includes("security.live"));
+    assert.ok(r.result.tools.includes("inbox.live"));
+    assert.ok(r.result.tools.includes("document.live"));
     assert.ok(r.result.tools.includes("workspace.get"));
   });
 
@@ -220,6 +222,34 @@ function test(name, fn) {
     assert.strictEqual(securityLive.result.act, false);
     assert.strictEqual(securityLive.result.exec, false);
     assert.match(securityLive.result.artifact.cue, /do not approve/);
+    coord.workspace.put({
+      id: "live-inbox",
+      title: "Draft reply",
+      desk: "inbox",
+      body: "# Draft (not sent)\nhello",
+      cue: "not sent - parked P-05",
+    });
+    const inboxLive = await mcp.handle(
+      { jsonrpc: "2.0", id: 19, method: "inbox.live" },
+      { coordinator: coord }
+    );
+    assert.strictEqual(inboxLive.result.ok, true);
+    assert.strictEqual(inboxLive.result.act, false);
+    assert.match(inboxLive.result.artifact.cue, /not sent/);
+    coord.workspace.put({
+      id: "live-document",
+      title: "Document draft",
+      desk: "document",
+      body: "# Document draft\nhello",
+      cue: "draft only - not a .docx",
+    });
+    const documentLive = await mcp.handle(
+      { jsonrpc: "2.0", id: 20, method: "document.live" },
+      { coordinator: coord }
+    );
+    assert.strictEqual(documentLive.result.ok, true);
+    assert.strictEqual(documentLive.result.exec, false);
+    assert.match(documentLive.result.artifact.cue, /not a \.docx/);
     const unknown = await mcp.handle({ jsonrpc: "2.0", id: 14, method: "browser.run" });
     assert.ok(unknown.error);
     assert.match(unknown.error.message, /unknown tool/);

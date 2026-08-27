@@ -316,14 +316,18 @@ test("inbox assist drafts and never sends", () => {
   assert.strictEqual(draft.ok, true);
   assert.strictEqual(draft.act, false);
   assert.strictEqual(draft.skipLlm, true);
+  assert.strictEqual(draft.id, "live-inbox");
+  assert.strictEqual(draft.cueKind, "warn");
+  assert.match(draft.cue, /not sent/);
   assert.match(draft.deliverable, /not sent/i);
   assert.match(draft.deliverable, /will not send/);
   const fromMeet = inboxAssist({
     text: "draft a follow-up email from this meeting",
-    transcript: "system: Can you send the deck?\nmic: I will send it Friday.",
+    transcript: "system: Can you send the deck?\nmic: I will send it Friday.\nmic: We decided to ship Friday.",
   });
   assert.strictEqual(fromMeet.act, false);
   assert.match(fromMeet.deliverable, /will send it Friday/);
+  assert.match(fromMeet.deliverable, /decided to ship/);
   assert.match(fromMeet.deliverable, /will not send/);
 });
 
@@ -376,6 +380,9 @@ test("document assist drafts and never writes Word", () => {
   assert.strictEqual(draft.ok, true);
   assert.strictEqual(draft.act, false);
   assert.strictEqual(draft.skipLlm, false);
+  assert.strictEqual(draft.id, "live-document");
+  assert.strictEqual(draft.cueKind, "warn");
+  assert.match(draft.cue, /not a \.docx/);
   assert.match(draft.deliverable, /not a \.docx/);
   assert.match(draft.deliverable, /word_docx_write/);
   assert.doesNotMatch(draft.deliverable, /will execute/i);

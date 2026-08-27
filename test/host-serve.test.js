@@ -45,6 +45,8 @@ function readAsset(file) {
     assert.strictEqual(pageFor("/meeting"), "meeting");
     assert.strictEqual(pageFor("/teach"), "teach");
     assert.strictEqual(pageFor("/security"), "security");
+    assert.strictEqual(pageFor("/document"), "document");
+    assert.strictEqual(pageFor("/inbox"), "inbox");
     assert.strictEqual(pageFor("/secret"), null);
   });
 
@@ -147,6 +149,8 @@ function readAsset(file) {
     assert.match(app, /\/api\/meeting/);
     assert.match(app, /\/api\/teach/);
     assert.match(app, /\/api\/security/);
+    assert.match(app, /\/api\/document/);
+    assert.match(app, /\/api\/inbox/);
     assert.match(app, /\/api\/home/);
     assert.match(app, /paintRooms/);
     assert.doesNotMatch(app, /innerHTML/);
@@ -183,6 +187,19 @@ function readAsset(file) {
     assert.strictEqual(homeBody.exec, false);
     assert.strictEqual(homeBody.rooms.security.cue, "");
     assert.strictEqual(homeBody.rooms.teach.desk, "teach");
+    assert.strictEqual(homeBody.rooms.inbox.desk, "inbox");
+    assert.strictEqual(homeBody.rooms.document.desk, "document");
+    const documentPage = await fetch(new Request("https://host.netie.ai/document"));
+    assert.strictEqual(documentPage.status, 200);
+    assert.match(await documentPage.text(), /id="document-brief"/);
+    const inboxPage = await fetch(new Request("https://host.netie.ai/inbox"));
+    assert.strictEqual(inboxPage.status, 200);
+    assert.match(await inboxPage.text(), /id="inbox-brief"/);
+    const documentApi = handlePublicRequest({ method: "GET", pathname: "/api/document" });
+    assert.strictEqual(JSON.parse(documentApi.body).localFirst, true);
+    assert.strictEqual(JSON.parse(documentApi.body).exec, false);
+    const inboxApi = handlePublicRequest({ method: "GET", pathname: "/api/inbox" });
+    assert.strictEqual(JSON.parse(inboxApi.body).cue, "");
     const css = await fetch(new Request("https://host.netie.ai/style.css"));
     assert.strictEqual(css.status, 200);
     assert.match(css.headers.get("content-type"), /text\/css/);

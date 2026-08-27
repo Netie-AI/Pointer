@@ -1,3 +1,10 @@
+## 2026-08-27 - Live inbox and document rooms
+
+Home lists every desk. Loopback `/inbox` is an unsent draft grounded in
+meeting commitments and decisions (P-05). `/document` is a Word draft,
+not a `.docx`. Public catalog stays empty. MCP `inbox.live` and
+`document.live` never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Live coworker home, security room, meeting decisions
 
 Home `/api/home` lists live teach/meeting/today/security rooms. Loopback
