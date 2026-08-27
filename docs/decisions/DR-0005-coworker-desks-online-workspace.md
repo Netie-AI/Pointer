@@ -123,4 +123,6 @@ walks stay on `/teach`.
 Loopback sticky chrome has a fixed Ask bar (POST `/api/ask`, never Act).
 `desks.ask` is the MCP form of that Ask. `/today` chips file the same
 way. `/workspace` opens a file as the working set (`id` on Ask, `this
-file` scans only that body). Public POST `/api/ask` stays 404.
+file` scans only that body). This session file links are
+`/workspace?id=` catalog opens (never exec). Public POST `/api/ask`
+stays 404.

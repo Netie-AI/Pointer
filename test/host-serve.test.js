@@ -184,6 +184,11 @@ function readAsset(file) {
     assert.match(app, /paintTodayChips/);
     assert.match(app, /paintDeskChips/);
     assert.match(app, /lastOpenId/);
+    assert.match(app, /host-open/);
+    assert.match(app, /workspaceQueryId/);
+    assert.match(app, /replaceState/);
+    assert.match(app, /sessionLinkHref/);
+    assert.match(app, /\/workspace\?id=/);
     const paint = app.slice(app.indexOf("function paintSession"), app.indexOf("const roomsPage"));
     assert.match(paint, /session-md/);
     assert.match(paint, /session-copy/);

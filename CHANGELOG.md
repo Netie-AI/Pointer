@@ -1,3 +1,9 @@
+## 2026-08-27 - Workspace file links are the working set
+
+Loopback This session files open `/workspace?id=` as the working set.
+Chrome shows Open: the file title. Review file / Draft email Ask that
+body (never Act). Public `?id=` stays 404. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Open workspace file Ask chips
 
 Loopback `/workspace` opens a file as the working set. Review file /

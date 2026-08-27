@@ -475,8 +475,8 @@ function test(name, fn) {
     assert.strictEqual(home.body.session.empty, false);
     assert.match(home.body.session.asked, /launch date/);
     assert.match(home.body.session.heard, /Friday/);
-    assert.ok(home.body.session.files.some((row) => row.id === "live-inbox" && row.href === "/inbox"));
-    assert.ok(home.body.session.files.some((row) => row.id === "live-document" && row.href === "/document"));
+    assert.ok(home.body.session.files.some((row) => row.id === "live-inbox" && row.href === "/workspace?id=live-inbox"));
+    assert.ok(home.body.session.files.some((row) => row.id === "live-document" && row.href === "/workspace?id=live-document"));
     const listedWs = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/workspace" }, (res) => {
         const chunks = [];
@@ -487,7 +487,7 @@ function test(name, fn) {
     assert.strictEqual(listedWs.body.exec, false);
     assert.ok(listedWs.body.session);
     assert.strictEqual(listedWs.body.session.exec, false);
-    assert.ok(listedWs.body.session.files.some((row) => row.id === "live-meeting"));
+    assert.ok(listedWs.body.session.files.some((row) => row.id === "live-meeting" && row.href === "/workspace?id=live-meeting"));
     const homePage = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/" }, (res) => {
         const chunks = [];

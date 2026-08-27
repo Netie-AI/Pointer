@@ -12,9 +12,10 @@
    `/workspace`). Public Worker is the same catalog; `/mcp` stays on
    the laptop. P-05 parked.
 2. **Coworker desks (DR-0005).** Loopback Ask bar plus `/meeting` `/today`
-   `/workspace` chips file inbox/Word/security drafts from the open file
-   (never send, never a .docx, never Act). `/teach` Back/Got it. Today
-   plate is commitments only. Public catalog empty. P-06 parked.
+   `/workspace` chips file inbox/Word/security from the open file.
+   This session links open `/workspace?id=` (never send, never a .docx,
+   never Act). `/teach` Back/Got it. Today plate is commitments only.
+   Public catalog empty. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

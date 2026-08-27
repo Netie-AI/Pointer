@@ -33,7 +33,8 @@ teach walks stay on `/teach`). Loopback sticky chrome has a fixed Ask bar
 on every page (`/api/ask`, never Act). `/today` chips file Recap / mail /
 Word / security the same way. Loopback `/workspace` opens a file as the
 working set and Ask chips review/file from that body (`this file` scans
-only the open artifact). Today plate lists your commitments, not the meeting
+only the open artifact). This session links open `/workspace?id=` as
+the working set (never exec). Today plate lists your commitments, not the meeting
 say-this dump. Inbox never
 sends (P-05). "Spawn a coworker" runs the named job, or the Today plate
 when bare (a meeting/transcribe session recaps instead, and files an

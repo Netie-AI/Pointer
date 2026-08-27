@@ -90,17 +90,23 @@ test("session bundle is a catalog of filed desks and never execs", () => {
   assert.match(bundle.cue, /We'll ship Friday/);
   assert.match(bundle.plate, /send it Friday/);
   assert.match(bundle.markdown, /They asked/);
-  assert.match(bundle.markdown, /\/inbox/);
+  assert.match(bundle.markdown, /\/workspace\?id=live-inbox/);
   assert.match(empty.markdown, /none yet/);
   assert.deepStrictEqual(
     bundle.files.map((row) => row.id),
     ["live-meeting", "live-inbox", "live-document"]
   );
-  assert.strictEqual(bundle.files[0].href, "/meeting");
-  assert.strictEqual(bundle.files[1].href, "/inbox");
-  assert.strictEqual(bundle.files[2].href, "/document");
+  assert.strictEqual(bundle.files[0].href, "/workspace?id=live-meeting");
+  assert.strictEqual(bundle.files[1].href, "/workspace?id=live-inbox");
+  assert.strictEqual(bundle.files[2].href, "/workspace?id=live-document");
   const sneaky = sessionBundle([{ id: "live-meeting", desk: "../etc", title: "nope", cue: "x" }]);
-  assert.strictEqual(sneaky.files[0].href, "/workspace");
+  assert.strictEqual(sneaky.files[0].href, "/workspace?id=live-meeting");
+  assert.doesNotMatch(sneaky.files[0].href, /\.\.|\/etc/);
+  const extra = sessionBundle([{ id: "leak-1", desk: "document", title: "notes", cue: "open this file" }]);
+  assert.ok(extra.files.some((row) => row.id === "leak-1" && row.href === "/workspace?id=leak-1"));
+  const badId = sessionBundle([{ id: "../etc", desk: "meeting", title: "nope" }]);
+  assert.strictEqual(badId.empty, true);
+  assert.ok(!badId.files.some((row) => /\.\.|\/etc/.test(String(row.id || "") + String(row.href || ""))));
 });
 
 test("heard names come from the ring and never invent", () => {

@@ -98,6 +98,79 @@ function paintArtifacts(items) {
 }
 
 let artifactCache = [];
+let lastOpenId = "";
+let lastOpenTitle = "";
+let openedQueryId = false;
+
+function workspaceQueryId() {
+  try {
+    return String(new URLSearchParams(location.search).get("id") || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function isWorkspacePage() {
+  const p = String((typeof location !== "undefined" && location.pathname) || "/").replace(/\/+$/, "") || "/";
+  return p === "/workspace";
+}
+
+function sessionLinkHref(row) {
+  const href = String((row && row.href) || "").trim();
+  if (/^\/(workspace|meeting|teach|today|document|security|inbox)(\?id=[A-Za-z0-9._-]+)?$/.test(href)) {
+    return href;
+  }
+  const desk = String((row && row.desk) || "");
+  if (
+    desk === "teach" ||
+    desk === "meeting" ||
+    desk === "today" ||
+    desk === "document" ||
+    desk === "security" ||
+    desk === "inbox"
+  ) {
+    return "/" + desk;
+  }
+  return "/workspace";
+}
+
+function paintWorkingSet() {
+  const bar = document.getElementById("live-cue-bar");
+  if (!bar) return;
+  let chip = document.getElementById("host-open");
+  if (!chip) {
+    chip = el("p", "live-cue-open");
+    chip.id = "host-open";
+    const form = document.getElementById("host-ask-form");
+    if (form && form.parentNode) form.parentNode.insertBefore(chip, form);
+    else bar.appendChild(chip);
+  }
+  chip.hidden = !lastOpenId;
+  chip.textContent = lastOpenId ? "Open: " + (lastOpenTitle || lastOpenId) : "";
+  const input = document.getElementById("host-ask");
+  if (input) {
+    input.placeholder = lastOpenId
+      ? "Ask about " + (lastOpenTitle || lastOpenId) + " (never Act)"
+      : "Ask the coworker (never Act)";
+  }
+}
+
+function setWorkingSet(id, title) {
+  lastOpenId = String(id || "").trim();
+  lastOpenTitle = String(title || lastOpenId || "").trim();
+  if (isWorkspacePage() && typeof history !== "undefined" && history.replaceState) {
+    try {
+      const url = new URL(location.href);
+      if (lastOpenId) url.searchParams.set("id", lastOpenId);
+      else url.searchParams.delete("id");
+      history.replaceState({}, "", url.pathname + url.search);
+    } catch {
+      /* ignore */
+    }
+  }
+  paintWorkingSet();
+  renderArtifactList();
+}
 
 function renderArtifactList() {
   const root = document.getElementById("artifacts");
@@ -121,7 +194,7 @@ function renderArtifactList() {
   }
   items.forEach((row) => {
     const li = el("li");
-    const btn = el("button", "artifact");
+    const btn = el("button", lastOpenId && row.id === lastOpenId ? "artifact open" : "artifact");
     btn.type = "button";
     btn.textContent = (row.title || row.id || "untitled") + " · " + (row.desk || "desk");
     btn.addEventListener("click", () => openArtifact(row.id));
@@ -149,7 +222,7 @@ function openArtifact(id) {
       pre.textContent = text;
       root.appendChild(pre);
       const ok = Boolean(body && body.ok && body.artifact && String(body.artifact.body || "").trim());
-      lastOpenId = ok ? String(body.artifact.id || id) : "";
+      setWorkingSet(ok ? String(body.artifact.id || id) : "", ok ? String(body.artifact.title || body.artifact.id || id) : "");
       lastArtifactText = ok ? String(body.artifact.body) : "";
       lastArtifactFile = briefFileName((body && body.artifact && (body.artifact.desk || body.artifact.id)) || id);
       paintDeskChips("artifact-chips", (body && body.chips) || []);
@@ -169,7 +242,7 @@ function openArtifact(id) {
       pre.textContent = String(err);
       root.appendChild(pre);
       lastArtifactText = "";
-      lastOpenId = "";
+      setWorkingSet("", "");
       paintDeskChips("artifact-chips", []);
       const copyBtn = document.getElementById("artifact-copy");
       const dlBtn = document.getElementById("artifact-download");
@@ -254,6 +327,11 @@ if (workspacePage) {
       paintDesks((ws && ws.desks) || (state && state.desks) || []);
       paintArtifacts((ws && ws.artifacts) || []);
       paintSession(ws && ws.session, Boolean(ws && ws.localFirst));
+      if (!openedQueryId) {
+        openedQueryId = true;
+        const qid = workspaceQueryId();
+        if (qid && !(ws && ws.localFirst)) openArtifact(qid);
+      }
       const coord = (ws && ws.coordinator) || (state && state.coordinator) || "http://127.0.0.1:18010";
       show(
         "hint",
@@ -329,8 +407,6 @@ function pageDesk() {
   return "";
 }
 
-let lastOpenId = "";
-
 function postAsk(ask) {
   const payload = { ask: ask, act: false };
   if (lastOpenId) payload.id = lastOpenId;
@@ -341,32 +417,30 @@ function postAsk(ask) {
   })
     .then((r) => r.json())
     .then(function (out) {
-      const filed =
-        document.getElementById("host-filed") ||
-        document.getElementById("today-filed") ||
-        document.getElementById("artifact-filed") ||
-        document.getElementById("meeting-filed");
+      const filedIds = ["host-filed", "today-filed", "artifact-filed", "meeting-filed"];
       const ok = Boolean(out && out.ok);
-      if (filed) {
-        let line = "";
-        if (ok) {
-          const here = pageDesk();
-          line =
-            out.desk === here
-              ? "Updated " + (out.desk || "desk") + (out.cue ? " - " + out.cue : "") + ". Never Act."
-              : "Filed " +
-                (out.title || out.desk) +
-                " (" +
-                (out.href || "") +
-                ")" +
-                (out.cue ? " - " + out.cue : "") +
-                ". Never sent. Never a .docx. Never Act.";
-        } else if (out && out.reason) {
-          line = String(out.reason);
-        }
+      let line = "";
+      if (ok) {
+        const here = pageDesk();
+        line =
+          out.desk === here
+            ? "Updated " + (out.desk || "desk") + (out.cue ? " - " + out.cue : "") + ". Never Act."
+            : "Filed " +
+              (out.title || out.desk) +
+              " (" +
+              (out.href || "") +
+              ")" +
+              (out.cue ? " - " + out.cue : "") +
+              ". Never sent. Never a .docx. Never Act.";
+      } else if (out && out.reason) {
+        line = String(out.reason);
+      }
+      filedIds.forEach(function (id) {
+        const filed = document.getElementById(id);
+        if (!filed) return;
         filed.hidden = !line;
         filed.textContent = line;
-      }
+      });
       if (out && out.ok && out.desk === "meeting" && typeof meetingApply === "function") {
         fetch("/api/meeting")
           .then((r) => r.json())
@@ -577,6 +651,10 @@ function ensureLiveCueBar() {
   bar.appendChild(heard);
   bar.appendChild(text);
   bar.appendChild(actions);
+  const openChip = el("p", "live-cue-open");
+  openChip.id = "host-open";
+  openChip.hidden = true;
+  bar.appendChild(openChip);
   const form = el("form", "live-cue-ask");
   form.id = "host-ask-form";
   const input = document.createElement("input");
@@ -654,6 +732,7 @@ function paintChrome(home) {
   if (back) back.hidden = !canWalk;
   if (next) next.hidden = !canWalk;
   if (copy) copy.hidden = !lastChromeCue;
+  paintWorkingSet();
 }
 
 paintLiveRoom("meeting-brief", "/api/meeting", "meeting-cue-web", "refused: meeting must not grow a runtime", "meeting-asked-web");
@@ -798,16 +877,7 @@ function paintSession(session, localFirst) {
   files.forEach((row) => {
     const li = el("li");
     const a = el("a");
-    const desk = String(row.desk || "");
-    a.href =
-      desk === "teach" ||
-      desk === "meeting" ||
-      desk === "today" ||
-      desk === "document" ||
-      desk === "security" ||
-      desk === "inbox"
-        ? "/" + desk
-        : "/workspace";
+    a.href = sessionLinkHref(row);
     a.textContent = String(row.title || row.id || "artifact");
     li.appendChild(a);
     const cueText = String(row.cue || "").trim();

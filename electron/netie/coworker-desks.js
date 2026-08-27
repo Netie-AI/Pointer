@@ -2060,6 +2060,12 @@ function sessionHref(desk) {
   return "/workspace";
 }
 
+function sessionFileHref(artifact) {
+  const id = String((artifact && artifact.id) || "").trim();
+  if (/^[A-Za-z0-9._-]+$/.test(id)) return "/workspace?id=" + encodeURIComponent(id);
+  return sessionHref(artifact && artifact.desk);
+}
+
 function emptySession(extra) {
   const base = Object.assign(
     {
@@ -2119,17 +2125,22 @@ function sessionBundle(artifacts, plateCue) {
     if (a && a.id) byId.set(String(a.id), a);
   }
   const files = [];
-  for (const id of LIVE_SESSION_IDS) {
-    const a = byId.get(id);
-    if (!a) continue;
+  const seen = new Set();
+  function addFile(a) {
+    if (!a || files.length >= 12) return;
+    const id = String(a.id || "").trim();
+    if (!/^[A-Za-z0-9._-]+$/.test(id) || seen.has(id)) return;
+    seen.add(id);
     files.push({
-      id: a.id,
+      id,
       desk: a.desk || "",
-      title: a.title || a.id,
+      title: a.title || id,
       cue: String(a.cue || "").slice(0, 160),
-      href: sessionHref(a.desk),
+      href: sessionFileHref(a),
     });
   }
+  for (const id of LIVE_SESSION_IDS) addFile(byId.get(id));
+  for (const a of list) addFile(a);
   const meeting = byId.get("live-meeting") || {};
   const teach = byId.get("live-teach") || {};
   const plate = String(plateCue || "").trim().slice(0, 240);

@@ -380,7 +380,9 @@ function test(name, fn) {
     assert.strictEqual(sessionLive.result.empty, false);
     assert.ok(sessionLive.result.files.some((row) => row.id === "live-meeting"));
     assert.ok(sessionLive.result.files.some((row) => row.id === "live-inbox"));
+    assert.ok(sessionLive.result.files.some((row) => row.href === "/workspace?id=live-meeting"));
     assert.match(sessionLive.result.markdown, /This session/);
+    assert.match(sessionLive.result.markdown, /\/workspace\?id=live-inbox/);
     const missing = await mcp.handle({ jsonrpc: "2.0", id: 22, method: "session.live" });
     assert.ok(missing.error);
     assert.match(missing.error.message, /coordinator missing/);
