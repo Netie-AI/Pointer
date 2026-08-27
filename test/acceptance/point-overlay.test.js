@@ -59,6 +59,10 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.strictEqual(event.type, "point");
       assert.strictEqual(event.ttlMs, 1200);
       assert.strictEqual(po.toOverlayEvent("[POINT:50,50]").ttlMs, po.DEFAULT_TTL_MS);
+      const held = po.toOverlayEvent("[BOX:20,40,10,4:1 Save]", { hold: true });
+      assert.strictEqual(held.hold, true);
+      assert.strictEqual(held.ttlMs, 0);
+      assert.strictEqual(held.points[0].kind, "box");
     }),
 
     T("raw tokens never reach the user's chat", async () => {

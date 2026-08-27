@@ -138,11 +138,38 @@ function pickDesk(text, opts = {}) {
   return DESKS.teach;
 }
 
-function splitLines(transcript) {
+function normalizeSpeaker(raw) {
+  const k = String(raw || "").toLowerCase();
+  if (k === "you" || k === "mic") return "you";
+  return "them";
+}
+
+function parseUtterances(transcript) {
   return String(transcript || "")
     .split(/\r?\n/)
-    .map((line) => line.replace(/^\s*(you|them|system|mic)\s*:\s*/i, "").trim())
+    .map((raw) => {
+      const m = String(raw).match(/^\s*(you|them|system|mic)\s*:\s*(.*)$/i);
+      const speaker = m ? normalizeSpeaker(m[1]) : "them";
+      const text = String(m ? m[2] : raw).trim();
+      return text ? { speaker, text } : null;
+    })
     .filter(Boolean);
+}
+
+function splitLines(transcript) {
+  return parseUtterances(transcript).map((row) => row.text);
+}
+
+function namedLine(row) {
+  const who = row && row.speaker === "you" ? "You" : "Them";
+  return `${who}: ${row && row.text ? row.text : ""}`;
+}
+
+function cueFacts(utterances) {
+  const rows = Array.isArray(utterances) ? utterances : [];
+  const yours = rows.filter((row) => row.speaker === "you" && !looksQuestion(row.text)).map((row) => row.text);
+  if (yours.length) return yours.slice(-4);
+  return rows.filter((row) => !looksQuestion(row.text)).map((row) => row.text).slice(-4);
 }
 
 function looksQuestion(line) {
@@ -160,20 +187,20 @@ function looksDecision(line) {
 }
 
 /** One line the HUD can put in the fixed insight panel. Never sent. Never Act. */
-function spokenCue(kind, lines, lastOther) {
+function spokenCue(kind, utterances, lastOther) {
   if (kind === "next") return "";
   if (!lastOther || !looksQuestion(lastOther)) {
     return kind === "assist" ? "No question landed yet." : "";
   }
-  const facts = (lines || []).filter((line) => !looksQuestion(line)).slice(-4);
+  const facts = cueFacts(utterances);
   if (!facts.length) {
     return `Heard "${String(lastOther).slice(0, 100)}" - no answer in the transcript yet.`;
   }
   return String(facts[facts.length - 1]).slice(0, 240);
 }
-function groundedReply(lines, lastOther) {
+function groundedReply(utterances, lastOther) {
   if (!lastOther) return "No question landed yet. Keep listening.";
-  const facts = (lines || []).filter((line) => !looksQuestion(line)).slice(-4);
+  const facts = cueFacts(utterances);
   const reply = facts.length
     ? `On that: ${facts[facts.length - 1]}. I can confirm that from this transcript. I will not send or click anything.`
     : `I heard "${lastOther}" on this machine. I do not have an answer in the transcript yet.`;
@@ -195,8 +222,8 @@ function groundedReply(lines, lastOther) {
  * Empty transcript fails closed instead of inventing a brief.
  */
 function meetingAssist({ transcript, question } = {}) {
-  const lines = splitLines(transcript);
-  if (!lines.length) {
+  const utterances = parseUtterances(transcript);
+  if (!utterances.length) {
     return {
       ok: false,
       act: false,
@@ -218,11 +245,12 @@ function meetingAssist({ transcript, question } = {}) {
   }
   if (/\brecap\b/.test(q)) explicit = true;
 
-  const recap = lines.slice(-12);
-  const asked = lines.filter(looksQuestion).slice(-5);
-  const next = lines.filter(looksAction).slice(-5);
-  const decided = lines.filter(looksDecision).slice(-5);
-  const lastOther = [...lines].reverse().find((line) => looksQuestion(line)) || recap[recap.length - 1];
+  const recap = utterances.slice(-12);
+  const asked = utterances.filter((row) => looksQuestion(row.text)).slice(-5);
+  const next = utterances.filter((row) => looksAction(row.text)).slice(-5);
+  const decided = utterances.filter((row) => looksDecision(row.text)).slice(-5);
+  const lastAsked = [...utterances].reverse().find((row) => looksQuestion(row.text));
+  const lastOther = lastAsked ? lastAsked.text : recap[recap.length - 1].text;
 
   const parts = [
     "# Meeting brief",
@@ -233,26 +261,28 @@ function meetingAssist({ transcript, question } = {}) {
     "",
     "## Recap",
     "",
-    recap.map((line) => `- ${line}`).join("\n"),
+    recap.map((row) => `- ${namedLine(row)}`).join("\n"),
   ];
   if (kind === "assist") {
-    parts.push("", "## What you can say", "", groundedReply(lines, lastOther));
+    parts.push("", "## What you can say", "", groundedReply(utterances, lastOther));
   }
   if (kind === "next") {
     parts.push(
       "",
       "## Next steps",
       "",
-      (next.length ? next : ["No action verbs heard yet."]).map((line) => `- ${line}`).join("\n")
+      (next.length ? next : [{ speaker: "them", text: "No action verbs heard yet." }])
+        .map((row) => `- ${namedLine(row)}`)
+        .join("\n")
     );
   } else if (next.length) {
-    parts.push("", "## Commitments", "", next.map((line) => `- ${line}`).join("\n"));
+    parts.push("", "## Commitments", "", next.map((row) => `- ${namedLine(row)}`).join("\n"));
   }
   if (kind === "recap" && decided.length) {
-    parts.push("", "## Decisions", "", decided.map((line) => `- ${line}`).join("\n"));
+    parts.push("", "## Decisions", "", decided.map((row) => `- ${namedLine(row)}`).join("\n"));
   }
   if (asked.length && kind === "recap") {
-    parts.push("", "## Open questions", "", asked.map((line) => `- ${line}`).join("\n"));
+    parts.push("", "## Open questions", "", asked.map((row) => `- ${namedLine(row)}`).join("\n"));
   }
 
   const deliverable = parts.join("\n");
@@ -264,7 +294,7 @@ function meetingAssist({ transcript, question } = {}) {
     kind,
     skipLlm,
     title: `Meeting ${kind}`,
-    cue: spokenCue(kind, lines, lastOther),
+    cue: spokenCue(kind, utterances, lastOther),
     deliverable,
   };
 }
@@ -636,16 +666,16 @@ function inboxAssist({ text, transcript } = {}) {
   }
   const q = spoken(t);
   const explicit = /\b(inbox|gmail|outlook|slack reply|draft a reply|email|follow-?up)\b/.test(q);
-  const lines = splitLines(transcript);
-  const next = lines.filter(looksAction).slice(-5);
-  const decided = lines.filter(looksDecision).slice(-5);
+  const utterances = parseUtterances(transcript);
+  const next = utterances.filter((row) => looksAction(row.text)).slice(-5);
+  const decided = utterances.filter((row) => looksDecision(row.text)).slice(-5);
   const blocks = [];
   if (next.length) {
-    blocks.push("What we committed:", ...next.map((line) => `- ${line}`));
+    blocks.push("What we committed:", ...next.map((row) => `- ${namedLine(row)}`));
   }
   if (decided.length) {
     if (blocks.length) blocks.push("");
-    blocks.push("What we decided:", ...decided.map((line) => `- ${line}`));
+    blocks.push("What we decided:", ...decided.map((row) => `- ${namedLine(row)}`));
   }
   const draft = blocks.length
     ? ["Following up from the meeting.", "", ...blocks, "", "I will confirm the details on this machine."].join("\n")
@@ -1085,6 +1115,7 @@ function publicEmptyRoom(desk, title, reason) {
     exec: false,
     cue: "",
     deliverable: "",
+    markers: [],
     coordinator: "http://127.0.0.1:18010",
     reason,
     desk,

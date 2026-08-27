@@ -13,6 +13,7 @@ const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
 const { catalog, todayAssist } = require("./coworker-desks");
+const { parsePoints } = require("./point-overlay");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
 
@@ -114,6 +115,7 @@ function createCoordinator(opts = {}) {
 
   function sendLiveRoom(res, desk, id) {
     const got = workspace.get(id);
+    const markers = got.ok ? parsePoints(String(got.artifact.body || "")).points : [];
     res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
     res.end(
       JSON.stringify({
@@ -124,6 +126,7 @@ function createCoordinator(opts = {}) {
         desk,
         cue: got.ok ? String(got.artifact.cue || "") : "",
         deliverable: got.ok ? String(got.artifact.body || "") : "",
+        markers,
         artifact: got.ok ? got.artifact : null,
         reason: got.ok ? `live ${desk} on loopback; no runtime` : `no live ${desk} yet`,
       })

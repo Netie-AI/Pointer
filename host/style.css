@@ -28,6 +28,29 @@ pre {
   padding: 8px 10px; border: 1px solid #345; border-radius: 8px;
   font-weight: 650;
 }
+.teach-map {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  margin: 0 0 12px;
+  background: #0d0d0d;
+  border: 1px solid #333;
+  pointer-events: none;
+}
+.teach-map-box {
+  position: absolute;
+  border: 2px solid #6be;
+  border-radius: 6px;
+  pointer-events: none;
+}
+.teach-map-box span {
+  position: absolute;
+  top: -16px;
+  left: 0;
+  font-size: 11px;
+  color: #9ad;
+  white-space: nowrap;
+}
 #artifacts, #events, #hits, #drafts { padding-left: 18px; }
 #brief pre, #artifact-body pre { margin-top: 8px; }
 input[type="search"] {

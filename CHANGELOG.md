@@ -1,3 +1,11 @@
+## 2026-08-27 - Speaker recap, hold teach overlay, teach map
+
+Meeting recap labels You vs Them. Say-this prefers what you said after they
+asked, and stays honest when you have not answered. Teach overlay holds the
+current measured control until `got it` or a mode change. Loopback `/teach`
+draws a read-only box map from measured markers (not a runtime). Never Acts.
+P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Live inbox and document rooms
 
 Home lists every desk. Loopback `/inbox` is an unsent draft grounded in

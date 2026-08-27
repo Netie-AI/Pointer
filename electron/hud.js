@@ -1547,7 +1547,7 @@ function onHudEvent(event) {
     subtitleText.textContent = event.text;
   }
   if (event.type === "enquire") renderEnquire(event);
-  if (event.type === "point") renderPoints(event.points, event.ttlMs);
+  if (event.type === "point") renderPoints(event.points, event.ttlMs, event.hold);
   if (event.type === "bg") renderBgStatus(event);
   if (event.type === "pointer") {
     answerMeta.textContent = event.mode ? `Pointer · ${event.mode}` : answerMeta.textContent;
@@ -1692,11 +1692,10 @@ if (enquirePanel) {
  * A crosshair and a label that fade. Not a companion, not a ring that lives on
  * screen; the floating Clicky chrome was removed for good reasons.
  */
-function renderPoints(points, ttlMs) {
+function renderPoints(points, ttlMs, hold) {
   const layer = $("point-layer");
   if (!layer) return;
   layer.innerHTML = "";
-  const ttl = Number(ttlMs) > 0 ? Number(ttlMs) : 6000;
   for (const point of points || []) {
     const mark = document.createElement("div");
     const boxed = Number(point.wPct) > 0 && Number(point.hPct) > 0;
@@ -1721,10 +1720,10 @@ function renderPoints(points, ttlMs) {
     }
     layer.appendChild(mark);
   }
-  // Both timers have to be cancellable: a new point set arriving during the
-  // 450ms fade would otherwise be wiped by the previous set's cleanup.
   clearTimeout(renderPoints._fadeTimer);
   clearTimeout(renderPoints._wipeTimer);
+  if (hold || !(Number(ttlMs) > 0) || !(points || []).length) return;
+  const ttl = Number(ttlMs);
   renderPoints._fadeTimer = setTimeout(() => {
     layer.querySelectorAll(".point-mark").forEach((el) => el.classList.add("fading"));
     renderPoints._wipeTimer = setTimeout(() => {

@@ -11,11 +11,10 @@
    `/teach` `/security` `/document` `/inbox` `/lanes` `/skills`
    `/workspace`). Public Worker is the same catalog; `/mcp` stays on
    the laptop. P-05 parked.
-2. **Coworker desks + online catalog (DR-0005).** Home `/api/home`
-   lists every desk room. Inbox drafts ground in commitments and
-   decisions and never send. Document drafts are not a `.docx`.
-   Recap lists `## Decisions`. Public catalog stays empty. P-06 parked.
-   GitHub Actions blocked on org billing.
+2. **Coworker desks (DR-0005).** Meeting recap labels You/Them; say-this
+   prefers your answer. Teach overlay holds the current control until
+   `got it`. `/teach` maps measured boxes read-only. Public catalog empty.
+   P-06 parked. GitHub Actions blocked on org billing.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

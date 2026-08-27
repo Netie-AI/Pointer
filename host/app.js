@@ -275,6 +275,7 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse) {
           cue.textContent = text ? prefix + text : "";
         }
         page.replaceChildren();
+        paintTeachMap(page, (m && m.markers) || []);
         const pre = el("pre");
         pre.textContent = (m && m.deliverable) || "";
         page.appendChild(pre);
@@ -288,6 +289,26 @@ paintLiveRoom("teach-brief", "/api/teach", "teach-cue-web", "refused: teach must
 paintLiveRoom("security-brief", "/api/security", "security-cue-web", "refused: security must not grow a runtime");
 paintLiveRoom("document-brief", "/api/document", "document-cue-web", "refused: document must not grow a runtime");
 paintLiveRoom("inbox-brief", "/api/inbox", "inbox-cue-web", "refused: inbox must not grow a runtime");
+
+function paintTeachMap(root, markers) {
+  if (!root) return;
+  const boxes = (markers || []).filter((p) => Number(p.wPct) > 0 && Number(p.hPct) > 0);
+  if (!boxes.length) return;
+  const map = el("div", "teach-map");
+  map.setAttribute("aria-hidden", "true");
+  boxes.forEach((p) => {
+    const box = el("div", "teach-map-box");
+    box.style.left = Number(p.leftPct) + "%";
+    box.style.top = Number(p.topPct) + "%";
+    box.style.width = Number(p.wPct) + "%";
+    box.style.height = Number(p.hPct) + "%";
+    const lab = el("span");
+    lab.textContent = String(p.label || "").slice(0, 40);
+    box.appendChild(lab);
+    map.appendChild(box);
+  });
+  root.appendChild(map);
+}
 
 function paintRooms(rooms, localFirst) {
   const root = document.getElementById("rooms");

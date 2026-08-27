@@ -86,6 +86,8 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.match(recap.deliverable, /## Commitments/);
   assert.match(recap.deliverable, /## Decisions/);
   assert.match(recap.deliverable, /decided to ship/);
+  assert.match(recap.deliverable, /Them: Can you send the deck/);
+  assert.match(recap.deliverable, /You: We decided to ship/);
   assert.doesNotMatch(recap.deliverable, /## Next steps/);
   const assist = meetingAssist({ transcript, question: "what should I say" });
   assert.strictEqual(assist.kind, "assist");
@@ -96,6 +98,12 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.ok(assist.cue);
   assert.match(assist.cue, /decided to ship/);
   assert.match(recap.cue, /decided to ship/);
+  const unanswered = meetingAssist({
+    transcript: "system: What is the launch date?",
+    question: "what should I say",
+  });
+  assert.strictEqual(unanswered.act, false);
+  assert.match(unanswered.cue, /no answer/);
   const next = meetingAssist({ transcript, question: "list next steps" });
   assert.strictEqual(next.kind, "next");
   assert.match(next.deliverable, /## Next steps/);
@@ -302,6 +310,8 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(main, /liveArtifactBody/);
   assert.match(main, /noteTeachStep/);
   assert.match(main, /armTeachWalk/);
+  assert.match(main, /hold: true/);
+  assert.match(main, /resetTeachWalk/);
   const livePub = main.slice(main.indexOf("function publishLiveCoworker"), main.indexOf("function publishTeachOverlay"));
   assert.match(livePub, /type: "insight"/);
   assert.match(livePub, /Review:/);
@@ -326,8 +336,8 @@ test("inbox assist drafts and never sends", () => {
     transcript: "system: Can you send the deck?\nmic: I will send it Friday.\nmic: We decided to ship Friday.",
   });
   assert.strictEqual(fromMeet.act, false);
-  assert.match(fromMeet.deliverable, /will send it Friday/);
-  assert.match(fromMeet.deliverable, /decided to ship/);
+  assert.match(fromMeet.deliverable, /You: I will send it Friday/);
+  assert.match(fromMeet.deliverable, /You: We decided to ship/);
   assert.match(fromMeet.deliverable, /will not send/);
 });
 
@@ -503,6 +513,8 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /paintLiveBrief/);
   assert.match(hud, /meeting-cue/);
   assert.match(hud, /point-box/);
+  assert.match(hud, /event\.hold/);
+  assert.match(hud, /renderPoints\(event\.points, event\.ttlMs, event\.hold\)/);
   const html = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");
   assert.match(html, /id="meeting-cue"/);
   assert.doesNotMatch(html, /clicky-orb|stage-orb/);

@@ -99,10 +99,12 @@ function hasPoints(raw) {
  */
 function toOverlayEvent(raw, opts = {}) {
   const parsed = parsePoints(raw);
+  const hold = Boolean(opts.hold);
   return {
     type: "point",
     points: parsed.points,
-    ttlMs: Number(opts.ttlMs) > 0 ? Number(opts.ttlMs) : DEFAULT_TTL_MS,
+    hold,
+    ttlMs: hold ? 0 : Number(opts.ttlMs) > 0 ? Number(opts.ttlMs) : DEFAULT_TTL_MS,
   };
 }
 
