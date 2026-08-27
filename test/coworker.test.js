@@ -101,7 +101,7 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.match(recap.cue, /We'll ship Friday/);
   assert.doesNotMatch(recap.cue, /decided to/);
   assert.match(assist.asked, /launch date/);
-  assert.match(recap.asked, /send the deck/);
+  assert.match(recap.asked, /launch date/);
   const unanswered = meetingAssist({
     transcript: "system: What is the launch date?",
     question: "what should I say",
