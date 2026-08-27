@@ -91,9 +91,10 @@ function typeFor(file) {
  * Route a public host request. Never takes live coordinator state.
  * @returns {{ status: number, headers?: object, body?: string, file?: string }}
  */
-function handlePublicRequest({ method, pathname } = {}) {
+function handlePublicRequest({ method, pathname, search } = {}) {
   const verb = String(method || "GET").toUpperCase();
   const clean = normalizePath(pathname);
+  const params = new URLSearchParams(String(search || "").replace(/^\?/, ""));
   if (clean === "/mcp" || clean.startsWith("/mcp/")) {
     return { status: 404, headers: textHeaders(), body: "mcp stays on 127.0.0.1" };
   }
@@ -119,6 +120,19 @@ function handlePublicRequest({ method, pathname } = {}) {
     };
   }
   if (verb === "GET" && clean === "/api/workspace") {
+    if (params.get("id")) {
+      return {
+        status: 404,
+        headers: jsonHeaders(),
+        body: JSON.stringify({
+          ok: false,
+          localFirst: true,
+          exec: false,
+          act: false,
+          reason: "live artifacts stay on the laptop",
+        }),
+      };
+    }
     return {
       status: 200,
       headers: jsonHeaders(),
@@ -144,7 +158,11 @@ function handlePublicRequest({ method, pathname } = {}) {
 function createPublicFetch(readAsset) {
   return async function fetch(request) {
     const url = new URL(request.url);
-    const routed = handlePublicRequest({ method: request.method, pathname: url.pathname });
+    const routed = handlePublicRequest({
+      method: request.method,
+      pathname: url.pathname,
+      search: url.search,
+    });
     if (routed.file) {
       if (!PUBLIC_FILE_SET.has(routed.file)) {
         return new Response("not a coordinator page", { status: 404, headers: textHeaders() });

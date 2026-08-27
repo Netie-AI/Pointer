@@ -3,10 +3,11 @@
 One UI: center HUD chat with retrieve roulette and a draggable audio dock.
 
 Coworker desks (DR-0005): Teach points at the screen, Meeting recaps an armed
-transcript, Today is the standing session brief, Document writes Word, Security
-never self-approves. `/today` paints that brief. Online `/workspace` is an
-artifact catalog. "Spawn a coworker" queues a background brief and never Acts.
-Act stays on the laptop.
+transcript (live in the insight panel while listening), Today is the standing
+session brief, Document writes Word, Security never self-approves. `/today`
+paints that brief. Online `/workspace` is a read-only artifact catalog.
+"Spawn a coworker" queues a background brief and never Acts. Act stays on
+the laptop.
 
 | Action | Result |
 |---|---|

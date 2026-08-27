@@ -113,7 +113,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
-const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, suggestsFromAssist } = require("./netie/coworker-desks");
+const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, suggestsFromAssist, createLiveMeetingPump } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -251,6 +251,7 @@ function publishBrief(assist) {
   if (!assist || !assist.ok || !assist.deliverable) return null;
   try {
     return liveCoordinator.workspace.put({
+      id: assist.id,
       kind: assist.kind || "brief",
       title: assist.title || assist.desk || "brief",
       desk: assist.desk || "teach",
@@ -264,6 +265,18 @@ function publishSuggests(assist) {
   const items = suggestsFromAssist(assist);
   if (!items.length) return;
   sendHud({ type: "suggests", items });
+}
+const liveMeetingPump = createLiveMeetingPump({ delayMs: 900 });
+function publishLiveMeeting(assist) {
+  if (!assist || !assist.ok || assist.act) return;
+  publishBrief(assist);
+  publishSuggests(assist);
+  sendHudQuiet({
+    type: "live-brief",
+    desk: assist.desk || "meeting",
+    act: false,
+    text: assist.deliverable,
+  });
 }
 function localMeetingReply(message, extraTranscript) {
   const desk = pickDesk(message, { mode: appMode });
@@ -515,6 +528,9 @@ function applyAppMode(modeId, { reason = "" } = {}) {
   const prev = appMode;
   appMode = getMode(modeId).id;
   const spec = getMode(appMode);
+  if (appMode !== "meeting" && appMode !== "transcribe") {
+    liveMeetingPump.reset();
+  }
   if (spec.autoNotes && (!notes.file || prev !== appMode)) {
     const started = notes.start(appMode);
     try {
@@ -3364,6 +3380,12 @@ function handleUtterance(source, utt) {
           });
         } else {
           rememberHeard(source, res.text);
+          if (appMode === "meeting" || appMode === "transcribe") {
+            liveMeetingPump.push({
+              transcript: heardTranscript(),
+              onBrief: publishLiveMeeting,
+            });
+          }
           // System audio is always written to the markdown transcript, whatever
           // the mode: if you armed loopback you are recording something you want
           // to keep. Mic still follows the mode's autoNotes setting.

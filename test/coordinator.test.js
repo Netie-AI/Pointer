@@ -130,6 +130,26 @@ function test(name, fn) {
     assert.ok(today.body.artifacts.some((row) => /Standup/.test(row.title)));
     assert.match(today.body.deliverable, /# Today/);
     assert.match(today.body.deliverable, /Standup/);
+    const got = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/workspace?id=" + encodeURIComponent(listed.artifacts[0].id) }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(got.status, 200);
+    assert.strictEqual(got.body.act, false);
+    assert.strictEqual(got.body.exec, false);
+    assert.match(got.body.artifact.body, /ship it/);
+    const miss = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/workspace?id=nope" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(miss.status, 404);
+    assert.strictEqual(miss.body.ok, false);
     await c.close();
   });
 

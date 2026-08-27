@@ -437,6 +437,12 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .panel-head:active { cursor: grabbing; }
 .spark { color: var(--accent); filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent), transparent 40%)); }
 .insight-summary { margin: 6px 0 12px; color: var(--text); font-size: 12px; line-height: 1.5; opacity: 0.92; }
+.coworker-brief {
+  margin: 0 0 12px; padding: 8px 10px; max-height: 160px; overflow: auto;
+  font-size: 11px; line-height: 1.45; white-space: pre-wrap;
+  border: 1px solid var(--line-soft); border-radius: 12px;
+  background: color-mix(in srgb, var(--surface), #000 18%);
+}
 .quick-actions { display: grid; gap: 6px; }
 .quick-actions button {
   text-align: left; border-radius: 14px; padding: 10px 12px;

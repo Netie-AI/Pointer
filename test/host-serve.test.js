@@ -93,6 +93,21 @@ function readAsset(file) {
     assert.match(app, /textContent/);
     assert.doesNotMatch(app, /innerHTML/);
     assert.match(app, /ws\.exec/);
+    assert.match(app, /openArtifact/);
+    assert.match(app, /paintLanes/);
+    const leak = handlePublicRequest({
+      method: "GET",
+      pathname: "/api/workspace",
+      search: "?id=brief-1",
+    });
+    assert.strictEqual(leak.status, 404);
+    assert.strictEqual(JSON.parse(leak.body).exec, false);
+    assert.match(JSON.parse(leak.body).reason, /laptop/);
+    const lanes = await fetch(new Request("https://host.netie.ai/lanes"));
+    assert.match(await lanes.text(), /id="lanes"/);
+    const skills = await fetch(new Request("https://host.netie.ai/skills"));
+    assert.match(await skills.text(), /id="hits"/);
+    assert.match(page, /id="artifact-body"/);
   });
 
   await test("public fetch serves /today and style.css from host/", async () => {

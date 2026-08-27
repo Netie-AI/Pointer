@@ -56,8 +56,9 @@ fail-closed (Hard rule 2).
    first-party method that always errors. P-06 stays parked.
 5. **First-party MCP grows, still closed.** Added tools:
    `desks.list`, `desks.pick`, `today.brief`, `workspace.list`,
-   `workspace.put`, `workspace.exec` (always refuse). Unknown methods
-   still refuse. No third-party MCP load.
+   `workspace.get`, `workspace.put`, `workspace.exec` (always refuse).
+   Unknown methods still refuse. No third-party MCP load. Public
+   `workspace.get` / `?id=` stays on the laptop.
 
 ## Confirmation
 
@@ -66,3 +67,4 @@ fail-closed (Hard rule 2).
 `test/coordinator.test.js` extensions. Public `/mcp` and `/api/workspace/exec`
 stay 404/refused. Meeting local assist returns `act: false`. Today brief
 and coworker spawn return `act: false` and never claim `pointer-act`.
+Live meeting pump is meeting/transcribe only. Public `?id=` is 404.

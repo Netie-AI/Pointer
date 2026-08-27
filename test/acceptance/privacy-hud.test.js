@@ -127,6 +127,12 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/MEETING_SUGGESTS/.test(js), "meeting mode needs Recap/Assist/Next");
       assert.ok(/Recap this meeting/.test(js));
       assert.ok(/What should I say\?/.test(js));
+      assert.ok(/event\.type === "live-brief"/.test(js), "live meeting brief must paint in HUD");
+      assert.ok(/paintLiveBrief/.test(js));
+      assert.ok(/coworker-brief/.test(read("electron/hud.html")), "live brief lives in fixed insight chrome");
+      const liveFn = js.slice(js.indexOf("function paintLiveBrief"), js.indexOf("const hudSettings"));
+      assert.ok(/textContent/.test(liveFn));
+      assert.ok(!/innerHTML/.test(liveFn));
     }),
 
     T("every enquire input is labelled and reachable", async () => {

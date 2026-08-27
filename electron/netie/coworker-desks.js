@@ -632,6 +632,56 @@ function suggestsFromAssist(assist) {
   return items.slice(0, 6);
 }
 
+/**
+ * Rolling meeting brief. Same rules as recap: transcript is data, never Act.
+ * Empty ring fails closed so we do not invent a live overlay.
+ */
+function liveMeetingUpdate({ transcript } = {}) {
+  const assist = meetingAssist({ transcript, question: "recap this meeting" });
+  if (!assist.ok) return assist;
+  return {
+    ...assist,
+    id: "live-meeting",
+    kind: "live",
+    title: "Live meeting",
+    live: true,
+    skipLlm: true,
+  };
+}
+
+/**
+ * Debounce live recaps. Cluely-shaped cadence, Pointer rules: quiet first,
+ * then one brief. Injected timers so tests do not sleep.
+ */
+function createLiveMeetingPump(opts = {}) {
+  const delayMs = Number.isFinite(Number(opts.delayMs)) ? Math.max(0, Number(opts.delayMs)) : 900;
+  const setT = typeof opts.setTimeoutImpl === "function" ? opts.setTimeoutImpl : setTimeout;
+  const clearT = typeof opts.clearTimeoutImpl === "function" ? opts.clearTimeoutImpl : clearTimeout;
+  let timer = null;
+  let lastKey = "";
+
+  function reset() {
+    if (timer) clearT(timer);
+    timer = null;
+    lastKey = "";
+  }
+
+  function push({ transcript, onBrief } = {}) {
+    if (timer) clearT(timer);
+    timer = setT(() => {
+      timer = null;
+      const assist = liveMeetingUpdate({ transcript });
+      if (!assist.ok) return;
+      const key = String(assist.deliverable || "");
+      if (!key || key === lastKey) return;
+      lastKey = key;
+      if (typeof onBrief === "function") onBrief(assist);
+    }, delayMs);
+  }
+
+  return { push, reset };
+}
+
 module.exports = {
   DESKS,
   DESK_IDS,
@@ -648,6 +698,8 @@ module.exports = {
   wantsSpawn,
   spawnCoworker,
   suggestsFromAssist,
+  liveMeetingUpdate,
+  createLiveMeetingPump,
   deskGrounding,
   canActOnline,
   finishListeningSession,

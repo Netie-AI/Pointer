@@ -102,6 +102,24 @@ function paintSuggests(mode) {
   paintSuggestItems(rows);
 }
 
+function paintLiveBrief(event) {
+  const brief = $("coworker-brief");
+  const meta = $("coworker-brief-meta");
+  if (!brief) return;
+  const text = String((event && event.text) || "").slice(0, 4000);
+  if (!text || (event && event.act)) {
+    brief.hidden = true;
+    if (meta) meta.hidden = true;
+    return;
+  }
+  brief.hidden = false;
+  brief.textContent = text;
+  if (meta) {
+    meta.hidden = false;
+    meta.textContent = `${(event && event.desk) || "meeting"} coworker · live · never acts`;
+  }
+}
+
 /** Mirrors the main-process settings the renderer needs each frame. */
 const hudSettings = { autoSend: false, followCursor: true, liveLines: 5 };
 
@@ -339,6 +357,9 @@ function applyModeUi(mode, notesPath) {
   hudRoot.classList.remove("mode-agent", "mode-general", "mode-transcribe", "mode-meeting");
   hudRoot.classList.add(`mode-${appMode}`);
   paintSuggests(appMode);
+  if (appMode !== "meeting" && appMode !== "transcribe") {
+    paintLiveBrief({ text: "", act: false });
+  }
   document.querySelectorAll("#mode-pill button").forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === appMode);
   });
@@ -1429,6 +1450,7 @@ function onHudEvent(event) {
   }
   if (event.type === "insight") insightSummary.textContent = event.text || "";
   if (event.type === "suggests") paintSuggestItems(event.items || []);
+  if (event.type === "live-brief") paintLiveBrief(event);
   if (event.type === "auto-listen") {
     armCapture({
       mic: Boolean(event.mic),

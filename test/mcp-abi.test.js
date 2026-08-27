@@ -45,6 +45,7 @@ function test(name, fn) {
     assert.ok(r.result.tools.includes("workspace.exec"));
     assert.ok(r.result.tools.includes("desks.list"));
     assert.ok(r.result.tools.includes("today.brief"));
+    assert.ok(r.result.tools.includes("workspace.get"));
   });
 
   await test("lanes.claim goes through MCP and conflicts", async () => {
@@ -128,6 +129,14 @@ function test(name, fn) {
     assert.strictEqual(brief.result.exec, false);
     assert.match(brief.result.deliverable, /# Today/);
     assert.match(brief.result.deliverable, /P-06/);
+    const got = await mcp.handle(
+      { jsonrpc: "2.0", id: 12, method: "workspace.get", params: { id: put.result.artifact.id } },
+      { coordinator: coord }
+    );
+    assert.strictEqual(got.result.ok, true);
+    assert.strictEqual(got.result.act, false);
+    assert.strictEqual(got.result.exec, false);
+    assert.match(got.result.artifact.body, /Meeting brief/);
   });
 
   await test("local recipe search still hits fill right", async () => {

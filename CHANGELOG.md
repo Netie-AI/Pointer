@@ -2,6 +2,15 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Live meeting brief and read-only artifact browser
+
+Meeting/Transcribe utterances debounce into a live recap in the fixed
+insight panel (`live-brief`). Empty transcript fails closed. Agent mode
+does not pump. Loopback `/api/workspace?id=` opens an artifact body;
+public id fetches 404. `/lanes` and `/skills` paint cards, not JSON.
+MCP `workspace.get` is first-party and never Acts. P-05 and P-06 stay
+parked.
+
 ## 2026-08-27 - Standing Today brief and fail-closed coworker spawn
 
 `/today` is a standing brief of this session (lanes, events, artifacts,

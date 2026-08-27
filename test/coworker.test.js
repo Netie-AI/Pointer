@@ -15,6 +15,8 @@ const {
   wantsSpawn,
   spawnCoworker,
   suggestsFromAssist,
+  liveMeetingUpdate,
+  createLiveMeetingPump,
 } = require("../electron/netie/coworker-desks");
 const { plannerGrounding } = require("../electron/netie/coworker");
 
@@ -258,6 +260,61 @@ test("spawn coworker never acts and never claims the pointer-act lane", () => {
   const job = main.slice(main.indexOf("function enqueueCoworkerJob"), main.indexOf("ipcMain.handle(\"hud:bgList\""));
   assert.doesNotMatch(job, /claim\("pointer-act"/);
   assert.doesNotMatch(job, /driver\./);
+});
+
+test("live meeting update fails closed with no transcript and never acts", () => {
+  const empty = liveMeetingUpdate({ transcript: "" });
+  assert.strictEqual(empty.ok, false);
+  assert.strictEqual(empty.act, false);
+  const live = liveMeetingUpdate({
+    transcript: "system: Can you send the deck?\nmic: I will send it Friday.",
+  });
+  assert.strictEqual(live.ok, true);
+  assert.strictEqual(live.act, false);
+  assert.strictEqual(live.live, true);
+  assert.strictEqual(live.id, "live-meeting");
+  assert.match(live.deliverable, /send the deck/);
+});
+
+test("live meeting pump ships one brief after quiet and skips duplicates", () => {
+  const briefs = [];
+  let pending = null;
+  const pump = createLiveMeetingPump({
+    delayMs: 0,
+    setTimeoutImpl: (fn) => {
+      pending = fn;
+      return 1;
+    },
+    clearTimeoutImpl: () => {
+      pending = null;
+    },
+  });
+  pump.push({ transcript: "", onBrief: (a) => briefs.push(a) });
+  pending();
+  assert.strictEqual(briefs.length, 0);
+  const ring = "system: Can you send the deck?\nmic: I will send it Friday.";
+  pump.push({ transcript: ring, onBrief: (a) => briefs.push(a) });
+  pending();
+  assert.strictEqual(briefs.length, 1);
+  assert.strictEqual(briefs[0].act, false);
+  pump.push({ transcript: ring, onBrief: (a) => briefs.push(a) });
+  pending();
+  assert.strictEqual(briefs.length, 1);
+  const fs = require("fs");
+  const path = require("path");
+  const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
+  const heardAt = main.indexOf("rememberHeard(source, res.text)");
+  assert.ok(heardAt >= 0);
+  const heard = main.slice(heardAt, heardAt + 500);
+  assert.match(heard, /liveMeetingPump\.push/);
+  assert.match(heard, /appMode === "meeting"/);
+  assert.match(heard, /appMode === "transcribe"/);
+  const hud = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
+  assert.match(hud, /event\.type === "live-brief"/);
+  assert.match(hud, /paintLiveBrief/);
+  assert.match(hud, /brief\.textContent/);
+  assert.doesNotMatch(hud, /coworker-brief[\s\S]{0,80}innerHTML/);
+  assert.match(hud, /event\.act/);
 });
 
 console.log(`\n${pass} passed, ${fails.length} failed`);

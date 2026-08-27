@@ -66,7 +66,77 @@ function paintArtifacts(items) {
   }
   items.forEach((row) => {
     const li = el("li");
-    li.textContent = (row.title || row.id || "untitled") + " · " + (row.desk || "desk");
+    const btn = el("button", "artifact");
+    btn.type = "button";
+    btn.textContent = (row.title || row.id || "untitled") + " · " + (row.desk || "desk");
+    btn.addEventListener("click", () => openArtifact(row.id));
+    li.appendChild(btn);
+    root.appendChild(li);
+  });
+}
+
+function openArtifact(id) {
+  const root = document.getElementById("artifact-body");
+  if (!root || !id) return;
+  fetch("/api/workspace?id=" + encodeURIComponent(id))
+    .then((r) => r.json().then((body) => body))
+    .then((body) => {
+      if (body && body.exec) {
+        show("policy", "refused: workspace must not grow a runtime");
+        return;
+      }
+      root.replaceChildren();
+      const pre = el("pre");
+      pre.textContent =
+        body && body.ok && body.artifact
+          ? String(body.artifact.body || "")
+          : (body && body.reason) || "live artifacts stay on the laptop";
+      root.appendChild(pre);
+    })
+    .catch((err) => {
+      root.replaceChildren();
+      const pre = el("pre");
+      pre.textContent = String(err);
+      root.appendChild(pre);
+    });
+}
+
+function paintLanes(lanes) {
+  const root = document.getElementById("lanes");
+  if (!root) return;
+  root.replaceChildren();
+  ["pointer-act", "cursor-cloud", "cortex", "craft"].forEach((id) => {
+    const held = lanes && lanes[id];
+    const card = el("article", "desk");
+    const h = el("h3");
+    h.textContent = id;
+    const p = el("p");
+    p.textContent =
+      held && held.owner
+        ? "held by " + held.owner + (held.goal ? " - " + held.goal : "")
+        : "free";
+    const out = el("p", "muted");
+    out.textContent = id === "pointer-act" ? "A second owner is refused." : "Lane is exclusive.";
+    card.appendChild(h);
+    card.appendChild(p);
+    card.appendChild(out);
+    root.appendChild(card);
+  });
+}
+
+function paintList(id, rows, emptyText, line) {
+  const root = document.getElementById(id);
+  if (!root) return;
+  root.replaceChildren();
+  if (!rows || !rows.length) {
+    const li = el("li", "muted");
+    li.textContent = emptyText;
+    root.appendChild(li);
+    return;
+  }
+  rows.forEach((row) => {
+    const li = el("li");
+    li.textContent = line(row);
     root.appendChild(li);
   });
 }
@@ -129,6 +199,53 @@ if (todayPage) {
       show("policy", (t && t.reason) || "standing brief; Act stays on the laptop");
       paintBrief((t && (t.deliverable || t.brief)) || "");
       paintEvents((t && (t.events || t.today)) || []);
+    })
+    .catch((err) => show("policy", String(err)));
+}
+
+const lanesPage = document.getElementById("lanes");
+if (lanesPage) {
+  fetch("/api/state")
+    .then((r) => r.json())
+    .then((s) => {
+      if (s && s.exec) {
+        show("policy", "refused: lanes must not grow a runtime");
+        return;
+      }
+      show(
+        "policy",
+        s && s.localFirst
+          ? s.reason || "live lanes stay on the laptop"
+          : "Live lanes on this machine. A second owner is refused."
+      );
+      paintLanes((s && s.lanes) || {});
+    })
+    .catch((err) => show("policy", String(err)));
+}
+
+const skillsPage = document.getElementById("hits");
+if (skillsPage) {
+  fetch("/api/state")
+    .then((r) => r.json())
+    .then((s) => {
+      show(
+        "policy",
+        s && s.localFirst
+          ? "Skill search stays on the laptop. Craft cannot emit actions."
+          : "Live skill hits. A miss is a hint draft with empty actions."
+      );
+      paintList(
+        "hits",
+        (s && s.lastSearch) || [],
+        "No search hits on this host.",
+        (h) => (h.id || h.title || "hit") + (h.score != null ? " · " + h.score : "")
+      );
+      paintList(
+        "drafts",
+        (s && s.drafts) || [],
+        "No hint drafts.",
+        (d) => (d.title || d.id || "draft") + " · " + (d.tier || "hint")
+      );
     })
     .catch((err) => show("policy", String(err)));
 }

@@ -18,14 +18,17 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 
 - `coworker-desks.js`: teach / meeting / today / document / security (+ parked inbox).
 - Local meeting Recap/Assist/Next from the transcript ring. `act: false`.
+- Live meeting pump: debounce utterances into the fixed insight panel.
 - Standing `/today` brief from the session log. Empty is honest, not invented.
 - `spawnCoworker`: background brief, never claims pointer-act, never Acts.
-- `workspace.js`: artifact catalog. `exec()` always refuses (P-06).
+- `workspace.js`: artifact catalog. `exec()` always refuses (P-06). `get` is
+  loopback-only; public `?id=` is 404.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
 ## Traps
 
 - Do not copy those repos and strip licenses.
 - Public workspace with exec would be P-06. Named refusal instead.
+- Public `/api/workspace?id=` must 404 or live briefs leak off-laptop.
 - Meeting mode must not turn "Do it" into clicks (`hud.js` doAct -> doAsk).
 - Transcript is data, not commands.

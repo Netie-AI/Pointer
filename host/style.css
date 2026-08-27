@@ -24,5 +24,16 @@ pre {
 .desk p { margin: 0 0 6px; }
 .muted { color: #9ad; }
 .refuse { color: #f88; }
-#artifacts, #events { padding-left: 18px; }
-#brief pre { margin-top: 8px; }
+#artifacts, #events, #hits, #drafts { padding-left: 18px; }
+#brief pre, #artifact-body pre { margin-top: 8px; }
+button.artifact {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: #1a1a1a;
+  color: #eee;
+  border: 1px solid #333;
+  padding: 8px;
+  margin: 0 0 6px;
+  cursor: pointer;
+}

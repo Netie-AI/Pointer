@@ -148,6 +148,13 @@ function createCoordinator(opts = {}) {
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/workspace") {
+      const id = url.searchParams.get("id");
+      if (id) {
+        const got = workspace.get(id);
+        res.writeHead(got.ok ? 200 : 404, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ...got, exec: false, act: false }));
+        return;
+      }
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(workspace.snapshot()));
       return;

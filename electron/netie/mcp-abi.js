@@ -18,6 +18,7 @@ const TOOLS = Object.freeze([
   "desks.pick",
   "today.brief",
   "workspace.list",
+  "workspace.get",
   "workspace.put",
   "workspace.exec",
 ]);
@@ -85,6 +86,11 @@ function createMcpAbi(opts = {}) {
       if (method === "workspace.list") {
         if (!workspace) return rpcError(id, -32000, "workspace missing");
         return rpcResult(id, { artifacts: workspace.list(), exec: false });
+      }
+      if (method === "workspace.get") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        const got = workspace.get(params.id);
+        return rpcResult(id, { ...got, exec: false, act: false });
       }
       if (method === "workspace.put") {
         if (!workspace) return rpcError(id, -32000, "workspace missing");

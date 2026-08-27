@@ -38,6 +38,15 @@ test("put lists a brief and never grows a runtime", () => {
   assert.match(exec.reason, /P-06/);
 });
 
+test("put with a stable id overwrites so a live brief does not pile up", () => {
+  const ws = createWorkspace({ clock: () => 10 });
+  ws.put({ id: "live-meeting", title: "Live meeting", body: "first", desk: "meeting" });
+  ws.put({ id: "live-meeting", title: "Live meeting", body: "second recap", desk: "meeting" });
+  assert.strictEqual(ws.list().length, 1);
+  assert.strictEqual(ws.get("live-meeting").artifact.body, "second recap");
+  assert.strictEqual(ws.get("missing").ok, false);
+});
+
 test("public snapshot is local-first with empty artifacts and no exec", () => {
   const snap = publicWorkspaceSnapshot(catalog());
   assert.strictEqual(snap.localFirst, true);
