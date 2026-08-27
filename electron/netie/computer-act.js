@@ -158,6 +158,16 @@ function planFromInstruction(instruction, opts = {}) {
     if (plan.ok) return { ok: true, source: "deliver", actions: plan.actions };
     return plan;
   }
+  const replaced = text.match(/^(?:please\s+)?replace\s*:\s*([\s\S]+)$/i);
+  if (replaced && replaced[1].trim()) {
+    const plan = deliverTextActions(replaced[1].trim(), {
+      target: opts.target,
+      via: "paste",
+      replace: true,
+    });
+    if (plan.ok) return { ok: true, source: "replace", actions: plan.actions };
+    return plan;
+  }
   return { ok: false, reason: "no local plan for instruction" };
 }
 

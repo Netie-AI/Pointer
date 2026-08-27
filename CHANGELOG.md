@@ -2,6 +2,12 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - replace: backspaces then pastes into the remembered window
+
+`replace: 你好` restores the last user hwnd, sends Backspace, then clipboard
+pastes. Unicode goes through paste, not a GPLv3 SendInput dump. CI on this
+branch still never starts (GitHub billing / spending limit).
+
 ## 2026-08-27 - Hold Ctrl+Alt+Space to talk, release to stop
 
 OpenWillow hold-to-talk: Electron still only sees the press, then a

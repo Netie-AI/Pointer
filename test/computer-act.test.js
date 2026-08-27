@@ -278,6 +278,20 @@ function test(name, fn) {
     assert.strictEqual(plan.actions[1].value, "hello agent");
   });
 
+  await test("replace: backspaces then pastes into the remembered hwnd", () => {
+    const { planFromInstruction } = require("../electron/netie/computer-act");
+    const plan = planFromInstruction("replace: 你好", {
+      target: { hwnd: "55", title: "Notepad" },
+    });
+    assert.strictEqual(plan.ok, true);
+    assert.strictEqual(plan.source, "replace");
+    assert.strictEqual(plan.actions[0].type, "focus_hwnd");
+    assert.strictEqual(plan.actions[1].type, "press");
+    assert.strictEqual(plan.actions[1].value, "backspace");
+    assert.strictEqual(plan.actions[2].type, "clipboard_paste");
+    assert.strictEqual(plan.actions[2].value, "你好");
+  });
+
   await test("computer.scribe refuses without a Cortex gate", async () => {
     const { runComputerScribe } = require("../electron/netie/scribe");
     const r = await runComputerScribe({ instruction: "make this formal" }, {});

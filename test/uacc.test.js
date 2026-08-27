@@ -113,6 +113,7 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("focus: notepad"));
     assert.ok(shown.drive.instructions.includes("click: Save"));
     assert.ok(shown.drive.instructions.includes("wait 400"));
+    assert.ok(shown.drive.instructions.includes("replace: hello"));
     assert.strictEqual(shown.drive.tools, "GET /api/tools");
     assert.match(shown.drive.gated, /dms\/secure/);
   });

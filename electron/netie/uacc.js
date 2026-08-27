@@ -183,6 +183,7 @@ function computerStatus(opts = {}) {
         "focus hwnd: 12345",
         "open: notepad",
         "deliver: hello",
+        "replace: hello",
         "press ctrl+s",
       ],
       gated: "Cortex /dms/secure. Clicks and launches need approved:true.",
