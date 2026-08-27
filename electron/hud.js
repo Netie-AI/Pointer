@@ -124,6 +124,12 @@ function paintLiveBrief(event) {
   const cueRow = $("cue-row");
   const teachBack = $("btn-teach-back");
   const teachNext = $("btn-teach-next");
+  const bar = $("live-cue-bar");
+  const barAsked = $("live-cue-asked");
+  const barText = $("live-cue-text");
+  const barBack = $("btn-live-back");
+  const barNext = $("btn-live-next");
+  const barCopy = $("btn-live-copy");
   if (!brief) return;
   const text = String((event && event.text) || "").slice(0, 4000);
   const cue = String((event && event.cue) || "").trim().slice(0, 240);
@@ -131,6 +137,11 @@ function paintLiveBrief(event) {
   const kind = rawKind === "point" || rawKind === "warn" ? rawKind : "say";
   lastCueText = cue;
   lastCueKind = kind;
+  const asked = String((event && event.asked) || "").trim().slice(0, 160);
+  const rest = String((event && event.rest) || "").trim().slice(0, 160);
+  const askedLine =
+    kind === "point" && rest ? `Then: ${rest}` : asked ? `They asked: ${asked}` : "";
+  const cueLine = cueDisplay(kind, cue);
   if (!text || (event && event.act)) {
     brief.hidden = true;
     if (meta) meta.hidden = true;
@@ -146,6 +157,15 @@ function paintLiveBrief(event) {
     if (copyBtn) copyBtn.hidden = true;
     if (teachBack) teachBack.hidden = true;
     if (teachNext) teachNext.hidden = true;
+    if (bar) bar.hidden = true;
+    if (barAsked) {
+      barAsked.hidden = true;
+      barAsked.textContent = "";
+    }
+    if (barText) barText.textContent = "";
+    if (barBack) barBack.hidden = true;
+    if (barNext) barNext.hidden = true;
+    if (barCopy) barCopy.hidden = true;
     lastCueText = "";
     lastCueKind = "say";
     return;
@@ -156,23 +176,13 @@ function paintLiveBrief(event) {
     meta.hidden = false;
     meta.textContent = `${(event && event.desk) || "meeting"} coworker · live · never acts`;
   }
-  const asked = String((event && event.asked) || "").trim().slice(0, 160);
-  const rest = String((event && event.rest) || "").trim().slice(0, 160);
   if (askedEl) {
-    if (kind === "point" && rest) {
-      askedEl.hidden = false;
-      askedEl.textContent = `Then: ${rest}`;
-    } else if (asked) {
-      askedEl.hidden = false;
-      askedEl.textContent = `They asked: ${asked}`;
-    } else {
-      askedEl.hidden = true;
-      askedEl.textContent = "";
-    }
+    askedEl.hidden = !askedLine;
+    askedEl.textContent = askedLine;
   }
   if (cueEl) {
     cueEl.hidden = !cue;
-    cueEl.textContent = cueDisplay(kind, cue);
+    cueEl.textContent = cueLine;
   }
   if (cueRow) cueRow.hidden = !cue;
   if (teachBack) teachBack.hidden = !(kind === "point" && cue);
@@ -180,6 +190,18 @@ function paintLiveBrief(event) {
   if (copyBtn) {
     copyBtn.hidden = !cue;
     copyBtn.textContent = cueCopyLabel(kind);
+  }
+  if (bar) bar.hidden = !cue && !askedLine;
+  if (barAsked) {
+    barAsked.hidden = !askedLine;
+    barAsked.textContent = askedLine;
+  }
+  if (barText) barText.textContent = cueLine;
+  if (barBack) barBack.hidden = !(kind === "point" && cue);
+  if (barNext) barNext.hidden = !(kind === "point" && cue);
+  if (barCopy) {
+    barCopy.hidden = !cue;
+    barCopy.textContent = cueCopyLabel(kind);
   }
 }
 
@@ -1258,27 +1280,33 @@ $("desk-pill").addEventListener("click", (event) => {
   else askInput.focus();
 });
 const cueRow = $("cue-row");
-if (cueRow) {
-  cueRow.addEventListener("click", (event) => {
-    const button = event.target.closest("#btn-teach-back, #btn-teach-next");
-    if (!button) return;
-    const q = String(button.dataset.q || "");
-    if (!q) return;
-    askInput.value = q;
-    doAsk();
-  });
+const liveCueBar = $("live-cue-bar");
+function onCueAdvance(event) {
+  const button = event.target.closest(".cue-advance");
+  if (!button) return;
+  const q = String(button.dataset.q || "");
+  if (!q) return;
+  askInput.value = q;
+  doAsk();
 }
+if (cueRow) cueRow.addEventListener("click", onCueAdvance);
+if (liveCueBar) liveCueBar.addEventListener("click", onCueAdvance);
 const btnCopyCue = $("btn-copy-cue");
+const btnLiveCopy = $("btn-live-copy");
+async function onCueCopy(button) {
+  const text = String(lastCueText || "").trim();
+  if (!text || !button) return;
+  const res = await invoke("hud:copyText", { text });
+  button.textContent = res && res.ok ? "Copied" : "Copy failed";
+  setTimeout(() => {
+    button.textContent = cueCopyLabel(lastCueKind);
+  }, 1200);
+}
 if (btnCopyCue) {
-  btnCopyCue.addEventListener("click", async () => {
-    const text = String(lastCueText || "").trim();
-    if (!text) return;
-    const res = await invoke("hud:copyText", { text });
-    btnCopyCue.textContent = res && res.ok ? "Copied" : "Copy failed";
-    setTimeout(() => {
-      btnCopyCue.textContent = cueCopyLabel(lastCueKind);
-    }, 1200);
-  });
+  btnCopyCue.addEventListener("click", () => onCueCopy(btnCopyCue));
+}
+if (btnLiveCopy) {
+  btnLiveCopy.addEventListener("click", () => onCueCopy(btnLiveCopy));
 }
 $("mode-pill").addEventListener("click", async (event) => {
   if (agentBusy) {

@@ -2947,6 +2947,8 @@ async function runDeskAssist(message, extraTranscript) {
       text: message,
       controls: measured.controls,
       screen: measured.screen,
+      region: measured.region,
+      framed: Boolean(measured.framed),
       step: teachStep,
       live: true,
     });

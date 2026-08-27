@@ -370,6 +370,10 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(main, /armTeachWalk/);
   assert.match(main, /hold: true/);
   assert.match(main, /resetTeachWalk/);
+  const deskRun = main.slice(main.indexOf("async function runDeskAssist"), main.indexOf("function enqueueCoworkerJob"));
+  assert.match(deskRun, /measured.region/);
+  assert.match(deskRun, /measured.framed/);
+  assert.doesNotMatch(deskRun, /driver\./);
   const livePub = main.slice(main.indexOf("function publishLiveCoworker"), main.indexOf("function publishTeachOverlay"));
   assert.match(livePub, /type: "insight"/);
   assert.match(livePub, /Review:/);
@@ -603,7 +607,7 @@ test("desk chips ask, never act", () => {
   const desk = hud.slice(hud.indexOf('$("desk-pill")'), hud.indexOf('$("mode-pill")'));
   assert.match(desk, /doAsk\(\)/);
   assert.doesNotMatch(desk, /doAct\(\)/);
-  assert.match(desk, /btn-teach-next/);
+  assert.match(desk, /cue-advance/);
   assert.doesNotMatch(desk, /hud:act/);
 });
 
@@ -653,6 +657,9 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   const html = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");
   assert.match(html, /id="meeting-cue"/);
   assert.match(html, /id="meeting-asked"/);
+  assert.match(html, /id="live-cue-bar"/);
+  assert.match(html, /id="live-cue-text"/);
+  assert.match(html, /id="btn-live-next"/);
   assert.doesNotMatch(html, /clicky-orb|stage-orb/);
   const mainCue = main.slice(main.indexOf("function publishLiveCoworker"), main.indexOf("function publishTeachOverlay"));
   assert.match(mainCue, /cue:/);
@@ -663,7 +670,15 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /Review:/);
   assert.match(hud, /Copy review/);
   assert.match(hud, /brief\.textContent/);
+  assert.match(hud, /live-cue-bar/);
+  assert.match(hud, /cue-advance/);
   assert.doesNotMatch(hud, /coworker-brief[\s\S]{0,80}innerHTML/);
+  const css = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.css"), "utf8");
+  assert.match(css, /\.live-cue-bar/);
+  assert.doesNotMatch(css, /chat-open \.live-cue-bar/);
+  const liveFn = hud.slice(hud.indexOf("function paintLiveBrief"), hud.indexOf("const hudSettings"));
+  assert.match(liveFn, /live-cue-bar/);
+  assert.doesNotMatch(liveFn, /innerHTML/);
   assert.match(hud, /event\.act/);
 });
 

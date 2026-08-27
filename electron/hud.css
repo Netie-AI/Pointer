@@ -86,6 +86,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 }
 
 .hud.morph-hidden .top-bar,
+.hud.morph-hidden .live-cue-bar,
 .hud.morph-hidden .subtitle-live,
 .hud.morph-hidden .insight-panel,
 .hud.morph-hidden .chat-dock,
@@ -117,6 +118,26 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 }
 .top-cluster { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .top-actions { margin-left: 4px; }
+
+/* Live coworker cue in fixed top chrome. Visible with chat closed so Walk
+   and meeting say-this stay on screen (not a bubble, not chat-only). */
+.live-cue-bar {
+  position: absolute; top: 62px; left: 50%; transform: translateX(-50%);
+  z-index: 29; display: flex; align-items: center; gap: 10px;
+  max-width: min(720px, 92vw); padding: 6px 10px; border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+.live-cue-asked {
+  margin: 0; max-width: 28vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11px; color: var(--muted);
+}
+.live-cue-text {
+  margin: 0; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px; font-weight: 650; color: var(--text);
+}
+.live-cue-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+.live-cue-actions .text-btn { margin: 0; padding: 5px 10px; border-radius: 999px; }
 
 .icon-btn {
   width: 34px; height: 34px; display: grid; place-items: center; padding: 0;

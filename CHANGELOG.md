@@ -1,3 +1,9 @@
+## 2026-08-27 - Live cue stays in the top bar with chat closed
+
+Walk and meeting say-this paint Next / Then / They asked / Got it in
+fixed top chrome, not only in the insight panel. Chat can stay compact
+so the screen stays usable. Never Acts. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Framed Walk boxes the region without UIA
 
 HUD Walk still points when the control tree is empty: the overlay boxes

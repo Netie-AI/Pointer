@@ -92,6 +92,16 @@
         </div>
       </header>
 
+      <div class="live-cue-bar chrome" id="live-cue-bar" hidden>
+        <p class="live-cue-asked" id="live-cue-asked" hidden></p>
+        <p class="live-cue-text" id="live-cue-text"></p>
+        <div class="live-cue-actions">
+          <button type="button" class="text-btn cue-advance" id="btn-live-back" data-q="back" hidden>Back</button>
+          <button type="button" class="text-btn cue-advance" id="btn-live-next" data-q="got it, next" hidden>Got it</button>
+          <button type="button" class="text-btn" id="btn-live-copy" hidden>Copy</button>
+        </div>
+      </div>
+
       <div class="subtitle-live glass chrome" id="subtitle-bar" hidden aria-hidden="true">
         <span class="subtitle-grip drag-handle" id="subtitle-drag" title="Drag the LIVE line"></span>
         <span class="subtitle-label">Live</span>
@@ -130,8 +140,8 @@
           <p class="meeting-asked" id="meeting-asked" hidden></p>
           <p class="meeting-cue" id="meeting-cue" hidden></p>
           <div class="cue-row" id="cue-row" hidden>
-            <button type="button" class="text-btn" id="btn-teach-back" data-q="back" hidden>Back</button>
-            <button type="button" class="text-btn" id="btn-teach-next" data-q="got it, next" hidden>Got it</button>
+            <button type="button" class="text-btn cue-advance" id="btn-teach-back" data-q="back" hidden>Back</button>
+            <button type="button" class="text-btn cue-advance" id="btn-teach-next" data-q="got it, next" hidden>Got it</button>
             <button type="button" class="text-btn" id="btn-copy-cue" hidden>Copy say-this</button>
           </div>
           <pre class="coworker-brief" id="coworker-brief" hidden></pre>
