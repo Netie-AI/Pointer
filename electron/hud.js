@@ -1933,8 +1933,14 @@ function renderPoints(points, ttlMs, hold) {
     if (point.label) {
       const label = document.createElement("span");
       label.className = "point-label";
-      label.textContent = point.label;
+      label.textContent = String(point.label || "").slice(0, 40);
       mark.appendChild(label);
+    }
+    if (!later && !done && point.key) {
+      const kbd = document.createElement("span");
+      kbd.className = "point-key";
+      kbd.textContent = String(point.key).slice(0, 12);
+      mark.appendChild(kbd);
     }
     layer.appendChild(mark);
   }

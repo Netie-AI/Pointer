@@ -779,6 +779,8 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /id="walk-chrome"/);
   assert.match(teachOverlay, /Got it/);
   assert.match(teachOverlay, /Then:/);
+  assert.match(teachOverlay, /Look at region 1/);
+  assert.match(teachOverlay, /point-key/);
   assert.match(teachOverlay, /got it, next/);
   assert.match(teachOverlay, /pointer-events:\s*none/);
   assert.match(teachOverlay, /point-box\.later/);

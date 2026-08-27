@@ -72,6 +72,19 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(walked.points.some((p) => p.later && /Save/.test(p.label)));
       assert.ok(walked.points.some((p) => !p.later && !p.done && /Email/.test(p.label)));
       assert.ok(!walked.points.some((p) => p.later && /Email/.test(p.label)));
+      const acted = po.toOverlayEvent("[BOX:5,8,20,3:1 Email]", {
+        hold: true,
+        cue: "1 of 2 Type in Email then Tab",
+        path: [
+          { now: true, cue: "Type in Email then Tab", key: "Tab", leftPct: 5, topPct: 8, wPct: 20, hPct: 3, label: "1 Email" },
+          { now: false, later: true, leftPct: 20, topPct: 40, wPct: 10, hPct: 4, label: "2 Save" },
+        ],
+      });
+      assert.ok(acted.points.some((p) => !p.later && !p.done && p.label === "Type in Email then Tab"));
+      assert.ok(acted.points.some((p) => !p.later && !p.done && p.key === "Tab"));
+      assert.ok(acted.points.some((p) => p.later && p.label === "2 Save"));
+      assert.strictEqual(po.overlayActionLabel("1 of 3 Click Save or press Enter", ""), "Click Save or press Enter");
+      assert.strictEqual(po.parsePoints("[BOX:5,8,20,3:1 Email]").points[0].label, "1 Email");
     }),
 
     T("raw tokens never reach the user's chat", async () => {
@@ -131,6 +144,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/teach-overlay:frame/.test(walk), "drawn overlay boxes POST a region, never Act");
       assert.ok(/Got it/.test(walk) && /data-q="got it, next"/.test(walk), "Got it Asks, never Acts");
       assert.ok(/Then:/.test(walk), "Then remaining stays on the overlay");
+      assert.ok(/Look at region 1/.test(walk), "current overlay box shows the action, not only the catalog name");
+      assert.ok(/point-key/.test(walk), "current overlay box can show Tab/Enter");
       assert.ok(!/innerHTML/.test(walk), "the walk paints with createElement");
       assert.ok(
         !/id="clicky-orb"|class="clicky-orb"|stage-orb|chat-bubble/.test(walk),

@@ -1094,7 +1094,7 @@ function paintTeachMap(root, m, opts) {
     box.style.width = Number(p.wPct) + "%";
     box.style.height = Number(p.hPct) + "%";
     const lab = el("span");
-    lab.textContent = String(p.label || "").slice(0, 40);
+    lab.textContent = String((p.now && p.cue) || p.label || "").slice(0, 40);
     box.appendChild(lab);
     if (p.now && p.key) {
       const k = el("kbd", "teach-map-key");

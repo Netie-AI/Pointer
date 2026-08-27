@@ -212,6 +212,7 @@ function readAsset(file) {
     assert.doesNotMatch(paint, /innerHTML/);
     assert.match(app, /Live session stays on the laptop/);
     assert.match(app, /paintTeachMap/);
+    assert.match(app, /p\.now && p\.cue/);
     assert.match(app, /wireTeachFrame/);
     assert.match(app, /postTeachFrame/);
     assert.match(app, /teach-map/);

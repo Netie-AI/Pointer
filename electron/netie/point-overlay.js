@@ -126,7 +126,7 @@ function toOverlayEvent(raw, opts = {}) {
   const later = laterOverlayPoints(opts.path);
   return {
     type: "point",
-    points: later.concat(parsed.points),
+    points: later.concat(stampCurrentAction(parsed.points, opts)),
     hold: Boolean(opts.hold),
     ttlMs: holdTtl(opts),
   };
@@ -138,6 +138,40 @@ function holdTtl(opts) {
   return Number(opts && opts.ttlMs) > 0 ? Number(opts.ttlMs) : DEFAULT_TTL_MS;
 }
 
+/**
+ * Current hold label is the action (Click Save / Type in Email), not the
+ * numbered catalog name. BOX tokens stay `1 Save`. Never a buddy.
+ */
+function overlayActionLabel(cue, stepCue) {
+  const step = String(stepCue || "").trim();
+  if (step) return step.slice(0, 40);
+  const raw = String(cue || "")
+    .trim()
+    .replace(/^\d+\s+of\s+\d+\s+/i, "")
+    .trim();
+  return raw.slice(0, 40);
+}
+
+function stampCurrentAction(points, opts) {
+  const path = Array.isArray(opts && opts.path) ? opts.path : [];
+  let now = null;
+  for (let i = 0; i < path.length; i++) {
+    if (path[i] && path[i].now) {
+      now = path[i];
+      break;
+    }
+  }
+  const action = overlayActionLabel((opts && opts.cue) || "", now && now.cue);
+  const key = String((now && now.key) || "").slice(0, 12);
+  return (Array.isArray(points) ? points : []).map((p) => {
+    if (!p || p.later || p.done) return p;
+    const next = Object.assign({}, p);
+    if (action) next.label = action;
+    if (key) next.key = key;
+    return next;
+  });
+}
+
 module.exports = {
   POINT_RE,
   BOX_RE,
@@ -147,5 +181,7 @@ module.exports = {
   hasPoints,
   toOverlayEvent,
   laterOverlayPoints,
+  overlayActionLabel,
+  stampCurrentAction,
   clipBox,
 };

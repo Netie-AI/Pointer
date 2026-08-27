@@ -1,3 +1,10 @@
+## 2026-08-27 - Teach overlay labels Click/Type in on the current BOX
+
+Click-through teach overlay paints Click / Type in / Look at on the
+current hold BOX (Tab/Enter when measured). Later boxes stay numbered
+and dashed. BOX tokens stay `1 Save`. Never Act. Not a buddy.
+P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Compact HUD keeps Live captions from system STT
 
 HUD live cue bar paints last system STT lines as Live captions when

@@ -42,7 +42,7 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   around a control on that stage to stack numbered BOX regions in
   display percents (current hold, later dashed, cap 8). A click-through
   laptop overlay paints that walk on the display when HUD hides, with
-  fixed Next / Then / Back / Got it Ask and Draw for a freehand stroke
+  Click/Type in on the current BOX, fixed Next / Then / Back / Got it Ask and Draw for a freehand stroke
   that stores a BOX (never a buddy).
 - HUD insight paints the same You/Them talk in fixed chrome (never a
   bubble, never a cheater overlay). The live cue bar keeps They asked /

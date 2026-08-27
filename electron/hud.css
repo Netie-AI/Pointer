@@ -292,6 +292,13 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   pointer-events: none;
 }
 .point-mark.point-box .point-label { top: -22px; }
+.point-key {
+  position: absolute; top: -22px; right: 6px;
+  padding: 2px 6px; border-radius: 6px; white-space: nowrap;
+  background: var(--surface); border: 1px solid var(--line-soft);
+  color: var(--accent); font-size: 10px; font-weight: 650;
+}
+.point-mark.point-box .point-key { top: -22px; }
 .point-mark.later::before, .point-mark.later::after,
 .point-mark.done::before, .point-mark.done::after { display: none; }
 .point-mark.point-box.later {

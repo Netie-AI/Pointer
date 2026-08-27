@@ -141,7 +141,8 @@ around a control on that stage to stack numbered BOX regions in display
 percents (never invented, cap 8). A click-through laptop overlay paints that
 walk on the display when HUD hides, with fixed Next / Then / Back /
 Got it Ask and Draw (freehand stroke, stored BOX) to stack a drawn step (never a buddy, never
-meeting say-this). Loopback
+meeting say-this). Current overlay BOX shows Click / Type in / Look at
+(BOX tokens stay numbered). Loopback
 `/` paints that teach path, meeting card, Today plate, and filed
 inbox/Word/security work cards from `/api/home` (never exec).
 HUD live cue bar paints last system STT lines as Live captions when

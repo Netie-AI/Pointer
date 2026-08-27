@@ -122,6 +122,18 @@
         pointer-events: none;
       }
       .point-mark.point-box .point-label { top: -22px; }
+      .point-key {
+        position: absolute;
+        top: -22px;
+        right: 6px;
+        padding: 2px 6px;
+        border-radius: 6px;
+        background: #1a1a1a;
+        border: 1px solid #345;
+        color: #9ad;
+        font: 650 10px "Segoe UI", system-ui, sans-serif;
+      }
+      .point-mark.point-box .point-key { top: -22px; }
       .point-mark.later::before, .point-mark.later::after,
       .point-mark.done::before, .point-mark.done::after { display: none; }
       .point-mark.point-box.later {
@@ -185,6 +197,12 @@
             label.className = "point-label";
             label.textContent = String(point.label).slice(0, 40);
             mark.appendChild(label);
+          }
+          if (!later && !done && point.key) {
+            const kbd = document.createElement("span");
+            kbd.className = "point-key";
+            kbd.textContent = String(point.key).slice(0, 12);
+            mark.appendChild(kbd);
           }
           layer.appendChild(mark);
         });
@@ -360,7 +378,7 @@
         document.documentElement.style.background = "#243044";
         document.body.style.background = "#243044";
         paint([
-          { leftPct: 12, topPct: 18, wPct: 28, hPct: 22, label: "1 region 1" },
+          { leftPct: 12, topPct: 18, wPct: 28, hPct: 22, label: "Look at region 1" },
           { leftPct: 48, topPct: 42, wPct: 30, hPct: 24, label: "2 region 2", later: true },
         ]);
         paintChrome({
