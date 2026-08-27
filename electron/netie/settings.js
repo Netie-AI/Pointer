@@ -96,6 +96,12 @@ const DEFAULTS = Object.freeze({
    */
   cloudStt: false,
   /**
+   * OpenWillow BYOK STT: OpenAI-shaped HTTP base URL (same slot as
+   * NETIE_STT_URL). Empty keeps the env default loopback sidecar.
+   * Not a Deepgram default (P-04). Remote URLs send mic audio off-device.
+   */
+  sttUrl: "",
+  /**
    * OpenWillow dictation: type mic speech into the focused app in Transcribe
    * mode. Off only if the user hides it. Session still fail-closes without
    * Cortex /dms/secure when the mode is armed.

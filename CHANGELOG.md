@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - BYOK STT URL in settings
+
+OpenWillow-class HTTP STT: HUD `sttUrl` feeds the sidecar slot (same
+pattern as NETIE_STT_URL). Remote URLs are labeled off-device. Default
+stays the loopback sidecar, not Deepgram (P-04). GitHub CI on this
+account is still a spending-limit cutoff (0 steps), not a product fail.
+No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - Scribe screen captures the remembered window
 
 OpenWillow-class screen context: Scribe matches the remembered hwnd/title

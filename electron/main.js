@@ -33,7 +33,7 @@ const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
 const { Segmenter } = require("./netie/audio");
-const { Transcriber } = require("./netie/transcriber");
+const { Transcriber, sanitizeSttUrl, DEFAULT_SIDECAR } = require("./netie/transcriber");
 const { detectModeSwitch, getMode, allowsActions } = require("./netie/modes");
 const { NotesSession } = require("./netie/notes");
 const { SettingsStore } = require("./netie/settings");
@@ -401,7 +401,10 @@ let stageLayout = process.env.NETIE_STAGE_LAYOUT === "below" ? "below" : "right"
 const chats = new ConversationStore();
 const stt = new SttBridge();
 const transcriber = new Transcriber({
-  sidecarUrl: process.env.NETIE_STT_URL || "http://127.0.0.1:8766",
+  sidecarUrl: () =>
+    sanitizeSttUrl(settings.get("sttUrl")) ||
+    sanitizeSttUrl(process.env.NETIE_STT_URL) ||
+    DEFAULT_SIDECAR,
   // A function, not a captured boolean: `settings` below is declared after this
   // call but the arrow only runs inside probe(), well after module init — and
   // it re-reads the live value so toggling the checkbox takes effect without
@@ -4100,12 +4103,19 @@ ipcMain.handle("hud:setMode", async (_e, payload) => {
 ipcMain.handle("hud:getSettings", async () => ({ ok: true, settings: settings.snapshot() }));
 
 ipcMain.handle("hud:setSettings", async (_e, payload) => {
-  const next = settings.set((payload && payload.settings) || payload || {});
+  const incoming = { ...((payload && payload.settings) || payload || {}) };
+  if (Object.prototype.hasOwnProperty.call(incoming, "sttUrl")) {
+    incoming.sttUrl = sanitizeSttUrl(incoming.sttUrl);
+  }
+  const next = settings.set(incoming);
   agentPointer.enabled = next.cursorBubble !== false;
   demoDebug.setEnabled(next.demoDebug === true);
   // Capture-visible is on by default (DR-0005). This toggle still applies live.
   applyContentProtection(captureVisible());
   applyAutostart();
+  stt.sidecarUrl =
+    sanitizeSttUrl(next.sttUrl) || sanitizeSttUrl(process.env.NETIE_STT_URL) || DEFAULT_SIDECAR;
+  void transcriber.probe(true);
   if (next.followCursor === false) stopCursorTracking();
   else startCursorTracking();
   if (!agentPointer.enabled) {

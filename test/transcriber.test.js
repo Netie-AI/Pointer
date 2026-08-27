@@ -6,7 +6,7 @@
  */
 
 const assert = require("assert");
-const { Transcriber, cleanup } = require("../electron/netie/transcriber");
+const { Transcriber, cleanup, sanitizeSttUrl, isLoopbackSttUrl } = require("../electron/netie/transcriber");
 
 let pass = 0;
 const fails = [];
@@ -319,6 +319,50 @@ test("#21 the revoked key is not reused when consent is granted again", async ()
   consent.on = false;
   await t.probe();
   assert.strictEqual(t._deepgramKeyCache, null, "secret survived the revoke");
+});
+
+test("sanitizeSttUrl keeps loopback bases and rejects junk", () => {
+  assert.strictEqual(sanitizeSttUrl("http://127.0.0.1:8766/"), "http://127.0.0.1:8766");
+  assert.strictEqual(
+    sanitizeSttUrl("http://127.0.0.1:8766/v1/audio/transcriptions"),
+    "http://127.0.0.1:8766"
+  );
+  assert.strictEqual(sanitizeSttUrl("javascript:alert(1)"), "");
+  assert.strictEqual(sanitizeSttUrl("ftp://127.0.0.1/stt"), "");
+  assert.strictEqual(sanitizeSttUrl(""), "");
+  assert.strictEqual(isLoopbackSttUrl("http://127.0.0.1:8766"), true);
+  assert.strictEqual(isLoopbackSttUrl("https://stt.example.com"), false);
+});
+
+test("BYOK sidecar URL is live and remote STT is not labeled local", async () => {
+  let url = "http://127.0.0.1:8766";
+  const seen = [];
+  const t = new Transcriber({
+    fsImpl: fakeFs(),
+    openvaultUrl: "",
+    allowWindowsSpeech: false,
+    sidecarUrl: () => url,
+    fetchImpl: async (u) => {
+      seen.push(u);
+      if (String(u).includes("stt.example.com")) return { ok: false };
+      if (String(u).endsWith("/health")) return { ok: true };
+      return { ok: true, json: async () => ({ text: "from byok" }) };
+    },
+  });
+  assert.strictEqual(await t.probe(), "sidecar");
+  t.engine = "sidecar";
+  t.sidecarUrl = url;
+  assert.strictEqual(t.describe().local, true);
+  url = "https://stt.example.com";
+  assert.strictEqual(await t.probe(), "none");
+  t.engine = "sidecar";
+  t.sidecarUrl = url;
+  assert.strictEqual(t.describe().local, false);
+  assert.match(t.describe().label, /leaves this device/);
+  const fs = require("fs");
+  const path = require("path");
+  const html = fs.readFileSync(path.join(__dirname, "../electron/hud.html"), "utf8");
+  assert.ok(html.includes('id="set-stt-url"'));
 });
 
 (async () => {
