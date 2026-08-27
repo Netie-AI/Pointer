@@ -612,6 +612,16 @@ function teachCue(point, index, total) {
   return `${i + 1} of ${n} ${verb} ${label}`.trim();
 }
 
+function teachRest(measured, idx) {
+  const list = Array.isArray(measured) ? measured : [];
+  const start = Number.isInteger(idx) && idx >= 0 ? idx + 1 : 1;
+  return list
+    .slice(start)
+    .map((p) => `${teachVerb(p.controlType)} ${String((p && p.name) || "control").slice(0, 24)}`.trim())
+    .slice(0, 3)
+    .join(" / ");
+}
+
 /**
  * Teach walkthrough. POINT tokens come from a measured control tree only.
  * Overlay shows the current step, not every control at once.
@@ -686,6 +696,7 @@ function teachAssist({ text, controls, screen, step, live } = {}) {
     step: current ? idx : 0,
     remaining: current ? Math.max(0, measured.length - idx - 1) : 0,
     cue: teachCue(current, idx, measured.length),
+    rest: current ? teachRest(measured, idx) : "",
     cueKind: current ? "point" : "",
     points: current
       ? [
@@ -973,6 +984,18 @@ function wantsSpawn(text) {
   return false;
 }
 
+function spawnJobText(text) {
+  let t = String(text || "").replace(/\s+/g, " ").trim();
+  t = t.replace(
+    /^(spawn|start|run|launch)\s+(an?\s+)?(coworker|agent|pointer|buddy)\s+(to|and|that)\s+/i,
+    ""
+  );
+  t = t.replace(/^(spawn|start|run|launch)\s+(an?\s+)?(coworker|agent|pointer|buddy)\b[\s,]*/i, "");
+  t = t.replace(/\bin the background\b/gi, "").replace(/\s+/g, " ").trim();
+  if (!t || /^(this|it|that)$/i.test(t)) return "what's on my plate";
+  return t;
+}
+
 /**
  * Clicky-shaped spawn, Pointer rules. Always a background brief.
  * Never claims pointer-act. Never grants Act.
@@ -981,16 +1004,19 @@ function spawnCoworker({ text, mode } = {}) {
   if (!wantsSpawn(text)) {
     return { ok: false, act: false, spawn: false, claimLane: false, reason: "not a spawn request" };
   }
-  const desk = pickDesk(text, { mode });
+  const job = spawnJobText(text);
+  const desk = pickDesk(job, { mode });
   return {
     ok: true,
     act: false,
     spawn: true,
     claimLane: false,
     desk: desk.id,
+    job,
     title: `${desk.label} coworker`,
     note: [
       `${desk.label} coworker spawned.`,
+      `Job: ${job.slice(0, 80)}.`,
       "It will ship a brief behind the LIVE bar.",
       "Will not Act. No Cortex gate => no OS actions.",
       "workspace.exec stays refused (P-06).",

@@ -1,3 +1,9 @@
+## 2026-08-27 - Teach Then-path and spawn Today plate
+
+Teach HUD shows `Then: Click Save / Click Cancel` for remaining steps.
+Bare `spawn a coworker` runs the Today plate in the background, never Act.
+P-05 and P-06 stay parked.
+
 ## 2026-08-27 - They asked chrome and Today plate
 
 Fixed HUD and loopback `/meeting` show `They asked` above say-this. Today

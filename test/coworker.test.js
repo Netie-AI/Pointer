@@ -261,6 +261,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(walk.id, "live-teach");
   assert.strictEqual(walk.cueKind, "point");
   assert.match(walk.cue, /^1 of 2 Click Save/);
+  assert.match(walk.rest, /Click Cancel/);
   assert.match(walk.deliverable, /current step only/i);
   assert.match(walk.deliverable, /\[POINT:25,42:\d+ Save\]/);
   assert.match(walk.deliverable, /\[BOX:20,40,10,4:\d+ Save\]/);
@@ -304,6 +305,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   });
   assert.strictEqual(form.act, false);
   assert.match(form.cue, /^1 of 3 Type in Email$/);
+  assert.match(form.rest, /Click Save \/ Click Cancel/);
   const submit = teachAssist({
     text: "next",
     controls: [
@@ -316,6 +318,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
     live: true,
   });
   assert.match(submit.cue, /^2 of 3 Click Save$/);
+  assert.match(submit.rest, /^Click Cancel$/);
   const { nextTeachStep, teachAdvance } = require("../electron/netie/coworker-desks");
   assert.strictEqual(teachAdvance("got it"), 1);
   assert.strictEqual(nextTeachStep("walk me through this on my screen", 3, true), 0);
@@ -466,9 +469,12 @@ test("spawn coworker never acts and never claims the pointer-act lane", () => {
   assert.match(spawn.note, /Will not Act/);
   const recap = spawnCoworker({ text: "spawn a coworker to recap this meeting" });
   assert.strictEqual(recap.desk, "meeting");
+  assert.match(recap.job, /recap this meeting/);
   assert.strictEqual(recap.act, false);
   const plate = spawnCoworker({ text: "spawn a coworker" });
   assert.ok(plate.ok);
+  assert.strictEqual(plate.desk, "today");
+  assert.match(plate.job, /on my plate/);
   assert.strictEqual(plate.act, false);
   const fs = require("fs");
   const path = require("path");
@@ -480,6 +486,7 @@ test("spawn coworker never acts and never claims the pointer-act lane", () => {
   assert.match(spawnAsk, /spawnCoworker/);
   assert.doesNotMatch(spawnAsk, /claim\("pointer-act"/);
   const job = main.slice(main.indexOf("function enqueueCoworkerJob"), main.indexOf("ipcMain.handle(\"hud:bgList\""));
+  assert.match(job, /spawn\.job/);
   assert.doesNotMatch(job, /claim\("pointer-act"/);
   assert.doesNotMatch(job, /driver\./);
 });
@@ -564,8 +571,8 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /paintLiveBrief/);
   assert.match(hud, /meeting-cue/);
   assert.match(hud, /meeting-asked/);
-  assert.match(hud, /They asked/);
-  assert.match(hud, /event\.asked/);
+  assert.match(hud, /Then:/);
+  assert.match(hud, /event\.rest/);
   assert.match(hud, /point-box/);
   assert.match(hud, /event\.hold/);
   assert.match(hud, /renderPoints\(event\.points, event\.ttlMs, event\.hold\)/);

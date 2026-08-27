@@ -157,9 +157,18 @@ function paintLiveBrief(event) {
     meta.textContent = `${(event && event.desk) || "meeting"} coworker · live · never acts`;
   }
   const asked = String((event && event.asked) || "").trim().slice(0, 160);
+  const rest = String((event && event.rest) || "").trim().slice(0, 160);
   if (askedEl) {
-    askedEl.hidden = !asked;
-    askedEl.textContent = asked ? `They asked: ${asked}` : "";
+    if (kind === "point" && rest) {
+      askedEl.hidden = false;
+      askedEl.textContent = `Then: ${rest}`;
+    } else if (asked) {
+      askedEl.hidden = false;
+      askedEl.textContent = `They asked: ${asked}`;
+    } else {
+      askedEl.hidden = true;
+      askedEl.textContent = "";
+    }
   }
   if (cueEl) {
     cueEl.hidden = !cue;

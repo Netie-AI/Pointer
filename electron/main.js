@@ -340,6 +340,7 @@ function publishLiveCoworker(assist) {
     text: assist.deliverable,
     cue: assist.cue || "",
     asked: assist.asked || "",
+    rest: assist.rest || "",
     cueKind:
       assist.cueKind ||
       (assist.desk === "teach" ? "point" : assist.desk === "security" ? "warn" : "say"),
@@ -2908,12 +2909,13 @@ async function runDeskAssist(message, extraTranscript) {
  * Background coworker. Produces a brief. Never claims pointer-act. Never Acts.
  */
 function enqueueCoworkerJob(message, extraTranscript, spawn) {
+  const job = String((spawn && spawn.job) || message || "").trim() || message;
   const queued = bgJobs.add({
     title: (spawn && spawn.title) || "Pointer coworker",
     run: async (ctx) => {
       if (ctx.cancelled) return { ok: false, act: false, reason: "cancelled" };
-      noteTeachStep(message);
-      const assist = await runDeskAssist(message, extraTranscript);
+      noteTeachStep(job);
+      const assist = await runDeskAssist(job, extraTranscript);
       if (assist && assist.ok) {
         publishLiveCoworker(assist);
         const pointed = parsePoints(assist.deliverable);
@@ -2926,7 +2928,7 @@ function enqueueCoworkerJob(message, extraTranscript, spawn) {
           sendHud(toOverlayEvent(assist.deliverable, assist.desk === "teach" ? { hold: true } : {}));
         }
         if (assist.desk === "teach") {
-          armTeachWalk(message);
+          armTeachWalk(job);
         }
         liveCoordinator.note("brief", assist.title || assist.desk);
       } else if (assist) {
