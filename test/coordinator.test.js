@@ -178,7 +178,7 @@ function test(name, fn) {
       title: "Live teach",
       desk: "teach",
       body: "# Teach walkthrough\n[BOX:20,40,10,4:1 Save]\n[POINT:25,42:1 Save]",
-      cue: "1 Save",
+      cue: "1 of 1 Click Save",
     });
     const teach = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/teach" }, (res) => {
@@ -191,7 +191,7 @@ function test(name, fn) {
     assert.strictEqual(teach.body.act, false);
     assert.strictEqual(teach.body.exec, false);
     assert.match(teach.body.deliverable, /1 Save/);
-    assert.match(teach.body.cue, /1 Save/);
+    assert.match(teach.body.cue, /Click Save/);
     assert.ok(Array.isArray(teach.body.markers));
     assert.ok(teach.body.markers.some((m) => m.kind === "box" && /Save/.test(m.label)));
     const teachPage = await new Promise((resolve, reject) => {
@@ -274,7 +274,7 @@ function test(name, fn) {
     assert.strictEqual(home.status, 200);
     assert.strictEqual(home.body.act, false);
     assert.strictEqual(home.body.exec, false);
-    assert.match(home.body.rooms.teach.cue, /1 Save/);
+    assert.match(home.body.rooms.teach.cue, /Click Save/);
     assert.match(home.body.rooms.meeting.cue, /Friday/);
     assert.match(home.body.rooms.security.cue, /do not approve/);
     assert.match(home.body.rooms.today.deliverable, /# Today/);

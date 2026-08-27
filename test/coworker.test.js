@@ -257,7 +257,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(walk.via, "uia");
   assert.strictEqual(walk.id, "live-teach");
   assert.strictEqual(walk.cueKind, "point");
-  assert.match(walk.cue, /^1 of 2 Save/);
+  assert.match(walk.cue, /^1 of 2 Click Save/);
   assert.match(walk.deliverable, /current step only/i);
   assert.match(walk.deliverable, /\[POINT:25,42:\d+ Save\]/);
   assert.match(walk.deliverable, /\[BOX:20,40,10,4:\d+ Save\]/);
@@ -277,7 +277,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.ok(pin.points.length >= 1);
   assert.strictEqual(pin.points[0].label, "Cancel");
   assert.strictEqual(pin.points[0].xPct, 5);
-  assert.strictEqual(pin.cue, "1 of 2 Cancel");
+  assert.strictEqual(pin.cue, "1 of 2 Click Cancel");
   const two = teachAssist({
     text: "next",
     controls,
@@ -287,9 +287,32 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   });
   assert.strictEqual(two.act, false);
   assert.strictEqual(two.step, 1);
-  assert.match(two.cue, /^2 of 2 Cancel$/);
+  assert.match(two.cue, /^2 of 2 Click Cancel$/);
   assert.match(two.deliverable, /\[POINT:5,2:\d+ Cancel\]/);
   assert.doesNotMatch(two.deliverable, /\[POINT:.*Save/);
+  const form = teachAssist({
+    text: "walk me through this on my screen",
+    controls: [
+      { name: "Cancel", controlType: "Button", rect: { x: 0, y: 0, width: 100, height: 40 } },
+      { name: "Save", controlType: "Button", rect: { x: 200, y: 400, width: 100, height: 40 } },
+      { name: "Email", controlType: "Edit", rect: { x: 50, y: 80, width: 200, height: 32 } },
+    ],
+    screen,
+  });
+  assert.strictEqual(form.act, false);
+  assert.match(form.cue, /^1 of 3 Type in Email$/);
+  const submit = teachAssist({
+    text: "next",
+    controls: [
+      { name: "Cancel", controlType: "Button", rect: { x: 0, y: 0, width: 100, height: 40 } },
+      { name: "Save", controlType: "Button", rect: { x: 200, y: 400, width: 100, height: 40 } },
+      { name: "Email", controlType: "Edit", rect: { x: 50, y: 80, width: 200, height: 32 } },
+    ],
+    screen,
+    step: 1,
+    live: true,
+  });
+  assert.match(submit.cue, /^2 of 3 Click Save$/);
   const { nextTeachStep, teachAdvance } = require("../electron/netie/coworker-desks");
   assert.strictEqual(teachAdvance("got it"), 1);
   assert.strictEqual(nextTeachStep("walk me through this on my screen", 3, true), 0);
@@ -535,6 +558,24 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /event\.act/);
 });
 
+test("live meeting pump answers a question faster than a recap", () => {
+  const waits = [];
+  const pump = createLiveMeetingPump({
+    setTimeoutImpl: (_fn, ms) => {
+      waits.push(ms);
+      return 1;
+    },
+    clearTimeoutImpl: () => {},
+  });
+  pump.push({ transcript: "mic: We decided to ship Friday.", onBrief: () => {} });
+  pump.push({
+    transcript: "mic: We decided to ship Friday.\nsystem: What is the launch date?",
+    onBrief: () => {},
+  });
+  assert.strictEqual(waits[0], 900);
+  assert.strictEqual(waits[1], 300);
+});
+
 async function asyncTest(name, fn) {
   try {
     await fn();
@@ -574,7 +615,7 @@ async function asyncTest(name, fn) {
     assert.strictEqual(hits.length, 1);
     assert.strictEqual(hits[0].act, false);
     assert.match(hits[0].deliverable, /\[BOX:20,40,10,4:\d+ Save\]/);
-    assert.match(hits[0].cue, /^1 of 1 Save$/);
+  assert.match(hits[0].cue, /^1 of 1 Click Save$/);
     assert.strictEqual(hits[0].cueKind, "point");
     if (tick) await tick();
     await Promise.resolve();
@@ -593,7 +634,7 @@ async function asyncTest(name, fn) {
     await Promise.resolve();
     await Promise.resolve();
     assert.strictEqual(hits.length, 2);
-    assert.match(hits[1].cue, /^2 of 2 Cancel$/);
+    assert.match(hits[1].cue, /^2 of 2 Click Cancel$/);
     assert.match(hits[1].deliverable, /\[POINT:5,2:\d+ Cancel\]/);
     assert.doesNotMatch(hits[1].deliverable, /\[POINT:.*Save/);
     pump.reset();

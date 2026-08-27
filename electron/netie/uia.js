@@ -310,6 +310,28 @@ function ctaRank(name) {
   return 1;
 }
 
+/** Fill fields, then the primary CTA, then dismiss. Never clicks. */
+function walkRank(candidate) {
+  const t = String((candidate && candidate.controlType) || "");
+  const cta = ctaRank(candidate && candidate.name);
+  if (t === "Edit" || t === "Document" || t === "ComboBox") return 0;
+  if (cta === 0) return 1;
+  if (cta === 2) return 3;
+  if (
+    t === "Button" ||
+    t === "Hyperlink" ||
+    t === "MenuItem" ||
+    t === "SplitButton" ||
+    t === "CheckBox" ||
+    t === "RadioButton" ||
+    t === "TabItem" ||
+    t === "ListItem"
+  ) {
+    return 2;
+  }
+  return 4;
+}
+
 /**
  * Measured POINT tokens from a control tree. Never invents coordinates.
  * Missing rect, missing screen, off-screen, or disabled => skipped.
@@ -337,6 +359,7 @@ function pointControls(controls, screen, opts = {}) {
       xPct: pct.xPct,
       yPct: pct.yPct,
       name: candidate.name,
+      controlType: candidate.controlType || "",
       token: formatPointToken(pct, candidate.name),
       boxToken: box ? formatBoxToken(box, candidate.name) : "",
       leftPct: box ? box.leftPct : undefined,
@@ -354,10 +377,8 @@ function pointControls(controls, screen, opts = {}) {
   }
 
   const ranked = list.slice().sort((a, b) => {
-    const d = interactivity(a) - interactivity(b);
-    if (d) return d;
-    const c = ctaRank(a && a.name) - ctaRank(b && b.name);
-    if (c) return c;
+    const w = walkRank(a) - walkRank(b);
+    if (w) return w;
     return area(a) - area(b);
   });
   for (const candidate of ranked) {
@@ -395,4 +416,5 @@ module.exports = {
   pointControls,
   formatPointToken,
   ctaRank,
+  walkRank,
 };

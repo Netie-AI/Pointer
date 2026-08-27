@@ -581,6 +581,33 @@ function nextTeachStep(text, current, live) {
   return Number.isInteger(n) && n > 0 ? n : 0;
 }
 
+function teachVerb(controlType) {
+  const t = String(controlType || "");
+  if (t === "Edit" || t === "Document" || t === "ComboBox") return "Type in";
+  if (
+    t === "Button" ||
+    t === "Hyperlink" ||
+    t === "MenuItem" ||
+    t === "SplitButton" ||
+    t === "CheckBox" ||
+    t === "RadioButton" ||
+    t === "TabItem" ||
+    t === "ListItem"
+  ) {
+    return "Click";
+  }
+  return "Look at";
+}
+
+function teachCue(point, index, total) {
+  if (!point) return "";
+  const n = Number.isInteger(total) && total > 0 ? total : 1;
+  const i = Number.isInteger(index) && index >= 0 ? index : 0;
+  const verb = teachVerb(point.controlType);
+  const label = String(point.name || "control").slice(0, 40);
+  return `${i + 1} of ${n} ${verb} ${label}`.trim();
+}
+
 /**
  * Teach walkthrough. POINT tokens come from a measured control tree only.
  * Overlay shows the current step, not every control at once.
@@ -610,9 +637,10 @@ function teachAssist({ text, controls, screen, step, live } = {}) {
     ? measured
         .map((p, i) => {
           const mark = i === idx ? " <- now" : "";
+          const verb = teachVerb(p.controlType);
           const body =
             i === idx ? [p.boxToken, p.token].filter(Boolean).join(" ") : String(p.name || "control");
-          return `${i + 1}. ${body}${mark}`;
+          return `${i + 1}. ${verb} ${body}${mark}`;
         })
         .join("\n")
     : [
@@ -653,9 +681,7 @@ function teachAssist({ text, controls, screen, step, live } = {}) {
     via: measured.length ? "uia" : "none",
     step: current ? idx : 0,
     remaining: current ? Math.max(0, measured.length - idx - 1) : 0,
-    cue: current
-      ? `${idx + 1} of ${measured.length} ${String(current.name || "control").slice(0, 40)}`
-      : "",
+    cue: teachCue(current, idx, measured.length),
     cueKind: current ? "point" : "",
     points: current
       ? [
@@ -1002,7 +1028,10 @@ function liveMeetingUpdate({ transcript } = {}) {
  * then one brief. Injected timers so tests do not sleep.
  */
 function createLiveMeetingPump(opts = {}) {
-  const delayMs = Number.isFinite(Number(opts.delayMs)) ? Math.max(0, Number(opts.delayMs)) : 900;
+  const hasDelay = Number.isFinite(Number(opts.delayMs));
+  const quietMs = hasDelay ? Math.max(0, Number(opts.delayMs)) : 900;
+  const hasQuestion = Number.isFinite(Number(opts.questionMs));
+  const questionMs = hasQuestion ? Math.max(0, Number(opts.questionMs)) : hasDelay ? quietMs : 300;
   const setT = typeof opts.setTimeoutImpl === "function" ? opts.setTimeoutImpl : setTimeout;
   const clearT = typeof opts.clearTimeoutImpl === "function" ? opts.clearTimeoutImpl : clearTimeout;
   let timer = null;
@@ -1012,6 +1041,12 @@ function createLiveMeetingPump(opts = {}) {
     if (timer) clearT(timer);
     timer = null;
     lastKey = "";
+  }
+
+  function waitMs(transcript) {
+    const lines = splitLines(transcript);
+    const last = lines[lines.length - 1] || "";
+    return looksQuestion(last) ? questionMs : quietMs;
   }
 
   function push({ transcript, onBrief } = {}) {
@@ -1024,7 +1059,7 @@ function createLiveMeetingPump(opts = {}) {
       if (!key || key === lastKey) return;
       lastKey = key;
       if (typeof onBrief === "function") onBrief(assist);
-    }, delayMs);
+    }, waitMs(transcript));
   }
 
   return { push, reset };

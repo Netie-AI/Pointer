@@ -83,8 +83,9 @@ hand off to inbox/Word drafts (never send, never write without Cortex).
 Teach overlay shows the current measured control only; `got it` advances.
 Loopback `/security` `/document` `/inbox` and `/api/home` are coworker
 rooms; public copies are localFirst empty. Recap lists `## Decisions`.
-Teach walks the primary CTA first (Save before Cancel). Overlay holds until
-`got it`. HUD Back / Got it Ask the next step (never Act). Recap labels You
-vs Them and tags a weekday when heard; say-this is a speakable line from
-your answer. Loopback `/teach` maps measured BOX markers read-only. Public
-copies stay empty.
+Teach walks fields then the primary CTA (`Type in` before `Click Save`).
+Overlay holds until `got it`. HUD Back / Got it Ask the next step (never
+Act). Recap labels You vs Them and tags a weekday when heard; say-this is
+a speakable line from your answer. Meeting questions cue in 300ms.
+Loopback `/teach` maps measured BOX markers read-only. Public copies stay
+empty.

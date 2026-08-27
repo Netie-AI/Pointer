@@ -4,9 +4,10 @@ One UI: center HUD chat with retrieve roulette and a draggable audio dock.
 
 Coworker desks (DR-0005): Teach points at measured on-screen controls
 (UIA rects -> numbered `[POINT:x,y:n label]` and `[BOX:left,top,w,h:n label]`,
-never invented; overlay shows the current step only; primary CTA first;
-say `got it` to advance), Meeting recaps an armed transcript (You/Them
-lines, weekday tags, and a speakable say-this from your answer), Today is
+never invented; overlay shows the current step only; fields then primary
+CTA; `Type in` / `Click` cue; say `got it` to advance), Meeting recaps an
+armed transcript (You/Them lines, weekday tags, a speakable say-this from
+your answer, and a 300ms cue when they ask), Today is
 the standing session brief, Document can reuse the live meeting recap as a
 Word draft, Security reviews injected files and never self-approves.
 Teach overlay holds the current control until `got it`. Fixed HUD chrome

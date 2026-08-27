@@ -163,6 +163,21 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
       assert.strictEqual(walk[1].name, "Cancel");
       assert.strictEqual(uia.ctaRank("Save"), 0);
       assert.ok(uia.ctaRank("Cancel") > uia.ctaRank("Save"));
+      const form = uia.pointControls(
+        [
+          { name: "Cancel", controlType: "Button", rect: rect(0, 0, 100, 40) },
+          { name: "Save", controlType: "Button", rect: rect(200, 400, 100, 40) },
+          { name: "Email", controlType: "Edit", rect: rect(50, 80, 200, 32) },
+        ],
+        SCREEN
+      );
+      assert.strictEqual(form[0].name, "Email");
+      assert.strictEqual(form[1].name, "Save");
+      assert.strictEqual(form[2].name, "Cancel");
+      assert.ok(
+        uia.walkRank({ name: "Email", controlType: "Edit" }) <
+          uia.walkRank({ name: "Save", controlType: "Button" })
+      );
       assert.ok(points.length <= uia.MAX_TEACH_POINTS);
       assert.deepStrictEqual(uia.pointControls(null, SCREEN), []);
       assert.deepStrictEqual(uia.pointControls([{ name: "Save", controlType: "Button", rect: rect(0, 0, 10, 10) }], null), []);

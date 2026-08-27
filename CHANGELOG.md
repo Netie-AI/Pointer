@@ -1,3 +1,9 @@
+## 2026-08-27 - Teach Click/Type walk and 300ms question cue
+
+Teach walks fields, then the primary CTA, then dismiss (`Type in Email` then
+`Click Save`). Meeting questions land a say-this in 300ms. Never Acts.
+P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Primary teach walk and speakable say-this
 
 Teach walks the primary CTA first (Save before Cancel). Meeting say-this is a
