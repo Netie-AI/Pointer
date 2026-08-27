@@ -52,6 +52,7 @@ public class NetieInput {
   [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT pt);
   [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
   [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   [DllImport("user32.dll")] public static extern IntPtr SetProcessDpiAwarenessContext(IntPtr value);
@@ -117,7 +118,10 @@ public class NetieInput {
     var sb = new System.Text.StringBuilder(512);
     GetWindowText(h, sb, sb.Capacity);
     uint pid = 0; GetWindowThreadProcessId(h, out pid);
-    return pid.ToString() + "|" + sb.ToString();
+    return h.ToInt64().ToString() + "|" + pid.ToString() + "|" + sb.ToString();
+  }
+  public static bool FocusHwnd(long hwnd) {
+    return SetForegroundWindow((IntPtr)hwnd);
   }
 }
 "@
@@ -163,10 +167,14 @@ while (-not $done) {
       }
       'fg'    {
         $info = [NetieInput]::FgInfo()
-        $parts = $info -split '\\|', 2
+        $parts = $info -split '\\|', 3
         $pname = '?'
-        try { $pname = (Get-Process -Id ([int]$parts[0]) -ErrorAction Stop).ProcessName } catch {}
-        $r.title = $parts[1]; $r.proc = $pname
+        try { $pname = (Get-Process -Id ([int]$parts[1]) -ErrorAction Stop).ProcessName } catch {}
+        $r.hwnd = $parts[0]; $r.title = $parts[2]; $r.proc = $pname
+      }
+      'focus' {
+        $ok = [NetieInput]::FocusHwnd([int64]$m.hwnd)
+        if (-not $ok) { throw 'focus failed' }
       }
       'exit'  { $done = $true }
       default { $r.ok = $false; $r.error = "unknown op: $($m.op)" }
@@ -428,11 +436,20 @@ class InputDriver {
     }
   }
 
-  /** Foreground window { title, proc } via the same worker — no process spawn per tick. */
+  /** Foreground window { hwnd, title, proc } via the same worker — no process spawn per tick. */
   async foreground() {
-    if (this.dryRun) return { title: "?", proc: "?" };
+    if (this.dryRun) return { hwnd: "0", title: "?", proc: "?" };
     const r = await this._send({ op: "fg" }, { timeoutMs: 2500 });
-    return { title: r.title || "?", proc: r.proc || "?" };
+    return { hwnd: String(r.hwnd || "0"), title: r.title || "?", proc: r.proc || "?" };
+  }
+
+  async focusHwnd(hwnd) {
+    const h = String(hwnd || "").trim();
+    this.last = { op: "focus", hwnd: h };
+    if (!h || h === "0") return { ok: false, error: "no hwnd", ...this.last };
+    if (this.dryRun) return { ok: true, ...this.last };
+    await this._send({ op: "focus", hwnd: h });
+    return { ok: true, ...this.last };
   }
 
   async moveTo(x, y) {
@@ -682,6 +699,9 @@ class InputDriver {
         await this.moveToAnimated(sx, sy, { durationMs: 220 });
         await this.clickAt(sx, sy, { button: "right" });
         return { ok: true, type, x: sx, y: sy };
+
+      case "focus_hwnd":
+        return this.focusHwnd(action.hwnd);
 
       case "type":
       case "fill":

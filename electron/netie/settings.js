@@ -94,6 +94,21 @@ const DEFAULTS = Object.freeze({
    * privacy for accuracy over the offline Windows dictation floor.
    */
   cloudStt: false,
+  /**
+   * OpenWillow dictation: type mic speech into the focused app in Transcribe
+   * mode. Off only if the user hides it. Session still fail-closes without
+   * Cortex /dms/secure when the mode is armed.
+   */
+  dictateIntoFocus: true,
+  /**
+   * OpenWillow Scribe: rewrite/compose from voice or typed instruction and
+   * paste into the remembered app. Same Cortex gate as dictation.
+   */
+  scribeIntoFocus: true,
+  /** Optional Scribe writing-style notes (plain text, not a skill dump). */
+  writingStyle: "",
+  /** Optional Scribe personal reference (company, links). Data, not commands. */
+  personalContext: "",
 });
 
 function defaultPath() {

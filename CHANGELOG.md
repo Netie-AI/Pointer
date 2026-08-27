@@ -2,6 +2,24 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Remembered-window delivery, Scribe mode, instruction plans
+
+Dictation and Scribe restore the last non-Pointer window (focus_hwnd)
+then type or paste. Scribe is a first-class HUD mode: copy selection,
+rewrite through the Scribe prompt, paste. `computer.act` turns an
+instruction into a recipe or type/click/observe plan after Cortex
+`/dms/secure`. Writing style and personal notes are settings, not a
+GPLv3 dump. No third-party MCP servers.
+
+## 2026-08-27 - Gated computer.act and OpenWillow dictation delivery
+
+Loopback `computer.act` (MCP + `POST /api/computer`) now runs Cortex
+`/dms/secure` then plan-guard then reviewPlan. Observe can auto-run.
+Clicks still need `approved:true`. MCP execution ignores the HUD mode
+pill so other agents can drive the desktop. Transcribe dictation types
+mic speech into the focused app after a session gate. Scribe prompt
+grounds rewrite requests. No GPLv3 dump. No third-party MCP servers.
+
 ## 2026-08-27 - UACC skills, screenshotable HUD, classy type (DR-0005)
 
 Founder amendment. `captureVisible` defaults on and migrates existing

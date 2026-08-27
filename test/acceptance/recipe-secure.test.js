@@ -20,6 +20,11 @@ async function run() {
       assert.ok(/async function secureBeforeAct/.test(main), "helper missing");
       assert.ok(/failClosed:\s*true/.test(main), "must failClosed");
       assert.ok(/clicks\.blocked/.test(main), "must audit blocks");
+      assert.ok(/runComputerAct/.test(main), "loopback computer.act must use the gated runner");
+      assert.ok(/ignoreHudMode/.test(main), "MCP act must not be muted by HUD mode");
+      assert.ok(/planFromInstruction/.test(main), "computer.act must plan from an instruction");
+      assert.ok(/runScribeTurn/.test(main), "Scribe must complete then paste");
+      assert.ok(/deliverIntoTarget/.test(main), "dictation/scribe must restore the remembered window");
     }),
 
     T("hud:act recipe branch calls secureBeforeAct before maybeRunPlan", () => {

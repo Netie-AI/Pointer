@@ -80,10 +80,11 @@ function createMcpAbi(opts = {}) {
         if (typeof act !== "function") {
           return rpcError(id, -32003, "computer.act needs a Cortex /dms/secure gate");
         }
-        if (!ctx.secure || ctx.secure.ok !== true) {
-          return rpcError(id, -32003, "no Cortex /dms/secure gate");
+        const out = await act(params, ctx);
+        if (out && out.blocked) {
+          return rpcError(id, -32003, out.reason || "no Cortex /dms/secure gate");
         }
-        return rpcResult(id, await act(params, ctx));
+        return rpcResult(id, out);
       }
       return rpcError(id, -32601, `unknown tool: ${method}`);
     } catch (err) {

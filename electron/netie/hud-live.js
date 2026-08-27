@@ -376,7 +376,8 @@
     const s = state || {};
     if (s.paused === true) return { mic: false, system: false, reason: "paused" };
     const listening = s.listening === true;
-    const modeListens = s.mode === "transcribe" || s.mode === "meeting" || s.mode === "general";
+    const modeListens =
+      s.mode === "transcribe" || s.mode === "meeting" || s.mode === "general" || s.mode === "scribe";
     if (!listening && !modeListens) return { mic: false, system: false, reason: "mic-off" };
     return {
       mic: true,

@@ -149,11 +149,11 @@ test("foreground rides the worker; dry-run stays offline", async () => {
     spawnImpl: fakeSpawn((m) => (m.op === "fg" ? { title: "Notepad — todo", proc: "notepad" } : null), state),
   });
   const fg = await d.foreground();
-  assert.deepStrictEqual(fg, { title: "Notepad — todo", proc: "notepad" });
+  assert.deepStrictEqual(fg, { hwnd: "0", title: "Notepad — todo", proc: "notepad" });
   d.dispose();
 
   const dry = new InputDriver({ dryRun: true });
-  assert.deepStrictEqual(await dry.foreground(), { title: "?", proc: "?" });
+  assert.deepStrictEqual(await dry.foreground(), { hwnd: "0", title: "?", proc: "?" });
 });
 
 test("worker op error rejects; worker death fails pending and respawns next op", async () => {

@@ -130,7 +130,7 @@ function createCoordinator(opts = {}) {
       });
       return;
     }
-    if (req.method === "POST" && url.pathname === "/mcp") {
+    if (req.method === "POST" && (url.pathname === "/mcp" || url.pathname === "/api/computer")) {
       const chunks = [];
       req.on("data", (c) => chunks.push(c));
       req.on("end", () => {
@@ -141,6 +141,14 @@ function createCoordinator(opts = {}) {
           res.writeHead(400, { "content-type": "application/json" });
           res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32700, message: "parse error" } }));
           return;
+        }
+        if (url.pathname === "/api/computer") {
+          body = {
+            jsonrpc: "2.0",
+            id: body.id ?? 1,
+            method: "computer.act",
+            params: body.params || body,
+          };
         }
         const mcp = opts.mcp;
         const raw = mcp ? mcp.handle(body, { coordinator: api }) : {

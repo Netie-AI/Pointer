@@ -78,6 +78,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.strictEqual(MODES.agent.listens, false, "the default mode must not listen");
       assert.strictEqual(MODES.general.listens, true);
       assert.strictEqual(MODES.transcribe.listens, true);
+      assert.strictEqual(MODES.scribe.listens, true);
       assert.strictEqual(MODES.meeting.listens, true);
     }),
 

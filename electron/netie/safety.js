@@ -141,6 +141,7 @@ function classifyAction(action) {
     case "navigate":
     case "open":
     case "drag":
+    case "focus_hwnd":
       // A click on an irreversible control is the sharpest edge — still gated by
       // approval, but flagged so the UI can shout louder.
       return ActionTier.CONSEQUENTIAL;

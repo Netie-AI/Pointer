@@ -84,6 +84,24 @@ function test(name, fn) {
     });
     assert.strictEqual(comp.ok, true);
     assert.strictEqual(comp.detectable, true);
+
+    const post = await new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: "127.0.0.1", port, path: "/api/computer", method: "POST" },
+        (res) => {
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve({
+            status: res.statusCode,
+            body: JSON.parse(Buffer.concat(chunks).toString("utf8")),
+          }));
+        }
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ actions: [{ type: "observe" }] }));
+    });
+    assert.strictEqual(post.status, 200);
+    assert.ok(post.body.error || post.body.result);
     await c.close();
   });
 

@@ -128,7 +128,9 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.strictEqual(modes.detectModeSwitch("just listen"), "general");
       assert.strictEqual(modes.detectModeSwitch("dictation mode"), "transcribe");
       assert.strictEqual(modes.detectModeSwitch("switch to dictation"), "transcribe");
-      assert.strictEqual(modes.detectModeSwitch("scribe mode"), "general");
+      assert.strictEqual(modes.detectModeSwitch("scribe mode"), "scribe");
+      assert.strictEqual(modes.allowsActions("scribe"), false);
+      assert.strictEqual(modes.getMode("scribe").listens, true);
       assert.strictEqual(modes.detectModeSwitch("nothing to see here"), null);
     }),
 
@@ -238,6 +240,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       }
       // HUD-03 pill has to offer the mode, not just the module.
       assert.ok(html.includes('data-mode="general"'), "hud.html needs the General pill");
+      assert.ok(html.includes('data-mode="scribe"'), "hud.html needs the Scribe pill");
 
       // Source-level, and said plainly: nothing in this repo boots Electron, so
       // the decision (modes.allowsActions) is unit-tested above and only its

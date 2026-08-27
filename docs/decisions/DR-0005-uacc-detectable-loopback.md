@@ -32,17 +32,19 @@ arbitrary third-party MCP servers.
    plan-guard and Cortex `/dms/secure`. `NETIE_UACC=0` disables the probe.
 3. **Loopback detectability API.** First-party MCP tools `computer.status`
    and `computer.observe` plus `GET /api/computer` on `127.0.0.1:18010`.
-   `computer.act` exists on the allowlist and refuses without a Cortex
-   `/dms/secure` gate. Public `host.netie.ai` `/mcp` stays 404. P-05
-   coworker-verb marketplace stays parked.
+   `computer.act` (also `POST /api/computer`) runs Cortex `/dms/secure`
+   then reviewPlan. Consequential verbs still need `approved:true`. Public
+   `host.netie.ai` `/mcp` stays 404. Third-party MCP marketplace stays P-05.
 4. **HUD identity.** Kill `backdrop-filter` liquid glass on core HUD
    (already required by `docs/PRODUCT_SURFACE.md`). IBM Plex Serif + Sans,
    solid panels, fixed top chrome. Clicky ring / stage orb stay banned
    (DR-0002).
 5. **OpenWillow.** Port patterns only (hold-to-talk, dictation, scribe
-   rewrite, BYOK STT URL). No GPLv3 dump (P-04).
+   rewrite, BYOK STT URL, remembered target window). No GPLv3 dump (P-04).
+   Scribe is a first-class listening mode that pastes after a Cortex gate.
 
 ## Confirmation
 
-`test/uacc.test.js`, `test/mcp-abi.test.js`, `test/acceptance/live-ux.test.js`,
-`test/acceptance/privacy-hud.test.js`, `test/coordinator.test.js`.
+`test/uacc.test.js`, `test/mcp-abi.test.js`, `test/computer-act.test.js`,
+`test/acceptance/live-ux.test.js`, `test/acceptance/privacy-hud.test.js`,
+`test/coordinator.test.js`.

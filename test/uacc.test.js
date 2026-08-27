@@ -94,11 +94,17 @@ function test(name, fn) {
   await test("computer.status is detectable only when captureVisible is on", () => {
     const hidden = computerStatus({ captureVisible: false, uacc: { installed: false } });
     assert.strictEqual(hidden.detectable, false);
-    const shown = computerStatus({ captureVisible: true, uacc: { installed: true, version: "1.1.0" } });
+    const shown = computerStatus({
+      captureVisible: true,
+      uacc: { installed: true, version: "1.1.0" },
+      actAvailable: true,
+    });
     assert.strictEqual(shown.detectable, true);
     assert.strictEqual(shown.uacc.installed, true);
     assert.ok(shown.api.includes("/api/computer"));
-    assert.strictEqual(shown.act.available, false);
+    assert.strictEqual(shown.act.available, true);
+    assert.strictEqual(shown.act.gated, true);
+    assert.strictEqual(shown.delivery.present, false);
   });
 
   await test("computer.observe reports visibility without leaking clicks", () => {

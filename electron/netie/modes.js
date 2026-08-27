@@ -1,11 +1,11 @@
 "use strict";
 /**
- * Netie Clicks modes — agent (default), general, transcribe, meeting.
- * Voice: "general mode" / "transcribe mode" / "meeting mode" / "agent mode".
+ * Netie Clicks modes — agent (default), general, transcribe, scribe, meeting.
+ * Voice: "general mode" / "transcribe mode" / "scribe mode" / "meeting mode" / "agent mode".
  *
- * `actions` is the line that matters: General listens, summarises and answers
- * but never proposes a plan, so someone who wants a live screen companion is
- * not one stray sentence away from an agent moving their mouse.
+ * `actions` is the line that matters: General and Scribe listen and help
+ * but never propose a mouse plan. Scribe pastes rewritten text after a Cortex
+ * gate; that is user-armed delivery, not Agent clicks.
  */
 
 const MODES = Object.freeze({
@@ -39,6 +39,16 @@ const MODES = Object.freeze({
     actions: false,
     listens: true,
   },
+  scribe: {
+    id: "scribe",
+    label: "Scribe",
+    chrome: true,
+    clickThrough: true,
+    autoNotes: false,
+    minimizeExtras: false,
+    actions: false, // writes via gated paste, never mouse
+    listens: true,
+  },
   meeting: {
     id: "meeting",
     label: "Meeting",
@@ -53,7 +63,7 @@ const MODES = Object.freeze({
 
 const TRIGGERS = [
   { re: /\b(transcribe\s*mode|transcription\s*mode|notes?\s*mode|dictation\s*mode|just\s*transcribe|just\s*dictate|switch\s+to\s+transcribe|change\s+to\s+transcribe|switch\s+to\s+dictation)\b/i, mode: "transcribe" },
-  { re: /\b(scribe\s*mode|writing\s*mode|switch\s+to\s+scribe|change\s+to\s+scribe)\b/i, mode: "general" },
+  { re: /\b(scribe\s*mode|writing\s*mode|switch\s+to\s+scribe|change\s+to\s+scribe)\b/i, mode: "scribe" },
   { re: /\b(meeting\s*mode|call\s*mode|standup\s*mode|switch\s+to\s+meeting|change\s+to\s+meeting)\b/i, mode: "meeting" },
   // Before agent: "go to general mode" must not fall through to a mode that acts.
   { re: /\b((switch|change|go)\s+to\s+)?general\s*mode\b|\bcompanion\s*mode\b|\bassistant\s*mode\b|\bjust\s*(listen|help)\b|\bstop\s*acting\b|\bdon'?t\s*click\b/i, mode: "general" },

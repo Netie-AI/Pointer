@@ -492,7 +492,7 @@ class NetieEcosystem {
     const system = [
       "You convert a user instruction about the current screen into a MINIMAL list of UI actions.",
       "Output ONLY a JSON array. Each item:",
-      "  {\"type\": one of observe|read|hover|scroll|movecursor|click|doubleclick|rightclick|type|press|word_docx_write|word_docx_append|word_from_clipboard,",
+      "  {\"type\": one of observe|read|hover|scroll|movecursor|click|doubleclick|rightclick|type|press|focus_hwnd|word_docx_write|word_docx_append|word_from_clipboard|clipboard_paste,",
       "   \"target\": short human description,",
       "   \"value\": text to type or key name (type/press), or the document body (word_docx_write / word_docx_append),",
       "   \"xPct\": 0-100 horizontal percent within the screenshot,",

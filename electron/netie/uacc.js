@@ -143,9 +143,14 @@ function computerStatus(opts = {}) {
       skills: UACC_SKILLS.map((s) => s.id),
     },
     act: {
-      available: false,
-      reason: "no Cortex /dms/secure gate",
+      available: opts.actAvailable === true,
+      gated: true,
+      reason:
+        opts.actAvailable === true
+          ? "Cortex /dms/secure then reviewPlan"
+          : "no Cortex /dms/secure gate",
     },
+    delivery: opts.delivery || { present: false, title: "", hwnd: false },
   };
 }
 

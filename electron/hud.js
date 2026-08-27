@@ -29,7 +29,7 @@ const cleanToast = $("clean-toast");
 const cleanToastText = $("clean-toast-text");
 const clickyOrb = null; // floating Clicky hold removed — Ctrl+Shift+Space arms real OS pointer
 const peekDrop = null;
-const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify")];
+const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify"), $("set-autosend"), $("set-cloud-stt"), $("set-follow"), $("set-capture-visible"), $("set-dictate"), $("set-scribe"), $("set-writing-style"), $("set-personal-context")];
 
 let listening = false;
 let systemAudio = false;
@@ -146,7 +146,7 @@ const autoSend = createAutoSend({
     // on top of them is the instruction they actually mean.
     if (!askInput.value.trim()) askInput.value = text;
     // General mode listens and answers; it must never reach the act path.
-    if (appMode === "general") doAsk();
+    if (appMode === "general" || appMode === "scribe") doAsk();
     else doAct();
   },
 });
@@ -301,7 +301,7 @@ function applyModeUi(mode, notesPath) {
   // both after module evaluation. (A `typeof` guard would be worse than none —
   // `typeof` on a const still in its temporal dead zone throws.)
   autoSend.cancel("mode-change");
-  hudRoot.classList.remove("mode-agent", "mode-general", "mode-transcribe", "mode-meeting");
+  hudRoot.classList.remove("mode-agent", "mode-general", "mode-transcribe", "mode-scribe", "mode-meeting");
   hudRoot.classList.add(`mode-${appMode}`);
   document.querySelectorAll("#mode-pill button").forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === appMode);
@@ -326,6 +326,10 @@ async function loadSettings() {
   if ($("set-cloud-stt")) $("set-cloud-stt").checked = settings.cloudStt === true;
   if ($("set-follow")) $("set-follow").checked = settings.followCursor !== false;
   if ($("set-capture-visible")) $("set-capture-visible").checked = settings.captureVisible === true;
+  if ($("set-dictate")) $("set-dictate").checked = settings.dictateIntoFocus !== false;
+  if ($("set-scribe")) $("set-scribe").checked = settings.scribeIntoFocus !== false;
+  if ($("set-writing-style")) $("set-writing-style").value = settings.writingStyle || "";
+  if ($("set-personal-context")) $("set-personal-context").value = settings.personalContext || "";
   hudSettings.autoSend = settings.autoSend === true;
   hudSettings.followCursor = settings.followCursor !== false;
   hudSettings.liveLines = Number(settings.liveLines) > 0 ? Number(settings.liveLines) : 5;
@@ -353,6 +357,10 @@ async function saveSettingsFromUi() {
       cloudStt: $("set-cloud-stt") ? $("set-cloud-stt").checked : false,
       followCursor: $("set-follow") ? $("set-follow").checked : true,
       captureVisible: $("set-capture-visible") ? $("set-capture-visible").checked : false,
+      dictateIntoFocus: $("set-dictate") ? $("set-dictate").checked : true,
+      scribeIntoFocus: $("set-scribe") ? $("set-scribe").checked : true,
+      writingStyle: $("set-writing-style") ? $("set-writing-style").value.trim() : "",
+      personalContext: $("set-personal-context") ? $("set-personal-context").value.trim() : "",
     },
   });
   await loadSettings();
@@ -857,8 +865,9 @@ async function doAsk() {
 async function doAct() {
   // General is a companion, not an agent. Hiding the button is cosmetics; this
   // is the line that means a stray "do it" cannot move the mouse.
-  if (appMode === "general") {
-    answerMeta.textContent = "General mode — answering, not acting";
+  if (appMode === "general" || appMode === "scribe") {
+    answerMeta.textContent =
+      appMode === "scribe" ? "Scribe — rewriting, not clicking" : "General mode — answering, not acting";
     await doAsk();
     return;
   }
@@ -1138,6 +1147,7 @@ $("mode-pill").addEventListener("click", async (event) => {
     const armedText = {
       meeting: "Meeting — mic + system audio armed",
       transcribe: "Transcribe — mic armed, speak now",
+      scribe: "Scribe — rewrite or compose, then paste into the app",
       general: "General — listening, I won't click anything",
     };
     subtitleText.textContent = armedText[result.mode] || "Mic armed";
