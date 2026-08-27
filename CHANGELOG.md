@@ -1,3 +1,11 @@
+## 2026-08-27 - Teach overlay Add box stacks a drawn step
+
+Click-through teach overlay Add box lets you drag the next BOX on
+the live display (current hold, later dashed). Tiny drags fail
+closed. Cap 8. Overlay Got it advances the stored walk. Never Act.
+Not a buddy, not a ring, not a stealth meeting overlay. P-05 and
+P-06 stay parked.
+
 ## 2026-08-27 - Teach overlay Back / Got it Ask without HUD
 
 Click-through teach overlay keeps a fixed Next / Then bar with

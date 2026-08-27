@@ -1,7 +1,7 @@
 "use strict";
 const { contextBridge, ipcRenderer } = require("electron");
 
-const INVOKE = ["teach-overlay:ask", "teach-overlay:setIgnoreMouse"];
+const INVOKE = ["teach-overlay:ask", "teach-overlay:setIgnoreMouse", "teach-overlay:frame"];
 
 contextBridge.exposeInMainWorld("netieTeachOverlay", {
   onPoint: (fn) => {

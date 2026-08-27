@@ -32,6 +32,14 @@
         pointer-events: auto;
       }
       #walk-chrome.show { display: inline-flex; }
+      body.draw { pointer-events: auto; cursor: crosshair; }
+      #draw-ghost {
+        position: absolute;
+        z-index: 3;
+        border: 2px dashed #9ad;
+        border-radius: 8px;
+        pointer-events: none;
+      }
       #walk-cue { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       #walk-then {
         margin: 0;
@@ -119,7 +127,9 @@
       <p id="walk-then" hidden></p>
       <button type="button" id="walk-back" data-q="back">Back</button>
       <button type="button" id="walk-next" data-q="got it, next">Got it</button>
+      <button type="button" id="walk-draw">Add box</button>
     </div>
+    <div id="draw-ghost" class="point-mark point-box" hidden></div>
     <div id="point-layer" aria-hidden="true"></div>
     <script>
       const layer = document.getElementById("point-layer");
@@ -183,7 +193,46 @@
         }
       }
 
+      const ghost = document.getElementById("draw-ghost");
+      let drawing = false;
+      let drag = null;
+
+      function setDraw(on) {
+        drawing = Boolean(on);
+        document.body.classList.toggle("draw", drawing);
+        if (ghost) ghost.hidden = true;
+        drag = null;
+        if (api && typeof api.invoke === "function") {
+          api.invoke("teach-overlay:setIgnoreMouse", { ignore: !drawing && !mouseOverChrome });
+        }
+      }
+
+      function pctFromEvent(ev) {
+        const w = window.innerWidth || 1;
+        const h = window.innerHeight || 1;
+        return {
+          x: Math.max(0, Math.min(100, (ev.clientX / w) * 100)),
+          y: Math.max(0, Math.min(100, (ev.clientY / h) * 100)),
+        };
+      }
+
+      function paintGhost() {
+        if (!drag || !ghost) return;
+        const left = Math.min(drag.x0, drag.x1);
+        const top = Math.min(drag.y0, drag.y1);
+        ghost.style.left = left + "%";
+        ghost.style.top = top + "%";
+        ghost.style.width = Math.abs(drag.x1 - drag.x0) + "%";
+        ghost.style.height = Math.abs(drag.y1 - drag.y0) + "%";
+        ghost.hidden = false;
+      }
+
       function onAdvance(ev) {
+        if (ev.target && ev.target.closest && ev.target.closest("#walk-draw")) {
+          ev.preventDefault();
+          setDraw(true);
+          return;
+        }
         const btn = ev.target && ev.target.closest ? ev.target.closest("button[data-q]") : null;
         const q = btn && String(btn.getAttribute("data-q") || "").trim();
         if (!q || !api || typeof api.invoke !== "function") return;
@@ -192,12 +241,45 @@
       }
 
       if (chromeBar) chromeBar.addEventListener("click", onAdvance);
+      document.addEventListener("pointerdown", function (ev) {
+        if (!drawing || (ev.button != null && ev.button !== 0)) return;
+        if (ev.target && ev.target.closest && ev.target.closest(".chrome")) return;
+        const p = pctFromEvent(ev);
+        drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+        paintGhost();
+        ev.preventDefault();
+      });
       document.addEventListener("pointermove", function (ev) {
         const over = Boolean(ev.target && ev.target.closest && ev.target.closest(".chrome"));
-        syncClickThrough(over);
+        if (!drawing) syncClickThrough(over);
+        if (!drawing || !drag) return;
+        const p = pctFromEvent(ev);
+        drag.x1 = p.x;
+        drag.y1 = p.y;
+        paintGhost();
       }, true);
+      function endDrag() {
+        if (!drawing || !drag) return;
+        const box = { x0: drag.x0, y0: drag.y0, x1: drag.x1, y1: drag.y1 };
+        drag = null;
+        if (ghost) ghost.hidden = true;
+        setDraw(false);
+        if (Math.abs(box.x1 - box.x0) < 0.4 || Math.abs(box.y1 - box.y0) < 0.4) return;
+        if (api && typeof api.invoke === "function") {
+          api.invoke("teach-overlay:frame", { region: box, act: false });
+        }
+      }
+      document.addEventListener("pointerup", endDrag);
+      document.addEventListener("pointercancel", function () {
+        drag = null;
+        if (ghost) ghost.hidden = true;
+        setDraw(false);
+      });
+      document.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape" && drawing) setDraw(false);
+      });
       document.addEventListener("pointerleave", function () {
-        syncClickThrough(false);
+        if (!drawing) syncClickThrough(false);
       }, true);
 
       if (api && typeof api.onPoint === "function") {

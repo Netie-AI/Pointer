@@ -769,11 +769,17 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachPreload, /teach-overlay:point/);
   assert.match(teachPreload, /teach-overlay:ask/);
   assert.match(teachPreload, /teach-overlay:setIgnoreMouse/);
+  assert.match(teachPreload, /teach-overlay:frame/);
   assert.doesNotMatch(teachPreload, /hud:act/);
+  assert.match(teachOverlay, /id="walk-draw"/);
+  assert.match(teachOverlay, /Add box/);
+  assert.match(teachOverlay, /teach-overlay:frame/);
   const overlayAsk = main.slice(main.indexOf('ipcMain.handle("teach-overlay:ask"'), main.indexOf('ipcMain.handle("hud:setMode"'));
   assert.match(overlayAsk, /teachAdvance/);
   assert.match(overlayAsk, /act: false/);
-  assert.match(overlayAsk, /armTeachWalk/);
+  assert.match(overlayAsk, /advanceLiveTeach/);
+  assert.match(overlayAsk, /frameLiveTeach/);
+  assert.match(overlayAsk, /liveTeachPump\.reset/);
   assert.doesNotMatch(overlayAsk, /driver\./);
   assert.doesNotMatch(overlayAsk, /spawnCoworker/);
   assert.doesNotMatch(overlayAsk, /hud:act/);

@@ -162,7 +162,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
-const { pickDesk, meetingAssist, enrichMeetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, spawnFollowOns, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock, nextTeachStep, teachAdvance, FRAME_TEACH_TEXT, shouldTeachFramedRegion } = require("./netie/coworker-desks");
+const { pickDesk, meetingAssist, enrichMeetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, spawnFollowOns, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock, nextTeachStep, teachAdvance, FRAME_TEACH_TEXT, shouldTeachFramedRegion, frameLiveTeach, advanceLiveTeach, canAdvanceTeach } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -3894,9 +3894,40 @@ ipcMain.handle("teach-overlay:ask", async (_e, payload) => {
   if (!asked || adv === 0) {
     return { ok: false, act: false, exec: false, reason: "overlay only Back / Got it" };
   }
+  const ws = liveCoordinator && liveCoordinator.workspace;
+  const stored = ws && typeof ws.get === "function" ? ws.get("live-teach") : { ok: false };
+  if (stored && stored.ok && canAdvanceTeach(stored.artifact && stored.artifact.live)) {
+    liveTeachPump.reset();
+    const out = advanceLiveTeach(ws, asked);
+    if (out && out.ok && !out.act) {
+      teachLive = true;
+      if (Number.isInteger(out.step)) teachStep = out.step;
+      publishTeachOverlay(out);
+    }
+    return { ...(out || { ok: false }), live: undefined, act: false, exec: false };
+  }
   noteTeachStep(asked);
   armTeachWalk(asked);
   return { ok: true, act: false, exec: false };
+});
+
+ipcMain.handle("teach-overlay:frame", async (_e, payload) => {
+  const region = payload && (payload.region || payload.frame);
+  if (!region || typeof region !== "object") {
+    return { ok: false, act: false, exec: false, desk: "teach", reason: "draw a region on the overlay first" };
+  }
+  const ws = liveCoordinator && liveCoordinator.workspace;
+  if (!ws || typeof ws.put !== "function") {
+    return { ok: false, act: false, exec: false, reason: "workspace missing" };
+  }
+  liveTeachPump.reset();
+  const drawn = frameLiveTeach(ws, region);
+  if (drawn && drawn.ok && !drawn.act) {
+    teachLive = true;
+    if (Number.isInteger(drawn.step)) teachStep = drawn.step;
+    publishTeachOverlay(drawn);
+  }
+  return { ...(drawn || { ok: false }), live: undefined, act: false, exec: false };
 });
 
 ipcMain.handle("hud:setMode", async (_e, payload) => {
