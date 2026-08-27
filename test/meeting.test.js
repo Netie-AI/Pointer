@@ -91,6 +91,32 @@ function test(name, fn) {
     assert.strictEqual(r.result.text, "Say we ship Friday.");
   });
 
+  await test("live suggest waits for enough new notes and debounce", () => {
+    const { shouldRefreshSuggest } = require("../electron/netie/meeting");
+    const notes = "We will ship Friday after the standup and cover the launch checklist in full.";
+    assert.ok(notes.length >= 80);
+    assert.strictEqual(shouldRefreshSuggest({ notes, lastNotes: "", lastAt: 0, now: 1000 }).ok, true);
+    assert.strictEqual(shouldRefreshSuggest({ notes: "short", lastAt: 0, now: 1000 }).ok, false);
+    assert.strictEqual(
+      shouldRefreshSuggest({ notes, lastNotes: notes, lastAt: 0, now: 20000 }).ok,
+      false
+    );
+    assert.strictEqual(
+      shouldRefreshSuggest({ notes, lastNotes: "", lastAt: 1000, now: 2000, minIntervalMs: 8000 }).ok,
+      false
+    );
+    assert.strictEqual(
+      shouldRefreshSuggest({
+        notes: notes + " extra phrase here for growth.",
+        lastNotes: notes,
+        lastAt: 1000,
+        now: 20000,
+      }).ok,
+      true
+    );
+    assert.strictEqual(shouldRefreshSuggest({ notes, inFlight: true, lastAt: 0, now: 20000 }).ok, false);
+  });
+
   console.log(`\n${pass} passed, ${fails.length} failed`);
   process.exit(fails.length ? 1 : 0);
 })();

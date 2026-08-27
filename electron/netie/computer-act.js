@@ -44,6 +44,30 @@ function defaultMatchRecipe(text) {
   }
 }
 
+function aimedPoint(type, xRaw, yRaw) {
+  const x = Number(xRaw);
+  const y = Number(yRaw);
+  if (x <= 100 && y <= 100) return { type, xPct: x, yPct: y };
+  return { type, x, y };
+}
+
+function parseAimedInstruction(type, text) {
+  const re = new RegExp(
+    `^(?:please\\s+)?${type}(?:\\s+(?:at|on))?\\s+(\\d+(?:\\.\\d+)?)\\s+(\\d+(?:\\.\\d+)?)(?:\\s*%)?$`,
+    "i"
+  );
+  const hit = text.match(re);
+  if (!hit) return null;
+  return { ok: true, source: type, actions: [aimedPoint(type, hit[1], hit[2])] };
+}
+
+function parseNamedInstruction(type, text) {
+  const re = new RegExp(`^(?:please\\s+)?${type}\\s*:\\s*([^\\d][\\s\\S]*)$`, "i");
+  const hit = text.match(re);
+  if (!hit || !String(hit[1] || "").trim()) return null;
+  return { ok: true, source: type, actions: [{ type, target: hit[1].trim() }] };
+}
+
 function planFromInstruction(instruction, opts = {}) {
   const text = String(instruction || "").trim();
   if (!text) return { ok: false, reason: "empty instruction" };
@@ -57,16 +81,32 @@ function planFromInstruction(instruction, opts = {}) {
   if (/^(?:please\s+)?(?:observe|screenshot|screen info)$/i.test(text)) {
     return { ok: true, source: "observe", actions: [{ type: "observe" }] };
   }
-  const click = text.match(
-    /^(?:please\s+)?click(?:\s+(?:at|on))?\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)(?:\s*%)?$/i
+  const waited = text.match(/^(?:please\s+)?wait(?:\s|:)\s*(\d+)\s*(?:ms|milliseconds?)?$/i);
+  if (waited) {
+    const ms = Math.min(10000, Math.max(0, Number(waited[1])));
+    return { ok: true, source: "wait", actions: [{ type: "wait", ms }] };
+  }
+  const scrolled = text.match(
+    /^(?:please\s+)?scroll(?:\s+(?:at|on))?(?:\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?))?\s+(up|down)$/i
   );
-  if (click) {
-    const x = Number(click[1]);
-    const y = Number(click[2]);
-    if (x <= 100 && y <= 100) {
-      return { ok: true, source: "click", actions: [{ type: "click", xPct: x, yPct: y }] };
+  if (scrolled) {
+    const dir = String(scrolled[3] || "down").toLowerCase();
+    const action = { type: "scroll", deltaY: dir === "down" ? 120 : -120 };
+    if (scrolled[1] != null && scrolled[2] != null) {
+      const pt = aimedPoint("scroll", scrolled[1], scrolled[2]);
+      if (pt.xPct != null) {
+        action.xPct = pt.xPct;
+        action.yPct = pt.yPct;
+      } else {
+        action.x = pt.x;
+        action.y = pt.y;
+      }
     }
-    return { ok: true, source: "click", actions: [{ type: "click", x, y }] };
+    return { ok: true, source: "scroll", actions: [action] };
+  }
+  for (const kind of ["click", "doubleclick", "rightclick", "hover"]) {
+    const aimed = parseAimedInstruction(kind, text);
+    if (aimed) return aimed;
   }
   const typed = text.match(/^(?:please\s+)?(?:type|dictate)\s*:\s*([\s\S]+)$/i);
   if (typed && typed[1].trim()) {
@@ -105,13 +145,9 @@ function planFromInstruction(instruction, opts = {}) {
     }
     return { ok: false, reason: "no matching window" };
   }
-  const clickTarget = text.match(/^(?:please\s+)?click\s*:\s*([^\d][\s\S]*)$/i);
-  if (clickTarget && clickTarget[1].trim()) {
-    return {
-      ok: true,
-      source: "click",
-      actions: [{ type: "click", target: clickTarget[1].trim() }],
-    };
+  for (const kind of ["click", "doubleclick", "rightclick", "hover"]) {
+    const named = parseNamedInstruction(kind, text);
+    if (named) return named;
   }
   const delivered = text.match(/^(?:please\s+)?deliver\s*:\s*([\s\S]+)$/i);
   if (delivered && delivered[1].trim()) {
@@ -148,7 +184,11 @@ async function prepareComputerAct(params, deps = {}) {
     if (typeof deps.plan === "function") {
       planned = await deps.plan(req.instruction, gate);
     } else {
-      planned = planFromInstruction(req.instruction, { matchRecipe: deps.matchRecipe });
+      planned = planFromInstruction(req.instruction, {
+        matchRecipe: deps.matchRecipe,
+        windows: deps.windows,
+        target: deps.target,
+      });
     }
     if (!planned || planned.ok === false) {
       return { ok: false, reason: (planned && planned.reason) || "plan failed" };

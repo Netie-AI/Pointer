@@ -74,6 +74,7 @@
               <label>Scribe paste into focused app <input type="checkbox" id="set-scribe" /></label>
               <label>Scribe uses screen context <input type="checkbox" id="set-scribe-screen" /></label>
               <label>Start Pointer at sign-in <input type="checkbox" id="set-autostart" /></label>
+              <label>Live meeting suggest as notes grow <input type="checkbox" id="set-meeting-suggest" /></label>
               <label>Scribe writing style <input type="text" id="set-writing-style" placeholder="Warm, concise" autocomplete="off" /></label>
               <label>Scribe personal notes <input type="text" id="set-personal-context" placeholder="Company, product, links" autocomplete="off" /></label>
               <label>Scribe language
@@ -100,6 +101,11 @@
           </button>
         </div>
       </header>
+
+      <div class="suggest-strip glass chrome" id="suggest-strip" hidden>
+        <span class="suggest-kicker">Say</span>
+        <span class="suggest-text" id="suggest-text"></span>
+      </div>
 
       <div class="subtitle-live glass chrome" id="subtitle-bar" hidden aria-hidden="true">
         <span class="subtitle-grip drag-handle" id="subtitle-drag" title="Drag the LIVE line"></span>

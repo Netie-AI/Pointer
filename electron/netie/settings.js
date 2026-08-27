@@ -116,6 +116,11 @@ const DEFAULTS = Object.freeze({
    * because the screen is untrusted data and leaves the device with the LLM.
    */
   scribeScreenContext: false,
+  /**
+   * Cluely-class: refresh a spoken-reply line as meeting notes grow.
+   * Still fail-closed without Cortex. Off to keep the HUD quiet.
+   */
+  meetingAutoSuggest: true,
   /** Launch Pointer at Windows sign-in (OpenWillow autostart pattern). */
   autostart: false,
 });

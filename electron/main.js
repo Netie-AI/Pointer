@@ -61,7 +61,7 @@ const {
   deliverTextActions,
   publicTarget,
 } = require("./netie/delivery");
-const { buildMeetingAssist, runMeetingAssist } = require("./netie/meeting");
+const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest } = require("./netie/meeting");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
 const { shouldAcceptFrame, detectCaptureCommand } = require("./netie/capture-gate");
@@ -406,6 +406,9 @@ let appMode = "agent"; // agent | general | transcribe | scribe | meeting
 let dictateSession = { gated: false };
 /** OpenWillow Scribe session: armed after /dms/secure when entering scribe. */
 let scribeSession = { gated: false };
+/** Cluely-class live meeting suggest debounce. */
+let meetingSuggestTimer = null;
+const meetingSuggestState = { lastAt: 0, lastNotes: "", inFlight: false };
 let sttChild = null;
 let canvasWindow = null;
 let cursorTrackTimer = null;
@@ -639,6 +642,16 @@ function applyAppMode(modeId, { reason = "" } = {}) {
     reason,
     notesPath: notes.file,
   });
+  if (appMode !== "meeting") {
+    meetingSuggestState.lastAt = 0;
+    meetingSuggestState.lastNotes = "";
+    meetingSuggestState.inFlight = false;
+    if (meetingSuggestTimer) {
+      clearTimeout(meetingSuggestTimer);
+      meetingSuggestTimer = null;
+    }
+    sendHudQuiet({ type: "suggest", text: "" });
+  }
   if (armMic || armSystem) {
     sendHud({
       type: "auto-listen",
@@ -670,6 +683,50 @@ function applyAppMode(modeId, { reason = "" } = {}) {
     listen: listenMic,
     systemAudio: listenSystem,
   };
+}
+
+function scheduleMeetingSuggest() {
+  if (settings.get("meetingAutoSuggest") === false) return;
+  if (meetingSuggestTimer) clearTimeout(meetingSuggestTimer);
+  meetingSuggestTimer = setTimeout(() => {
+    meetingSuggestTimer = null;
+    void refreshMeetingSuggest();
+  }, 8000);
+}
+
+async function refreshMeetingSuggest() {
+  if (appMode !== "meeting") return;
+  if (settings.get("meetingAutoSuggest") === false) return;
+  const notesText = notes.tail(4000);
+  const verdict = shouldRefreshSuggest({
+    notes: notesText,
+    lastAt: meetingSuggestState.lastAt,
+    lastNotes: meetingSuggestState.lastNotes,
+    inFlight: meetingSuggestState.inFlight,
+    now: Date.now(),
+  });
+  if (!verdict.ok) return;
+  meetingSuggestState.inFlight = true;
+  try {
+    const out = await liveMcp.handle(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "computer.meeting_assist",
+        params: { notes: notesText },
+      },
+      {}
+    );
+    const text = String((out && out.result && out.result.text) || "").trim();
+    if (!text) return;
+    meetingSuggestState.lastAt = Date.now();
+    meetingSuggestState.lastNotes = notesText;
+    sendHudQuiet({ type: "suggest", text: text.slice(0, 280) });
+  } catch {
+    /* fail-closed: keep the last line, do not spam the HUD */
+  } finally {
+    meetingSuggestState.inFlight = false;
+  }
 }
 
 function ensureSttSidecar() {
@@ -3655,6 +3712,7 @@ function handleUtterance(source, utt) {
               source,
               langHint: res.language || "",
             });
+            if (appMode === "meeting") scheduleMeetingSuggest();
           }
           sendHud({
             type: "transcript",

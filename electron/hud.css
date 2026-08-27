@@ -115,6 +115,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 }
 
 .hud.morph-hidden .top-bar,
+.hud.morph-hidden .suggest-strip,
 .hud.morph-hidden .subtitle-live,
 .hud.morph-hidden .insight-panel,
 .hud.morph-hidden .chat-dock,
@@ -210,6 +211,20 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .hud.mode-scribe .act-button { display: none; }
 #btn-suggest { display: none; }
 .hud.mode-meeting #btn-suggest { display: inline-flex; }
+.suggest-strip {
+  display: none; position: absolute; top: 64px; left: 50%; transform: translateX(-50%);
+  z-index: 28; max-width: min(720px, 86vw); padding: 7px 12px; border-radius: 12px;
+  align-items: baseline; gap: 8px;
+}
+.hud.mode-meeting .suggest-strip:not([hidden]) { display: inline-flex; }
+.suggest-kicker {
+  color: var(--muted); font-size: 10px; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.suggest-text {
+  color: var(--text); font-size: 13px; font-family: var(--font-display);
+  line-height: 1.35; max-width: 62ch;
+}
 .menu label input[type="text"],
 .menu label select {
   display: block; width: 100%; margin-top: 4px; padding: 6px 8px;

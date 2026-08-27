@@ -29,7 +29,7 @@ const cleanToast = $("clean-toast");
 const cleanToastText = $("clean-toast-text");
 const clickyOrb = null; // floating Clicky hold removed — Ctrl+Shift+Space arms real OS pointer
 const peekDrop = null;
-const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify"), $("set-autosend"), $("set-cloud-stt"), $("set-follow"), $("set-capture-visible"), $("set-dictate"), $("set-scribe"), $("set-scribe-screen"), $("set-autostart"), $("set-writing-style"), $("set-personal-context"), $("set-scribe-language")];
+const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify"), $("set-autosend"), $("set-cloud-stt"), $("set-follow"), $("set-capture-visible"), $("set-dictate"), $("set-scribe"), $("set-scribe-screen"), $("set-autostart"), $("set-meeting-suggest"), $("set-writing-style"), $("set-personal-context"), $("set-scribe-language")];
 
 let listening = false;
 let systemAudio = false;
@@ -310,6 +310,16 @@ function applyModeUi(mode, notesPath) {
     notesChip.textContent = "Notes live";
     notesChip.title = notesPath;
   }
+  if (appMode !== "meeting") applySuggest("");
+}
+
+function applySuggest(text) {
+  const strip = $("suggest-strip");
+  const body = $("suggest-text");
+  if (!strip || !body) return;
+  const t = String(text || "").trim();
+  body.textContent = t;
+  strip.hidden = !t || appMode !== "meeting";
 }
 
 async function loadSettings() {
@@ -330,6 +340,7 @@ async function loadSettings() {
   if ($("set-scribe")) $("set-scribe").checked = settings.scribeIntoFocus !== false;
   if ($("set-scribe-screen")) $("set-scribe-screen").checked = settings.scribeScreenContext === true;
   if ($("set-autostart")) $("set-autostart").checked = settings.autostart === true;
+  if ($("set-meeting-suggest")) $("set-meeting-suggest").checked = settings.meetingAutoSuggest !== false;
   if ($("set-writing-style")) $("set-writing-style").value = settings.writingStyle || "";
   if ($("set-personal-context")) $("set-personal-context").value = settings.personalContext || "";
   if ($("set-scribe-language")) $("set-scribe-language").value = settings.scribeLanguage === "Traditional Chinese" ? "Traditional Chinese" : "English";
@@ -364,6 +375,7 @@ async function saveSettingsFromUi() {
       scribeIntoFocus: $("set-scribe") ? $("set-scribe").checked : true,
       scribeScreenContext: $("set-scribe-screen") ? $("set-scribe-screen").checked : false,
       autostart: $("set-autostart") ? $("set-autostart").checked : false,
+      meetingAutoSuggest: $("set-meeting-suggest") ? $("set-meeting-suggest").checked : true,
       writingStyle: $("set-writing-style") ? $("set-writing-style").value.trim() : "",
       personalContext: $("set-personal-context") ? $("set-personal-context").value.trim() : "",
       scribeLanguage: $("set-scribe-language") ? $("set-scribe-language").value : "English",
@@ -1421,6 +1433,7 @@ function onHudEvent(event) {
     appendMessage("assistant", event.text || "");
   }
   if (event.type === "insight") insightSummary.textContent = event.text || "";
+  if (event.type === "suggest") applySuggest(event.text);
   if (event.type === "auto-listen") {
     armCapture({
       mic: Boolean(event.mic),

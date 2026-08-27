@@ -154,6 +154,7 @@ function test(name, fn) {
     assert.strictEqual(DEFAULTS.scribeIntoFocus, true);
     assert.strictEqual(DEFAULTS.scribeScreenContext, false);
     assert.strictEqual(DEFAULTS.autostart, false);
+    assert.strictEqual(DEFAULTS.meetingAutoSuggest, true);
   });
 
   await test("planFromInstruction uses recipes then type/click/observe", () => {
@@ -182,6 +183,33 @@ function test(name, fn) {
     const named = planFromInstruction("click: Save");
     assert.strictEqual(named.actions[0].type, "click");
     assert.strictEqual(named.actions[0].target, "Save");
+    const waited = planFromInstruction("wait 400");
+    assert.strictEqual(waited.actions[0].type, "wait");
+    assert.strictEqual(waited.actions[0].ms, 400);
+    const scrolled = planFromInstruction("scroll down");
+    assert.strictEqual(scrolled.actions[0].type, "scroll");
+    assert.strictEqual(scrolled.actions[0].deltaY, 120);
+    const dbl = planFromInstruction("doubleclick 40 50");
+    assert.strictEqual(dbl.actions[0].type, "doubleclick");
+    assert.strictEqual(dbl.actions[0].xPct, 40);
+    const namedRight = planFromInstruction("rightclick: Close");
+    assert.strictEqual(namedRight.actions[0].type, "rightclick");
+    assert.strictEqual(namedRight.actions[0].target, "Close");
+  });
+
+  await test("computer.act uses deps.windows when planning focus:", async () => {
+    const r = await runComputerAct(
+      { instruction: "focus: notepad", approved: true },
+      {
+        secure: async () => ({ ok: true }),
+        windows: [{ hwnd: "88", title: "Untitled - Notepad", proc: "notepad" }],
+        execute: async (actions) => actions,
+      }
+    );
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.ran, true);
+    assert.strictEqual(r.actions[0].type, "focus_hwnd");
+    assert.strictEqual(r.actions[0].hwnd, "88");
   });
 
   await test("computer.act instruction type: runs after a green gate and approval", async () => {

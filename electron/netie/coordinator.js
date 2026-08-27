@@ -11,6 +11,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
+const { TOOLS, CATALOG } = require("./mcp-abi");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
 
@@ -140,6 +141,11 @@ function createCoordinator(opts = {}) {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(pick(out)));
       });
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/tools") {
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: true, tools: TOOLS.slice(), catalog: CATALOG.slice() }));
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/observe") {

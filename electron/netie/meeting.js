@@ -58,4 +58,26 @@ async function runMeetingAssist(params, deps = {}) {
   return { ok: true, gated: true, text };
 }
 
-module.exports = { buildMeetingAssist, runMeetingAssist };
+/**
+ * Cluely-class live suggest: refresh when notes grew, not on every fragment.
+ * Fail-closed callers still own Cortex. This only decides whether to ask.
+ */
+function shouldRefreshSuggest(input = {}) {
+  const notes = String(input.notes || "").trim();
+  const minChars = Number(input.minChars) > 0 ? Number(input.minChars) : 80;
+  if (notes.length < minChars) return { ok: false, reason: "too short" };
+  if (input.inFlight) return { ok: false, reason: "in flight" };
+  const now = Number(input.now) || Date.now();
+  const lastAt = Number(input.lastAt) || 0;
+  const interval = Number(input.minIntervalMs) > 0 ? Number(input.minIntervalMs) : 8000;
+  if (lastAt && now - lastAt < interval) return { ok: false, reason: "debounce" };
+  const prev = String(input.lastNotes || "");
+  if (notes === prev) return { ok: false, reason: "unchanged" };
+  const minNew = Number(input.minNewChars) > 0 ? Number(input.minNewChars) : 40;
+  if (prev && notes.length - prev.length < minNew) {
+    return { ok: false, reason: "not enough new notes" };
+  }
+  return { ok: true };
+}
+
+module.exports = { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest };

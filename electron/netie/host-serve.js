@@ -80,7 +80,15 @@ function typeFor(file) {
 function handlePublicRequest({ method, pathname } = {}) {
   const verb = String(method || "GET").toUpperCase();
   const clean = normalizePath(pathname);
-  if (clean === "/mcp" || clean.startsWith("/mcp/") || clean === "/api/computer" || clean === "/api/scribe" || clean === "/api/meeting" || clean === "/api/observe") {
+  if (
+    clean === "/mcp" ||
+    clean.startsWith("/mcp/") ||
+    clean === "/api/computer" ||
+    clean === "/api/scribe" ||
+    clean === "/api/meeting" ||
+    clean === "/api/observe" ||
+    clean === "/api/tools"
+  ) {
     return { status: 404, headers: textHeaders(), body: "mcp stays on 127.0.0.1" };
   }
   if (verb === "GET" && clean === "/api/state") {

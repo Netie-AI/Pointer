@@ -73,7 +73,7 @@ const CATALOG = Object.freeze([
   {
     name: "computer.act",
     description:
-      "Gated OS actions. instruction plans via recipes then type:/click:/focus:/open:/deliver:. Clicks and launches need approved true.",
+      "Gated OS actions. instruction plans via recipes then type:/click:/focus:/open:/deliver:/wait/scroll/doubleclick/rightclick/hover. Clicks and launches need approved true.",
     inputSchema: {
       type: "object",
       properties: {

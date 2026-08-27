@@ -2,7 +2,7 @@
 const assert = require("assert");
 const http = require("http");
 const { createCoordinator } = require("../electron/netie/coordinator");
-const { createMcpAbi } = require("../electron/netie/mcp-abi");
+const { createMcpAbi, TOOLS } = require("../electron/netie/mcp-abi");
 
 let pass = 0;
 const fails = [];
@@ -147,6 +147,18 @@ function test(name, fn) {
     });
     assert.strictEqual(obs.ok, true);
     assert.strictEqual(obs.windows[0].title, "Notepad");
+
+    const tools = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/tools" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      }).on("error", reject);
+    });
+    assert.strictEqual(tools.ok, true);
+    assert.deepStrictEqual(tools.tools, TOOLS.slice());
+    assert.strictEqual(tools.catalog.length, TOOLS.length);
+    assert.ok(tools.catalog.some((t) => t.name === "computer.act"));
 
     await c.close();
   });

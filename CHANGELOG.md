@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Live meeting suggest and more agent drive verbs
+
+`GET /api/tools` returns the MCP catalog over HTTP. `computer.act` plans
+`wait`, `scroll up/down`, `doubleclick`, `rightclick`, and `hover` without a
+second Cortex hop. Meeting mode refreshes a fixed Say line as notes grow
+(debounce, fail-closed without Cortex). Public Worker still 404s `/api/tools`.
+No GPLv3 dump. No third-party MCP servers.
+
 ## 2026-08-27 - Tool catalog so other agents know how to drive Pointer
 
 `tools.list` still returns the name allowlist and now also a `catalog`
