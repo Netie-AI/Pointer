@@ -539,6 +539,18 @@ test("today assist ships a standing brief and never invents work", () => {
   assert.match(filed.deliverable, /Word draft waiting/);
   assert.match(filed.deliverable, /not a \.docx/);
   assert.match(filed.cue, /not a \.docx/);
+  const both = todayAssist({
+    state: {
+      transcript: "mic: I will send it Friday.",
+      artifacts: [
+        { id: "live-inbox", desk: "inbox", title: "Draft reply" },
+        { id: "live-document", desk: "document", title: "Document draft" },
+      ],
+    },
+  });
+  assert.match(both.cue, /send it Friday/);
+  assert.match(both.deliverable, /Unsent follow-up draft/);
+  assert.match(both.deliverable, /Word draft waiting/);
   const hiddenFiled = todayAssist({
     state: { artifacts: [{ id: "live-inbox", desk: "inbox", title: "Draft reply" }] },
     localFirst: true,
