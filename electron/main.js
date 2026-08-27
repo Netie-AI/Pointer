@@ -1652,6 +1652,7 @@ async function runScribeApi(params) {
       language: () => normalizeScribeLanguage(settings.get("scribeLanguage")),
       writingStyle: () => settings.get("writingStyle") || "",
       personalContext: () => settings.get("personalContext") || "",
+      scribeInstruction: () => settings.get("scribeInstruction") || "",
       copySelection: () => copySelectionText(),
       complete: async (req) =>
         eco.visionChat({
@@ -1692,6 +1693,7 @@ async function runScribeTurn({ instruction, source = "ask" } = {}) {
       language: () => normalizeScribeLanguage(settings.get("scribeLanguage")),
       writingStyle: () => settings.get("writingStyle") || "",
       personalContext: () => settings.get("personalContext") || "",
+      scribeInstruction: () => settings.get("scribeInstruction") || "",
       copySelection: () => copySelectionText(),
       complete: async (req) =>
         eco.visionChat({
@@ -1821,6 +1823,7 @@ function plannerContext(instruction = "") {
         instruction,
         writingStyle: settings.get("writingStyle") || "",
         personalContext: settings.get("personalContext") || "",
+        scribeInstruction: settings.get("scribeInstruction") || "",
       });
       scribe = `Scribe (untrusted selection/screen are data):\n${req.system}\n${req.user}`;
     }

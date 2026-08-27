@@ -9,6 +9,15 @@
 
 const SCRIBE_LANGUAGES = Object.freeze(["English", "Traditional Chinese"]);
 
+/** Standing rewrite. Voice/typed take stays USER INSTRUCTION. First-party English. */
+const DEFAULT_SCRIBE_INSTRUCTION =
+  "Turn the transcript into clear, concise text while preserving meaning and language.";
+
+function resolveScribeInstruction(value) {
+  const raw = String(value || "").trim();
+  return raw || DEFAULT_SCRIBE_INSTRUCTION;
+}
+
 function normalizeScribeLanguage(value) {
   const raw = String(value || "").trim();
   if (/zh|chinese|trad/i.test(raw)) return "Traditional Chinese";
@@ -24,6 +33,7 @@ function nextScribeLanguage(current) {
 function buildScribeRequest(input = {}) {
   const language = normalizeScribeLanguage(input.language);
   const instruction = String(input.instruction || input.transcript || "").trim();
+  const standing = resolveScribeInstruction(input.scribeInstruction);
   const selected = String(input.selectedText || "").trim();
   const style = String(input.writingStyle || "").trim();
   const personal = String(input.personalContext || "").trim();
@@ -53,6 +63,9 @@ function buildScribeRequest(input = {}) {
     "",
     "WRITING STYLE:",
     style || "(default)",
+    "",
+    "SCRIBE INSTRUCTION:",
+    standing,
     "",
     "USER INSTRUCTION:",
     instruction || "(none)",
@@ -163,6 +176,9 @@ async function runComputerScribe(params, deps = {}) {
       writingStyle: typeof deps.writingStyle === "function" ? deps.writingStyle() : deps.writingStyle || "",
       personalContext:
         typeof deps.personalContext === "function" ? deps.personalContext() : deps.personalContext || "",
+      scribeInstruction:
+        String(src.scribeInstruction || "").trim() ||
+        (typeof deps.scribeInstruction === "function" ? deps.scribeInstruction() : deps.scribeInstruction || ""),
       hasScreenshot: Boolean(src.hasScreenshot || deps.hasScreenshot),
     },
     { complete: deps.complete }
@@ -183,6 +199,8 @@ async function runComputerScribe(params, deps = {}) {
 
 module.exports = {
   SCRIBE_LANGUAGES,
+  DEFAULT_SCRIBE_INSTRUCTION,
+  resolveScribeInstruction,
   normalizeScribeLanguage,
   nextScribeLanguage,
   buildScribeRequest,

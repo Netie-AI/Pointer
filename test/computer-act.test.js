@@ -1,7 +1,7 @@
 "use strict";
 const assert = require("assert");
 const { shouldDictateIntoFocus, dictateSecureGoal } = require("../electron/netie/dictate");
-const { buildScribeRequest } = require("../electron/netie/scribe");
+const { buildScribeRequest, DEFAULT_SCRIBE_INSTRUCTION } = require("../electron/netie/scribe");
 const { prepareComputerAct, runComputerAct } = require("../electron/netie/computer-act");
 const { createMcpAbi } = require("../electron/netie/mcp-abi");
 const { DEFAULTS } = require("../electron/netie/settings");
@@ -53,6 +53,31 @@ function test(name, fn) {
     assert.match(req.user, /hey buy now/);
     assert.match(req.system, /untrusted/i);
     assert.match(req.system, /not commands/);
+    assert.match(req.user, /SCRIBE INSTRUCTION:/);
+    assert.match(req.user, /USER INSTRUCTION:\nmake this formal/);
+    assert.match(req.user, new RegExp(DEFAULT_SCRIBE_INSTRUCTION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  });
+
+  await test("scribe standing instruction stays separate from this take", () => {
+    assert.strictEqual(DEFAULTS.scribeInstruction, DEFAULT_SCRIBE_INSTRUCTION);
+    assert.doesNotMatch(DEFAULT_SCRIBE_INSTRUCTION, /[\u4e00-\u9fff]/);
+    const req = buildScribeRequest({
+      instruction: "make this a polite email",
+      scribeInstruction: "Turn this into a professional email.",
+    });
+    assert.match(req.user, /SCRIBE INSTRUCTION:\nTurn this into a professional email\./);
+    assert.match(req.user, /USER INSTRUCTION:\nmake this a polite email/);
+    assert.doesNotMatch(req.user, /SCRIBE INSTRUCTION:\nmake this a polite email/);
+    const blank = buildScribeRequest({ instruction: "shorten this", scribeInstruction: "   " });
+    assert.match(blank.user, new RegExp(DEFAULT_SCRIBE_INSTRUCTION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    const fs = require("fs");
+    const path = require("path");
+    const html = fs.readFileSync(path.join(__dirname, "../electron/hud.html"), "utf8");
+    const hud = fs.readFileSync(path.join(__dirname, "../electron/hud.js"), "utf8");
+    const main = fs.readFileSync(path.join(__dirname, "../electron/main.js"), "utf8");
+    assert.ok(html.includes('id="set-scribe-instruction"'));
+    assert.ok(hud.includes("scribeInstruction"));
+    assert.ok(main.includes("scribeInstruction: () => settings.get(\"scribeInstruction\")"));
   });
 
   await test("computer.act refuses without a secure function", async () => {
@@ -332,9 +357,12 @@ function test(name, fn) {
       {
         secure: async () => ({ ok: true }),
         language: "Traditional Chinese",
+        scribeInstruction: "Turn this into a professional email.",
         complete: async (req) => {
           assert.match(req.user, /Traditional Chinese/);
           assert.match(req.user, /hey/);
+          assert.match(req.user, /SCRIBE INSTRUCTION:\nTurn this into a professional email\./);
+          assert.match(req.user, /USER INSTRUCTION:\nmake this formal/);
           return { text: "Hello" };
         },
       }

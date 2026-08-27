@@ -8,6 +8,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { SECRET_KEYS, PROFILE_FIELDS } = require("./vault-fill");
+const { DEFAULT_SCRIBE_INSTRUCTION } = require("./scribe");
 
 const DEFAULTS = Object.freeze({
   /**
@@ -107,6 +108,12 @@ const DEFAULTS = Object.freeze({
   scribeIntoFocus: true,
   /** Optional Scribe writing-style notes (plain text, not a skill dump). */
   writingStyle: "",
+  /**
+   * OpenWillow-class standing rewrite. Applies to every Scribe take.
+   * The spoken/typed take stays USER INSTRUCTION. Empty stored value
+   * falls back to DEFAULT_SCRIBE_INSTRUCTION at rewrite time.
+   */
+  scribeInstruction: DEFAULT_SCRIBE_INSTRUCTION,
   /** Optional Scribe personal reference (company, links). Data, not commands. */
   personalContext: "",
   /** OpenWillow-class Scribe output language. Ctrl+Alt+L toggles. */

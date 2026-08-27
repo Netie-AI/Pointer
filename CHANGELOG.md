@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Standing Scribe rewrite instruction
+
+OpenWillow-class Scribe: a persisted `scribeInstruction` applies to every
+rewrite. The spoken or typed take stays USER INSTRUCTION. Default is
+first-party English (no GPLv3 dump, no CJK in governed files). HUD field
+next to writing style. GitHub CI on this account is still a
+spending-limit cutoff (0 steps), not a product fail. No third-party MCP.
+
 ## 2026-08-27 - Tray switches Transcribe, Scribe, and Meeting
 
 OpenWillow-class tray: radio items for Agent / General / Transcribe /
