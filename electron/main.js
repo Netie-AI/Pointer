@@ -107,6 +107,10 @@ function teachScreenRegion() {
   if (lastCapture && lastCapture.region && Number(lastCapture.region.width) > 0) {
     return lastCapture.region;
   }
+  return teachDisplayBounds();
+}
+
+function teachDisplayBounds() {
   try {
     const bounds = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).bounds;
     if (bounds && Number(bounds.width) > 0) {
@@ -120,17 +124,27 @@ function teachScreenRegion() {
 
 /**
  * Measured controls for Teach. Empty on Linux, dry-run, or UIA stand-down.
- * Never clicks. A failed probe is "no points", not an invented overlay.
+ * Overlay percents are of the display (HUD is fullscreen). Probe stays in the
+ * framed crop. Never clicks. A failed probe is "no points", not invented coords.
  */
 async function measureTeachControls() {
   const region = teachScreenRegion();
+  const display = teachDisplayBounds();
+  const overlayScreen = display || region;
+  const framed = Boolean(
+    lastCapture &&
+      lastCapture.region &&
+      display &&
+      (Number(region.width) < Number(display.width) - 16 ||
+        Number(region.height) < Number(display.height) - 16)
+  );
   const ctx = uiaContext(region);
-  if (!ctx) return { controls: [], screen: region };
+  if (!ctx) return { controls: [], screen: overlayScreen, region, framed: framed };
   try {
     const controls = await listControls(ctx);
-    return { controls, screen: ctx.screen };
+    return { controls, screen: overlayScreen, region, framed: framed };
   } catch {
-    return { controls: [], screen: ctx.screen };
+    return { controls: [], screen: overlayScreen, region, framed: framed };
   }
 }
 const {

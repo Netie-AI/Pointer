@@ -7,7 +7,7 @@
  * grant Act, never emit executable actions, and never run a cloud runtime.
  */
 
-const { pointControls } = require("./uia");
+const { pointControls, rectToBoxPct, rectToPct, formatPointToken, formatBoxToken } = require("./uia");
 
 const DESKS = Object.freeze({
   teach: Object.freeze({
@@ -562,6 +562,29 @@ function shouldTeachFramedRegion(opts = {}) {
   return Boolean(opts.frameForTeach) && Boolean(opts.captured) && opts.act !== true;
 }
 
+/**
+ * Overlay percents for a framed capture. Measured from the region the user
+ * drew, not invented. Empty UIA still gets a box. Never Acts.
+ */
+function framedRegionPoint(region, display) {
+  const box = rectToBoxPct(region, display);
+  const pct = rectToPct(region, display);
+  if (!box || !pct) return null;
+  return {
+    xPct: pct.xPct,
+    yPct: pct.yPct,
+    name: "this region",
+    controlType: "Pane",
+    token: formatPointToken(pct, "this region", 0),
+    boxToken: formatBoxToken(box, "this region", 0),
+    leftPct: box.leftPct,
+    topPct: box.topPct,
+    wPct: box.wPct,
+    hPct: box.hPct,
+    via: "frame",
+  };
+}
+
 /** 1 to advance, -1 to go back, "reset", or 0. Never Acts. */
 function teachAdvance(text) {
   const q = spoken(text);
@@ -635,7 +658,7 @@ function teachRest(measured, idx) {
  * No tree => no coordinates, and vision still has to see the screen.
  * Never Acts. Never restores a floating buddy.
  */
-function teachAssist({ text, controls, screen, step, live } = {}) {
+function teachAssist({ text, controls, screen, region, framed, step, live } = {}) {
   const t = String(text || "").trim();
   const q = spoken(t);
   const adv = teachAdvance(t);
@@ -644,16 +667,22 @@ function teachAssist({ text, controls, screen, step, live } = {}) {
     /\b(walk me through|teach me|what should i click|click next|point at|on (my )?screen)\b/.test(q);
   if (!explicit && !live) return { ok: false, act: false, desk: "teach", reason: "not a teach request" };
   const want = wantedControl(t);
-  const measured = pointControls(controls, screen, { want });
+  let measured = pointControls(controls, screen, { want });
+  if (!measured.length && framed) {
+    const mark = framedRegionPoint(region || screen, screen);
+    if (mark) measured = [mark];
+  }
   const last = Math.max(0, measured.length - 1);
   const raw = Number(step);
   const idx = want
     ? 0
     : Math.min(last, Number.isInteger(raw) && raw > 0 ? raw : raw === 0 ? 0 : 0);
   const current = measured[idx];
-  const origin = measured.length
-    ? "> coordinates measured from the control tree, not invented"
-    : "> do not invent coordinates";
+  const origin = !measured.length
+    ? "> do not invent coordinates"
+    : current && current.via === "frame"
+      ? "> coordinates measured from the framed region, not invented"
+      : "> coordinates measured from the control tree, not invented";
   const roster = measured.length
     ? measured
         .map((p, i) => {
@@ -699,7 +728,7 @@ function teachAssist({ text, controls, screen, step, live } = {}) {
     kind: "walkthrough",
     id: "live-teach",
     title: measured.length ? "Live teach" : "Teach walkthrough",
-    via: measured.length ? "uia" : "none",
+    via: measured.length ? (current && current.via) || "uia" : "none",
     step: current ? idx : 0,
     remaining: current ? Math.max(0, measured.length - idx - 1) : 0,
     cue: teachCue(current, idx, measured.length),
@@ -1182,9 +1211,11 @@ function createLiveTeachPump(opts = {}) {
     try {
       const measured = spec.measure ? await spec.measure() : { controls: [], screen: null };
       const assist = teachAssist({
-        text: spec.text || "walk me through this on my screen",
+        text: spec.text || FRAME_TEACH_TEXT,
         controls: measured && measured.controls,
         screen: measured && measured.screen,
+        region: (measured && measured.region) || spec.region,
+        framed: Boolean((measured && measured.framed) || spec.framed),
         step: spec.step,
         live: true,
       });
@@ -1345,6 +1376,7 @@ module.exports = {
   scanInjectedSecrets,
   FRAME_TEACH_TEXT,
   shouldTeachFramedRegion,
+  framedRegionPoint,
   teachAdvance,
   nextTeachStep,
   deskGrounding,

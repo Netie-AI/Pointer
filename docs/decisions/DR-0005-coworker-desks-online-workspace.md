@@ -94,4 +94,5 @@ Bare `write in Word` reuses the live recap or Today plate as a draft.
 Loopback `/teach` maps measured BOX markers read-only. Public copies stay
 empty. HUD Frame / Walk arms a teach walk of the framed region (Ask,
 never Act); tray Frame stays capture for Act. Loopback `/teach` shows
-`Then:` remaining steps.
+`Then:` remaining steps. Empty UIA still boxes the framed region in
+display percents (never invented control coords).

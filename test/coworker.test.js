@@ -334,6 +334,31 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(emptyTree.skipLlm, false);
   assert.doesNotMatch(emptyTree.deliverable, /\[POINT:\s*\d/);
   assert.doesNotMatch(emptyTree.deliverable, /\[BOX:\s*\d/);
+  const framed = teachAssist({
+    text: FRAME_TEACH_TEXT,
+    controls: [],
+    screen: { x: 0, y: 0, width: 1000, height: 1000 },
+    region: { x: 200, y: 400, width: 100, height: 40 },
+    framed: true,
+  });
+  assert.strictEqual(framed.ok, true);
+  assert.strictEqual(framed.act, false);
+  assert.strictEqual(framed.skipLlm, true);
+  assert.strictEqual(framed.via, "frame");
+  assert.match(framed.deliverable, /\[BOX:20,40,10,4:1 this region\]/);
+  assert.match(framed.deliverable, /framed region/);
+  assert.match(framed.cue, /Look at this region/);
+  assert.doesNotMatch(framed.deliverable, /control tree/);
+  const unframed = teachAssist({
+    text: FRAME_TEACH_TEXT,
+    controls: [],
+    screen: { x: 0, y: 0, width: 1000, height: 1000 },
+    region: { x: 200, y: 400, width: 100, height: 40 },
+    framed: false,
+  });
+  assert.strictEqual(unframed.skipLlm, false);
+  assert.strictEqual(unframed.via, "none");
+  assert.doesNotMatch(unframed.deliverable, /\[BOX:\s*\d/);
   const fs = require("fs");
   const path = require("path");
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
@@ -730,11 +755,30 @@ async function asyncTest(name, fn) {
     await Promise.resolve();
     await Promise.resolve();
     assert.strictEqual(hits.length, 2);
+    pump.reset();
+    pump.start({
+      text: "walk me through this on my screen",
+      measure: () => ({
+        controls: [],
+        screen: { x: 0, y: 0, width: 1000, height: 1000 },
+        region: { x: 200, y: 400, width: 100, height: 40 },
+        framed: true,
+      }),
+      onAssist: (a) => hits.push(a),
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.strictEqual(hits.length, 3);
+    assert.strictEqual(hits[2].act, false);
+    assert.strictEqual(hits[2].via, "frame");
+    assert.match(hits[2].deliverable, /\[BOX:20,40,10,4:1 this region\]/);
     const fs = require("fs");
     const path = require("path");
     const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
     assert.match(main, /createLiveTeachPump/);
     assert.match(main, /liveTeachPump\.start/);
+    assert.match(main, /teachDisplayBounds/);
+    assert.match(main, /framed:/);
     assert.doesNotMatch(main.slice(main.indexOf("function publishTeachOverlay"), main.indexOf("function publishLiveMeeting") + 40), /driver\./);
   });
 

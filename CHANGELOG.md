@@ -1,3 +1,10 @@
+## 2026-08-27 - Framed Walk boxes the region without UIA
+
+HUD Walk still points when the control tree is empty: the overlay boxes
+the framed region in display percents, not invented control coords.
+UIA points stay display-relative so a crop walk lands on the HUD.
+Never Acts. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - HUD Walk frames a region then teaches it
 
 HUD Walk/Frame captures a region and starts a teach walk (Ask, never
