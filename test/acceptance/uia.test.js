@@ -192,6 +192,18 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
       assert.strictEqual(out.xPct, 1);
       assert.strictEqual(out._targetedVia, undefined);
     }),
+
+    T("dumpForeground lists named controls for computer.observe", async () => {
+      const rows = await uia.dumpForeground({
+        run: runWith([
+          { name: "Save", controlType: "Button", enabled: true, rect: rect(200, 400, 100, 40) },
+          { name: "Cancel", controlType: "Button", enabled: true, rect: rect(0, 0, 80, 30) },
+        ]),
+        screen: SCREEN,
+      });
+      assert.ok(rows.some((r) => r.name === "Save" && r.xPct === 25));
+      assert.ok(rows.some((r) => r.name === "Cancel"));
+    }),
   ];
 
   const ok = await suite.run(tests);

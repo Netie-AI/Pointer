@@ -88,6 +88,31 @@ function planFromInstruction(instruction, opts = {}) {
       actions: [{ type: "focus_hwnd", hwnd: focusHwnd[1] }],
     };
   }
+  const focusTitle = text.match(/^(?:please\s+)?focus\s*:\s*([\s\S]+)$/i);
+  if (focusTitle && focusTitle[1].trim()) {
+    const want = focusTitle[1].trim().toLowerCase();
+    const hit = (Array.isArray(opts.windows) ? opts.windows : []).find((w) => {
+      const title = String((w && w.title) || "").toLowerCase();
+      const proc = String((w && w.proc) || "").toLowerCase();
+      return title.includes(want) || proc.includes(want);
+    });
+    if (hit && hit.hwnd && String(hit.hwnd) !== "0") {
+      return {
+        ok: true,
+        source: "focus",
+        actions: [{ type: "focus_hwnd", hwnd: String(hit.hwnd) }],
+      };
+    }
+    return { ok: false, reason: "no matching window" };
+  }
+  const clickTarget = text.match(/^(?:please\s+)?click\s*:\s*([^\d][\s\S]*)$/i);
+  if (clickTarget && clickTarget[1].trim()) {
+    return {
+      ok: true,
+      source: "click",
+      actions: [{ type: "click", target: clickTarget[1].trim() }],
+    };
+  }
   const delivered = text.match(/^(?:please\s+)?deliver\s*:\s*([\s\S]+)$/i);
   if (delivered && delivered[1].trim()) {
     const plan = deliverTextActions(delivered[1].trim(), {

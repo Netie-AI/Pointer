@@ -203,6 +203,38 @@ async function findControl(label, opts = {}) {
   return { ...pct, via: "uia", name: best.candidate.name, score: best.score };
 }
 
+function listForegroundControls(candidates, opts = {}) {
+  const max = Number(opts.max) > 0 ? Number(opts.max) : 40;
+  const screenRect = opts.screen;
+  return (Array.isArray(candidates) ? candidates : [])
+    .filter((c) => c && c.name && c.rect)
+    .slice(0, max)
+    .map((c) => {
+      const row = {
+        name: String(c.name).slice(0, 80),
+        controlType: String(c.controlType || ""),
+        enabled: c.enabled !== false,
+      };
+      const pct = screenRect ? rectToPct(c.rect, screenRect) : null;
+      if (pct) {
+        row.xPct = pct.xPct;
+        row.yPct = pct.yPct;
+      }
+      return row;
+    });
+}
+
+async function dumpForeground(opts = {}) {
+  if (typeof opts.run !== "function") return [];
+  let stdout;
+  try {
+    stdout = await opts.run(buildProbeScript("observe", opts));
+  } catch {
+    return [];
+  }
+  return listForegroundControls(parseProbeOutput(stdout), opts);
+}
+
 module.exports = {
   TARGET_CONTROL_TYPES,
   MAX_CANDIDATES,
@@ -214,4 +246,6 @@ module.exports = {
   buildProbeScript,
   parseProbeOutput,
   findControl,
+  listForegroundControls,
+  dumpForeground,
 };

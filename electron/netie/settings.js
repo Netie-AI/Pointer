@@ -116,6 +116,8 @@ const DEFAULTS = Object.freeze({
    * because the screen is untrusted data and leaves the device with the LLM.
    */
   scribeScreenContext: false,
+  /** Launch Pointer at Windows sign-in (OpenWillow autostart pattern). */
+  autostart: false,
 });
 
 function defaultPath() {

@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Focus by title, named clicks, autostart
+
+`focus: notepad` restores a matching window from the observe list.
+`click: Save` aims by control name (UIA then vision). Observe can dump
+foreground UIA controls when `elements:true`. Autostart at Windows
+sign-in is a setting (OpenWillow pattern). No GPLv3 dump.
+
 ## 2026-08-27 - Live observe, Esc cancel, Scribe screen, meeting Suggest
 
 `GET /api/observe` plus MCP `computer.observe` now return the foreground

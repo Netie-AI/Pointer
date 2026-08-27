@@ -28,6 +28,7 @@ const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
 const { ensureActionCoords } = require("./netie/targeting");
+const { dumpForeground } = require("./netie/uia");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
@@ -210,9 +211,10 @@ const liveMcp = createMcpAbi({
     }),
   craft: craftHint,
   status: () => liveComputerStatus(),
-  observe: async () => {
+  observe: async (params) => {
     let foreground = null;
     let windows = [];
+    let elements = [];
     try {
       foreground = await driver.foreground();
     } catch {
@@ -223,11 +225,30 @@ const liveMcp = createMcpAbi({
     } catch {
       windows = [];
     }
+    if (params && params.elements === true) {
+      try {
+        let region = lastCapture && lastCapture.region && lastCapture.region.width ? lastCapture.region : null;
+        if (!region) {
+          const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+          region = {
+            x: display.bounds.x,
+            y: display.bounds.y,
+            width: display.bounds.width,
+            height: display.bounds.height,
+          };
+        }
+        const uia = uiaContext(region);
+        if (uia) elements = await dumpForeground({ ...uia, max: 40 });
+      } catch {
+        elements = [];
+      }
+    }
     return computerObserve({
       captureVisible: captureVisible(),
       uacc: detectUacc(),
       foreground,
       windows,
+      elements,
       delivery: publicTarget(deliveryTarget),
     });
   },
@@ -237,9 +258,16 @@ const liveMcp = createMcpAbi({
       policy: () => settings.safetyPolicy(),
       matchRecipe,
       plan: async (instruction) => {
+        let windows = [];
+        try {
+          windows = await driver.listWindows();
+        } catch {
+          windows = [];
+        }
         const local = planFromInstruction(instruction, {
           matchRecipe,
           target: deliveryTarget,
+          windows,
         });
         if (local.ok) return local;
         const planned = await eco.planActions({
@@ -836,6 +864,14 @@ function startCursorTracking() {
 function captureVisible() {
   if (process.env.NETIE_CAPTURE_VISIBLE === "1") return true;
   return settings.get("captureVisible") === true;
+}
+
+function applyAutostart() {
+  try {
+    app.setLoginItemSettings({ openAtLogin: settings.get("autostart") === true });
+  } catch {
+    /* Linux / unsupported */
+  }
 }
 
 function applyContentProtection(visible) {
@@ -3748,6 +3784,7 @@ ipcMain.handle("hud:setSettings", async (_e, payload) => {
   demoDebug.setEnabled(next.demoDebug === true);
   // Capture-visible is on by default (DR-0005). This toggle still applies live.
   applyContentProtection(captureVisible());
+  applyAutostart();
   if (next.followCursor === false) stopCursorTracking();
   else startCursorTracking();
   if (!agentPointer.enabled) {
@@ -4191,6 +4228,7 @@ app.whenReady().then(() => {
   createHud();
   setupMediaCapture();
   registerHotkey();
+  applyAutostart();
   if (process.env.NETIE_COORDINATOR !== "0" && process.env.NETIE_SMOKE !== "1") {
     liveCoordinator
       .listen({ host: "127.0.0.1", port: Number(process.env.NETIE_COORDINATOR_PORT) || 18010 })

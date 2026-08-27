@@ -153,6 +153,7 @@ function test(name, fn) {
     assert.strictEqual(DEFAULTS.dictateIntoFocus, true);
     assert.strictEqual(DEFAULTS.scribeIntoFocus, true);
     assert.strictEqual(DEFAULTS.scribeScreenContext, false);
+    assert.strictEqual(DEFAULTS.autostart, false);
   });
 
   await test("planFromInstruction uses recipes then type/click/observe", () => {
@@ -173,6 +174,14 @@ function test(name, fn) {
     assert.strictEqual(opened.actions[0].type, "open");
     const focused = planFromInstruction("focus hwnd: 99");
     assert.strictEqual(focused.actions[0].type, "focus_hwnd");
+    const byTitle = planFromInstruction("focus: notepad", {
+      windows: [{ hwnd: "77", title: "Untitled - Notepad", proc: "notepad" }],
+    });
+    assert.strictEqual(byTitle.ok, true);
+    assert.strictEqual(byTitle.actions[0].hwnd, "77");
+    const named = planFromInstruction("click: Save");
+    assert.strictEqual(named.actions[0].type, "click");
+    assert.strictEqual(named.actions[0].target, "Save");
   });
 
   await test("computer.act instruction type: runs after a green gate and approval", async () => {

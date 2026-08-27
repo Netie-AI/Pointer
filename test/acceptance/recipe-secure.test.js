@@ -33,6 +33,8 @@ async function run() {
       assert.ok(/listWindows/.test(main), "computer.observe must list live windows");
       assert.ok(/syncDictateCancelHotkey/.test(main), "Esc must cancel dictation only while listening");
       assert.ok(/scribeScreenContext/.test(main), "Scribe may attach optional screen context");
+      assert.ok(/dumpForeground/.test(main), "computer.observe may dump UIA controls");
+      assert.ok(/applyAutostart/.test(main), "OpenWillow autostart must reach login items");
       assert.ok(/buildMeetingAssist/.test(main), "meeting mode must offer Cluely-class assist");
     }),
 
