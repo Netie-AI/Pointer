@@ -11,7 +11,7 @@ your answer, and a 300ms cue when they ask), Today is
 the standing session brief, Document can reuse the live meeting recap as a
 Word draft, Security reviews injected files and never self-approves.
 Teach overlay holds the current control until `got it`. Fixed HUD chrome
-has Back / Got it (Ask, never Act). Teach cue is `N of M Label`. Recap
+has Back / Got it (Ask, never Act). Teach cue is `N of M Click Save`. Recap
 tags a weekday when heard. Teach Next cue, meeting say-this, and
 security Review live in the fixed insight panel. HUD desk chips Ask,
 never Act. Home `/api/home` lists live rooms for every desk. Loopback
