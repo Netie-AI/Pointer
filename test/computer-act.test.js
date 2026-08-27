@@ -311,6 +311,26 @@ function test(name, fn) {
     assert.strictEqual(plan.actions[0].hwnd, "12345");
     assert.strictEqual(plan.actions[1].type, "clipboard_paste");
     assert.strictEqual(publicTarget(snap).hwnd, true);
+    const { parseWindowSourceHwnd, pickWindowSource } = require("../electron/netie/delivery");
+    assert.strictEqual(parseWindowSourceHwnd("window:12345:0"), "12345");
+    const picked = pickWindowSource(
+      [
+        { id: "window:1:0", name: "Netie Pointer HUD" },
+        { id: "window:12345:0", name: "Untitled - Notepad" },
+        { id: "screen:0:0", name: "Entire Screen" },
+      ],
+      snap
+    );
+    assert.strictEqual(picked.id, "window:12345:0");
+    assert.strictEqual(
+      pickWindowSource([{ id: "window:1:0", name: "Netie Pointer HUD" }], snap),
+      null
+    );
+    const byTitle = pickWindowSource(
+      [{ id: "window:77:0", name: "Report - Word" }],
+      { hwnd: "0", title: "Word" }
+    );
+    assert.strictEqual(byTitle.id, "window:77:0");
   });
 
   await test("deliver: instruction restores the remembered hwnd then pastes", () => {

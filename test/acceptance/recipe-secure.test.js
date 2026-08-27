@@ -33,6 +33,9 @@ async function run() {
       assert.ok(/listWindows/.test(main), "computer.observe must list live windows");
       assert.ok(/syncDictateCancelHotkey/.test(main), "Esc must cancel dictation only while listening");
       assert.ok(/scribeScreenContext/.test(main), "Scribe may attach optional screen context");
+      assert.ok(/async function captureRememberedWindow/.test(main), "Scribe screen must prefer the remembered window");
+      assert.ok(/captureRememberedWindow\(/.test(main), "Scribe screen context must call captureRememberedWindow");
+      assert.ok(/pickWindowSource/.test(main), "window capture must match hwnd/title, not dump PrintWindow");
       assert.ok(/dumpForeground/.test(main), "computer.observe may dump UIA controls");
       const observeFn = main.slice(main.indexOf("observe: async (params)"));
       const observeBody = observeFn.slice(0, observeFn.indexOf("act: (params)"));

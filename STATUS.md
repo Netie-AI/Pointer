@@ -30,7 +30,9 @@
    Scribe/observe read focused selection via UIA and skip password boxes.
    Tray switches Agent/General/Transcribe/Scribe/Meeting without opening
    the HUD. Scribe has a standing rewrite instruction (HUD + settings;
-   this take stays USER INSTRUCTION). IBM Plex HUD. P-04 stays parked.
+   this take stays USER INSTRUCTION). Scribe screen context captures the
+   remembered app window, not the full display. IBM Plex HUD. P-04 stays
+   parked.
 2. **Generative tools (DR-0004).** Search then craft a hint. Coordinator
    at `127.0.0.1:18010`. Public Worker is pages only. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** No GPLv3 dump.

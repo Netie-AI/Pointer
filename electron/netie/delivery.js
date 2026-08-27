@@ -78,6 +78,32 @@ function publicTarget(target) {
   };
 }
 
+/** Electron `desktopCapturer` window id is `window:<hwnd>:<generation>`. */
+function parseWindowSourceHwnd(id) {
+  const parts = String(id || "").split(":");
+  if (parts[0] !== "window") return "";
+  return String(parts[1] || "").trim();
+}
+
+/**
+ * Pick the remembered app's window thumbnail. Skip Pointer chrome.
+ * No hwnd/title match returns null so the caller can crop the display.
+ */
+function pickWindowSource(sources, target = {}) {
+  const list = Array.isArray(sources) ? sources : [];
+  const usable = list.filter((s) => s && !isPointerChrome({ title: s.name }));
+  const hwnd = String(target.hwnd || "").trim();
+  if (hwnd && hwnd !== "0") {
+    const hit = usable.find((s) => parseWindowSourceHwnd(s.id) === hwnd);
+    if (hit) return hit;
+  }
+  const title = String(target.title || "").trim().toLowerCase();
+  if (!title) return null;
+  const exact = usable.find((s) => String(s.name || "").toLowerCase() === title);
+  if (exact) return exact;
+  return usable.find((s) => String(s.name || "").toLowerCase().includes(title)) || null;
+}
+
 module.exports = {
   POINTER_CHROME,
   isPointerChrome,
@@ -85,4 +111,6 @@ module.exports = {
   isUsableTarget,
   deliverTextActions,
   publicTarget,
+  parseWindowSourceHwnd,
+  pickWindowSource,
 };

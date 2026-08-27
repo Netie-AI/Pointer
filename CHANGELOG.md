@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Scribe screen captures the remembered window
+
+OpenWillow-class screen context: Scribe matches the remembered hwnd/title
+via Electron window sources and falls back to a display crop. Observe and
+Ask stay full-display so agents can still see the HUD. No PrintWindow
+dump. No GPLv3. GitHub CI on this account is still a spending-limit
+cutoff (0 steps), not a product fail. No third-party MCP.
+
 ## 2026-08-27 - Standing Scribe rewrite instruction
 
 OpenWillow-class Scribe: a persisted `scribeInstruction` applies to every

@@ -61,6 +61,8 @@ const {
   snapshotTarget,
   deliverTextActions,
   publicTarget,
+  isUsableTarget,
+  pickWindowSource,
 } = require("./netie/delivery");
 const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetingNotes } = require("./netie/meeting");
 const { createHoldMonitor, DICTATE_HOLD_VKS } = require("./netie/holdkey");
@@ -1316,8 +1318,33 @@ function stopTicks() {
   tickTimer = null;
 }
 
-async function captureDisplayCrop(regionLogical) {
+function finishCapture(image, region, extra = {}) {
   ensureTemp();
+  let out = image;
+  const size = out.getSize();
+  const long = Math.max(size.width, size.height);
+  if (long > 1280) {
+    const f = 1280 / long;
+    out = out.resize({
+      width: Math.round(size.width * f),
+      height: Math.round(size.height * f),
+    });
+  }
+  const png = out.toPNG();
+  const file = path.join(TEMP_DIR, `cap_${Date.now()}.png`);
+  fs.writeFileSync(file, png);
+  const dataUrl = `data:image/png;base64,${png.toString("base64")}`;
+  lastCapture = {
+    path: file,
+    dataUrl,
+    region,
+    fullScreen: extra.fullScreen === true,
+    windowTarget: extra.windowTarget === true,
+  };
+  return lastCapture;
+}
+
+async function captureDisplayCrop(regionLogical) {
   const hasRegion =
     regionLogical && regionLogical.width > 0 && regionLogical.height > 0;
   // Capture the display the region lives on (or the one the cursor is on),
@@ -1352,21 +1379,6 @@ async function captureDisplayCrop(regionLogical) {
     }
   }
 
-  // Cap long edge ~1280 like Clicky
-  const size = image.getSize();
-  const long = Math.max(size.width, size.height);
-  if (long > 1280) {
-    const f = 1280 / long;
-    image = image.resize({
-      width: Math.round(size.width * f),
-      height: Math.round(size.height * f),
-    });
-  }
-
-  const png = image.toPNG();
-  const file = path.join(TEMP_DIR, `cap_${Date.now()}.png`);
-  fs.writeFileSync(file, png);
-  const dataUrl = `data:image/png;base64,${png.toString("base64")}`;
   // A full-screen capture must record the DISPLAY as its region. Storing null
   // here left region = {0,0,0,0} in executeApproved, and driver.js gates percent
   // -> pixel conversion on `region.width`, so every xPct/yPct action failed with
@@ -1377,8 +1389,38 @@ async function captureDisplayCrop(regionLogical) {
     width: display.bounds.width,
     height: display.bounds.height,
   };
-  lastCapture = { path: file, dataUrl, region, fullScreen: !regionLogical };
-  return lastCapture;
+  return finishCapture(image, region, { fullScreen: !regionLogical });
+}
+
+/**
+ * OpenWillow-class Scribe screen: the remembered app window, not the HUD.
+ * Falls back to a display crop when hwnd/title cannot be matched.
+ */
+async function captureRememberedWindow() {
+  const target = isUsableTarget(deliveryTarget) ? deliveryTarget : null;
+  if (target) {
+    try {
+      const sources = await desktopCapturer.getSources({
+        types: ["window"],
+        thumbnailSize: { width: 1280, height: 1280 },
+      });
+      const source = pickWindowSource(sources, target);
+      const image = source && source.thumbnail;
+      if (image && typeof image.toPNG === "function") {
+        const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+        const region = {
+          x: display.bounds.x,
+          y: display.bounds.y,
+          width: display.bounds.width,
+          height: display.bounds.height,
+        };
+        return finishCapture(image, region, { fullScreen: false, windowTarget: true });
+      }
+    } catch (err) {
+      console.error("captureRememberedWindow:", err.message || err);
+    }
+  }
+  return captureDisplayCrop(null);
 }
 
 /** Ensure we have a screenshot before planning (tray-opened HUD may have none). */
@@ -1636,7 +1678,7 @@ async function runScribeApi(params) {
   if (src.dictate === true || src.useDictation === true) return usePendingDictation();
   if (settings.get("scribeScreenContext") === true) {
     try {
-      await captureDisplayCrop(null);
+      await captureRememberedWindow();
     } catch {
       /* screen is optional reference data */
     }
@@ -1677,7 +1719,7 @@ async function runScribeTurn({ instruction, source = "ask" } = {}) {
   if (!text) return { ok: false, reason: "empty scribe instruction" };
   if (settings.get("scribeScreenContext") === true) {
     try {
-      await captureDisplayCrop(null);
+      await captureRememberedWindow();
     } catch {
       /* screen is optional reference data */
     }
