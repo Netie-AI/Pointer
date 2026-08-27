@@ -1,3 +1,10 @@
+## 2026-08-27 - Meeting cue stays when HUD chrome hides
+
+HUD live cue bar keeps They asked / Say this / Also / Don't say as
+fixed top chrome when the rest of HUD hides (Ask, never Act). Not a
+bubble, not a peek orb, not a stealth overlay. P-05 and P-06 stay
+parked.
+
 ## 2026-08-27 - Teach overlay Add box stacks a drawn step
 
 Click-through teach overlay Add box lets you drag the next BOX on

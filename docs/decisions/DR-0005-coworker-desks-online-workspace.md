@@ -96,7 +96,9 @@ empty. HUD Frame / Walk arms a teach walk of the framed region (Ask,
 never Act); tray Frame stays capture for Act. Loopback `/teach` shows
 `Then:` remaining steps. Empty UIA still boxes the framed region in
 display percents (never invented control coords). Live Next / Then /
-Got it stay in the top cue bar when chat is compact. Meeting Heard lists
+Got it stay in the top cue bar when chat is compact, and that bar
+keeps They asked / Say this / Also / Don't say when the rest of HUD
+hides (never a peek orb, never a stealth overlay). Meeting Heard lists
 dates and amounts from the ring (`Friday / $40k`) plus clock times
 (`3pm` / `15:00`) in HUD and `/meeting`.
 Meeting spawn files inbox + Word follow-ons via `publishBrief` (never

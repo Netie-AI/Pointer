@@ -14,7 +14,8 @@
 2. **Coworker desks (DR-0005).** Meeting assist is a grounded stack:
    Say this / Also / Don't say. OpenVault may refine say-this in 300ms;
    timeout or ungrounded lines keep the heuristic (never invent, never
-   send, never a stealth overlay). Loopback `/` paints teach path,
+   send, never a stealth overlay). The HUD live cue bar keeps that
+   stack when the rest of chrome hides. Loopback `/` paints teach path,
    meeting card, Today plate, and filed work cards. `/teach` is a
    measured walk: drag boxes to stack steps (current hold, later
    dashed), Back/Got it Ask, never invented coords. Click-through

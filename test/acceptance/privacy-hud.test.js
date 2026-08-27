@@ -135,10 +135,17 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/id="meeting-avoid"/.test(read("electron/hud.html")), "Don't say lives in fixed insight chrome");
       assert.ok(/id="meeting-talk"/.test(read("electron/hud.html")), "You/Them talk lives in fixed insight chrome");
       assert.ok(/id="live-cue-bar"/.test(read("electron/hud.html")), "live cue bar is fixed top chrome, not a bubble");
+      assert.ok(/id="live-cue-also"/.test(read("electron/hud.html")), "Also lives on the live cue bar");
+      assert.ok(/id="live-cue-avoid"/.test(read("electron/hud.html")), "Don't say lives on the live cue bar");
       assert.ok(/id="btn-live-next"/.test(read("electron/hud.html")), "Got it lives in the top cue bar");
       const css = read("electron/hud.css");
       assert.ok(/\.live-cue-bar/.test(css), "live cue bar has chrome");
       assert.ok(!/\.hud\.chat-open \.live-cue-bar/.test(css), "live cue bar must not wait for chat");
+      assert.ok(/\.hud\.morph-hidden \.live-cue-bar/.test(css), "compact HUD still positions the cue bar");
+      assert.ok(
+        !/\.hud\.morph-hidden \.live-cue-bar[\s\S]{0,80}display:\s*none/.test(css),
+        "cue bar stays when HUD chrome hides"
+      );
       assert.ok(/id="btn-copy-cue"/.test(read("electron/hud.html")), "copy say-this is a button in the insight panel");
       const copy = js.slice(js.indexOf("const btnCopyCue"), js.indexOf('$("mode-pill")'));
       assert.ok(/hud:copyText/.test(copy), "copy uses clipboard, not Act");

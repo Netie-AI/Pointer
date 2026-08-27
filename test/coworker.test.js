@@ -1394,6 +1394,8 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /event\.turns/);
   assert.match(html, /id="live-cue-bar"/);
   assert.match(html, /id="live-cue-text"/);
+  assert.match(html, /id="live-cue-also"/);
+  assert.match(html, /id="live-cue-avoid"/);
   assert.match(html, /id="btn-live-next"/);
   assert.doesNotMatch(html, /clicky-orb|stage-orb/);
   const mainCue = main.slice(main.indexOf("function publishLiveCoworker"), main.indexOf("function publishTeachOverlay"));
@@ -1412,10 +1414,19 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.doesNotMatch(hud, /coworker-brief[\s\S]{0,80}innerHTML/);
   const css = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.css"), "utf8");
   assert.match(css, /\.live-cue-bar/);
+  assert.match(css, /\.live-cue-also/);
+  assert.match(css, /\.hud\.morph-hidden \.live-cue-bar/);
   assert.doesNotMatch(css, /chat-open \.live-cue-bar/);
+  assert.doesNotMatch(css, /\.hud\.morph-hidden \.live-cue-bar[\s\S]{0,80}display:\s*none/);
   const liveFn = hud.slice(hud.indexOf("function paintLiveBrief"), hud.indexOf("const hudSettings"));
   assert.match(liveFn, /live-cue-bar/);
+  assert.match(liveFn, /live-cue-also/);
+  assert.match(liveFn, /live-cue-avoid/);
+  assert.match(liveFn, /Don't say:/);
   assert.doesNotMatch(liveFn, /innerHTML/);
+  const moveFn = hud.slice(hud.indexOf('"pointermove"'), hud.indexOf('"pointerdown"'));
+  assert.match(moveFn, /hitChrome/);
+  assert.doesNotMatch(moveFn, /syncClickThrough\(false\)/);
   assert.match(hud, /event\.act/);
 });
 

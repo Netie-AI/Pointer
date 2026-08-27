@@ -158,6 +158,8 @@ function paintLiveBrief(event) {
   const bar = $("live-cue-bar");
   const barAsked = $("live-cue-asked");
   const barText = $("live-cue-text");
+  const barAlso = $("live-cue-also");
+  const barAvoid = $("live-cue-avoid");
   const barBack = $("btn-live-back");
   const barNext = $("btn-live-next");
   const barCopy = $("btn-live-copy");
@@ -211,6 +213,14 @@ function paintLiveBrief(event) {
       barAsked.textContent = "";
     }
     if (barText) barText.textContent = "";
+    if (barAlso) {
+      barAlso.hidden = true;
+      barAlso.textContent = "";
+    }
+    if (barAvoid) {
+      barAvoid.hidden = true;
+      barAvoid.textContent = "";
+    }
     if (barBack) barBack.hidden = true;
     if (barNext) barNext.hidden = true;
     if (barCopy) barCopy.hidden = true;
@@ -256,6 +266,14 @@ function paintLiveBrief(event) {
     barAsked.textContent = askedLine;
   }
   if (barText) barText.textContent = cueLine;
+  if (barAlso) {
+    barAlso.hidden = !also || kind === "point" || kind === "warn";
+    barAlso.textContent = also && kind === "say" ? "Also: " + also : "";
+  }
+  if (barAvoid) {
+    barAvoid.hidden = !avoid || kind === "point" || kind === "warn";
+    barAvoid.textContent = avoid && kind === "say" ? "Don't say: " + avoid : "";
+  }
   if (barBack) barBack.hidden = !(kind === "point" && cue);
   if (barNext) barNext.hidden = !(kind === "point" && cue);
   if (barCopy) {
@@ -672,8 +690,9 @@ document.addEventListener(
   "pointermove",
   (event) => {
     if (hudRoot.classList.contains("morph-hidden")) {
-      // No peek orb — use Ctrl+` / Show/Hide to restore. Ignore hover chrome.
-      syncClickThrough(false);
+      // Compact HUD: only the live cue strip is chrome. Rest stays click-through.
+      // No peek orb — Ctrl+` / Show restores the rest.
+      syncClickThrough(hitChrome(event.target));
       return;
     }
     syncClickThrough(hitChrome(event.target));
