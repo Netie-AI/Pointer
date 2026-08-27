@@ -1001,6 +1001,16 @@ if ($("btn-followups")) {
     doAsk({ kind: "followups" });
   });
 }
+if ($("btn-copy-notes")) {
+  $("btn-copy-notes").addEventListener("click", () => {
+    invoke("hud:meetingNotes", { action: "copy" });
+  });
+}
+if (notesChip) {
+  notesChip.addEventListener("click", () => {
+    invoke("hud:meetingNotes", { action: "open" });
+  });
+}
 if ($("btn-scribe-retry")) {
   $("btn-scribe-retry").addEventListener("click", () => {
     setChatOpen(true);

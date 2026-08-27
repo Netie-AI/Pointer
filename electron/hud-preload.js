@@ -39,6 +39,7 @@ const INVOKE = [
   "hud:enquireSave",
   "hud:enquireCancel",
   "hud:hideStage",
+  "hud:meetingNotes",
 ];
 
 contextBridge.exposeInMainWorld("netieHud", {

@@ -211,10 +211,12 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .hud.mode-scribe .act-button { display: none; }
 #btn-suggest,
 #btn-recap,
-#btn-followups { display: none; }
+#btn-followups,
+#btn-copy-notes { display: none; }
 .hud.mode-meeting #btn-suggest,
 .hud.mode-meeting #btn-recap,
-.hud.mode-meeting #btn-followups { display: inline-flex; }
+.hud.mode-meeting #btn-followups,
+.hud.mode-meeting #btn-copy-notes { display: inline-flex; }
 #btn-scribe-retry,
 #btn-scribe-paste { display: none; }
 .hud.mode-scribe.has-pending #btn-scribe-retry,
@@ -409,7 +411,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .hud.agent-busy .mode-pill button { pointer-events: none; }
 
 .timer, .answer-meta { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-.notes-chip { display: none; color: var(--good); font-size: 10px; font-weight: 700; }
+.notes-chip { display: none; color: var(--good); font-size: 10px; font-weight: 700; background: transparent; border: 0; padding: 0; cursor: pointer; }
 .mode-transcribe .notes-chip, .mode-meeting .notes-chip { display: inline; }
 
 .wave {

@@ -166,6 +166,7 @@ function computerStatus(opts = {}) {
       gated: true,
       api: "/api/meeting",
       notes: "GET /api/meeting?notes=1",
+      export: "GET /api/meeting?export=1",
       kinds: ["say", "recap", "followups"],
     },
     drive: {
@@ -196,6 +197,7 @@ function computerStatus(opts = {}) {
         "GET /api/observe?screenshot=1",
         "GET /api/observe?clipboard=1",
         "GET /api/meeting?notes=1",
+        "GET /api/meeting?export=1",
         "POST /api/meeting kind recap",
         "POST /api/meeting kind followups",
         "POST /api/scribe {\"retry\":true}",

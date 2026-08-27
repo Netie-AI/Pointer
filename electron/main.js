@@ -62,7 +62,7 @@ const {
   deliverTextActions,
   publicTarget,
 } = require("./netie/delivery");
-const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest } = require("./netie/meeting");
+const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetingNotes } = require("./netie/meeting");
 const { createHoldMonitor, DICTATE_HOLD_VKS } = require("./netie/holdkey");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
@@ -4292,6 +4292,44 @@ ipcMain.handle("hud:openPath", async (_e, payload) => {
   try {
     await shell.openPath(verdict.path);
     return { ok: true, path: verdict.path, display: verdict.display };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+});
+
+/**
+ * Cluely shareable notes. The live file lives in main; the renderer cannot
+ * supply a path or a paste payload through this channel.
+ */
+ipcMain.handle("hud:meetingNotes", async (_e, payload) => {
+  const action = String((payload && payload.action) || "copy").toLowerCase();
+  if (action === "open") {
+    if (!notes.file) {
+      sendHud({ type: "answer", meta: "Notes", text: "No live meeting notes yet." });
+      return { ok: false, error: "no live meeting notes" };
+    }
+    const verdict = safePath.classifyOpen(notes.file, sanctionedOpenRoots());
+    if (!verdict.ok) {
+      sendHud({ type: "answer", meta: "Refused", text: verdict.reason });
+      return { ok: false, error: verdict.reason };
+    }
+    try {
+      await shell.openPath(verdict.path);
+      return { ok: true, path: verdict.path };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  }
+  if (action !== "copy") return { ok: false, error: "unknown action" };
+  const exp = exportMeetingNotes(notes.file ? notes.tail(8000) : "");
+  if (!exp.ok) {
+    sendHud({ type: "answer", meta: "Notes", text: exp.reason });
+    return { ok: false, error: exp.reason };
+  }
+  try {
+    await driver.clipboardSet(exp.markdown);
+    sendHud({ type: "answer", meta: "Notes", text: "Meeting notes copied." });
+    return { ok: true, copied: true };
   } catch (err) {
     return { ok: false, error: String(err.message || err) };
   }

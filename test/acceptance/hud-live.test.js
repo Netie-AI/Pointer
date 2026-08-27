@@ -438,6 +438,15 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       );
     }),
 
+    T("Cluely notes: Copy notes copies from main, chip opens the live file", () => {
+      const js = read("electron/hud.js");
+      const html = read("electron/hud.html");
+      assert.ok(/hud:meetingNotes/.test(js), "Copy notes is not wired");
+      assert.ok(/action:\s*"copy"/.test(js), "Copy notes must not send renderer text");
+      assert.ok(/action:\s*"open"/.test(js), "Notes live chip must open the live file");
+      assert.ok(/id="btn-copy-notes"/.test(html), "Copy notes pill missing from HUD");
+    }),
+
     // ── #23 · attachments reach the payload ─────────────────────────────────
     T("#23 the renderer sends attachment content, not just a chip", () => {
       const js = read("electron/hud.js");

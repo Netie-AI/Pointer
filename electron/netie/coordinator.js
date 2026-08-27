@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { TOOLS, CATALOG } = require("./mcp-abi");
-const { publicMeetingNotes } = require("./meeting");
+const { publicMeetingNotes, exportMeetingNotes } = require("./meeting");
 const { publicPendingTranscript } = require("./pending-scribe");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
@@ -132,15 +132,23 @@ function createCoordinator(opts = {}) {
       res.end(JSON.stringify({ ok: true, pending: publicPendingTranscript(raw) }));
       return;
     }
-    if (req.method === "GET" && url.pathname === "/api/meeting" && queryFlag(url, "notes")) {
+    if (req.method === "GET" && url.pathname === "/api/meeting" && (queryFlag(url, "notes") || queryFlag(url, "export"))) {
       let raw = null;
       try {
         raw = typeof opts.meetingNotes === "function" ? opts.meetingNotes() : null;
       } catch {
         raw = null;
       }
+      const notes = publicMeetingNotes(raw);
+      const body = { ok: true, notes };
+      if (queryFlag(url, "export")) {
+        const exp = exportMeetingNotes(notes.text);
+        body.markdown = exp.markdown;
+        body.exported = exp.ok;
+        if (!exp.ok) body.reason = exp.reason;
+      }
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ ok: true, notes: publicMeetingNotes(raw) }));
+      res.end(JSON.stringify(body));
       return;
     }
     if (

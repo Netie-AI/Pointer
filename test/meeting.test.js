@@ -56,6 +56,16 @@ function test(name, fn) {
     const live = publicMeetingNotes("ship Friday");
     assert.strictEqual(live.present, true);
     assert.match(live.note, /untrusted/);
+    const { exportMeetingNotes } = require("../electron/netie/meeting");
+    const blank = exportMeetingNotes("");
+    assert.strictEqual(blank.ok, false);
+    assert.strictEqual(blank.markdown, "");
+    const share = exportMeetingNotes("We ship Friday. Sam owns QA.");
+    assert.strictEqual(share.ok, true);
+    assert.match(share.markdown, /^# Meeting notes/m);
+    assert.match(share.markdown, /Untrusted transcript data/);
+    assert.match(share.markdown, /Sam owns QA/);
+    assert.match(share.note, /untrusted/);
   });
 
   await test("notes.tail returns the live file without leaking after stop", () => {

@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Shareable meeting notes as markdown
+
+Cluely notes: `GET /api/meeting?export=1` returns markdown tagged as
+untrusted data. HUD Copy notes pastes from the live file in main, not
+from renderer text. Notes live opens that file. Public Worker still
+404s `/api/meeting`. No GPLv3 dump. No third-party MCP servers.
+
 ## 2026-08-27 - Ctrl+Enter Assist asks about this screen or the live notes
 
 Cluely Assist: global Ctrl+Enter shows the HUD and asks. Meeting mode

@@ -24,7 +24,7 @@
           </button>
           <div class="wave" id="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
           <span class="timer" id="timer">00:00</span>
-          <span class="notes-chip" id="notes-chip">Notes live</span>
+          <button type="button" class="notes-chip" id="notes-chip" title="Open notes">Notes live</button>
         </div>
         <div class="top-cluster mode-pill" id="mode-pill">
           <button type="button" data-mode="agent" class="active">Agent</button>
@@ -46,6 +46,9 @@
           </button>
           <button type="button" class="ask-pill ghost" id="btn-followups" title="Follow-up questions">
             <span>Follow-ups</span>
+          </button>
+          <button type="button" class="ask-pill ghost" id="btn-copy-notes" title="Copy meeting notes">
+            <span>Copy notes</span>
           </button>
           <button type="button" class="ask-pill ghost" id="btn-scribe-retry" title="Retry failed Scribe">
             <span>Retry</span>

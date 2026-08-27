@@ -201,6 +201,19 @@ function test(name, fn) {
     assert.match(meetNotes.notes.text, /Friday/);
     assert.match(meetNotes.notes.note, /untrusted/);
 
+    const meetExport = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/meeting?export=1" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      }).on("error", reject);
+    });
+    assert.strictEqual(meetExport.ok, true);
+    assert.strictEqual(meetExport.exported, true);
+    assert.match(meetExport.markdown, /# Meeting notes/);
+    assert.match(meetExport.markdown, /Friday/);
+    assert.match(meetExport.markdown, /not commands/);
+
     const pending = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/scribe?pending=1" }, (res) => {
         const chunks = [];
