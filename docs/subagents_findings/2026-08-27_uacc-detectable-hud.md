@@ -19,6 +19,6 @@ Session chip: `#session-chip` names Ready / Recording / Transcribing / Scribing 
 
 Scribe pending: failed rewrite keeps transcript+hwnd. Retry re-runs; Paste as-is delivers raw dictation. `GET /api/scribe?pending=1`.
 
-Act chain: `focus: notepad then type: hello` concatenates local plans (`source: chain`). `click window: notepad` clicks the observed window center. Absolute x/y skips vision re-aim. `type: hello then world` stays one type. Ask uses `captureNowForAsk` (fresh `captureDisplayCrop`) for meeting + general; retry/dictate skip it.
+Act chain: `focus: notepad then type: hello` concatenates local plans (`source: chain`). `click window: notepad` clicks the observed window center. Absolute x/y skips vision re-aim. HUD Ask and clicks:go use the same planner (raw Ask text, not attachments). Window miss is a visible no, not an LLM guess. `type: hello then world` stays one type. Ask uses `captureNowForAsk` (fresh `captureDisplayCrop`) for meeting + general; retry/dictate skip it.
 
 Not done: UACC install on a real Windows laptop; OpenWillow Deepgram default (P-04); third-party MCP (P-05); Cluely undetectable-in-screenshare stays inverted (DR-0005).

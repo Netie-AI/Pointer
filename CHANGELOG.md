@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - HUD Ask plans click window: locally
+
+Ask and clicks:go use the same local verb planner as MCP. Recipes still
+win. A window miss is a visible no, not an LLM guess. Plans from the
+Ask text, not attached file bodies (#23). Still Cortex-gated. GitHub CI
+on this account is still a spending-limit cutoff (0 steps), not a
+product fail. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - click window: uses observed screen rects
 
 Agents can say `click window: notepad` (also doubleclick/rightclick/hover).

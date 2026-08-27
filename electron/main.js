@@ -251,6 +251,32 @@ function dipWindowBox(win) {
     return win;
   }
 }
+
+async function planLocalInstruction(instruction) {
+  let windows = [];
+  try {
+    windows = (await driver.listWindows()).map(dipWindowBox);
+  } catch {
+    windows = [];
+  }
+  return planFromInstruction(instruction, {
+    matchRecipe,
+    target: deliveryTarget,
+    windows,
+  });
+}
+
+function localPlanReady(plan) {
+  return Boolean(plan && plan.ok && Array.isArray(plan.actions) && plan.actions.length);
+}
+
+function localPlanMiss(plan) {
+  const reason = String((plan && plan.reason) || "");
+  return Boolean(
+    reason && reason !== "no local plan for instruction" && reason !== "empty instruction"
+  );
+}
+
 function liveComputerStatus() {
   const loc = liveLocality();
   const llmModel =
@@ -381,18 +407,9 @@ const liveMcp = createMcpAbi({
       policy: () => settings.safetyPolicy(),
       matchRecipe,
       plan: async (instruction) => {
-        let windows = [];
-        try {
-          windows = (await driver.listWindows()).map(dipWindowBox);
-        } catch {
-          windows = [];
-        }
-        const local = planFromInstruction(instruction, {
-          matchRecipe,
-          target: deliveryTarget,
-          windows,
-        });
+        const local = await planLocalInstruction(instruction);
         if (local.ok) return local;
+        if (localPlanMiss(local)) return local;
         const planned = await eco.planActions({
           instruction,
           hotContext: plannerContext(instruction),
@@ -3055,6 +3072,55 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
         return { ok: false, mode: "act", intent, reason: String(err.message || err), actions: [] };
       }
     }
+    try {
+      const local = await planLocalInstruction(message);
+      if (localPlanReady(local)) {
+        showStage();
+        setPresence(PresenceEvents.THINK);
+        pushTurn("user", message);
+        sendStage({ type: "bubble", role: "user", text: message });
+        const gate = await secureBeforeAct(message, "local");
+        if (!gate.ok) {
+          setPresence(PresenceEvents.FAIL);
+          return { ok: false, mode: "act", intent, blocked: true, reason: gate.text, actions: [] };
+        }
+        const reviewed = reviewPlan(local.actions, settings.safetyPolicy());
+        const plan = {
+          ok: true,
+          blocked: false,
+          source: local.source,
+          reason: `local:${local.source || "verb"}`,
+          actions: reviewed.actions,
+          needsApproval: reviewed.needsApproval,
+          autoOnly: reviewed.autoOnly,
+        };
+        pendingPlan = plan;
+        const summary = `${local.source || "local"} · ${approvalPrompt(reviewed.actions || []).summary}`;
+        pushTurn("assistant", summary);
+        sendStage({ type: "bubble", role: "netie", text: summary });
+        const run = await maybeRunPlan(plan);
+        if (settings.get("saveAllMarkdown")) saveCurrentConversation(message.slice(0, 60), "act");
+        const failed = (run.results || []).find((r) => r && r.ok === false && !r.noop && r.skipped !== "refused");
+        return {
+          ...plan,
+          ok: !failed,
+          mode: "act",
+          intent,
+          ran: run.ran,
+          runMode: run.mode || "local",
+          run,
+          reason: failed ? (failed.message || failed.error || failed.reason) : plan.reason,
+        };
+      }
+      if (localPlanMiss(local)) {
+        setPresence(PresenceEvents.FAIL);
+        sendHud({ type: "answer", meta: "Act", text: local.reason });
+        return { ok: false, mode: "act", intent, reason: local.reason, actions: [] };
+      }
+    } catch (err) {
+      setPresence(PresenceEvents.FAIL);
+      return { ok: false, mode: "act", intent, reason: String(err.message || err), actions: [] };
+    }
   }
 
   if (intent === "ask" || intent === "code") {
@@ -3668,6 +3734,46 @@ ipcMain.handle("hud:act", async (_e, payload) => {
       runMode: run.mode || "recipe",
       reason: failed ? (failed.message || failed.error || failed.reason) : undefined,
     };
+  }
+
+  const local = await planLocalInstruction(rawMessage);
+  if (localPlanReady(local)) {
+    const gate = await secureBeforeAct(message, "local");
+    if (!gate.ok) {
+      return { ok: false, blocked: true, reason: gate.text, source: local.source };
+    }
+    const reviewed = reviewPlan(local.actions, actPolicy);
+    const plan = {
+      ok: true,
+      blocked: false,
+      source: local.source,
+      reason: `local:${local.source || "verb"}`,
+      actions: reviewed.actions,
+      needsApproval: reviewed.needsApproval,
+      autoOnly: reviewed.autoOnly,
+    };
+    pendingPlan = plan;
+    sendHud({
+      type: "answer",
+      meta: plan.needsApproval ? "Waiting for nod / approve" : `Local · ${local.source || "verb"}`,
+      text: approvalPrompt(plan.actions || []).detail,
+    });
+    sendHud({ type: "insight", text: `Local ${local.source || "verb"} (no LLM)` });
+    const run = await maybeRunPlan(plan);
+    const failed = (run.results || []).find((r) => r && r.ok === false && !r.noop && r.skipped !== "refused");
+    return {
+      ok: !failed,
+      plan,
+      run,
+      actions: plan.actions,
+      ran: run.ran,
+      runMode: run.mode || "local",
+      reason: failed ? (failed.message || failed.error || failed.reason) : undefined,
+    };
+  }
+  if (localPlanMiss(local)) {
+    sendHud({ type: "answer", meta: "Act", text: local.reason });
+    return { ok: false, reason: local.reason, source: "local" };
   }
 
   // WP-P1-SKILLS-EXEC — a catalogued skill used to produce a toast and nothing

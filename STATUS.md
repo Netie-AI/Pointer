@@ -20,10 +20,10 @@
    so Retry or Paste as-is can finish (`POST /api/scribe` retry/dictate).
    Teach LINE and PATH marks. `focus:` matches a window title; `click: Save`
    aims by name; `click window: notepad` aims at the window center.
-   Autostart is a setting. MCP `tools.list` and `GET /api/tools` return schemas.
-   `wait` / `scroll` / `doubleclick` / `rightclick` / `hover` / `replace:`
-   plan locally. `focus: notepad then type: hello` chains local verbs.
-   Ask captures a fresh screen (Clicky sees-what-you-see). Ctrl+Enter is
+   HUD Ask and MCP plan those verbs locally (still Cortex-gated).
+   Autostart is a setting. `wait` / `scroll` / `doubleclick` / `rightclick` /
+   `hover` / `replace:` plan locally. `focus: notepad then type: hello`
+   chains local verbs. Ask captures a fresh screen (Clicky sees-what-you-see). Ctrl+Enter is
    Cluely Assist (meeting say, or "what am I looking at"). Copy notes and
    `GET /api/meeting?export=1` share live markdown. Copy recap and
    `GET /api/meeting?recap=1` share the last Recap from main. MCP meeting

@@ -23,6 +23,10 @@ async function run() {
       assert.ok(/runComputerAct/.test(main), "loopback computer.act must use the gated runner");
       assert.ok(/ignoreHudMode/.test(main), "MCP act must not be muted by HUD mode");
       assert.ok(/planFromInstruction/.test(main), "computer.act must plan from an instruction");
+      assert.ok(/function planLocalInstruction/.test(main), "HUD and MCP must share one local verb planner");
+      assert.ok(/planLocalInstruction\(rawMessage\)/.test(main), "hud:act must plan local verbs from Ask text, not attachments");
+      assert.ok(/secureBeforeAct\(message,\s*"local"\)/.test(main), "local verbs must still hit Cortex");
+      assert.ok(/function localPlanMiss/.test(main), "a window miss must not fall through to the LLM planner");
       assert.ok(/runScribeTurn/.test(main), "Scribe must complete then paste");
       assert.ok(/deliverIntoTarget/.test(main), "dictation/scribe must restore the remembered window");
       assert.ok(/Control\+Alt\+Space/.test(main), "global dictation hotkey must snapshot the current app");
@@ -87,6 +91,21 @@ async function run() {
       assert.ok(/captureNowForAsk\(/.test(hudAskBody), "hud:ask must grab a fresh screenshot");
       assert.ok(/globalShortcut\.register\("Control\+Enter"/.test(main), "Cluely Assist must be a global Ctrl+Enter");
       assert.ok(/showHud\(\{\s*assist:\s*true\s*\}\)/.test(main), "Ctrl+Enter must open Ask as Assist");
+    }),
+
+    T("hud:act local verb branch calls secureBeforeAct before maybeRunPlan", () => {
+      const hudAct = main.slice(main.indexOf('ipcMain.handle("hud:act"'));
+      const localIdx = hudAct.indexOf("planLocalInstruction(rawMessage)");
+      const secureIdx = hudAct.indexOf('secureBeforeAct(message, "local")', localIdx);
+      const runIdx = hudAct.indexOf("maybeRunPlan(plan)", secureIdx);
+      assert.ok(localIdx > 0, "hud:act must call planLocalInstruction");
+      assert.ok(secureIdx > 0 && secureIdx < runIdx, "local verbs must secure before run");
+    }),
+
+    T("clicks:go local verb branch calls secureBeforeAct", () => {
+      const go = main.slice(main.indexOf('ipcMain.handle("clicks:go"'));
+      assert.ok(/planLocalInstruction\(message\)/.test(go), "clicks:go must plan local verbs");
+      assert.ok(/secureBeforeAct\(message,\s*"local"\)/.test(go), "clicks:go local ungated");
     }),
 
     T("hud:act recipe branch calls secureBeforeAct before maybeRunPlan", () => {
