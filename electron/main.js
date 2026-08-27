@@ -359,6 +359,7 @@ function publishLiveCoworker(assist) {
     asked: assist.asked || "",
     rest: assist.rest || "",
     heard: assist.heard || "",
+    turns: Array.isArray(assist.turns) ? assist.turns.slice(0, 12) : [],
     cueKind:
       assist.cueKind ||
       (assist.desk === "teach" ? "point" : assist.desk === "security" ? "warn" : "say"),

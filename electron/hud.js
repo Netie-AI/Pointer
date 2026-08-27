@@ -115,6 +115,35 @@ function cueDisplay(kind, cue) {
   if (kind === "warn") return `Review: ${cue}`;
   return `Say this: ${cue}`;
 }
+function paintMeetingTalk(event, asked) {
+  const root = $("meeting-talk");
+  if (!root) return;
+  root.replaceChildren();
+  const desk = String((event && event.desk) || "");
+  const rows = Array.isArray(event && event.turns) ? event.turns : [];
+  if (!rows.length || desk !== "meeting" || (event && event.act)) {
+    root.hidden = true;
+    return;
+  }
+  rows.forEach((row) => {
+    const text = String((row && row.text) || "").trim();
+    if (!text) return;
+    const you = row.speaker === "you";
+    const now = Boolean(row.asked) && asked && text === asked;
+    const li = document.createElement("li");
+    li.className = "talk-" + (you ? "you" : "them") + (now ? " talk-now" : "");
+    const who = document.createElement("span");
+    who.className = "talk-who";
+    who.textContent = you ? "You" : "Them";
+    const body = document.createElement("span");
+    body.className = "talk-text";
+    body.textContent = text;
+    li.appendChild(who);
+    li.appendChild(body);
+    root.appendChild(li);
+  });
+  root.hidden = !root.childNodes.length;
+}
 function paintLiveBrief(event) {
   const brief = $("coworker-brief");
   const meta = $("coworker-brief-meta");
@@ -177,6 +206,7 @@ function paintLiveBrief(event) {
     if (barCopy) barCopy.hidden = true;
     lastCueText = "";
     lastCueKind = "say";
+    paintMeetingTalk({ desk: "", turns: [] }, "");
     return;
   }
   brief.hidden = false;
@@ -212,6 +242,7 @@ function paintLiveBrief(event) {
     barCopy.hidden = !cue;
     barCopy.textContent = cueCopyLabel(kind);
   }
+  paintMeetingTalk(event, asked);
 }
 
 /** Mirrors the main-process settings the renderer needs each frame. */

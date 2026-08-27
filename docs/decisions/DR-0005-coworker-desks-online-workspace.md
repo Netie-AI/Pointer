@@ -126,5 +126,6 @@ way. `/workspace` opens a file as the working set (`id` on Ask, `this
 file` scans only that body). This session file links are
 `/workspace?id=` catalog opens (never exec). Loopback `/meeting` paints
 the You/Them talk track from the stored ring (never a cheater overlay).
+HUD insight paints the same talk in fixed chrome (never a bubble).
 Say-this reuses your overlapping line or Heard facts, never an unrelated
 last-you dump. Public POST `/api/ask` stays 404.

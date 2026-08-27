@@ -488,6 +488,24 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   border: 1px solid var(--line-soft); border-radius: 12px;
   background: color-mix(in srgb, var(--accent), transparent 88%);
 }
+.meeting-talk {
+  list-style: none; margin: 0 0 10px; padding: 0;
+  max-height: 140px; overflow: auto;
+  border: 1px solid var(--line-soft); border-radius: 12px;
+  background: color-mix(in srgb, var(--surface), #000 18%);
+}
+.meeting-talk li {
+  display: flex; gap: 8px; padding: 6px 8px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 11px; line-height: 1.4;
+}
+.meeting-talk li:last-child { border-bottom: 0; }
+.talk-who {
+  flex: 0 0 36px; font-weight: 650; color: var(--accent);
+}
+.talk-them .talk-who { color: var(--muted, #9aa3b5); }
+.talk-now { background: color-mix(in srgb, var(--accent), transparent 88%); }
+.talk-text { min-width: 0; }
 .cue-row {
   display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px;
 }

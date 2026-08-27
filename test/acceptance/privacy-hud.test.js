@@ -131,6 +131,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/paintLiveBrief/.test(js));
       assert.ok(/coworker-brief/.test(read("electron/hud.html")), "live brief lives in fixed insight chrome");
       assert.ok(/id="meeting-cue"/.test(read("electron/hud.html")), "say-this cue is fixed chrome, not a bubble");
+      assert.ok(/id="meeting-talk"/.test(read("electron/hud.html")), "You/Them talk lives in fixed insight chrome");
       assert.ok(/id="live-cue-bar"/.test(read("electron/hud.html")), "live cue bar is fixed top chrome, not a bubble");
       assert.ok(/id="btn-live-next"/.test(read("electron/hud.html")), "Got it lives in the top cue bar");
       const css = read("electron/hud.css");
@@ -146,6 +147,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(!/doAct\(\)/.test(desk), "desk chips must not Act");
       const liveFn = js.slice(js.indexOf("function paintLiveBrief"), js.indexOf("const hudSettings"));
       assert.ok(/textContent/.test(liveFn));
+      assert.ok(/paintMeetingTalk/.test(liveFn));
+      assert.ok(/event\.turns/.test(js));
       assert.ok(!/innerHTML/.test(liveFn));
     }),
 

@@ -37,6 +37,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - HUD desk chips Ask, never Act. Home paints the standing brief.
 - Standing `/today` brief from the session log. Empty is honest, not invented.
 - `spawnCoworker`: background brief, never claims pointer-act, never Acts.
+- HUD insight paints the same You/Them talk in fixed chrome (never a
+  bubble, never a cheater overlay).
 - Loopback `/meeting` paints You/Them turns from the stored ring.
   Say-this reuses your overlapping line or Heard facts, never an
   unrelated last-you dump. Never a cheater overlay.

@@ -1,3 +1,9 @@
+## 2026-08-27 - HUD paints You/Them talk in insight chrome
+
+HUD insight panel paints the stored You/Them talk track (Ask, never Act,
+never a bubble, never a cheater overlay). Say-this stays grounded.
+Public copies stay empty. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Meeting talk track; say-this stays grounded
 
 Loopback `/meeting` paints You/Them turns from the stored ring (Ask,

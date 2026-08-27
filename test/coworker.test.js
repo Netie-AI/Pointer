@@ -1152,6 +1152,9 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   const html = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");
   assert.match(html, /id="meeting-cue"/);
   assert.match(html, /id="meeting-asked"/);
+  assert.match(html, /id="meeting-talk"/);
+  assert.match(hud, /paintMeetingTalk/);
+  assert.match(hud, /event\.turns/);
   assert.match(html, /id="live-cue-bar"/);
   assert.match(html, /id="live-cue-text"/);
   assert.match(html, /id="btn-live-next"/);
@@ -1160,6 +1163,7 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(mainCue, /cue:/);
   assert.match(mainCue, /asked:/);
   assert.match(mainCue, /heard:/);
+  assert.match(mainCue, /turns:/);
   assert.match(mainCue, /cueKind/);
   assert.match(hud, /cueDisplay/);
   assert.match(hud, /Next:/);
