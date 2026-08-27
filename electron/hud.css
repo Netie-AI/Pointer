@@ -231,6 +231,8 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   align-items: baseline; gap: 8px;
 }
 .hud.mode-meeting .suggest-strip:not([hidden]) { display: inline-flex; flex-wrap: wrap; }
+.hud.mode-meeting.has-live-caption .suggest-strip { top: 118px; }
+.hud.mode-meeting .subtitle-grip { display: none; }
 .suggest-kicker {
   color: var(--muted); font-size: 10px; font-weight: 800;
   letter-spacing: 0.08em; text-transform: uppercase;

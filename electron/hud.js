@@ -81,10 +81,11 @@ const hudSettings = { autoSend: false, followCursor: true, liveLines: 5 };
 function renderSubtitle() {
   const feed = $("transcript-feed");
   const lines = liveFeed.lines().slice(-hudSettings.liveLines);
-  // LIVE subtitle bar removed from default chrome — transcripts live in insights flip.
+  // Meeting captions live in the LIVE bar as fixed chrome. Other modes keep
+  // transcripts in the insights flip so Agent boot stays a clean top bar.
   if (subtitleText) {
     if (!lines.length) {
-      subtitleText.textContent = listening || systemAudio ? "Listening…" : "";
+      subtitleText.textContent = listening || systemAudio ? "Listening..." : "";
     } else {
       subtitleText.replaceChildren();
       for (const line of lines) {
@@ -112,9 +113,10 @@ function renderSubtitle() {
       feed.appendChild(row);
     }
     if (!lines.length) {
-      feed.textContent = listening || systemAudio ? "Listening…" : "No transcripts yet.";
+      feed.textContent = listening || systemAudio ? "Listening..." : "No transcripts yet.";
     }
   }
+  syncMeetingCaption();
 }
 
 /**
@@ -235,6 +237,7 @@ function updateRecUi() {
   btnPause.disabled = !listening && !systemAudio;
   btnSystem.classList.toggle("warn-on", systemAudio);
   btnSystem.classList.toggle("active", systemAudio);
+  syncMeetingCaption();
 }
 
 function tickTimer() {
@@ -295,6 +298,16 @@ $("theme-row").addEventListener("click", (event) => {
   if (button) applyTheme(button.dataset.theme);
 });
 
+function syncMeetingCaption() {
+  if (!subtitleBar) return;
+  const show =
+    appMode === "meeting" && (systemAudio || listening || liveFeed.size > 0);
+  subtitleBar.hidden = !show;
+  subtitleBar.setAttribute("aria-hidden", show ? "false" : "true");
+  hudRoot.classList.toggle("has-live-caption", show);
+  if (show) resetSubtitlePosition();
+}
+
 function applyModeUi(mode, notesPath) {
   appMode = mode || "agent";
   // A countdown armed under the old mode must not fire under the new one —
@@ -313,6 +326,7 @@ function applyModeUi(mode, notesPath) {
     notesChip.title = notesPath;
   }
   if (appMode !== "meeting") applySuggest("");
+  syncMeetingCaption();
 }
 
 function applyPrivacy(privacy) {
@@ -1552,7 +1566,9 @@ function onHudEvent(event) {
       updateRecUi();
     }
   }
-  if (event.type === "cursor" && hudSettings.followCursor) positionSubtitle(event.x, event.y);
+  if (event.type === "cursor" && hudSettings.followCursor && appMode !== "meeting") {
+    positionSubtitle(event.x, event.y);
+  }
   if (event.type === "stt-busy") wave.classList.toggle("thinking", Boolean(event.busy));
   if (event.type === "stt-error") {
     answerMeta.textContent = event.hint ? `${event.error} — ${event.hint}` : event.error;

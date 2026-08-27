@@ -11,7 +11,7 @@ Shipped: settings v3 captureVisible=true; uacc.js skill catalog; GET/POST /api/c
 
 Observe PNG/clipboard: live `computer.observe` captures `captureDisplayCrop` when `screenshot:true` and `driver.clipboardGet` when `clipboard:true`. Loopback `GET /api/observe?screenshot=1&clipboard=1` forwards those flags. Clipboard is tagged untrusted data. Windows and foreground include x y width height plus center cx cy (GetWindowRect, DIP in main). PATH tokens draw click-through polylines. Overlay now fires for LINE/PATH-only answers, not just POINT.
 
-Meeting: Recap and Follow-ups pills in fixed top chrome. `computer.meeting_assist` `kind` say/recap/followups. `GET /api/meeting?notes=1` returns live notes as untrusted data (no Cortex hop). Copy recap and `GET /api/meeting?recap=1` share the last Recap from main. Copy say and `GET /api/meeting?say=1` share the last Suggest/Say from main.
+Meeting: Recap and Follow-ups pills in fixed top chrome. `computer.meeting_assist` `kind` say/recap/followups. `GET /api/meeting?notes=1` returns live notes as untrusted data (no Cortex hop). Copy recap and `GET /api/meeting?recap=1` share the last Recap from main. Copy say and `GET /api/meeting?say=1` share the last Suggest/Say from main. Meeting LIVE captions are fixed chrome (system audio only, no cursor-follow).
 
 Privacy chip: `#privacy-chip` in fixed top chrome names On device / STT leaves / LLM leaves / STT+LLM leave. Empty STT/LLM URLs resolve to loopback before labeling. `computer.status.privacy` matches. Not an orb.
 

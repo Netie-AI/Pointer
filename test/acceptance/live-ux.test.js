@@ -178,6 +178,15 @@ const UPSTREAM_NOISE =
       assert.ok(/askInput\.value = existing/.test(body), "…it goes to the composer instead");
     }),
 
+    T("meeting LIVE captions stay put and ignore the cursor", async () => {
+      const js = read("electron/hud.js");
+      assert.ok(/function syncMeetingCaption/.test(js), "meeting captions missing");
+      assert.ok(
+        /event\.type === "cursor"[^;]+appMode !== "meeting"/.test(js),
+        "cursor-follow must not run in Meeting mode"
+      );
+    }),
+
     T("speech lands in the Ask box whether or not auto-send is on", async () => {
       const js = read("electron/hud.js");
       const block = js.slice(js.indexOf('if (event.type === "transcript")'));

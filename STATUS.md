@@ -28,8 +28,8 @@
    `GET /api/meeting?export=1` share live markdown. Copy recap / Copy say
    and `?recap=1` / `?say=1` share the last Recap or Say from main. MCP meeting
    assist captures a fresh screen unless `screenshot: false` (live suggest
-   opts out). Meeting live Say line refreshes as notes grow (fail-closed).
-   Follow-ups land as clickable Ask chips (Cortex gated).
+   opts out). Live Say refreshes as notes grow. Meeting LIVE captions are
+   fixed chrome, not cursor-following. Follow-ups land as clickable Ask chips (Cortex gated).
    Scribe/observe read focused selection via UIA and skip password boxes.
    Tray switches Agent/General/Transcribe/Scribe/Meeting without opening
    the HUD. Scribe has a standing rewrite instruction (HUD + settings;

@@ -453,6 +453,22 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/action:\s*"say"/.test(js), "Copy say must not send renderer text");
     }),
 
+    T("Cluely meeting LIVE captions are fixed chrome, not cursor-following", () => {
+      const js = read("electron/hud.js");
+      const css = read("electron/hud.css");
+      const html = read("electron/hud.html");
+      assert.ok(/function syncMeetingCaption/.test(js), "meeting captions must sync visibility");
+      assert.ok(/subtitleBar\.hidden = !show/.test(js), "Agent boot must keep the LIVE bar hidden");
+      assert.ok(
+        /appMode !== "meeting"/.test(js) && /positionSubtitle\(event\.x/.test(js),
+        "cursor events must not drive meeting captions"
+      );
+      assert.ok(/has-live-caption/.test(js), "caption state must be a HUD class, not an orb");
+      assert.ok(/\.hud\.mode-meeting \.subtitle-grip/.test(css), "meeting captions drop the drag grip");
+      assert.ok(/has-live-caption \.suggest-strip/.test(css), "Say strip must sit below LIVE captions");
+      assert.ok(/id="subtitle-bar"/.test(html) && /hidden/.test(html), "LIVE bar ships hidden");
+    }),
+
     T("Cluely follow-ups become clickable Ask chips, not raw HTML", () => {
       const items = live.parseFollowupItems(
         "1. What is the timeline for Friday?\n2. Who owns QA this week?\nNot a question\n- Can we ship without Sam?"

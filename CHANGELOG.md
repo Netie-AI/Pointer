@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Meeting LIVE captions as fixed chrome
+
+Cluely-class captions: in Meeting mode the LIVE bar shows system-audio
+transcripts under the top bar. Agent boot stays empty. No cursor-follow
+and no drag grip in meeting (DR-0002). Insights still keep the roll.
+GitHub CI on this account is still a spending-limit cutoff (0 steps),
+not a product fail. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - Copy last meeting Say from main
 
 Cluely-class Copy say copies the last Suggest/Say from main, not the
