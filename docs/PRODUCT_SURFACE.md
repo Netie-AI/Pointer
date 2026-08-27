@@ -32,7 +32,8 @@ teach path, meeting say-this card, Today plate, and filed inbox/Word/security
 work cards. Loopback host pages keep They asked / Heard / Next in sticky chrome
 (Back / Got it Ask, never Act). Loopback
 `/teach` draws a read-only box map from measured markers and Back / Got
-it Ask the next step on loopback (never Act). Copy next / Copy say-this
+it Ask the next step on loopback (never Act). Draw around a control to
+stack a BOX. Copy next / Copy say-this
 copy the cue line. Loopback `/meeting` Ask chips file an unsent follow-up
 and a Word draft from the stored transcript (never send, never a `.docx`,
 teach walks stay on `/teach`). Loopback sticky chrome has a fixed Ask bar

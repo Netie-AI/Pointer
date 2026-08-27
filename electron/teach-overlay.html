@@ -33,6 +33,21 @@
       }
       #walk-chrome.show { display: inline-flex; }
       body.draw { pointer-events: auto; cursor: crosshair; }
+      #draw-stroke {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 3;
+        pointer-events: none;
+      }
+      #draw-stroke polyline {
+        fill: none;
+        stroke: #9ad;
+        stroke-width: 0.55;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
       #draw-ghost {
         position: absolute;
         z-index: 3;
@@ -127,8 +142,9 @@
       <p id="walk-then" hidden></p>
       <button type="button" id="walk-back" data-q="back">Back</button>
       <button type="button" id="walk-next" data-q="got it, next">Got it</button>
-      <button type="button" id="walk-draw">Add box</button>
+      <button type="button" id="walk-draw">Draw</button>
     </div>
+    <svg id="draw-stroke" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
     <div id="draw-ghost" class="point-mark point-box" hidden></div>
     <div id="point-layer" aria-hidden="true"></div>
     <script>
@@ -194,13 +210,21 @@
       }
 
       const ghost = document.getElementById("draw-ghost");
+      const strokeSvg = document.getElementById("draw-stroke");
       let drawing = false;
       let drag = null;
+
+      function clearStroke() {
+        if (!strokeSvg) return;
+        while (strokeSvg.firstChild) strokeSvg.removeChild(strokeSvg.firstChild);
+        strokeSvg.hidden = true;
+      }
 
       function setDraw(on) {
         drawing = Boolean(on);
         document.body.classList.toggle("draw", drawing);
         if (ghost) ghost.hidden = true;
+        clearStroke();
         drag = null;
         if (api && typeof api.invoke === "function") {
           api.invoke("teach-overlay:setIgnoreMouse", { ignore: !drawing && !mouseOverChrome });
@@ -216,15 +240,55 @@
         };
       }
 
+      function pushStroke(pts, p) {
+        const last = pts[pts.length - 1];
+        if (!last) {
+          pts.push(p);
+          return;
+        }
+        const dx = p.x - last.x;
+        const dy = p.y - last.y;
+        if (dx * dx + dy * dy < 0.12) return;
+        if (pts.length >= 80) pts[pts.length - 1] = p;
+        else pts.push(p);
+      }
+
+      function paintStroke(pts) {
+        if (!strokeSvg) return;
+        while (strokeSvg.firstChild) strokeSvg.removeChild(strokeSvg.firstChild);
+        if (!pts || pts.length < 2) {
+          strokeSvg.hidden = true;
+          return;
+        }
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+        let points = "";
+        for (let i = 0; i < pts.length; i++) {
+          points += (i ? " " : "") + pts[i].x + "," + pts[i].y;
+        }
+        line.setAttribute("points", points);
+        strokeSvg.appendChild(line);
+        strokeSvg.hidden = false;
+      }
+
       function paintGhost() {
         if (!drag || !ghost) return;
-        const left = Math.min(drag.x0, drag.x1);
-        const top = Math.min(drag.y0, drag.y1);
-        ghost.style.left = left + "%";
-        ghost.style.top = top + "%";
-        ghost.style.width = Math.abs(drag.x1 - drag.x0) + "%";
-        ghost.style.height = Math.abs(drag.y1 - drag.y0) + "%";
+        const pts = drag.stroke || [];
+        let x0 = drag.x0;
+        let y0 = drag.y0;
+        let x1 = drag.x1;
+        let y1 = drag.y1;
+        for (let i = 0; i < pts.length; i++) {
+          x0 = Math.min(x0, pts[i].x);
+          y0 = Math.min(y0, pts[i].y);
+          x1 = Math.max(x1, pts[i].x);
+          y1 = Math.max(y1, pts[i].y);
+        }
+        ghost.style.left = x0 + "%";
+        ghost.style.top = y0 + "%";
+        ghost.style.width = Math.abs(x1 - x0) + "%";
+        ghost.style.height = Math.abs(y1 - y0) + "%";
         ghost.hidden = false;
+        paintStroke(pts);
       }
 
       function onAdvance(ev) {
@@ -245,7 +309,7 @@
         if (!drawing || (ev.button != null && ev.button !== 0)) return;
         if (ev.target && ev.target.closest && ev.target.closest(".chrome")) return;
         const p = pctFromEvent(ev);
-        drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+        drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y, stroke: [p] };
         paintGhost();
         ev.preventDefault();
       });
@@ -256,15 +320,18 @@
         const p = pctFromEvent(ev);
         drag.x1 = p.x;
         drag.y1 = p.y;
+        pushStroke(drag.stroke, p);
         paintGhost();
       }, true);
       function endDrag() {
         if (!drawing || !drag) return;
-        const box = { x0: drag.x0, y0: drag.y0, x1: drag.x1, y1: drag.y1 };
+        const stroke = drag.stroke ? drag.stroke.slice() : [];
+        const box = { x0: drag.x0, y0: drag.y0, x1: drag.x1, y1: drag.y1, stroke: stroke };
         drag = null;
         if (ghost) ghost.hidden = true;
+        clearStroke();
         setDraw(false);
-        if (Math.abs(box.x1 - box.x0) < 0.4 || Math.abs(box.y1 - box.y0) < 0.4) return;
+        if (stroke.length < 2) return;
         if (api && typeof api.invoke === "function") {
           api.invoke("teach-overlay:frame", { region: box, act: false });
         }
@@ -273,6 +340,7 @@
       document.addEventListener("pointercancel", function () {
         drag = null;
         if (ghost) ghost.hidden = true;
+        clearStroke();
         setDraw(false);
       });
       document.addEventListener("keydown", function (ev) {
@@ -289,6 +357,8 @@
         });
       }
       if (/(?:^|[?&])demo=1(?:&|$)/.test(location.search)) {
+        document.documentElement.style.background = "#243044";
+        document.body.style.background = "#243044";
         paint([
           { leftPct: 12, topPct: 18, wPct: 28, hPct: 22, label: "1 region 1" },
           { leftPct: 48, topPct: 42, wPct: 30, hPct: 24, label: "2 region 2", later: true },
@@ -297,6 +367,13 @@
           cue: "1 of 2 Look at region 1",
           rest: "Look at region 2",
         });
+        paintStroke([
+          { x: 10, y: 16 },
+          { x: 42, y: 16 },
+          { x: 44, y: 41 },
+          { x: 10, y: 42 },
+          { x: 10, y: 16 },
+        ]);
       }
     </script>
   </body>

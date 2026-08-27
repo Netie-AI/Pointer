@@ -634,6 +634,26 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(corners.ok, true);
   assert.strictEqual(corners.act, false);
   assert.match(corners.deliverable, /\[BOX:20,40,10,10:1 region 1\]/);
+  const strokeBox = frameLiveTeach(createWorkspace({ clock: () => 10.5 }), {
+    stroke: [
+      { x: 20, y: 40 },
+      { x: 30, y: 40 },
+      { x: 30, y: 50 },
+      { x: 20, y: 50 },
+      { x: 20, y: 42 },
+    ],
+  });
+  assert.strictEqual(strokeBox.ok, true);
+  assert.strictEqual(strokeBox.act, false);
+  assert.match(strokeBox.deliverable, /\[BOX:20,40,10,10:1 region 1\]/);
+  const skinny = frameLiveTeach(createWorkspace({ clock: () => 10.6 }), {
+    stroke: [
+      { x: 10, y: 10 },
+      { x: 40, y: 10.1 },
+    ],
+  });
+  assert.strictEqual(skinny.ok, false);
+  assert.strictEqual(skinny.act, false);
   const stackWs = createWorkspace({ clock: () => 11 });
   const firstBox = frameLiveTeach(stackWs, {
     leftPct: 20,
@@ -772,7 +792,10 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachPreload, /teach-overlay:frame/);
   assert.doesNotMatch(teachPreload, /hud:act/);
   assert.match(teachOverlay, /id="walk-draw"/);
-  assert.match(teachOverlay, /Add box/);
+  assert.match(teachOverlay, />Draw</);
+  assert.match(teachOverlay, /id="draw-stroke"/);
+  assert.match(teachOverlay, /createElementNS/);
+  assert.match(teachOverlay, /stroke:/);
   assert.match(teachOverlay, /teach-overlay:frame/);
   const overlayAsk = main.slice(main.indexOf('ipcMain.handle("teach-overlay:ask"'), main.indexOf('ipcMain.handle("hud:setMode"'));
   assert.match(overlayAsk, /teachAdvance/);
@@ -1311,13 +1334,14 @@ test("desk chips ask, never act", () => {
   assert.match(hostTeach, /id="teach-next"/);
   assert.match(hostTeach, /id="teach-back"/);
   assert.match(hostTeach, /id="cue-copy"/);
-  assert.match(hostTeach, /Drag a box/);
+  assert.match(hostTeach, /Draw around/);
   const hostApp = fs.readFileSync(path.join(__dirname, "..", "host", "app.js"), "utf8");
   assert.match(hostApp, /got it, next/);
   assert.match(hostApp, /wireTeachAdvance/);
   assert.match(hostApp, /wireTeachFrame/);
   assert.match(hostApp, /postTeachFrame/);
-  assert.match(hostApp, /Drag another box to add a step/);
+  assert.match(hostApp, /Draw another BOX to add a step/);
+  assert.match(hostApp, /stroke:/);
   assert.match(hostApp, /paintChrome/);
   assert.match(hostApp, /live-cue-next/);
   assert.doesNotMatch(hostApp, /innerHTML/);

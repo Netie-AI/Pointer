@@ -17,11 +17,11 @@
    send, never a stealth overlay). The HUD live cue bar keeps that
    stack when the rest of chrome hides. Loopback `/` paints teach path,
    meeting card, Today plate, and filed work cards. `/teach` is a
-   measured walk: drag boxes to stack steps (current hold, later
-   dashed), Back/Got it Ask, never invented coords. Click-through
-   BOX overlay stays on the display when HUD hides, with fixed
-   Next / Then / Back / Got it chrome, plus Add box to stack a
-   drawn step (Ask, never a buddy).
+   measured walk: draw around a control to stack BOX steps (current
+   hold, later dashed), Back/Got it Ask, never invented coords.
+   Click-through overlay stays on the display when HUD hides, with
+   fixed Next / Then / Back / Got it chrome, plus Draw for a freehand
+   stroke that stores a BOX (Ask, never a buddy).
    This session links `/workspace?id=` (never send, never a .docx, never
    Act). Public catalog empty. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.

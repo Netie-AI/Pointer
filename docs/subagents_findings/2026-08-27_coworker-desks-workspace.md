@@ -38,11 +38,12 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - Standing `/today` brief from the session log. Empty is honest, not invented.
 - `spawnCoworker`: background brief, never claims pointer-act, never Acts.
 - Loopback `/teach` paints a large walk stage from measured BOX/POINT
-  (Next/Then on the stage, never invented coords, never Act). Drag
-  boxes on that stage to stack numbered regions in display percents
-  (current hold, later dashed, cap 8). A click-through laptop overlay
-  paints that walk on the display when HUD hides, with fixed Next / Then /
-  Back / Got it Ask and Add box to stack a drawn step (never a buddy).
+  (Next/Then on the stage, never invented coords, never Act). Draw
+  around a control on that stage to stack numbered BOX regions in
+  display percents (current hold, later dashed, cap 8). A click-through
+  laptop overlay paints that walk on the display when HUD hides, with
+  fixed Next / Then / Back / Got it Ask and Draw for a freehand stroke
+  that stores a BOX (never a buddy).
 - HUD insight paints the same You/Them talk in fixed chrome (never a
   bubble, never a cheater overlay). The live cue bar keeps They asked /
   Say this / Also / Don't say when the rest of HUD chrome hides.

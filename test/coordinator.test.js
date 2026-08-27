@@ -362,7 +362,7 @@ function test(name, fn) {
     assert.match(teachPage.body, /id="teach-next"/);
     assert.match(teachPage.body, /id="teach-back"/);
     assert.match(teachPage.body, /Walk path/);
-    assert.match(teachPage.body, /Drag a box/);
+    assert.match(teachPage.body, /Draw around/);
     const form = require("../electron/netie/coworker-desks").teachAssist({
       text: "walk me through this on my screen",
       controls: [

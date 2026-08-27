@@ -1,3 +1,10 @@
+## 2026-08-27 - Teach Draw is a freehand stroke that stores a BOX
+
+Click-through teach overlay Draw traces a stroke; Pointer stores the
+bounding BOX (current hold, later dashed). Tiny scratches fail closed.
+Cap 8. Loopback `/teach` draws the same way. Never Act. Not a buddy,
+not a ring, not a stealth meeting overlay. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Meeting cue stays when HUD chrome hides
 
 HUD live cue bar keeps They asked / Say this / Also / Don't say as

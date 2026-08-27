@@ -1342,12 +1342,46 @@ function framedRegionPoint(region, display) {
   };
 }
 
+const MAX_TEACH_STROKE = 80;
+
+/**
+ * Clicky-shaped freehand: the human's stroke, Pointer stores the
+ * bounding BOX. Tiny or one-axis scratches fail closed. Never Act.
+ */
+function boundsFromStroke(stroke) {
+  if (!Array.isArray(stroke) || stroke.length < 2) return null;
+  const limit = Math.min(stroke.length, MAX_TEACH_STROKE);
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  let n = 0;
+  for (let i = 0; i < limit; i++) {
+    const p = stroke[i];
+    const x = Number(p && (p.x != null ? p.x : p.xPct));
+    const y = Number(p && (p.y != null ? p.y : p.yPct));
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const cx = Math.max(0, Math.min(100, x));
+    const cy = Math.max(0, Math.min(100, y));
+    x0 = Math.min(x0, cx);
+    y0 = Math.min(y0, cy);
+    x1 = Math.max(x1, cx);
+    y1 = Math.max(y1, cy);
+    n += 1;
+  }
+  if (n < 2) return null;
+  return clipBox(x0, y0, x1 - x0, y1 - y0);
+}
+
 /**
  * Percents the human drew on /teach. Not invented. Clicky-shaped
  * freehand, Pointer rules: a BOX, never a buddy, never Act.
  */
 function parseTeachFrame(spec) {
   if (!spec || typeof spec !== "object") return null;
+  if (Array.isArray(spec.stroke) && spec.stroke.length) {
+    return boundsFromStroke(spec.stroke);
+  }
   let left = Number(spec.leftPct);
   let top = Number(spec.topPct);
   let w = Number(spec.wPct);

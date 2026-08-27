@@ -863,6 +863,8 @@ function wireTeachFrame(map, apply) {
   map.dataset.framed = "1";
   let drag = null;
   let ghost = null;
+  let strokeSvg = null;
+  let strokeLine = null;
   function pctFromEvent(ev) {
     const r = map.getBoundingClientRect();
     const w = r.width || 1;
@@ -872,24 +874,64 @@ function wireTeachFrame(map, apply) {
       y: Math.max(0, Math.min(100, ((ev.clientY - r.top) / h) * 100)),
     };
   }
+  function pushStroke(pts, p) {
+    const last = pts[pts.length - 1];
+    if (!last) {
+      pts.push(p);
+      return;
+    }
+    const dx = p.x - last.x;
+    const dy = p.y - last.y;
+    if (dx * dx + dy * dy < 0.12) return;
+    if (pts.length >= 80) pts[pts.length - 1] = p;
+    else pts.push(p);
+  }
+  function ensureStroke() {
+    if (strokeSvg) return;
+    strokeSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    strokeSvg.setAttribute("class", "teach-map-stroke");
+    strokeSvg.setAttribute("viewBox", "0 0 100 100");
+    strokeSvg.setAttribute("preserveAspectRatio", "none");
+    strokeLine = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    strokeSvg.appendChild(strokeLine);
+    map.appendChild(strokeSvg);
+  }
   function paintGhost() {
     if (!drag || !ghost) return;
-    const left = Math.min(drag.x0, drag.x1);
-    const top = Math.min(drag.y0, drag.y1);
-    ghost.style.left = left + "%";
-    ghost.style.top = top + "%";
-    ghost.style.width = Math.abs(drag.x1 - drag.x0) + "%";
-    ghost.style.height = Math.abs(drag.y1 - drag.y0) + "%";
+    const pts = drag.stroke || [];
+    let x0 = drag.x0;
+    let y0 = drag.y0;
+    let x1 = drag.x1;
+    let y1 = drag.y1;
+    for (let i = 0; i < pts.length; i++) {
+      x0 = Math.min(x0, pts[i].x);
+      y0 = Math.min(y0, pts[i].y);
+      x1 = Math.max(x1, pts[i].x);
+      y1 = Math.max(y1, pts[i].y);
+    }
+    ghost.style.left = x0 + "%";
+    ghost.style.top = y0 + "%";
+    ghost.style.width = Math.abs(x1 - x0) + "%";
+    ghost.style.height = Math.abs(y1 - y0) + "%";
     ghost.hidden = false;
+    if (strokeLine && pts.length >= 2) {
+      let points = "";
+      for (let i = 0; i < pts.length; i++) {
+        points += (i ? " " : "") + pts[i].x + "," + pts[i].y;
+      }
+      strokeLine.setAttribute("points", points);
+      strokeSvg.hidden = false;
+    }
   }
   map.addEventListener("pointerdown", function (ev) {
     if (ev.button != null && ev.button !== 0) return;
     const p = pctFromEvent(ev);
-    drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+    drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y, stroke: [p] };
     if (!ghost) {
       ghost = el("div", "teach-map-box drag");
       map.appendChild(ghost);
     }
+    ensureStroke();
     paintGhost();
     if (map.setPointerCapture) map.setPointerCapture(ev.pointerId);
     ev.preventDefault();
@@ -899,20 +941,24 @@ function wireTeachFrame(map, apply) {
     const p = pctFromEvent(ev);
     drag.x1 = p.x;
     drag.y1 = p.y;
+    pushStroke(drag.stroke, p);
     paintGhost();
   });
   function endDrag() {
     if (!drag) return;
-    const box = { x0: drag.x0, y0: drag.y0, x1: drag.x1, y1: drag.y1 };
+    const stroke = drag.stroke ? drag.stroke.slice() : [];
+    const box = { x0: drag.x0, y0: drag.y0, x1: drag.x1, y1: drag.y1, stroke: stroke };
     drag = null;
     if (ghost) ghost.hidden = true;
-    if (Math.abs(box.x1 - box.x0) < 0.4 || Math.abs(box.y1 - box.y0) < 0.4) return;
+    if (strokeSvg) strokeSvg.hidden = true;
+    if (stroke.length < 2) return;
     postTeachFrame(box, apply);
   }
   map.addEventListener("pointerup", endDrag);
   map.addEventListener("pointercancel", function () {
     drag = null;
     if (ghost) ghost.hidden = true;
+    if (strokeSvg) strokeSvg.hidden = true;
   });
 }
 
@@ -932,12 +978,12 @@ function paintTeachMap(root, m, opts) {
   map.setAttribute("role", draw ? "application" : "img");
   const cue = String((m && m.cue) || "").trim();
   const rest = String((m && m.rest) || "").trim();
-  map.setAttribute("aria-label", cue ? "Next: " + cue : draw ? "Drag a box on this stage. Never Act." : "Teach walk");
+  map.setAttribute("aria-label", cue ? "Next: " + cue : draw ? "Draw around a control on this stage. Never Act." : "Teach walk");
   if (draw) {
     const hint = el("p", boxes.length ? "teach-map-hint add" : "teach-map-hint");
     hint.textContent = boxes.length
-      ? "Drag another box to add a step."
-      : "Drag a box on this stage. Pointer will not click.";
+      ? "Draw another BOX to add a step."
+      : "Draw around a control. Pointer stores a BOX and will not click.";
     map.appendChild(hint);
   }
   if (cue) {
