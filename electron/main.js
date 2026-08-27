@@ -308,6 +308,7 @@ function publishBrief(assist) {
       cue: assist.cue || "",
       asked: assist.asked || "",
       rest: assist.rest || "",
+      heard: assist.heard || "",
     });
   } catch {
     return null;
@@ -356,6 +357,7 @@ function publishLiveCoworker(assist) {
     cue: assist.cue || "",
     asked: assist.asked || "",
     rest: assist.rest || "",
+    heard: assist.heard || "",
     cueKind:
       assist.cueKind ||
       (assist.desk === "teach" ? "point" : assist.desk === "security" ? "warn" : "say"),
@@ -370,7 +372,9 @@ function publishLiveCoworker(assist) {
         ? `Review: ${assist.cue}`
         : assist.asked
           ? `They asked: ${assist.asked}`
-          : assist.desk === "today" && assist.cue
+          : assist.heard
+            ? `Heard: ${assist.heard}`
+            : assist.desk === "today" && assist.cue
             ? `Plate: ${assist.cue}`
             : assist.cue || "";
   if (line) sendHudQuiet({ type: "insight", text: line.slice(0, 240) });

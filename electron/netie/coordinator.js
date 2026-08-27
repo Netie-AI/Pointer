@@ -127,6 +127,7 @@ function createCoordinator(opts = {}) {
         cue: got.ok ? String(got.artifact.cue || "") : "",
         asked: got.ok ? String(got.artifact.asked || "") : "",
         rest: got.ok ? String(got.artifact.rest || "") : "",
+        heard: got.ok ? String(got.artifact.heard || "") : "",
         deliverable: got.ok ? String(got.artifact.body || "") : "",
         markers,
         artifact: got.ok ? got.artifact : null,
@@ -142,6 +143,7 @@ function createCoordinator(opts = {}) {
       cue: got.ok ? String(got.artifact.cue || "") : "",
       asked: got.ok ? String(got.artifact.asked || "") : "",
       rest: got.ok ? String(got.artifact.rest || "") : "",
+      heard: got.ok ? String(got.artifact.heard || "") : "",
       deliverable: got.ok ? String(got.artifact.body || "") : "",
       title: got.ok && got.artifact.title ? got.artifact.title : fallbackTitle,
     };

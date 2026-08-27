@@ -12,10 +12,9 @@
    `/workspace`). Public Worker is the same catalog; `/mcp` stays on
    the laptop. P-05 parked.
 2. **Coworker desks (DR-0005).** HUD Walk/Frame walks the framed region
-   (Ask, never Act). Live Next/Then/Got it stays in the top bar with
-   chat closed. Empty UIA still boxes the frame. `/teach` shows Then:.
-   Bare spawn plates Today. Public catalog empty. P-06 parked. GitHub
-   Actions blocked on org billing.
+   (Ask, never Act). Live Next/Then/They asked/Heard/Got it stay in the
+   top bar with chat closed. Empty UIA still boxes the frame. Public
+   catalog empty. P-06 parked. GitHub Actions blocked on org billing.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

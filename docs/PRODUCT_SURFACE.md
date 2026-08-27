@@ -8,7 +8,8 @@ never invented; overlay shows the current step only; fields then primary
 CTA; `Type in` / `Click` cue; `Then:` remaining steps; say `got it` to
 advance), Meeting recaps an
 armed transcript (You/Them lines, weekday tags, They asked chrome, a
-speakable say-this from your answer, and a 300ms cue when they ask), Today
+speakable say-this from your answer, a Heard strip of dates/amounts from
+the ring, and a 300ms cue when they ask), Today
 is the standing session brief with On your plate from live commitments,
 Document reuses the live recap or Today plate on a bare `write in Word`
 (still not a `.docx` without Cortex), Security

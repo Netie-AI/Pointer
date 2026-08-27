@@ -153,6 +153,7 @@ function test(name, fn) {
       body: "# Meeting brief\n## Commitments\n- You [Friday]: I will send it Friday.",
       cue: "I'll send it Friday.",
       asked: "What is the launch date?",
+      heard: "Friday / $40k",
     });
     const meeting = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/meeting" }, (res) => {
@@ -166,6 +167,7 @@ function test(name, fn) {
     assert.strictEqual(meeting.body.exec, false);
     assert.match(meeting.body.cue, /Friday/);
     assert.match(meeting.body.asked, /launch date/);
+    assert.match(meeting.body.heard, /Friday/);
     const meetingPage = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/meeting" }, (res) => {
         const chunks = [];
@@ -176,6 +178,7 @@ function test(name, fn) {
     assert.strictEqual(meetingPage.status, 200);
     assert.match(meetingPage.body, /meeting-brief/);
     assert.match(meetingPage.body, /meeting-asked-web/);
+    assert.match(meetingPage.body, /meeting-heard-web/);
     c.workspace.put({
       id: "live-teach",
       title: "Live teach",

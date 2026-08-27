@@ -190,6 +190,43 @@ function looksDecision(line) {
   return /\b(decided|decision|agreed|we'll go with|going with|locked in|lock it in)\b/i.test(line);
 }
 
+const WHEN_RE = /\b(today|tomorrow|(?:mon|tues|wednes|thurs|fri|satur|sun)day)\b/gi;
+const MONEY_RE = /\$\s?\d[\d,]*(?:\.\d+)?\s*[kmb]?\b/gi;
+const PCT_RE = /\b\d{1,3}(?:\.\d+)?\s*(?:%|percent)\b/gi;
+const MONTH_RE =
+  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\b/gi;
+const ISO_RE = /\b20\d{2}-\d{2}-\d{2}\b/g;
+
+/**
+ * Dates and amounts heard on the ring. Cluely-shaped talk-track, local only.
+ * Never invents. Never Acts.
+ */
+function heardFacts(utterances) {
+  const out = [];
+  const seen = new Set();
+  function add(value) {
+    const v = String(value || "").replace(/\s+/g, " ").trim();
+    if (!v) return;
+    const key = v.toLowerCase();
+    if (seen.has(key) || out.length >= 6) return;
+    seen.add(key);
+    out.push(v.slice(0, 40));
+  }
+  for (const row of Array.isArray(utterances) ? utterances : []) {
+    const t = String((row && row.text) || "");
+    for (const re of [WHEN_RE, MONEY_RE, PCT_RE, MONTH_RE, ISO_RE]) {
+      re.lastIndex = 0;
+      const hits = t.match(re) || [];
+      hits.forEach(add);
+    }
+  }
+  return out;
+}
+
+function heardLine(utterances) {
+  return heardFacts(utterances).join(" / ").slice(0, 160);
+}
+
 /** One line the HUD can put in the fixed insight panel. Never sent. Never Act. */
 function spokenCue(kind, utterances, lastOther) {
   if (kind === "next") return "";
@@ -267,6 +304,7 @@ function meetingAssist({ transcript, question } = {}) {
   const decided = utterances.filter((row) => looksDecision(row.text)).slice(-5);
   const lastAsked = [...utterances].reverse().find((row) => looksQuestion(row.text));
   const lastOther = lastAsked ? lastAsked.text : recap[recap.length - 1].text;
+  const heard = heardLine(utterances);
 
   const parts = [
     "# Meeting brief",
@@ -279,6 +317,9 @@ function meetingAssist({ transcript, question } = {}) {
     "",
     recap.map((row) => `- ${namedLine(row)}`).join("\n"),
   ];
+  if (heard) {
+    parts.push("", "## Heard", "", heardFacts(utterances).map((f) => `- ${f}`).join("\n"));
+  }
   if (kind === "assist") {
     parts.push("", "## What you can say", "", groundedReply(utterances, lastOther));
   }
@@ -315,6 +356,7 @@ function meetingAssist({ transcript, question } = {}) {
       lastAsked && looksQuestion(lastAsked.text)
         ? String(lastAsked.text).slice(0, 160)
         : "",
+    heard,
     deliverable,
   };
 }
@@ -1290,6 +1332,7 @@ function publicEmptyRoom(desk, title, reason) {
     cue: "",
     asked: "",
     rest: "",
+    heard: "",
     deliverable: "",
     markers: [],
     coordinator: "http://127.0.0.1:18010",
@@ -1377,6 +1420,8 @@ module.exports = {
   FRAME_TEACH_TEXT,
   shouldTeachFramedRegion,
   framedRegionPoint,
+  heardFacts,
+  heardLine,
   teachAdvance,
   nextTeachStep,
   deskGrounding,

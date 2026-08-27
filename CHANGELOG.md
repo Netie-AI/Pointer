@@ -1,3 +1,9 @@
+## 2026-08-27 - Meeting Heard strip from the ring
+
+Live meeting extracts dates and amounts from the transcript into a Heard
+strip (`Friday / $40k`). HUD top bar and loopback `/meeting` show it.
+Never invents. Never Acts. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Live cue stays in the top bar with chat closed
 
 Walk and meeting say-this paint Next / Then / They asked / Got it in

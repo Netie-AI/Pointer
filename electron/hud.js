@@ -139,8 +139,17 @@ function paintLiveBrief(event) {
   lastCueKind = kind;
   const asked = String((event && event.asked) || "").trim().slice(0, 160);
   const rest = String((event && event.rest) || "").trim().slice(0, 160);
+  const heard = String((event && event.heard) || "").trim().slice(0, 160);
   const askedLine =
-    kind === "point" && rest ? `Then: ${rest}` : asked ? `They asked: ${asked}` : "";
+    kind === "point" && rest
+      ? `Then: ${rest}`
+      : [
+          asked ? `They asked: ${asked}` : "",
+          heard ? `Heard: ${heard}` : "",
+        ]
+          .filter(Boolean)
+          .join(" / ")
+          .slice(0, 220);
   const cueLine = cueDisplay(kind, cue);
   if (!text || (event && event.act)) {
     brief.hidden = true;

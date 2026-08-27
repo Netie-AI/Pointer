@@ -288,6 +288,12 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse, askedId) {
           askedEl.hidden = !asked;
           askedEl.textContent = asked ? "They asked: " + asked : "";
         }
+        const heardEl = document.getElementById(pageId.replace("-brief", "-heard-web"));
+        const heard = String((m && m.heard) || "").trim();
+        if (heardEl) {
+          heardEl.hidden = !heard;
+          heardEl.textContent = heard ? "Heard: " + heard : "";
+        }
         const restEl = document.getElementById(pageId.replace("-brief", "-rest-web"));
         const rest = String((m && m.rest) || "").trim();
         if (restEl) {
@@ -359,6 +365,12 @@ function paintRooms(rooms, localFirst) {
       const then = el("p", "muted");
       then.textContent = "Then: " + restText;
       card.appendChild(then);
+    }
+    const heardText = String(r.heard || "").trim();
+    if (id === "meeting" && heardText) {
+      const heard = el("p", "muted");
+      heard.textContent = "Heard: " + heardText;
+      card.appendChild(heard);
     }
     card.appendChild(pre);
     root.appendChild(card);

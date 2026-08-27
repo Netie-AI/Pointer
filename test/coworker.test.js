@@ -77,6 +77,7 @@ test("meeting assist ships a brief from the ring without acting", () => {
     "system: Can you send the deck by Friday?",
     "mic: Yes I will send it and schedule a follow-up.",
     "mic: We decided to ship Friday.",
+    "system: The budget is $40k.",
     "system: What is the launch date?",
   ].join("\n");
   const recap = meetingAssist({ transcript, question: "recap this meeting" });
@@ -104,6 +105,10 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.doesNotMatch(recap.cue, /decided to/);
   assert.match(assist.asked, /launch date/);
   assert.match(recap.asked, /launch date/);
+  assert.match(recap.heard, /Friday/);
+  assert.match(recap.heard, /\$40k/);
+  assert.match(recap.deliverable, /## Heard/);
+  assert.match(assist.heard, /Friday/);
   const unanswered = meetingAssist({
     transcript: "system: What is the launch date?",
     question: "what should I say",
@@ -649,6 +654,9 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /paintLiveBrief/);
   assert.match(hud, /meeting-cue/);
   assert.match(hud, /meeting-asked/);
+  assert.match(hud, /They asked/);
+  assert.match(hud, /Heard:/);
+  assert.match(hud, /event\.heard/);
   assert.match(hud, /Then:/);
   assert.match(hud, /event\.rest/);
   assert.match(hud, /point-box/);
@@ -664,6 +672,7 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   const mainCue = main.slice(main.indexOf("function publishLiveCoworker"), main.indexOf("function publishTeachOverlay"));
   assert.match(mainCue, /cue:/);
   assert.match(mainCue, /asked:/);
+  assert.match(mainCue, /heard:/);
   assert.match(mainCue, /cueKind/);
   assert.match(hud, /cueDisplay/);
   assert.match(hud, /Next:/);
