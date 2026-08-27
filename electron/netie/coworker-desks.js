@@ -155,6 +155,10 @@ function looksAction(line) {
   );
 }
 
+function looksDecision(line) {
+  return /\b(decided|decision|agreed|we'll go with|going with|locked in|lock it in)\b/i.test(line);
+}
+
 /** One line the HUD can put in the fixed insight panel. Never sent. Never Act. */
 function spokenCue(kind, lines, lastOther) {
   if (kind === "next") return "";
@@ -217,6 +221,7 @@ function meetingAssist({ transcript, question } = {}) {
   const recap = lines.slice(-12);
   const asked = lines.filter(looksQuestion).slice(-5);
   const next = lines.filter(looksAction).slice(-5);
+  const decided = lines.filter(looksDecision).slice(-5);
   const lastOther = [...lines].reverse().find((line) => looksQuestion(line)) || recap[recap.length - 1];
 
   const parts = [
@@ -242,6 +247,9 @@ function meetingAssist({ transcript, question } = {}) {
     );
   } else if (next.length) {
     parts.push("", "## Commitments", "", next.map((line) => `- ${line}`).join("\n"));
+  }
+  if (kind === "recap" && decided.length) {
+    parts.push("", "## Decisions", "", decided.map((line) => `- ${line}`).join("\n"));
   }
   if (asked.length && kind === "recap") {
     parts.push("", "## Open questions", "", asked.map((line) => `- ${line}`).join("\n"));
@@ -452,8 +460,13 @@ function securityAssist({ text, files } = {}) {
     act: false,
     desk: "security",
     kind: "review",
+    id: "live-security",
     skipLlm: explicit || findings.length > 0,
     title: "Security review",
+    cue: findings.length
+      ? `${findings.length} secret pattern(s) - do not approve`
+      : "no injected secrets - still not approval",
+    cueKind: "warn",
     findings,
     deliverable,
   };
@@ -1066,6 +1079,7 @@ function publicMeetingSnapshot() {
     coordinator: "http://127.0.0.1:18010",
     reason: "live meeting stays on the laptop",
     desk: "meeting",
+    title: "Meeting",
     ok: true,
   };
 }
@@ -1080,6 +1094,39 @@ function publicTeachSnapshot() {
     coordinator: "http://127.0.0.1:18010",
     reason: "live teach stays on the laptop",
     desk: "teach",
+    title: "Teach",
+    ok: true,
+  };
+}
+
+function publicSecuritySnapshot() {
+  return {
+    localFirst: true,
+    act: false,
+    exec: false,
+    cue: "",
+    deliverable: "",
+    coordinator: "http://127.0.0.1:18010",
+    reason: "live security stays on the laptop",
+    desk: "security",
+    title: "Security",
+    ok: true,
+  };
+}
+
+function publicHomeSnapshot() {
+  return {
+    localFirst: true,
+    act: false,
+    exec: false,
+    coordinator: "http://127.0.0.1:18010",
+    reason: "live coworker rooms stay on the laptop",
+    rooms: {
+      teach: publicTeachSnapshot(),
+      meeting: publicMeetingSnapshot(),
+      today: publicTodaySnapshot(),
+      security: publicSecuritySnapshot(),
+    },
     ok: true,
   };
 }
@@ -1114,6 +1161,8 @@ module.exports = {
   createBriefClock,
   publicMeetingSnapshot,
   publicTeachSnapshot,
+  publicSecuritySnapshot,
+  publicHomeSnapshot,
   scanInjectedSecrets,
   teachAdvance,
   nextTeachStep,

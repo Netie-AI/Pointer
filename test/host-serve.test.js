@@ -44,6 +44,7 @@ function readAsset(file) {
     assert.strictEqual(pageFor("/today/"), "today");
     assert.strictEqual(pageFor("/meeting"), "meeting");
     assert.strictEqual(pageFor("/teach"), "teach");
+    assert.strictEqual(pageFor("/security"), "security");
     assert.strictEqual(pageFor("/secret"), null);
   });
 
@@ -122,6 +123,7 @@ function readAsset(file) {
     const homeText = await home.text();
     assert.match(homeText, /Pointer coworker/);
     assert.match(homeText, /id="desks"/);
+    assert.match(homeText, /id="rooms"/);
     assert.match(homeText, /id="brief"/);
     assert.doesNotMatch(homeText, /id="state"/);
     const html = await fetch(new Request("https://host.netie.ai/today"));
@@ -144,6 +146,9 @@ function readAsset(file) {
     assert.match(app, /\/api\/today/);
     assert.match(app, /\/api\/meeting/);
     assert.match(app, /\/api\/teach/);
+    assert.match(app, /\/api\/security/);
+    assert.match(app, /\/api\/home/);
+    assert.match(app, /paintRooms/);
     assert.doesNotMatch(app, /innerHTML/);
     const meeting = await fetch(new Request("https://host.netie.ai/meeting"));
     assert.strictEqual(meeting.status, 200);
@@ -162,6 +167,22 @@ function readAsset(file) {
     assert.strictEqual(JSON.parse(teachApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(teachApi.body).exec, false);
     assert.strictEqual(JSON.parse(teachApi.body).desk, "teach");
+    const security = await fetch(new Request("https://host.netie.ai/security"));
+    assert.strictEqual(security.status, 200);
+    const securityText = await security.text();
+    assert.match(securityText, /id="security-brief"/);
+    assert.match(securityText, /id="security-cue-web"/);
+    const securityApi = handlePublicRequest({ method: "GET", pathname: "/api/security" });
+    assert.strictEqual(JSON.parse(securityApi.body).localFirst, true);
+    assert.strictEqual(JSON.parse(securityApi.body).exec, false);
+    assert.strictEqual(JSON.parse(securityApi.body).desk, "security");
+    assert.strictEqual(JSON.parse(securityApi.body).cue, "");
+    const homeApi = handlePublicRequest({ method: "GET", pathname: "/api/home" });
+    const homeBody = JSON.parse(homeApi.body);
+    assert.strictEqual(homeBody.localFirst, true);
+    assert.strictEqual(homeBody.exec, false);
+    assert.strictEqual(homeBody.rooms.security.cue, "");
+    assert.strictEqual(homeBody.rooms.teach.desk, "teach");
     const css = await fetch(new Request("https://host.netie.ai/style.css"));
     assert.strictEqual(css.status, 200);
     assert.match(css.headers.get("content-type"), /text\/css/);

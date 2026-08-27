@@ -1,3 +1,11 @@
+## 2026-08-27 - Live coworker home, security room, meeting decisions
+
+Home `/api/home` lists live teach/meeting/today/security rooms. Loopback
+`/security` shows injected-file review (`live-security`); public
+`/api/security` stays empty. Recap lists `## Decisions`. HUD Review cue
+is `cueKind: warn` (never Act, never self-approve). MCP `security.live`
+is first-party. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Teach walks one control at a time
 
 Teach overlay shows the current measured control only. `got it` / `next`

@@ -74,6 +74,7 @@ test("meeting assist ships a brief from the ring without acting", () => {
   const transcript = [
     "system: Can you send the deck by Friday?",
     "mic: Yes I will send it and schedule a follow-up.",
+    "mic: We decided to ship Friday.",
     "system: What is the launch date?",
   ].join("\n");
   const recap = meetingAssist({ transcript, question: "recap this meeting" });
@@ -83,6 +84,8 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.match(recap.deliverable, /Meeting brief/);
   assert.match(recap.deliverable, /send the deck/);
   assert.match(recap.deliverable, /## Commitments/);
+  assert.match(recap.deliverable, /## Decisions/);
+  assert.match(recap.deliverable, /decided to ship/);
   assert.doesNotMatch(recap.deliverable, /## Next steps/);
   const assist = meetingAssist({ transcript, question: "what should I say" });
   assert.strictEqual(assist.kind, "assist");
@@ -91,8 +94,8 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.match(assist.deliverable, /will not send/i);
   assert.match(assist.deliverable, /Suggested reply/);
   assert.ok(assist.cue);
-  assert.match(assist.cue, /send it/);
-  assert.match(recap.cue, /send it/);
+  assert.match(assist.cue, /decided to ship/);
+  assert.match(recap.cue, /decided to ship/);
   const next = meetingAssist({ transcript, question: "list next steps" });
   assert.strictEqual(next.kind, "next");
   assert.match(next.deliverable, /## Next steps/);
@@ -165,6 +168,9 @@ test("security assist ships a review, scans injected files, and never self-appro
   assert.strictEqual(review.ok, true);
   assert.strictEqual(review.act, false);
   assert.strictEqual(review.skipLlm, true);
+  assert.strictEqual(review.id, "live-security");
+  assert.strictEqual(review.cueKind, "warn");
+  assert.match(review.cue, /not approval/);
   assert.match(review.deliverable, /fixer is not the only checker/);
   assert.match(review.deliverable, /will not execute/);
   assert.match(review.deliverable, /does not scan disk/i);
@@ -181,6 +187,8 @@ test("security assist ships a review, scans injected files, and never self-appro
   assert.strictEqual(leak.ok, true);
   assert.strictEqual(leak.act, false);
   assert.ok(leak.findings.length >= 1);
+  assert.match(leak.cue, /do not approve/);
+  assert.strictEqual(leak.cueKind, "warn");
   assert.match(leak.deliverable, /aws-access-key/);
   assert.match(leak.deliverable, /AKIA\*\*\*\*/);
   assert.doesNotMatch(leak.deliverable, /AKIAIOSFODNN7EXAMPLE/);
@@ -296,6 +304,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(main, /armTeachWalk/);
   const livePub = main.slice(main.indexOf("function publishLiveCoworker"), main.indexOf("function publishTeachOverlay"));
   assert.match(livePub, /type: "insight"/);
+  assert.match(livePub, /Review:/);
   const ask = main.slice(main.indexOf('ipcMain.handle("hud:ask"'), main.indexOf("P4-BG-AGENTS"));
   assert.match(ask, /toOverlayEvent/);
   assert.doesNotMatch(ask, /driver\./);
@@ -495,6 +504,8 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(mainCue, /cueKind/);
   assert.match(hud, /cueDisplay/);
   assert.match(hud, /Next:/);
+  assert.match(hud, /Review:/);
+  assert.match(hud, /Copy review/);
   assert.match(hud, /brief\.textContent/);
   assert.doesNotMatch(hud, /coworker-brief[\s\S]{0,80}innerHTML/);
   assert.match(hud, /event\.act/);

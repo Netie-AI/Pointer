@@ -10,13 +10,13 @@
    Cortex find-skills + local recipes, then crafts a hint draft
    (empty actions). First-party MCP ABI on loopback. Live
    coordinator at `127.0.0.1:18010` (`/` `/today` `/meeting` `/teach`
-   `/lanes` `/skills` `/workspace`). Public Worker serves the same pages;
-   `/mcp` and live lanes stay on the laptop. P-05 stays parked.
+   `/security` `/lanes` `/skills` `/workspace`). Public Worker serves the
+   same pages; `/mcp` and live lanes stay on the laptop. P-05 stays parked.
 2. **Coworker desks + online catalog (DR-0005).** Teach walks one
-   measured control at a time (`got it` / `next`). Live insight line
-   is the coaching card. Recap hands off to inbox/Word drafts.
-   Loopback `/meeting` `/teach` are coworker rooms; public catalog
-   stays empty. P-06 parked. GitHub Actions blocked on org billing.
+   measured control at a time. Home `/api/home` lists live rooms.
+   Loopback `/security` is injected-file review (never disk, never
+   approval). Recap lists `## Decisions`. Public catalog stays empty.
+   P-06 parked. GitHub Actions blocked on org billing.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

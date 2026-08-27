@@ -5,16 +5,16 @@ One UI: center HUD chat with retrieve roulette and a draggable audio dock.
 Coworker desks (DR-0005): Teach points at measured on-screen controls
 (UIA rects -> numbered `[POINT:x,y:n label]` and `[BOX:left,top,w,h:n label]`,
 never invented; overlay shows the current step only; say `got it` to
-advance), Meeting recaps an armed transcript (commitments plus a
+advance), Meeting recaps an armed transcript (commitments, decisions, and a
 live say-this cue while a question is still open), Today is the standing
 session brief, Document can reuse the live meeting recap as a Word draft,
-Security reviews injected files and never self-approves. Teach Next cue
-and meeting say-this live in the fixed insight panel. HUD desk chips Ask,
-never Act. `/today` and
-home paint the brief. Loopback `/meeting` and `/teach` are coworker rooms.
-Loopback host pages poll while live. Online `/workspace`
-is a read-only artifact catalog with a filter. "Spawn a coworker" queues a
-background brief and never Acts. Act stays on the laptop.
+Security reviews injected files and never self-approves. Teach Next cue,
+meeting say-this, and security Review live in the fixed insight panel. HUD
+desk chips Ask, never Act. Home `/api/home` lists live rooms. Loopback
+`/meeting` `/teach` `/security` are coworker rooms. Loopback host pages
+poll while live. Online `/workspace` is a read-only artifact catalog with
+a filter. "Spawn a coworker" queues a background brief and never Acts.
+Act stays on the laptop.
 
 | Action | Result |
 |---|---|

@@ -105,11 +105,15 @@ function paintSuggests(mode) {
 let lastCueText = "";
 let lastCueKind = "say";
 function cueCopyLabel(kind) {
-  return kind === "point" ? "Copy next" : "Copy say-this";
+  if (kind === "point") return "Copy next";
+  if (kind === "warn") return "Copy review";
+  return "Copy say-this";
 }
 function cueDisplay(kind, cue) {
   if (!cue) return "";
-  return kind === "point" ? `Next: ${cue}` : `Say this: ${cue}`;
+  if (kind === "point") return `Next: ${cue}`;
+  if (kind === "warn") return `Review: ${cue}`;
+  return `Say this: ${cue}`;
 }
 function paintLiveBrief(event) {
   const brief = $("coworker-brief");
@@ -119,7 +123,8 @@ function paintLiveBrief(event) {
   if (!brief) return;
   const text = String((event && event.text) || "").slice(0, 4000);
   const cue = String((event && event.cue) || "").trim().slice(0, 240);
-  const kind = String((event && event.cueKind) || "").toLowerCase() === "point" ? "point" : "say";
+  const rawKind = String((event && event.cueKind) || "").toLowerCase();
+  const kind = rawKind === "point" || rawKind === "warn" ? rawKind : "say";
   lastCueText = cue;
   lastCueKind = kind;
   if (!text || (event && event.act)) {

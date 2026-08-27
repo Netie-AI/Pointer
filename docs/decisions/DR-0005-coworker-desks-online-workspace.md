@@ -56,7 +56,7 @@ fail-closed (Hard rule 2).
    first-party method that always errors. P-06 stays parked.
 5. **First-party MCP grows, still closed.** Added tools:
    `desks.list`, `desks.pick`, `teach.point`, `teach.live`, `today.brief`,
-   `meeting.live`, `security.review`, `workspace.list`,
+   `meeting.live`, `security.review`, `security.live`, `workspace.list`,
    `workspace.get`, `workspace.put`, `workspace.exec` (always refuse).
    `teach.point` emits overlay tokens from injected measured controls only.
    `security.review` scans injected file bodies only and redacts hits.
@@ -80,3 +80,6 @@ Security scans injected files only (redacted). Teach labels are numbered.
 Teach Next cue and meeting say-this live in fixed HUD chrome. Recap chips
 hand off to inbox/Word drafts (never send, never write without Cortex).
 Teach overlay shows the current measured control only; `got it` advances.
+Loopback `/security` and `/api/home` are coworker rooms; public
+`/api/security` and `/api/home` are localFirst empty. Recap lists
+`## Decisions`. Security Review cue is `cueKind: warn`.

@@ -48,6 +48,7 @@ function test(name, fn) {
     assert.ok(r.result.tools.includes("today.brief"));
     assert.ok(r.result.tools.includes("teach.live"));
     assert.ok(r.result.tools.includes("security.review"));
+    assert.ok(r.result.tools.includes("security.live"));
     assert.ok(r.result.tools.includes("workspace.get"));
   });
 
@@ -204,6 +205,21 @@ function test(name, fn) {
     assert.strictEqual(teachLive.result.act, false);
     assert.strictEqual(teachLive.result.exec, false);
     assert.match(teachLive.result.artifact.body, /1 Save/);
+    coord.workspace.put({
+      id: "live-security",
+      title: "Security review",
+      desk: "security",
+      body: "# Security review\n- redacted",
+      cue: "1 secret pattern(s) - do not approve",
+    });
+    const securityLive = await mcp.handle(
+      { jsonrpc: "2.0", id: 18, method: "security.live" },
+      { coordinator: coord }
+    );
+    assert.strictEqual(securityLive.result.ok, true);
+    assert.strictEqual(securityLive.result.act, false);
+    assert.strictEqual(securityLive.result.exec, false);
+    assert.match(securityLive.result.artifact.cue, /do not approve/);
     const unknown = await mcp.handle({ jsonrpc: "2.0", id: 14, method: "browser.run" });
     assert.ok(unknown.error);
     assert.match(unknown.error.message, /unknown tool/);

@@ -47,6 +47,7 @@ function test(name, fn) {
     assert.strictEqual(c.pageFor("/workspace"), "workspace");
     assert.strictEqual(c.pageFor("/meeting"), "meeting");
     assert.strictEqual(c.pageFor("/teach"), "teach");
+    assert.strictEqual(c.pageFor("/security"), "security");
     assert.strictEqual(c.pageFor("/secret"), null);
   });
 
@@ -198,6 +199,56 @@ function test(name, fn) {
     });
     assert.strictEqual(teachPage.status, 200);
     assert.match(teachPage.body, /teach-brief/);
+    c.workspace.put({
+      id: "live-security",
+      title: "Security review",
+      desk: "security",
+      body: "# Security review\n- redacted",
+      cue: "1 secret pattern(s) - do not approve",
+    });
+    const security = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/security" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(security.status, 200);
+    assert.strictEqual(security.body.act, false);
+    assert.strictEqual(security.body.exec, false);
+    assert.match(security.body.cue, /do not approve/);
+    const securityPage = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/security" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(securityPage.status, 200);
+    assert.match(securityPage.body, /security-brief/);
+    const home = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/home" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(home.status, 200);
+    assert.strictEqual(home.body.act, false);
+    assert.strictEqual(home.body.exec, false);
+    assert.match(home.body.rooms.teach.cue, /1 Save/);
+    assert.match(home.body.rooms.meeting.cue, /Friday/);
+    assert.match(home.body.rooms.security.cue, /do not approve/);
+    assert.match(home.body.rooms.today.deliverable, /# Today/);
+    const homePage = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(homePage.status, 200);
+    assert.match(homePage.body, /id="rooms"/);
     const miss = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/workspace?id=nope" }, (res) => {
         const chunks = [];

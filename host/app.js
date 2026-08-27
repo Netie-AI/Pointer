@@ -266,7 +266,8 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse) {
         const text = String((m && m.cue) || "").trim();
         if (cue) {
           cue.hidden = !text;
-          const prefix = (m && m.desk) === "teach" ? "Next: " : "Say this: ";
+          const prefix =
+            (m && m.desk) === "teach" ? "Next: " : (m && m.desk) === "security" ? "Review: " : "Say this: ";
           cue.textContent = text ? prefix + text : "";
         }
         page.replaceChildren();
@@ -280,6 +281,53 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse) {
 
 paintLiveRoom("meeting-brief", "/api/meeting", "meeting-cue-web", "refused: meeting must not grow a runtime");
 paintLiveRoom("teach-brief", "/api/teach", "teach-cue-web", "refused: teach must not grow a runtime");
+paintLiveRoom("security-brief", "/api/security", "security-cue-web", "refused: security must not grow a runtime");
+
+function paintRooms(rooms, localFirst) {
+  const root = document.getElementById("rooms");
+  if (!root) return;
+  root.replaceChildren();
+  ["teach", "meeting", "today", "security"].forEach((id) => {
+    const r = (rooms && rooms[id]) || {};
+    const card = el("article", "desk");
+    const h = el("h3");
+    const a = el("a");
+    a.href = "/" + id;
+    a.textContent = r.title || id;
+    h.appendChild(a);
+    const cue = el("p", "muted");
+    const cueText = String(r.cue || "").trim();
+    if (cueText) {
+      const prefix = id === "teach" ? "Next: " : id === "security" ? "Review: " : id === "meeting" ? "Say this: " : "";
+      cue.textContent = prefix + cueText;
+    } else {
+      cue.textContent = localFirst ? "Live " + id + " stays on the laptop." : "No live " + id + " yet.";
+    }
+    const pre = el("pre");
+    pre.textContent = String(r.deliverable || "").slice(0, 400);
+    card.appendChild(h);
+    card.appendChild(cue);
+    card.appendChild(pre);
+    root.appendChild(card);
+  });
+}
+
+const roomsPage = document.getElementById("rooms");
+if (roomsPage) {
+  pollWhileLive(function () {
+    return fetch("/api/home")
+      .then((r) => r.json())
+      .then((h) => {
+        if (h && h.exec) {
+          show("policy", "refused: home must not grow a runtime");
+          return false;
+        }
+        show("policy", (h && h.reason) || "live coworker rooms; Act stays on the laptop");
+        paintRooms((h && h.rooms) || {}, Boolean(h && h.localFirst));
+        return !(h && h.localFirst);
+      });
+  });
+}
 
 const lanesPage = document.getElementById("lanes");
 if (lanesPage) {

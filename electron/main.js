@@ -337,12 +337,19 @@ function publishLiveCoworker(assist) {
     act: false,
     text: assist.deliverable,
     cue: assist.cue || "",
-    cueKind: assist.cueKind || (assist.desk === "teach" ? "point" : "say"),
+    cueKind:
+      assist.cueKind ||
+      (assist.desk === "teach" ? "point" : assist.desk === "security" ? "warn" : "say"),
   });
+  const kind =
+    assist.cueKind ||
+    (assist.desk === "teach" ? "point" : assist.desk === "security" ? "warn" : "say");
   const line = assist.cue
-    ? assist.cueKind === "point"
+    ? kind === "point"
       ? `Next: ${assist.cue}`
-      : assist.cue
+      : kind === "warn"
+        ? `Review: ${assist.cue}`
+        : assist.cue
     : "";
   if (line) sendHudQuiet({ type: "insight", text: line.slice(0, 240) });
 }
@@ -4114,7 +4121,7 @@ app.whenReady().then(() => {
       .then((r) => {
         const addr = r && r.address;
         console.log(
-          `Coordinator on http://127.0.0.1:${addr && addr.port ? addr.port : 18010} (/ /today /meeting /teach /lanes /skills /workspace)`
+          `Coordinator on http://127.0.0.1:${addr && addr.port ? addr.port : 18010} (/ /today /meeting /teach /security /lanes /skills /workspace)`
         );
         standingClock.start({
           brief: () => todayAssist({ state: sessionCoworkerState() }),

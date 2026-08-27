@@ -21,6 +21,7 @@ const TOOLS = Object.freeze([
   "today.brief",
   "meeting.live",
   "security.review",
+  "security.live",
   "workspace.list",
   "workspace.get",
   "workspace.put",
@@ -111,6 +112,11 @@ function createMcpAbi(opts = {}) {
           files: params.files,
         });
         return rpcResult(id, { ...assist, act: false, exec: false });
+      }
+      if (method === "security.live") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        const got = workspace.get("live-security");
+        return rpcResult(id, { ...got, act: false, exec: false });
       }
       if (method === "workspace.list") {
         if (!workspace) return rpcError(id, -32000, "workspace missing");

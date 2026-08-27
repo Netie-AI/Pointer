@@ -183,6 +183,79 @@ function createCoordinator(opts = {}) {
       );
       return;
     }
+    if (req.method === "GET" && url.pathname === "/api/security") {
+      const got = workspace.get("live-security");
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(
+        JSON.stringify({
+          ok: got.ok,
+          act: false,
+          exec: false,
+          localFirst: false,
+          desk: "security",
+          cue: got.ok ? String(got.artifact.cue || "") : "",
+          deliverable: got.ok ? String(got.artifact.body || "") : "",
+          artifact: got.ok ? got.artifact : null,
+          reason: got.ok ? "live security on loopback; no runtime" : "no live security yet",
+        })
+      );
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/home") {
+      const meeting = workspace.get("live-meeting");
+      const teach = workspace.get("live-teach");
+      const security = workspace.get("live-security");
+      const todayBrief = todayAssist({
+        state: {
+          today,
+          lanes: snapshot().lanes,
+          drafts,
+          artifacts: workspace.list(),
+          jobs: [],
+        },
+      });
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(
+        JSON.stringify({
+          ok: true,
+          act: false,
+          exec: false,
+          localFirst: false,
+          reason: "live coworker rooms on loopback; no runtime",
+          rooms: {
+            teach: {
+              ok: teach.ok,
+              desk: "teach",
+              cue: teach.ok ? String(teach.artifact.cue || "") : "",
+              deliverable: teach.ok ? String(teach.artifact.body || "") : "",
+              title: teach.ok ? teach.artifact.title : "Teach",
+            },
+            meeting: {
+              ok: meeting.ok,
+              desk: "meeting",
+              cue: meeting.ok ? String(meeting.artifact.cue || "") : "",
+              deliverable: meeting.ok ? String(meeting.artifact.body || "") : "",
+              title: meeting.ok ? meeting.artifact.title : "Meeting",
+            },
+            today: {
+              ok: todayBrief.ok,
+              desk: "today",
+              cue: "",
+              deliverable: todayBrief.deliverable || "",
+              title: todayBrief.title || "Today",
+            },
+            security: {
+              ok: security.ok,
+              desk: "security",
+              cue: security.ok ? String(security.artifact.cue || "") : "",
+              deliverable: security.ok ? String(security.artifact.body || "") : "",
+              title: security.ok ? security.artifact.title : "Security",
+            },
+          },
+        })
+      );
+      return;
+    }
     if (req.method === "GET" && url.pathname === "/api/workspace") {
       const id = url.searchParams.get("id");
       if (id) {

@@ -30,7 +30,7 @@ the issue wins.
 | UIA targeting | `electron/netie/uia.js` (Act targeting + teach POINT; no invented coords) |
 | Artifact workspace | `electron/netie/workspace.js` (no runtime; public `/workspace` is a catalog) |
 | Skill search / craft hints | `electron/netie/skill-search.js`, `skills-exec.js` |
-| Coordinator + first-party MCP ABI | `electron/netie/coordinator.js`, `mcp-abi.js`, `host-serve.js`; pages in `host/` (`/` `/today` `/meeting` `/teach` `/lanes` `/skills` `/workspace`); public Worker `workers/netie-host.js` |
+| Coordinator + first-party MCP ABI | `electron/netie/coordinator.js`, `mcp-abi.js`, `host-serve.js`; pages in `host/` (`/` `/today` `/meeting` `/teach` `/security` `/lanes` `/skills` `/workspace`); public Worker `workers/netie-host.js` |
 | Word safe API | `electron/netie/word-coworker.js` |
 | Driver (SendInput) | `electron/netie/driver.js` |
 | Safety / plan-guard | `electron/netie/safety.js`, `plan-guard.js` |
