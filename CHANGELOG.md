@@ -1,3 +1,9 @@
+## 2026-08-27 - Open workspace file leads the Computer catalog
+
+Loopback `/workspace?id=` hoists the open file above desks and Run.
+Finished .docx / unsent .eml stay on that file. Never Act. Never send.
+Public catalog stays 404. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Workspace opens finished .docx and .eml files
 
 Loopback `/workspace?id=live-document` downloads the generated .docx.

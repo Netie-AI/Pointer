@@ -169,7 +169,14 @@ function setWorkingSet(id, title) {
     }
   }
   paintWorkingSet();
+  paintOpenFileHero();
   renderArtifactList();
+}
+
+function paintOpenFileHero() {
+  const main = document.querySelector("main");
+  if (!main || !isWorkspacePage()) return;
+  main.classList.toggle("workspace-open-file", Boolean(lastOpenId));
 }
 
 function renderArtifactList() {
@@ -209,10 +216,17 @@ function setFinishedDownloads(art, flags) {
   const desk = String((art && art.desk) || "").toLowerCase();
   const id = String((art && art.id) || "").toLowerCase();
   const hasDraft = Boolean(String((art && art.preview) || "").trim()) && !localFirst && !exec;
+  const showDocx = hasDraft && (desk === "document" || id === "live-document");
+  const showEml = hasDraft && (desk === "inbox" || id === "live-inbox");
   const docxBtn = document.getElementById("docx-download");
   const emlBtn = document.getElementById("eml-download");
-  if (docxBtn) docxBtn.hidden = !(hasDraft && (desk === "document" || id === "live-document"));
-  if (emlBtn) emlBtn.hidden = !(hasDraft && (desk === "inbox" || id === "live-inbox"));
+  if (docxBtn) docxBtn.hidden = !showDocx;
+  if (emlBtn) emlBtn.hidden = !showEml;
+  const kick = document.getElementById("open-file-kicker");
+  if (kick) {
+    kick.hidden = !(showDocx || showEml);
+    kick.textContent = showDocx ? "Finished file" : showEml ? "Unsent file" : "";
+  }
 }
 
 function openArtifact(id) {

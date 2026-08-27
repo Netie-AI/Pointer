@@ -1402,6 +1402,8 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /paintChrome/);
   assert.match(hostApp, /setFinishedDownloads/);
   assert.match(hostApp, /Open in workspace/);
+  assert.match(hostApp, /paintOpenFileHero/);
+  assert.match(hostApp, /Finished file/);
   assert.match(hostApp, /live-cue-next/);
   assert.match(hostApp, /live-cue-captions/);
   assert.match(hostApp, /Live:/);

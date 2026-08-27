@@ -52,16 +52,19 @@
     <h2>Artifacts</h2>
     <p><input id="artifact-filter" type="search" placeholder="Filter artifacts" aria-label="Filter artifacts" /></p>
     <ul id="artifacts"></ul>
-    <h2>Open artifact</h2>
-    <p id="artifact-chips" class="desk-chips"></p>
-    <p id="artifact-filed" class="muted" hidden></p>
-    <p>
-      <button type="button" id="artifact-copy" hidden>Copy artifact</button>
-      <button type="button" id="artifact-download" hidden>Download artifact</button>
-      <button type="button" id="docx-download" hidden>Download .docx</button>
-      <button type="button" id="eml-download" hidden>Download .eml</button>
-    </p>
-    <article id="artifact-body"></article>
+    <section id="open-file">
+      <h2>Open artifact</h2>
+      <p id="open-file-kicker" class="kicker" hidden></p>
+      <p id="artifact-chips" class="desk-chips"></p>
+      <p id="artifact-filed" class="muted" hidden></p>
+      <p>
+        <button type="button" id="artifact-copy" hidden>Copy artifact</button>
+        <button type="button" id="artifact-download" hidden>Download artifact</button>
+        <button type="button" id="docx-download" hidden>Download .docx</button>
+        <button type="button" id="eml-download" hidden>Download .eml</button>
+      </p>
+      <article id="artifact-body"></article>
+    </section>
     <p id="hint" class="muted"></p>
   </main>
   <script src="app.js"></script>
