@@ -70,7 +70,7 @@ const { shouldAcceptFrame, detectCaptureCommand } = require("./netie/capture-gat
 let pendingEnquire = null;
 const { setPrivacyVeil } = require("./netie/privacy-veil");
 const { shouldVerifyStep, verdictWhenSkipped } = require("./netie/verify");
-const { parsePoints, toOverlayEvent } = require("./netie/point-overlay");
+const { parsePoints, toOverlayEvent, hasPoints } = require("./netie/point-overlay");
 const { humanizeError, shortError } = require("./netie/errors");
 const { createJobQueue, describeQueue } = require("./netie/bg-agents");
 
@@ -244,12 +244,32 @@ const liveMcp = createMcpAbi({
         elements = [];
       }
     }
+    let screenshot = null;
+    let clipboard = null;
+    if (params && params.screenshot === true) {
+      try {
+        const cap = await captureDisplayCrop(null);
+        screenshot = cap && cap.dataUrl ? cap.dataUrl : "";
+      } catch {
+        screenshot = "";
+      }
+    }
+    if (params && params.clipboard === true) {
+      try {
+        const clip = await driver.clipboardGet();
+        clipboard = clip && typeof clip.text === "string" ? clip.text : "";
+      } catch {
+        clipboard = "";
+      }
+    }
     return computerObserve({
       captureVisible: captureVisible(),
       uacc: detectUacc(),
       foreground,
       windows,
       elements,
+      screenshot,
+      clipboard,
       delivery: publicTarget(deliveryTarget),
     });
   },
@@ -3083,6 +3103,7 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
       meta: rMeet.ok ? "Meeting assist" : shortError(rMeet.text || rMeet.error),
       text: rMeet.ok ? pointedMeet.text : failureMeet.text,
     });
+    if (rMeet.ok && hasPoints(rMeet.text)) sendHud(toOverlayEvent(rMeet.text));
     return rMeet.ok
       ? { ok: true, reply: pointedMeet.text, points: pointedMeet.points, degraded: rMeet.degraded }
       : {
@@ -3115,7 +3136,7 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
   });
   // toOverlayEvent carries the TTL, so the overlay never owns a policy about
   // how long a hint lives — and the acceptance test asserts a path that ships.
-  if (pointed.points.length) sendHud(toOverlayEvent(r.text));
+  if (hasPoints(r.text)) sendHud(toOverlayEvent(r.text));
   return r.ok
     ? { ok: true, reply: pointed.text, points: pointed.points, degraded: r.degraded }
     : { ok: false, error: failure.text, hint: failure.hint, kind: failure.kind, degraded: r.degraded, blocked: r.blocked };

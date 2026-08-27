@@ -52,7 +52,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.deepStrictEqual(out.lines, []);
       assert.strictEqual(po.hasPoints("nothing here"), false);
       assert.strictEqual(po.hasPoints("[POINT:1,2:x]"), true);
-      assert.deepStrictEqual(po.parsePoints(null), { text: "", points: [], lines: [], dropped: 0 });
+      assert.deepStrictEqual(po.parsePoints(null), { text: "", points: [], lines: [], paths: [], dropped: 0 });
     }),
 
     T("LINE tokens draw a teach stroke without becoming a companion", async () => {
@@ -65,6 +65,23 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.strictEqual(po.hasPoints("[ARROW:0,0,10,10:here]"), true);
       const event = po.toOverlayEvent("[LINE:1,1,2,2]");
       assert.ok(Array.isArray(event.lines));
+      assert.ok(Array.isArray(event.paths));
+    }),
+
+    T("PATH tokens draw a freehand stroke without becoming a companion", async () => {
+      const out = po.parsePoints("Trace [PATH:10,20;30,40;50,20:loop] then click.");
+      assert.strictEqual(out.paths.length, 1);
+      assert.strictEqual(out.paths[0].points.length, 3);
+      assert.strictEqual(out.paths[0].points[1].xPct, 30);
+      assert.strictEqual(out.paths[0].label, "loop");
+      assert.ok(!out.text.includes("[PATH"));
+      assert.strictEqual(po.hasPoints("[PATH:1,1;2,2]"), true);
+      const event = po.toOverlayEvent("[PATH:5,5;15,15]");
+      assert.strictEqual(event.paths[0].points.length, 2);
+      const hud = read("electron/hud.js");
+      assert.ok(hud.includes("polyline"), "HUD must stroke PATH as a polyline");
+      const css = read("electron/hud.css");
+      assert.ok(/\.point-line polyline/.test(css), "PATH strokes stay in the click-through layer");
     }),
 
     T("the overlay event carries its own lifetime", async () => {

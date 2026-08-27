@@ -21,6 +21,11 @@ function nowMs(clock) {
   return typeof clock === "function" ? clock() : Date.now();
 }
 
+function queryFlag(url, name) {
+  const v = String(url.searchParams.get(name) || "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
 function createCoordinator(opts = {}) {
   const clock = opts.clock || Date.now;
   const lanes = Object.fromEntries(LANES.map((id) => [id, null]));
@@ -152,7 +157,16 @@ function createCoordinator(opts = {}) {
       const mcp = opts.mcp;
       const raw = mcp
         ? mcp.handle(
-            { jsonrpc: "2.0", id: 1, method: "computer.observe", params: {} },
+            {
+              jsonrpc: "2.0",
+              id: 1,
+              method: "computer.observe",
+              params: {
+                elements: queryFlag(url, "elements"),
+                screenshot: queryFlag(url, "screenshot"),
+                clipboard: queryFlag(url, "clipboard"),
+              },
+            },
             { coordinator: api }
           )
         : {

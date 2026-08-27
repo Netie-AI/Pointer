@@ -2,9 +2,17 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Observe screenshot/clipboard and PATH teach strokes
+
+`GET /api/observe?screenshot=1` plus MCP `computer.observe` with
+`screenshot:true` return a PNG data URL so other agents can see this
+screen. `?clipboard=1` returns pasteboard text tagged as untrusted data.
+Teach overlay parses `[PATH:x,y;x,y]` freehand strokes (click-through).
+No GPLv3 dump. No third-party MCP servers.
+
 ## 2026-08-27 - replace: backspaces then pastes into the remembered window
 
-`replace: 你好` restores the last user hwnd, sends Backspace, then clipboard
+`replace: hello` restores the last user hwnd, sends Backspace, then clipboard
 pastes. Unicode goes through paste, not a GPLv3 SendInput dump. CI on this
 branch still never starts (GitHub billing / spending limit).
 

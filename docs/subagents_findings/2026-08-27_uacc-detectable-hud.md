@@ -1,6 +1,6 @@
 ---
-keywords: UACC, captureVisible, computer.observe, computer.act, Scribe, delivery, IBM Plex, DR-0005
-main_idea: Founder DR-0005 makes Pointer screenshotable, ships UACC READ skills, loopback computer.status/observe/act, remembered-window dictation, and a first-class Scribe mode. OpenWillow wholesale remains P-04.
+keywords: UACC, captureVisible, computer.observe, screenshot, clipboard, PATH overlay, computer.act, Scribe, delivery, IBM Plex, DR-0005
+main_idea: Founder DR-0005 makes Pointer screenshotable, ships UACC READ skills, loopback computer.status/observe/act (PNG + clipboard on observe), remembered-window dictation, Scribe, and PATH teach strokes. OpenWillow wholesale remains P-04.
 ---
 
 # UACC detectable HUD (DR-0005)
@@ -9,8 +9,6 @@ Pointer HUD was content-protected by default, so UACC and other agents could not
 
 Shipped: settings v3 captureVisible=true; uacc.js skill catalog; GET/POST /api/computer /api/scribe /api/meeting; MCP computer.status/observe/act/scribe/meeting_assist; IBM Plex solid HUD; focus_hwnd delivery; Scribe mode; Ctrl+Alt+Space/M/L. computer.act/scribe/meeting refuse without Cortex /dms/secure. Instruction text maps to recipes then type/click/deliver.
 
-# UACC detectable HUD (DR-0005)
+Observe PNG/clipboard: live `computer.observe` captures `captureDisplayCrop` when `screenshot:true` and `driver.clipboardGet` when `clipboard:true`. Loopback `GET /api/observe?screenshot=1&clipboard=1` forwards those flags. Clipboard is tagged untrusted data. PATH tokens draw click-through polylines. Overlay now fires for LINE/PATH-only answers, not just POINT.
 
-Pointer HUD was content-protected by default, so UACC and other agents could not see it. Liquid-glass CSS also violated PRODUCT_SURFACE (no backdrop-filter on Windows Electron).
-
-Shipped: settings v3 captureVisible=true; uacc.js skill catalog; GET /api/computer; MCP computer.status/observe; IBM Plex solid HUD. computer.act refuses without Cortex /dms/secure.
+Not done: UACC install on a real Windows laptop; OpenWillow Deepgram default (P-04); third-party MCP (P-05).

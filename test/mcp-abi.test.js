@@ -48,6 +48,9 @@ function test(name, fn) {
       TOOLS.slice()
     );
     assert.ok(r.result.catalog.every((t) => t.name && t.description && t.inputSchema));
+    const observe = r.result.catalog.find((t) => t.name === "computer.observe");
+    assert.ok(observe.inputSchema.properties.screenshot);
+    assert.ok(observe.inputSchema.properties.clipboard);
   });
 
   await test("lanes.claim goes through MCP and conflicts", async () => {

@@ -1471,7 +1471,7 @@ function onHudEvent(event) {
     subtitleText.textContent = event.text;
   }
   if (event.type === "enquire") renderEnquire(event);
-  if (event.type === "point") renderPoints(event.points, event.ttlMs, event.lines);
+  if (event.type === "point") renderPoints(event.points, event.ttlMs, event.lines, event.paths);
   if (event.type === "bg") renderBgStatus(event);
   if (event.type === "pointer") {
     answerMeta.textContent = event.mode ? `Pointer · ${event.mode}` : answerMeta.textContent;
@@ -1616,14 +1616,15 @@ if (enquirePanel) {
  * A crosshair and a label that fade. Not a companion, not a ring that lives on
  * screen; the floating Clicky chrome was removed for good reasons.
  */
-function renderPoints(points, ttlMs, lines) {
+function renderPoints(points, ttlMs, lines, paths) {
   const layer = $("point-layer");
   if (!layer) return;
   layer.innerHTML = "";
   const ttl = Number(ttlMs) > 0 ? Number(ttlMs) : 6000;
   const marks = Array.isArray(points) ? points : [];
   const strokes = Array.isArray(lines) ? lines : [];
-  if (strokes.length) {
+  const trails = Array.isArray(paths) ? paths : [];
+  if (strokes.length || trails.length) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("class", "point-line");
     svg.setAttribute("viewBox", "0 0 100 100");
@@ -1641,6 +1642,23 @@ function renderPoints(points, ttlMs, lines) {
         label.textContent = line.label;
         label.style.left = `${(Number(line.x1Pct) + Number(line.x2Pct)) / 2}%`;
         label.style.top = `${(Number(line.y1Pct) + Number(line.y2Pct)) / 2}%`;
+        layer.appendChild(label);
+      }
+    }
+    for (const trail of trails) {
+      const pts = Array.isArray(trail.points) ? trail.points : [];
+      if (pts.length < 2) continue;
+      const el = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      el.setAttribute("fill", "none");
+      el.setAttribute("points", pts.map((p) => `${Number(p.xPct)},${Number(p.yPct)}`).join(" "));
+      svg.appendChild(el);
+      if (trail.label) {
+        const mid = pts[Math.floor(pts.length / 2)];
+        const label = document.createElement("span");
+        label.className = "point-line-label";
+        label.textContent = trail.label;
+        label.style.left = `${Number(mid.xPct)}%`;
+        label.style.top = `${Number(mid.yPct)}%`;
         layer.appendChild(label);
       }
     }

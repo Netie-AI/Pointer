@@ -114,6 +114,8 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("click: Save"));
     assert.ok(shown.drive.instructions.includes("wait 400"));
     assert.ok(shown.drive.instructions.includes("replace: hello"));
+    assert.ok(shown.drive.instructions.includes("GET /api/observe?screenshot=1"));
+    assert.ok(shown.drive.instructions.includes("GET /api/observe?clipboard=1"));
     assert.strictEqual(shown.drive.tools, "GET /api/tools");
     assert.match(shown.drive.gated, /dms\/secure/);
   });
@@ -125,6 +127,29 @@ function test(name, fn) {
     assert.deepStrictEqual(obs.elements, []);
     assert.strictEqual(obs.foreground, null);
     assert.deepStrictEqual(obs.windows, []);
+    assert.strictEqual(obs.screenshot, null);
+    assert.strictEqual(obs.clipboard, null);
+  });
+
+  await test("computer.observe can publish a PNG and clipboard as untrusted data", () => {
+    const obs = computerObserve({
+      captureVisible: true,
+      screenshot: "data:image/png;base64,AAA",
+      clipboard: "paste me",
+    });
+    assert.strictEqual(obs.screenshot.present, true);
+    assert.strictEqual(obs.screenshot.mime, "image/png");
+    assert.strictEqual(obs.screenshot.truncated, false);
+    assert.strictEqual(obs.screenshot.dataUrl, "data:image/png;base64,AAA");
+    assert.strictEqual(obs.clipboard.present, true);
+    assert.strictEqual(obs.clipboard.text, "paste me");
+    assert.match(obs.clipboard.note, /untrusted/);
+    const tooBig = computerObserve({
+      captureVisible: true,
+      screenshot: "data:image/png;base64," + "A".repeat(1300000),
+    });
+    assert.strictEqual(tooBig.screenshot.truncated, true);
+    assert.strictEqual(tooBig.screenshot.dataUrl, "");
   });
 
   await test("computer.observe includes foreground and window list for agents", () => {

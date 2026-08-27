@@ -34,6 +34,12 @@ async function run() {
       assert.ok(/syncDictateCancelHotkey/.test(main), "Esc must cancel dictation only while listening");
       assert.ok(/scribeScreenContext/.test(main), "Scribe may attach optional screen context");
       assert.ok(/dumpForeground/.test(main), "computer.observe may dump UIA controls");
+      const observeFn = main.slice(main.indexOf("observe: async (params)"));
+      const observeBody = observeFn.slice(0, observeFn.indexOf("act: (params)"));
+      assert.ok(/params\.screenshot === true/.test(observeBody), "observe must capture a PNG when asked");
+      assert.ok(/captureDisplayCrop/.test(observeBody), "observe screenshot uses the live display crop");
+      assert.ok(/params\.clipboard === true/.test(observeBody), "observe must read clipboard when asked");
+      assert.ok(/clipboardGet/.test(observeBody), "observe clipboard uses the driver pasteboard");
       assert.ok(/applyAutostart/.test(main), "OpenWillow autostart must reach login items");
       assert.ok(/buildMeetingAssist/.test(main), "meeting mode must offer Cluely-class assist");
     }),

@@ -296,8 +296,10 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   position: absolute; left: 0; top: 0; width: 100%; height: 100%;
   pointer-events: none; overflow: visible;
 }
-.point-line line {
-  stroke: var(--accent); stroke-width: 2; stroke-linecap: round; opacity: 0.9;
+.point-line line,
+.point-line polyline {
+  fill: none;
+  stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9;
 }
 .point-line-label {
   position: absolute; transform: translate(-50%, -120%);

@@ -6,8 +6,9 @@
  * The answer text may contain `[POINT:42.1,31:Save]` tokens; this pulls them
  * out and hands back clean prose plus the coordinates to draw.
  *
- * Clicky-class teaching also uses `[LINE:x1,y1,x2,y2:label]` or ARROW.
- * Deliberately not a companion: no orb, no ring, no bubble, no character.
+ * Clicky-class teaching also uses `[LINE:x1,y1,x2,y2:label]` or ARROW, and
+ * `[PATH:x,y;x,y;...]` freehand strokes. Deliberately not a companion: no
+ * orb, no ring, no bubble, no character.
  *
  * Pure parsing - the renderer only draws what comes out of here.
  */
@@ -17,10 +18,14 @@ const POINT_RE = /\[POINT:\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*(?::\s*
 /** `[LINE:x1,y1,x2,y2]` or `[ARROW:...]` with optional label. */
 const LINE_RE =
   /\[(?:LINE|ARROW):\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*(?::\s*([^\]]*?))?\s*\]/gi;
+/** `[PATH:x,y;x,y;...]` or with a trailing `:label`. */
+const PATH_RE = /\[PATH:\s*([^\]]+?)\]/gi;
 
 /** A teach layer that covers the screen in dots is not teaching anything. */
 const MAX_POINTS = 8;
 const MAX_LINES = 6;
+const MAX_PATHS = 4;
+const MAX_PATH_PTS = 24;
 /** Long enough to look at, short enough not to become furniture. */
 const DEFAULT_TTL_MS = 6000;
 
@@ -29,12 +34,38 @@ function inRange(value) {
 }
 
 function emptyParse() {
-  return { text: "", points: [], lines: [], dropped: 0 };
+  return { text: "", points: [], lines: [], paths: [], dropped: 0 };
+}
+
+function splitPathLabel(inner) {
+  const raw = String(inner || "");
+  const colon = raw.lastIndexOf(":");
+  if (colon <= 0) return { body: raw, label: "" };
+  const maybe = raw.slice(colon + 1).trim();
+  if (!maybe) return { body: raw.slice(0, colon), label: "" };
+  if (/^-?\d+(?:\.\d+)?\s*,\s*-?\d/.test(maybe) || maybe.includes(";")) {
+    return { body: raw, label: "" };
+  }
+  return { body: raw.slice(0, colon), label: maybe };
+}
+
+function parsePathPoints(body) {
+  const pts = [];
+  for (const part of String(body).split(";")) {
+    const m = String(part).trim().match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+    if (!m) continue;
+    const xPct = Number(m[1]);
+    const yPct = Number(m[2]);
+    if (!inRange(xPct) || !inRange(yPct)) continue;
+    if (pts.length >= MAX_PATH_PTS) break;
+    pts.push({ xPct, yPct });
+  }
+  return pts;
 }
 
 /**
  * @param {string} raw  assistant text, possibly containing POINT/LINE tokens
- * @returns {{text:string, points:Array<{xPct:number,yPct:number,label:string}>, lines:Array, dropped:number}}
+ * @returns {{text:string, points:Array<{xPct:number,yPct:number,label:string}>, lines:Array, paths:Array, dropped:number}}
  */
 function parsePoints(raw) {
   const input = String(raw || "");
@@ -42,6 +73,7 @@ function parsePoints(raw) {
 
   const points = [];
   const lines = [];
+  const paths = [];
   let dropped = 0;
 
   let text = input.replace(POINT_RE, (_token, x, y, label) => {
@@ -70,13 +102,25 @@ function parsePoints(raw) {
     return clean;
   });
 
-  return { text: text.replace(/[ \t]{2,}/g, " ").trim(), points, lines, dropped };
+  text = text.replace(PATH_RE, (_token, inner) => {
+    const { body, label } = splitPathLabel(inner);
+    const pts = parsePathPoints(body);
+    const clean = String(label || "").trim();
+    if (pts.length < 2 || paths.length >= MAX_PATHS) {
+      dropped += 1;
+      return clean;
+    }
+    paths.push({ points: pts, label: clean });
+    return clean;
+  });
+
+  return { text: text.replace(/[ \t]{2,}/g, " ").trim(), points, lines, paths, dropped };
 }
 
 /** True when the text is worth sending to the overlay at all. */
 function hasPoints(raw) {
   const parsed = parsePoints(raw);
-  return parsed.points.length > 0 || parsed.lines.length > 0;
+  return parsed.points.length > 0 || parsed.lines.length > 0 || parsed.paths.length > 0;
 }
 
 /**
@@ -89,6 +133,7 @@ function toOverlayEvent(raw, opts = {}) {
     type: "point",
     points: parsed.points,
     lines: parsed.lines,
+    paths: parsed.paths,
     ttlMs: Number(opts.ttlMs) > 0 ? Number(opts.ttlMs) : DEFAULT_TTL_MS,
   };
 }
@@ -96,8 +141,11 @@ function toOverlayEvent(raw, opts = {}) {
 module.exports = {
   POINT_RE,
   LINE_RE,
+  PATH_RE,
   MAX_POINTS,
   MAX_LINES,
+  MAX_PATHS,
+  MAX_PATH_PTS,
   DEFAULT_TTL_MS,
   parsePoints,
   hasPoints,

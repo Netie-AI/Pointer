@@ -67,8 +67,15 @@ const CATALOG = Object.freeze([
   },
   {
     name: "computer.observe",
-    description: "Foreground window and titled windows. Pass elements true for UIA controls.",
-    inputSchema: { type: "object", properties: { elements: { type: "boolean" } } },
+    description: "Foreground window and titled windows. Pass elements true for UIA, screenshot true for a PNG, clipboard true for pasteboard text (untrusted data).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        elements: { type: "boolean" },
+        screenshot: { type: "boolean" },
+        clipboard: { type: "boolean" },
+      },
+    },
   },
   {
     name: "computer.act",

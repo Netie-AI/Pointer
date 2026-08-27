@@ -9,11 +9,12 @@
 1. **DR-0005 (founder).** HUD is screenshotable (settings v3). UACC READ
    skills in search. Loopback MCP `computer.status` / `observe` / `act` /
    `scribe` / `meeting_assist` plus `/api/computer` `/api/observe`
-   `/api/scribe` `/api/meeting`. Observe returns live windows. Act/scribe
+   `/api/scribe` `/api/meeting`. Observe returns live windows; `?screenshot=1`
+   adds a PNG and `?clipboard=1` pasteboard text (untrusted data). Act/scribe
    fail-closed without Cortex. Transcribe types into the remembered window.
    Scribe rewrites then pastes. Optional screen context. Esc cancels
    listening. Hold Ctrl+Alt+Space (release to stop; Linux stays toggle).
-   Ctrl+Alt+M/L. Meeting Suggest pill. Teach LINE marks.
+   Ctrl+Alt+M/L. Meeting Suggest pill. Teach LINE and PATH marks.
    `focus:` matches a window title; `click: Save` aims by name. Autostart
    is a setting. MCP `tools.list` and `GET /api/tools` return schemas.
    `wait` / `scroll` / `doubleclick` / `rightclick` / `hover` / `replace:`
