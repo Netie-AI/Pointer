@@ -26,7 +26,7 @@ the issue wins.
 | Electron main / Act loop | `electron/main.js` |
 | HUD | `electron/hud.html`, `hud.js`, `hud.css` |
 | Recipes / coworker SOPs | `electron/netie/recipes.js`, `coworker.js` |
-| Coworker desks | `electron/netie/coworker-desks.js` (`teach` measured POINT, `meeting` Heard names/dates/amounts, inbox greets those names, `today` `document` `security`; meeting spawn files inbox+Word drafts, never Act) |
+| Coworker desks | `electron/netie/coworker-desks.js` (`teach` measured POINT plus copyable walk, `meeting` Heard names/orgs/dates/amounts, inbox greets those names, `today` `document` `security`; meeting spawn files inbox+Word drafts, never Act) |
 | UIA targeting | `electron/netie/uia.js` (Act targeting + teach POINT; no invented coords) |
 | Artifact workspace | `electron/netie/workspace.js` (no runtime; public `/workspace` is a catalog; loopback home/workspace paint a This session file) |
 | Skill search / craft hints | `electron/netie/skill-search.js`, `skills-exec.js` |

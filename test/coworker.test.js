@@ -101,14 +101,18 @@ test("session bundle is a catalog of filed desks and never execs", () => {
 test("heard names come from the ring and never invent", () => {
   const facts = heardFacts([
     { speaker: "you", text: "I'm going Friday" },
-    { speaker: "them", text: "this is Sarah" },
+    { speaker: "them", text: "this is Sarah from acme" },
     { speaker: "you", text: "my name is Alex Chen" },
     { speaker: "them", text: "I am here just to listen" },
+    { speaker: "them", text: "send it from Friday" },
+    { speaker: "them", text: "I work at home" },
   ]);
   assert.ok(facts.includes("Friday"));
   assert.ok(facts.includes("Sarah"));
+  assert.ok(facts.includes("Acme"));
   assert.ok(facts.includes("Alex Chen"));
   assert.ok(!facts.some((f) => /going|here|just/i.test(f)));
+  assert.ok(!facts.includes("Home"));
 });
 
 test("pickDesk routes Clicky/Cluely/OpenWorker jobs to Pointer desks", () => {
@@ -220,6 +224,13 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.strictEqual(introduced.act, false);
   assert.match(introduced.heard, /Sarah Chen/);
   assert.match(introduced.cue, /Sarah Chen/);
+  const orged = meetingAssist({
+    transcript: "system: Hi this is Sarah Chen from acme.\nsystem: Who am I speaking with?",
+    question: "what should I say",
+  });
+  assert.strictEqual(orged.act, false);
+  assert.match(orged.heard, /Acme/);
+  assert.match(orged.cue, /Sarah Chen at Acme/);
   const notAName = meetingAssist({
     transcript: "mic: I'm going Friday.\nsystem: What is the launch date?",
     question: "what should I say",
@@ -552,13 +563,15 @@ test("inbox assist drafts and never sends", () => {
   const named = inboxAssist({
     text: "draft a follow-up email from this meeting",
     transcript:
-      "system: Hi this is Sarah Chen.\nsystem: Can you send the deck by Friday for $40k?\nmic: I will send it Friday.",
+      "system: Hi this is Sarah Chen from acme.\nsystem: Can you send the deck by Friday for $40k?\nmic: I will send it Friday.",
   });
   assert.strictEqual(named.act, false);
   assert.match(named.deliverable, /Hi Sarah Chen/);
   assert.match(named.deliverable, /Wanted to confirm/);
   assert.match(named.deliverable, /Friday/);
   assert.match(named.deliverable, /\$40k/);
+  assert.match(named.deliverable, /with Acme/);
+  assert.doesNotMatch(named.deliverable, /Hi Acme/);
   assert.match(named.heard, /Sarah Chen/);
   assert.match(named.cue, /not sent/);
   const ownName = inboxAssist({

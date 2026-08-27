@@ -1,3 +1,10 @@
+## 2026-08-27 - Heard orgs, download session, copy teach walk
+
+Meeting Heard lists spoken orgs (`from Acme` / `I work at Stripe`) from
+the ring. Who-asks say `Sarah Chen at Acme`. Unsent mail confirms
+`with Acme`. Loopback `/` and `/workspace` download the session file.
+`/teach` copies the walk SOP. Never Acts. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Inbox greets Heard names; Copy session file
 
 Unsent follow-up drafts greet with their name from the ring (`Hi Sarah

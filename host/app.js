@@ -306,6 +306,10 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse, askedId) {
         const pre = el("pre");
         pre.textContent = (m && m.deliverable) || "";
         page.appendChild(pre);
+        const teachCopy = document.getElementById("teach-copy");
+        if (teachCopy && pageId === "teach-brief") {
+          teachCopy.hidden = !String((m && m.deliverable) || "").trim() || Boolean(m && m.localFirst);
+        }
         return !(m && m.localFirst);
       });
   });
@@ -414,9 +418,10 @@ function paintSession(session, localFirst) {
     mdEl.textContent = text || "";
   }
   function setCopy(on) {
-    const btn = document.getElementById("session-copy");
-    if (!btn) return;
-    btn.hidden = !on;
+    const copyBtn = document.getElementById("session-copy");
+    const dlBtn = document.getElementById("session-download");
+    if (copyBtn) copyBtn.hidden = !on;
+    if (dlBtn) dlBtn.hidden = !on;
   }
   if (localFirst) {
     root.hidden = false;
@@ -474,15 +479,48 @@ function paintSession(session, localFirst) {
   });
 }
 
+function copyNodeText(id) {
+  const node = document.getElementById(id);
+  if (!node) return;
+  const pre = node.tagName === "PRE" ? node : node.querySelector("pre");
+  const text = String((pre || node).textContent || "");
+  if (!text) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(function () {});
+  }
+}
+
+function downloadMarkdown(filename, text) {
+  const body = String(text || "");
+  if (!body) return;
+  const blob = new Blob([body], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const a = el("a");
+  a.href = url;
+  a.download = filename || "pointer-session.md";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const sessionCopy = document.getElementById("session-copy");
 if (sessionCopy) {
   sessionCopy.addEventListener("click", function () {
+    copyNodeText("session-md");
+  });
+}
+
+const sessionDownload = document.getElementById("session-download");
+if (sessionDownload) {
+  sessionDownload.addEventListener("click", function () {
     const mdEl = document.getElementById("session-md");
-    const text = mdEl ? String(mdEl.textContent || "") : "";
-    if (!text) return;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).catch(function () {});
-    }
+    downloadMarkdown("pointer-session.md", mdEl ? mdEl.textContent : "");
+  });
+}
+
+const teachCopyBtn = document.getElementById("teach-copy");
+if (teachCopyBtn) {
+  teachCopyBtn.addEventListener("click", function () {
+    copyNodeText("teach-brief");
   });
 }
 

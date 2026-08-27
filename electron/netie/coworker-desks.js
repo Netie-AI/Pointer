@@ -331,9 +331,65 @@ function addHeardNames(text, add) {
   }
 }
 
+const ORG_RE =
+  /\b(?:from|with|i work at|we(?:'re| are) (?:at|with))\s+([a-z][a-z0-9&.-]{1,32})\b/gi;
+const ORG_EXTRA = new Set([
+  "today",
+  "tomorrow",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+  "office",
+  "home",
+  "work",
+  "call",
+  "meeting",
+  "lunch",
+  "dinner",
+  "breakfast",
+  "somewhere",
+  "anywhere",
+  "downstairs",
+  "upstairs",
+]);
+
+function addHeardOrgs(text, add) {
+  ORG_RE.lastIndex = 0;
+  let m;
+  while ((m = ORG_RE.exec(text))) {
+    const raw = String(m[1] || "").toLowerCase();
+    if (!raw || NAME_STOP.has(raw) || ORG_EXTRA.has(raw)) continue;
+    if (/^\d/.test(raw) || /am|pm/.test(raw)) continue;
+    add(titleHeardName(raw));
+    if (m.index === ORG_RE.lastIndex) ORG_RE.lastIndex += 1;
+  }
+}
+
+function collectHeard(utterances, writer, pred) {
+  const out = [];
+  const seen = new Set();
+  function add(value) {
+    const v = String(value || "").replace(/\s+/g, " ").trim();
+    if (!v) return;
+    const key = v.toLowerCase();
+    if (seen.has(key) || out.length >= 6) return;
+    seen.add(key);
+    out.push(v.slice(0, 40));
+  }
+  for (const row of Array.isArray(utterances) ? utterances : []) {
+    if (pred && !pred(row)) continue;
+    writer(String((row && row.text) || ""), add);
+  }
+  return out;
+}
+
 /**
- * Dates, amounts, and spoken names from the ring. Cluely-shaped talk-track,
- * local only. Never invents. Never Acts.
+ * Dates, amounts, spoken names, and orgs from the ring. Cluely-shaped
+ * talk-track, local only. Never invents. Never Acts.
  */
 function heardFacts(utterances) {
   const out = [];
@@ -356,6 +412,7 @@ function heardFacts(utterances) {
       }
     }
     addHeardNames(t, add);
+    addHeardOrgs(t, add);
   }
   return out;
 }
@@ -376,17 +433,6 @@ function looksWhoAsk(question) {
   return /\b(who(?:'s)?|whose|name)\b/i.test(question || "");
 }
 
-function isHeardName(token) {
-  const h = String(token || "").trim();
-  if (!h) return false;
-  if (/\$|%|percent|today|tomorrow|day|am|pm|:\d{2}|\d{4}-\d{2}-\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i.test(
-    h
-  )) {
-    return false;
-  }
-  return /^[A-Z][a-z]+(?:[-\s][A-Z][a-z]+)?$/.test(h);
-}
-
 /**
  * Cluely-shaped talk-track from the ring only. Never invents. Never Acts.
  */
@@ -399,8 +445,13 @@ function answerFromHeard(question, utterances) {
     )
   );
   const money = heard.filter((h) => /\$|%|percent/i.test(h));
-  const names = heard.filter(isHeardName);
-  if (looksWhoAsk(question) && names.length) return speakable(names.join(" / "));
+  const names = themHeardNames(utterances);
+  const orgs = themHeardOrgs(utterances);
+  if (looksWhoAsk(question) && (names.length || orgs.length)) {
+    if (names.length && orgs.length) return speakable(`${names[0]} at ${orgs[0]}`);
+    if (names.length) return speakable(names.join(" / "));
+    return speakable(orgs.join(" / "));
+  }
   if (looksWhenAsk(question) && times.length) return speakable(times.join(" / "));
   if (looksMoneyAsk(question) && money.length) return speakable(money.join(" / "));
   return "";
@@ -1010,8 +1061,11 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
 }
 
 function themHeardNames(utterances) {
-  const them = (Array.isArray(utterances) ? utterances : []).filter((row) => row.speaker !== "you");
-  return heardFacts(them).filter(isHeardName);
+  return collectHeard(utterances, addHeardNames, (row) => row && row.speaker !== "you");
+}
+
+function themHeardOrgs(utterances) {
+  return collectHeard(utterances, addHeardOrgs, (row) => row && row.speaker !== "you");
 }
 
 function inboxGreeting(utterances) {
@@ -1031,8 +1085,11 @@ function inboxConfirm(utterances) {
   const bits = [];
   if (times.length) bits.push(times.slice(0, 2).join(" / "));
   if (money.length) bits.push(money.slice(0, 2).join(" / "));
-  if (!bits.length) return "I will confirm the details on this machine.";
-  return `Wanted to confirm ${bits.join(" for ")}. I will confirm the details on this machine.`;
+  const org = themHeardOrgs(utterances)[0] || "";
+  if (!bits.length && !org) return "I will confirm the details on this machine.";
+  let line = bits.length ? `Wanted to confirm ${bits.join(" for ")}` : "Wanted to confirm";
+  if (org) line += ` with ${org}`;
+  return `${line}. I will confirm the details on this machine.`;
 }
 
 /**

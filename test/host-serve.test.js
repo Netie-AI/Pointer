@@ -120,6 +120,7 @@ function readAsset(file) {
     assert.match(page, /id="session-files"/);
     assert.match(page, /id="session-md"/);
     assert.match(page, /id="session-copy"/);
+    assert.match(page, /id="session-download"/);
   });
 
   await test("public fetch serves /today and style.css from host/", async () => {
@@ -134,6 +135,7 @@ function readAsset(file) {
     assert.match(homeText, /id="session-files"/);
     assert.match(homeText, /id="session-md"/);
     assert.match(homeText, /id="session-copy"/);
+    assert.match(homeText, /id="session-download"/);
     assert.match(homeText, /id="brief"/);
     assert.doesNotMatch(homeText, /id="state"/);
     const html = await fetch(new Request("https://host.netie.ai/today"));
@@ -166,8 +168,11 @@ function readAsset(file) {
     const paint = app.slice(app.indexOf("function paintSession"), app.indexOf("const roomsPage"));
     assert.match(paint, /session-md/);
     assert.match(paint, /session-copy/);
+    assert.match(paint, /session-download/);
     assert.match(paint, /textContent/);
     assert.match(app, /writeText/);
+    assert.match(app, /createObjectURL/);
+    assert.match(app, /pointer-session.md/);
     assert.doesNotMatch(paint, /innerHTML/);
     assert.match(app, /Live session stays on the laptop/);
     assert.match(app, /paintTeachMap/);
@@ -197,6 +202,7 @@ function readAsset(file) {
     assert.match(teachText, /id="teach-brief"/);
     assert.match(teachText, /id="teach-cue-web"/);
     assert.match(teachText, /id="teach-rest-web"/);
+    assert.match(teachText, /id="teach-copy"/);
     const teachApi = handlePublicRequest({ method: "GET", pathname: "/api/teach" });
     assert.strictEqual(JSON.parse(teachApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(teachApi.body).exec, false);

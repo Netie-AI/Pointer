@@ -12,9 +12,9 @@
    `/workspace`). Public Worker is the same catalog; `/mcp` stays on
    the laptop. P-05 parked.
 2. **Coworker desks (DR-0005).** HUD Walk/Frame walks the framed region
-   (Ask, never Act). Meeting spawn files recap, unsent mail (greets
-   Heard names), Word draft, and a security review. Loopback home
-   copies the session file. Public catalog empty. P-06 parked.
+   (Ask, never Act). Meeting Heard names/orgs ground unsent mail.
+   Loopback home copies and downloads the session file. `/teach` copies
+   the walk. Public catalog empty. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next
