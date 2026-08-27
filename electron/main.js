@@ -344,7 +344,7 @@ function localMeetingReply(message, extraTranscript, extra) {
     return assist;
   }
   if (desk.id === "security") {
-    const assist = securityAssist({ text: message });
+    const assist = securityAssist({ text: message, files: sessionScanFiles() });
     if (!assist.ok || !assist.skipLlm) return assist.ok ? null : assist;
     publishBrief(assist);
     return assist;
@@ -2809,6 +2809,24 @@ function sessionCoworkerState() {
   };
 }
 
+/** Injected workspace bodies only. Never opens disk. Security desk consumes this. */
+function sessionScanFiles() {
+  const out = [];
+  try {
+    const ws = liveCoordinator && liveCoordinator.workspace;
+    if (!ws || typeof ws.list !== "function") return out;
+    for (const a of ws.list().slice(-20)) {
+      const got = ws.get(a.id);
+      const body = got && got.ok ? String(got.artifact.body || "") : "";
+      if (!body) continue;
+      out.push({ name: String(a.title || a.id || "artifact").slice(0, 80), body });
+    }
+  } catch {
+    return out;
+  }
+  return out;
+}
+
 async function runDeskAssist(message, extraTranscript) {
   const desk = pickDesk(message, { mode: appMode });
   if (desk.id === "meeting") {
@@ -2817,7 +2835,7 @@ async function runDeskAssist(message, extraTranscript) {
       question: message,
     });
   }
-  if (desk.id === "security") return securityAssist({ text: message });
+  if (desk.id === "security") return securityAssist({ text: message, files: sessionScanFiles() });
   if (desk.id === "inbox") return inboxAssist({ text: message });
   if (desk.id === "today") return todayAssist({ state: sessionCoworkerState(), question: message });
   if (desk.id === "document") return documentAssist({ text: message });
@@ -4054,7 +4072,7 @@ app.whenReady().then(() => {
       .then((r) => {
         const addr = r && r.address;
         console.log(
-          `Coordinator on http://127.0.0.1:${addr && addr.port ? addr.port : 18010} (/ /today /meeting /lanes /skills /workspace)`
+          `Coordinator on http://127.0.0.1:${addr && addr.port ? addr.port : 18010} (/ /today /meeting /teach /lanes /skills /workspace)`
         );
         standingClock.start({
           brief: () => todayAssist({ state: sessionCoworkerState() }),

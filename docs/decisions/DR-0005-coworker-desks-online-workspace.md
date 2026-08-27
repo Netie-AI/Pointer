@@ -55,9 +55,11 @@ fail-closed (Hard rule 2).
    artifacts and MCP stay on `127.0.0.1:18010`. `workspace.exec` is a
    first-party method that always errors. P-06 stays parked.
 5. **First-party MCP grows, still closed.** Added tools:
-   `desks.list`, `desks.pick`, `teach.point`, `today.brief`, `workspace.list`,
+   `desks.list`, `desks.pick`, `teach.point`, `teach.live`, `today.brief`,
+   `meeting.live`, `security.review`, `workspace.list`,
    `workspace.get`, `workspace.put`, `workspace.exec` (always refuse).
    `teach.point` emits overlay tokens from injected measured controls only.
+   `security.review` scans injected file bodies only and redacts hits.
    Unknown methods still refuse. No third-party MCP load. Public
    `workspace.get` / `?id=` stays on the laptop.
 
@@ -72,5 +74,6 @@ Live meeting pump is meeting/transcribe only. Public `?id=` is 404.
 Measured teach emits `[BOX:]` from UIA rects. Meeting assist `cue` paints
 in the fixed insight panel and copies via `hud:copyText` (never Act).
 Live teach pump redraws measured overlays. Standing Today clock
-republishes `standing-today`. Loopback `/meeting` is a coworker room;
-public `/api/meeting` is localFirst empty.
+republishes `standing-today`. Loopback `/meeting` and `/teach` are
+coworker rooms; public `/api/meeting` and `/api/teach` are localFirst empty.
+Security scans injected files only (redacted). Teach labels are numbered.

@@ -147,7 +147,7 @@ function looksQuestion(line) {
 }
 
 function looksAction(line) {
-  return /\b(will|todo|to-do|action item|follow up|follow-up|send|schedule|next step)\b/i.test(
+  return /\b(will|i'll|we'll|let's|todo|to-do|action item|follow up|follow-up|send|schedule|next step)\b/i.test(
     line
   );
 }
@@ -228,8 +228,15 @@ function meetingAssist({ transcript, question } = {}) {
   if (kind === "assist") {
     parts.push("", "## What you can say", "", groundedReply(lines, lastOther));
   }
-  if (kind === "next" || next.length) {
-    parts.push("", "## Next steps", "", (next.length ? next : ["No action verbs heard yet."]).map((line) => `- ${line}`).join("\n"));
+  if (kind === "next") {
+    parts.push(
+      "",
+      "## Next steps",
+      "",
+      (next.length ? next : ["No action verbs heard yet."]).map((line) => `- ${line}`).join("\n")
+    );
+  } else if (next.length) {
+    parts.push("", "## Commitments", "", next.map((line) => `- ${line}`).join("\n"));
   }
   if (asked.length && kind === "recap") {
     parts.push("", "## Open questions", "", asked.map((line) => `- ${line}`).join("\n"));
@@ -287,11 +294,106 @@ function canActOnline() {
   return false;
 }
 
+function stripAttachments(text) {
+  return String(text || "").replace(
+    /<<<NETIE_ATTACHMENT name="[^"]*">>>[\r\n][\s\S]*?[\r\n]<<<END_NETIE_ATTACHMENT name="[^"]*">>>/g,
+    "[attached file]"
+  );
+}
+
+function publicTarget(text) {
+  let s = stripAttachments(text).slice(0, 800);
+  s = s.replace(
+    /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----[\s\S]*?-----END [^-]*PRIVATE KEY-----/g,
+    "[redacted pem]"
+  );
+  s = s.replace(/\bAKIA[0-9A-Z]{16}\b/g, "AKIA****");
+  s = s.replace(/\bghp_[A-Za-z0-9]{20,}/g, "ghp_****");
+  s = s.replace(/\bsk_live_[A-Za-z0-9]{10,}/g, "sk_l****");
+  s = s.replace(
+    /\b(?:api[_-]?key|secret|password|passwd|token)\b\s*[=:]\s*['"]?[^\s'"]{12,}/gi,
+    (m) => redactSecret(m, "assignment")
+  );
+  return s;
+}
+
+function filesFromText(text) {
+  const t = String(text || "");
+  const out = [];
+  const re =
+    /<<<NETIE_ATTACHMENT name="([^"]*)">>>[\r\n]([\s\S]*?)[\r\n]<<<END_NETIE_ATTACHMENT name="\1">>>/g;
+  let m;
+  while ((m = re.exec(t))) {
+    out.push({ name: String(m[1] || "attachment").slice(0, 80), body: String(m[2] || "") });
+    if (out.length >= 20) break;
+  }
+  return out;
+}
+
+function normalizeScanFiles(files) {
+  const list = Array.isArray(files) ? files : [];
+  const out = [];
+  for (const f of list) {
+    if (!f) continue;
+    const body = String(f.body || f.content || "");
+    if (!body) continue;
+    out.push({
+      name: String(f.name || f.title || f.id || "file").slice(0, 80),
+      body: body.slice(0, 80000),
+    });
+    if (out.length >= 24) break;
+  }
+  return out;
+}
+
+function redactSecret(raw, kind) {
+  const s = String(raw || "");
+  if (kind === "pem-private-key" || /BEGIN /.test(s)) return "[redacted pem]";
+  const prefix = s.slice(0, 4);
+  return `${prefix}****`;
+}
+
+/**
+ * Read-only secret scan of injected bodies only. Never opens disk. Never Acts.
+ * Findings redact the value so the brief cannot become a leak.
+ */
+function scanInjectedSecrets(files) {
+  const patterns = [
+    { kind: "pem-private-key", re: /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/ },
+    { kind: "aws-access-key", re: /\bAKIA[0-9A-Z]{16}\b/ },
+    { kind: "github-pat", re: /\bghp_[A-Za-z0-9]{20,}\b/ },
+    { kind: "stripe-live", re: /\bsk_live_[A-Za-z0-9]{10,}\b/ },
+    {
+      kind: "assignment",
+      re: /\b(?:api[_-]?key|secret|password|passwd|token)\b\s*[=:]\s*['"]?[^\s'"]{12,}/i,
+    },
+  ];
+  const findings = [];
+  const seen = new Set();
+  for (const f of normalizeScanFiles(files)) {
+    for (const p of patterns) {
+      const m = f.body.match(p.re);
+      if (!m) continue;
+      const key = `${f.name}|${p.kind}|${redactSecret(m[0], p.kind)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      findings.push({
+        file: f.name,
+        kind: p.kind,
+        excerpt: redactSecret(m[0], p.kind),
+      });
+      if (findings.length >= 12) return findings;
+    }
+  }
+  return findings;
+}
+
 /**
  * Security coworker: a review brief, never a self-approved fix.
- * Does not scan disk. Does not Act. The fixer is not the only checker.
+ * Scans injected files and HUD attachments only. Does not scan disk.
+ * Does not Act. The fixer is not the only checker.
  */
-function securityAssist({ text } = {}) {
+function securityAssist({ text, files } = {}) {
   const t = String(text || "").trim();
   if (!t) {
     return { ok: false, act: false, desk: "security", reason: "security desk needs a target" };
@@ -300,16 +402,30 @@ function securityAssist({ text } = {}) {
   const explicit = /\b(security review|vuln|cve|semgrep|dependency scan|incident triage|cloud posture)\b/.test(
     q
   );
+  const injected = [{ name: "ask", body: t }, ...normalizeScanFiles(files), ...filesFromText(t)];
+  const findings = scanInjectedSecrets(injected);
+  const findingLines = findings.length
+    ? findings.map((row) => `- ${row.file}: ${row.kind} (${row.excerpt})`)
+    : [
+        injected.length > 1
+          ? "- no secret patterns in injected files (disk was not scanned)"
+          : "- no injected files; attach a file or keep a workspace brief. Pointer does not scan disk",
+      ];
   const deliverable = [
     "# Security review",
     "",
     "> act: never",
     "> fixer is not the only checker",
     "> no Cortex gate => no OS actions",
+    "> scan: injected files only (no disk walk)",
     "",
     "## Target",
     "",
-    t.slice(0, 800),
+    publicTarget(t) || "(empty)",
+    "",
+    "## Findings (redacted)",
+    "",
+    findingLines.join("\n"),
     "",
     "## Hard floors (human only)",
     "- secrets, payments, delete, send, sign",
@@ -322,15 +438,18 @@ function securityAssist({ text } = {}) {
     "- Fail-closed gates still present",
     "",
     "## Verdict",
-    "Draft only. A second reviewer must sign off. Pointer will not execute this.",
+    findings.length
+      ? "Draft only. Findings are not approval. A second reviewer must sign off. Pointer will not execute this."
+      : "Draft only. A second reviewer must sign off. Pointer will not execute this.",
   ].join("\n");
   return {
     ok: true,
     act: false,
     desk: "security",
     kind: "review",
-    skipLlm: explicit,
+    skipLlm: explicit || findings.length > 0,
     title: "Security review",
+    findings,
     deliverable,
   };
 }
@@ -420,7 +539,8 @@ function teachAssist({ text, controls, screen } = {}) {
     skipLlm: tokens.length > 0,
     desk: "teach",
     kind: "walkthrough",
-    title: "Teach walkthrough",
+    id: "live-teach",
+    title: tokens.length ? "Live teach" : "Teach walkthrough",
     via: tokens.length ? "uia" : "none",
     points: measured.map((p) => ({
       xPct: p.xPct,
@@ -868,6 +988,20 @@ function publicMeetingSnapshot() {
   };
 }
 
+function publicTeachSnapshot() {
+  return {
+    localFirst: true,
+    act: false,
+    exec: false,
+    cue: "",
+    deliverable: "",
+    coordinator: "http://127.0.0.1:18010",
+    reason: "live teach stays on the laptop",
+    desk: "teach",
+    ok: true,
+  };
+}
+
 const DESK_CHIPS = Object.freeze([
   { id: "teach", label: "Teach", q: "walk me through this on my screen", autoAsk: false },
   { id: "meeting", label: "Meeting", q: "recap this meeting", autoAsk: true },
@@ -897,6 +1031,8 @@ module.exports = {
   createLiveTeachPump,
   createBriefClock,
   publicMeetingSnapshot,
+  publicTeachSnapshot,
+  scanInjectedSecrets,
   deskGrounding,
   canActOnline,
   finishListeningSession,

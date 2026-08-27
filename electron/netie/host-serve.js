@@ -6,13 +6,14 @@
  * 127.0.0.1:18010 - this surface never proxies them.
  */
 
-const { catalog, publicTodaySnapshot, publicMeetingSnapshot } = require("./coworker-desks");
+const { catalog, publicTodaySnapshot, publicMeetingSnapshot, publicTeachSnapshot } = require("./coworker-desks");
 const { publicWorkspaceSnapshot } = require("./workspace");
 
 const PAGES = Object.freeze({
   "/": "home",
   "/today": "today",
   "/meeting": "meeting",
+  "/teach": "teach",
   "/lanes": "lanes",
   "/skills": "skills",
   "/workspace": "workspace",
@@ -22,6 +23,7 @@ const PAGE_FILES = Object.freeze({
   "/": "index.html",
   "/today": "today.html",
   "/meeting": "meeting.html",
+  "/teach": "teach.html",
   "/lanes": "lanes.html",
   "/skills": "skills.html",
   "/workspace": "workspace.html",
@@ -31,6 +33,7 @@ const PUBLIC_FILES = Object.freeze([
   "index.html",
   "today.html",
   "meeting.html",
+  "teach.html",
   "lanes.html",
   "skills.html",
   "workspace.html",
@@ -127,6 +130,13 @@ function handlePublicRequest({ method, pathname, search } = {}) {
       status: 200,
       headers: jsonHeaders(),
       body: JSON.stringify(publicMeetingSnapshot()),
+    };
+  }
+  if (verb === "GET" && clean === "/api/teach") {
+    return {
+      status: 200,
+      headers: jsonHeaders(),
+      body: JSON.stringify(publicTeachSnapshot()),
     };
   }
   if (verb === "GET" && clean === "/api/workspace") {

@@ -165,6 +165,24 @@ function createCoordinator(opts = {}) {
       );
       return;
     }
+    if (req.method === "GET" && url.pathname === "/api/teach") {
+      const got = workspace.get("live-teach");
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(
+        JSON.stringify({
+          ok: got.ok,
+          act: false,
+          exec: false,
+          localFirst: false,
+          desk: "teach",
+          cue: "",
+          deliverable: got.ok ? String(got.artifact.body || "") : "",
+          artifact: got.ok ? got.artifact : null,
+          reason: got.ok ? "live teach on loopback; no runtime" : "no live teach yet",
+        })
+      );
+      return;
+    }
     if (req.method === "GET" && url.pathname === "/api/workspace") {
       const id = url.searchParams.get("id");
       if (id) {

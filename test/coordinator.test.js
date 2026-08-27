@@ -46,6 +46,7 @@ function test(name, fn) {
     assert.strictEqual(c.pageFor("/skills"), "skills");
     assert.strictEqual(c.pageFor("/workspace"), "workspace");
     assert.strictEqual(c.pageFor("/meeting"), "meeting");
+    assert.strictEqual(c.pageFor("/teach"), "teach");
     assert.strictEqual(c.pageFor("/secret"), null);
   });
 
@@ -169,6 +170,32 @@ function test(name, fn) {
     });
     assert.strictEqual(meetingPage.status, 200);
     assert.match(meetingPage.body, /meeting-brief/);
+    c.workspace.put({
+      id: "live-teach",
+      title: "Live teach",
+      desk: "teach",
+      body: "# Teach walkthrough\n[POINT:25,42:1 Save]",
+    });
+    const teach = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/teach" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(teach.status, 200);
+    assert.strictEqual(teach.body.act, false);
+    assert.strictEqual(teach.body.exec, false);
+    assert.match(teach.body.deliverable, /1 Save/);
+    const teachPage = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/teach" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(teachPage.status, 200);
+    assert.match(teachPage.body, /teach-brief/);
     const miss = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/workspace?id=nope" }, (res) => {
         const chunks = [];

@@ -250,31 +250,35 @@ if (todayPage) {
   });
 }
 
-const meetingPage = document.getElementById("meeting-brief");
-if (meetingPage) {
+function paintLiveRoom(pageId, apiPath, cueId, refuse) {
+  const page = document.getElementById(pageId);
+  if (!page) return;
   pollWhileLive(function () {
-    return fetch("/api/meeting")
+    return fetch(apiPath)
       .then((r) => r.json())
       .then((m) => {
         if (m && m.exec) {
-          show("policy", "refused: meeting must not grow a runtime");
+          show("policy", refuse || "refused: coworker room must not grow a runtime");
           return false;
         }
-        show("policy", (m && m.reason) || "live meeting; Act stays on the laptop");
-        const cue = document.getElementById("meeting-cue-web");
+        show("policy", (m && m.reason) || "live coworker; Act stays on the laptop");
+        const cue = cueId ? document.getElementById(cueId) : null;
         const text = String((m && m.cue) || "").trim();
         if (cue) {
           cue.hidden = !text;
           cue.textContent = text ? "Say this: " + text : "";
         }
-        meetingPage.replaceChildren();
+        page.replaceChildren();
         const pre = el("pre");
         pre.textContent = (m && m.deliverable) || "";
-        meetingPage.appendChild(pre);
+        page.appendChild(pre);
         return !(m && m.localFirst);
       });
   });
 }
+
+paintLiveRoom("meeting-brief", "/api/meeting", "meeting-cue-web", "refused: meeting must not grow a runtime");
+paintLiveRoom("teach-brief", "/api/teach", null, "refused: teach must not grow a runtime");
 
 const lanesPage = document.getElementById("lanes");
 if (lanesPage) {

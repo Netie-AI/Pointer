@@ -79,6 +79,8 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.strictEqual(recap.skipLlm, true);
   assert.match(recap.deliverable, /Meeting brief/);
   assert.match(recap.deliverable, /send the deck/);
+  assert.match(recap.deliverable, /## Commitments/);
+  assert.doesNotMatch(recap.deliverable, /## Next steps/);
   const assist = meetingAssist({ transcript, question: "what should I say" });
   assert.strictEqual(assist.kind, "assist");
   assert.strictEqual(assist.act, false);
@@ -90,6 +92,7 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.strictEqual(recap.cue, "");
   const next = meetingAssist({ transcript, question: "list next steps" });
   assert.strictEqual(next.kind, "next");
+  assert.match(next.deliverable, /## Next steps/);
   assert.match(next.deliverable, /send it/);
 });
 
@@ -151,7 +154,7 @@ test("notes labels Netie recap separately from You/System", () => {
   n.stop();
 });
 
-test("security assist ships a review and never self-approves", () => {
+test("security assist ships a review, scans injected files, and never self-approves", () => {
   const empty = securityAssist({ text: "" });
   assert.strictEqual(empty.ok, false);
   assert.strictEqual(empty.act, false);
@@ -161,11 +164,43 @@ test("security assist ships a review and never self-approves", () => {
   assert.strictEqual(review.skipLlm, true);
   assert.match(review.deliverable, /fixer is not the only checker/);
   assert.match(review.deliverable, /will not execute/);
+  assert.match(review.deliverable, /does not scan disk/i);
   assert.doesNotMatch(review.deliverable, /_approved/);
+  const leak = securityAssist({
+    text: "security review this session",
+    files: [
+      {
+        name: ".env",
+        body: "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\napi_key=supersecretvalue99\n",
+      },
+    ],
+  });
+  assert.strictEqual(leak.ok, true);
+  assert.strictEqual(leak.act, false);
+  assert.ok(leak.findings.length >= 1);
+  assert.match(leak.deliverable, /aws-access-key/);
+  assert.match(leak.deliverable, /AKIA\*\*\*\*/);
+  assert.doesNotMatch(leak.deliverable, /AKIAIOSFODNN7EXAMPLE/);
+  assert.doesNotMatch(leak.deliverable, /supersecretvalue99/);
+  const attached = securityAssist({
+    text: [
+      "security review this session",
+      '<<<NETIE_ATTACHMENT name="id_rsa">>>',
+      "-----BEGIN PRIVATE KEY-----",
+      "MIIBfake",
+      "-----END PRIVATE KEY-----",
+      '<<<END_NETIE_ATTACHMENT name="id_rsa">>>',
+    ].join("\n"),
+  });
+  assert.ok(attached.findings.some((f) => f.kind === "pem-private-key"));
+  assert.match(attached.deliverable, /redacted pem/);
+  assert.doesNotMatch(attached.deliverable, /MIIBfake/);
   const fs = require("fs");
   const path = require("path");
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
   assert.match(main, /securityAssist/);
+  assert.match(main, /sessionScanFiles/);
+  assert.doesNotMatch(main.slice(main.indexOf("function sessionScanFiles"), main.indexOf("async function runDeskAssist")), /readdir|readFileSync/);
 });
 
 test("teach assist never invents POINT coordinates and never acts", () => {
@@ -199,8 +234,9 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(walk.act, false);
   assert.strictEqual(walk.skipLlm, true);
   assert.strictEqual(walk.via, "uia");
-  assert.match(walk.deliverable, /\[POINT:25,42:Save\]/);
-  assert.match(walk.deliverable, /\[BOX:20,40,10,4:Save\]/);
+  assert.strictEqual(walk.id, "live-teach");
+  assert.match(walk.deliverable, /\[POINT:25,42:\d+ Save\]/);
+  assert.match(walk.deliverable, /\[BOX:20,40,10,4:\d+ Save\]/);
   assert.match(walk.deliverable, /will not click/i);
   assert.doesNotMatch(walk.deliverable, /\[POINT:.*Ghost/);
   assert.doesNotMatch(walk.deliverable, /\[BOX:.*Ghost/);
@@ -449,7 +485,7 @@ async function asyncTest(name, fn) {
     await Promise.resolve();
     assert.strictEqual(hits.length, 1);
     assert.strictEqual(hits[0].act, false);
-    assert.match(hits[0].deliverable, /\[BOX:20,40,10,4:Save\]/);
+    assert.match(hits[0].deliverable, /\[BOX:20,40,10,4:\d+ Save\]/);
     if (tick) await tick();
     await Promise.resolve();
     assert.strictEqual(hits.length, 1);

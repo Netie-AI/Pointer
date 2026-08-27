@@ -148,7 +148,7 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
       assert.strictEqual(points[0].xPct, 25);
       assert.strictEqual(points[0].yPct, 42);
       assert.strictEqual(points[0].via, "uia");
-      assert.ok(points[0].boxToken.includes("[BOX:20,40,10,4:Save]"));
+      assert.ok(points[0].boxToken.includes("[BOX:20,40,10,4:1 Save]"));
       assert.strictEqual(points[0].leftPct, 20);
       assert.strictEqual(points[0].wPct, 10);
       assert.ok(points.every((p) => p.name !== "Gone"));

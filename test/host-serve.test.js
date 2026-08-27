@@ -43,6 +43,7 @@ function readAsset(file) {
     assert.deepStrictEqual(c.PAGES, PAGES);
     assert.strictEqual(pageFor("/today/"), "today");
     assert.strictEqual(pageFor("/meeting"), "meeting");
+    assert.strictEqual(pageFor("/teach"), "teach");
     assert.strictEqual(pageFor("/secret"), null);
   });
 
@@ -142,6 +143,7 @@ function readAsset(file) {
     assert.match(app, /paintBrief/);
     assert.match(app, /\/api\/today/);
     assert.match(app, /\/api\/meeting/);
+    assert.match(app, /\/api\/teach/);
     assert.doesNotMatch(app, /innerHTML/);
     const meeting = await fetch(new Request("https://host.netie.ai/meeting"));
     assert.strictEqual(meeting.status, 200);
@@ -151,6 +153,14 @@ function readAsset(file) {
     assert.strictEqual(JSON.parse(meetingApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(meetingApi.body).exec, false);
     assert.strictEqual(JSON.parse(meetingApi.body).cue, "");
+    const teach = await fetch(new Request("https://host.netie.ai/teach"));
+    assert.strictEqual(teach.status, 200);
+    const teachText = await teach.text();
+    assert.match(teachText, /id="teach-brief"/);
+    const teachApi = handlePublicRequest({ method: "GET", pathname: "/api/teach" });
+    assert.strictEqual(JSON.parse(teachApi.body).localFirst, true);
+    assert.strictEqual(JSON.parse(teachApi.body).exec, false);
+    assert.strictEqual(JSON.parse(teachApi.body).desk, "teach");
     const css = await fetch(new Request("https://host.netie.ai/style.css"));
     assert.strictEqual(css.status, 200);
     assert.match(css.headers.get("content-type"), /text\/css/);

@@ -22,8 +22,12 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   highlights. Never Acts.
 - Meeting live assist paints a say-this cue in the fixed insight panel.
 - Live teach pump redraws measured BOX overlays. Copy say-this is clipboard
-  only. Standing Today clock republishes `standing-today`. `/meeting` is a
-  loopback room; public `/api/meeting` is empty.
+  only. Standing Today clock republishes `standing-today`. `/meeting` and
+  `/teach` are loopback rooms; public `/api/meeting` and `/api/teach` are empty.
+- Security scans injected attachments/workspace bodies only and redacts
+  hits. Never walks disk. Never self-approves.
+- Measured teach labels are numbered (`1 Save`). Meeting recap lists
+  commitments; `next` stays a separate section.
 - Local meeting Recap/Assist/Next from the transcript ring. `act: false`.
 - Live meeting pump: debounce utterances into the fixed insight panel.
   A question on the ring switches the brief to assist.

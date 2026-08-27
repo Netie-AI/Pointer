@@ -46,7 +46,8 @@ function test(name, fn) {
     assert.ok(r.result.tools.includes("desks.list"));
     assert.ok(r.result.tools.includes("teach.point"));
     assert.ok(r.result.tools.includes("today.brief"));
-    assert.ok(r.result.tools.includes("meeting.live"));
+    assert.ok(r.result.tools.includes("teach.live"));
+    assert.ok(r.result.tools.includes("security.review"));
     assert.ok(r.result.tools.includes("workspace.get"));
   });
 
@@ -156,8 +157,8 @@ function test(name, fn) {
     assert.strictEqual(pointed.result.ok, true);
     assert.strictEqual(pointed.result.act, false);
     assert.strictEqual(pointed.result.exec, false);
-    assert.match(pointed.result.deliverable, /\[POINT:25,42:Save\]/);
-    assert.match(pointed.result.deliverable, /\[BOX:20,40,10,4:Save\]/);
+    assert.match(pointed.result.deliverable, /\[POINT:25,42:\d+ Save\]/);
+    assert.match(pointed.result.deliverable, /\[BOX:20,40,10,4:\d+ Save\]/);
     coord.workspace.put({
       id: "live-meeting",
       title: "Live assist",
@@ -173,6 +174,36 @@ function test(name, fn) {
     assert.strictEqual(live.result.act, false);
     assert.strictEqual(live.result.exec, false);
     assert.match(live.result.artifact.cue, /Friday/);
+    const reviewed = await mcp.handle(
+      {
+        jsonrpc: "2.0",
+        id: 16,
+        method: "security.review",
+        params: {
+          text: "security review this session",
+          files: [{ name: ".env", body: "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n" }],
+        },
+      }
+    );
+    assert.strictEqual(reviewed.result.ok, true);
+    assert.strictEqual(reviewed.result.act, false);
+    assert.strictEqual(reviewed.result.exec, false);
+    assert.match(reviewed.result.deliverable, /AKIA\*\*\*\*/);
+    assert.doesNotMatch(reviewed.result.deliverable, /AKIAIOSFODNN7EXAMPLE/);
+    coord.workspace.put({
+      id: "live-teach",
+      title: "Live teach",
+      desk: "teach",
+      body: "# Teach walkthrough\n[POINT:25,42:1 Save]",
+    });
+    const teachLive = await mcp.handle(
+      { jsonrpc: "2.0", id: 17, method: "teach.live" },
+      { coordinator: coord }
+    );
+    assert.strictEqual(teachLive.result.ok, true);
+    assert.strictEqual(teachLive.result.act, false);
+    assert.strictEqual(teachLive.result.exec, false);
+    assert.match(teachLive.result.artifact.body, /1 Save/);
     const unknown = await mcp.handle({ jsonrpc: "2.0", id: 14, method: "browser.run" });
     assert.ok(unknown.error);
     assert.match(unknown.error.message, /unknown tool/);

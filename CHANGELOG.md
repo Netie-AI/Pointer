@@ -1,3 +1,12 @@
+## 2026-08-27 - Injected secret review, numbered teach, /teach room
+
+Security desk scans HUD attachments and workspace bodies only, redacts
+hits, never walks disk, never self-approves. Measured teach labels are
+numbered (`1 Save`). Recap lists `## Commitments`; next-steps stays a
+separate ask. Loopback `/teach` shows `live-teach`; public `/api/teach`
+stays empty. First-party MCP `security.review` and `teach.live` never
+Act. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Live teach pump, copy say-this, standing Today clock, /meeting room
 
 Teach keeps redrawing measured BOX overlays while the desk is live.

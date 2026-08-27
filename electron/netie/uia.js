@@ -259,18 +259,24 @@ function pointLabel(name) {
   return clean || "control";
 }
 
-function formatPointToken(pct, name) {
-  const x = Math.round(Number(pct.xPct) * 10) / 10;
-  const y = Math.round(Number(pct.yPct) * 10) / 10;
-  return `[POINT:${x},${y}:${pointLabel(name)}]`;
+function numberedLabel(name, index) {
+  const base = pointLabel(name);
+  if (!Number.isInteger(index) || index < 0) return base;
+  return `${index + 1} ${base}`.slice(0, 40);
 }
 
-function formatBoxToken(box, name) {
+function formatPointToken(pct, name, index) {
+  const x = Math.round(Number(pct.xPct) * 10) / 10;
+  const y = Math.round(Number(pct.yPct) * 10) / 10;
+  return `[POINT:${x},${y}:${numberedLabel(name, index)}]`;
+}
+
+function formatBoxToken(box, name, index) {
   const l = Math.round(Number(box.leftPct) * 10) / 10;
   const t = Math.round(Number(box.topPct) * 10) / 10;
   const w = Math.round(Number(box.wPct) * 10) / 10;
   const h = Math.round(Number(box.hPct) * 10) / 10;
-  return `[BOX:${l},${t},${w},${h}:${pointLabel(name)}]`;
+  return `[BOX:${l},${t},${w},${h}:${numberedLabel(name, index)}]`;
 }
 
 function interactivity(candidate) {
@@ -341,6 +347,16 @@ function pointControls(controls, screen, opts = {}) {
     if (out.length >= max) break;
     add(candidate);
   }
+  out.forEach((p, i) => {
+    p.token = formatPointToken({ xPct: p.xPct, yPct: p.yPct }, p.name, i);
+    if (p.boxToken) {
+      p.boxToken = formatBoxToken(
+        { leftPct: p.leftPct, topPct: p.topPct, wPct: p.wPct, hPct: p.hPct },
+        p.name,
+        i
+      );
+    }
+  });
   return out;
 }
 
