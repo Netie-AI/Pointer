@@ -232,6 +232,16 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
         live.cueCaptionLines([{ source: "mic", text: "hello" }], { max: 2 }),
         []
       );
+      const fromTurns = live.cueCaptionTurns(
+        [
+          { speaker: "them", text: "We shipped last week." },
+          { speaker: "you", text: "I can do Friday." },
+          { speaker: "them", text: "Can we ship Friday?" },
+        ],
+        { asked: "Can we ship Friday?", them: "Can we ship Friday?", max: 2 }
+      );
+      assert.strictEqual(fromTurns.length, 1);
+      assert.strictEqual(fromTurns[0].text, "We shipped last week.");
     }),
 
     // ── wiring ─────────────────────────────────────────────────────────────
@@ -253,6 +263,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
         "createLiveLine",
         "createLiveTranscript",
         "cueCaptionLines",
+        "cueCaptionTurns",
         "createInsightFeed",
         "shouldRearmAfterAct",
       ]) {

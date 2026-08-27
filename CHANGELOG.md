@@ -1,3 +1,11 @@
+## 2026-08-27 - Host chrome keeps Live captions and Click/Type in
+
+Loopback host cue bar paints Live captions from the stored meeting ring
+(skips They asked / last Them). `/teach` chrome shows Click/Type in on
+the current BOX. HUD compact cue falls back to the same ring when STT
+is quiet, and strips N of M from the teach action. Never Act. Not a
+stealth overlay. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Loopback /inbox downloads a generated .eml
 
 Loopback GET `/api/inbox.eml` returns an unsent RFC822 draft from the

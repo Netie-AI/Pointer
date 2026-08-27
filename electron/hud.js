@@ -58,6 +58,7 @@ const {
   createLiveLine,
   createLiveTranscript,
   cueCaptionLines,
+  cueCaptionTurns,
   createInsightFeed,
   createHoldToTalk,
   shouldRearmAfterAct,
@@ -107,6 +108,7 @@ let lastCueText = "";
 let lastCueKind = "say";
 let lastCueAsked = "";
 let lastThemLine = "";
+let lastCueTurns = [];
 let cueBarHasBrief = false;
 function cueCopyLabel(kind) {
   if (kind === "point") return "Copy next";
@@ -115,7 +117,10 @@ function cueCopyLabel(kind) {
 }
 function cueDisplay(kind, cue) {
   if (!cue) return "";
-  if (kind === "point") return `Next: ${cue}`;
+  if (kind === "point") {
+    const action = String(cue).replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
+    return action || `Next: ${cue}`;
+  }
   if (kind === "warn") return `Review: ${cue}`;
   return `Say this: ${cue}`;
 }
@@ -134,9 +139,12 @@ function paintLiveCueCaptions() {
   const cap = $("live-cue-captions");
   if (!cap) return false;
   cap.replaceChildren();
-  const rows = typeof cueCaptionLines === "function"
+  let rows = typeof cueCaptionLines === "function"
     ? cueCaptionLines(liveFeed.lines(), { asked: lastCueAsked, them: lastThemLine, max: 2 })
     : [];
+  if (!rows.length && typeof cueCaptionTurns === "function") {
+    rows = cueCaptionTurns(lastCueTurns, { asked: lastCueAsked, them: lastThemLine, max: 2 });
+  }
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const p = document.createElement("p");
@@ -227,6 +235,7 @@ function paintLiveBrief(event) {
   const youShow = Boolean(youLine);
   lastCueAsked = asked;
   lastThemLine = themLine;
+  lastCueTurns = meetingDesk && Array.isArray(event && event.turns) ? event.turns : [];
   if (!text || (event && event.act)) {
     brief.hidden = true;
     if (meta) meta.hidden = true;
@@ -279,6 +288,7 @@ function paintLiveBrief(event) {
     lastCueKind = "say";
     lastCueAsked = "";
     lastThemLine = "";
+    lastCueTurns = [];
     cueBarHasBrief = false;
     paintMeetingTalk({ desk: "", turns: [] }, "");
     paintLiveCueCaptions();

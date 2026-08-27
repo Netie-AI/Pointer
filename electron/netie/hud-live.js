@@ -293,6 +293,27 @@
     return out.slice(-max);
   }
 
+  /**
+   * Same Live strip from a stored You/Them ring when STT is quiet.
+   * Skips They asked and the last Them line. Never Act.
+   */
+  function cueCaptionTurns(turns, opts) {
+    const cfg = opts || {};
+    const max = Number(cfg.max) > 0 ? Number(cfg.max) : 2;
+    const asked = String(cfg.asked || "").trim();
+    const them = String(cfg.them || "").trim();
+    const out = [];
+    const rows = Array.isArray(turns) ? turns : [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.speaker === "you") continue;
+      const text = String(row.text || "").trim();
+      if (!text || text === asked || text === them) continue;
+      out.push({ text: text.slice(0, 160) });
+    }
+    return out.slice(-max);
+  }
+
   // ── HUD-05 · live insights from speech ────────────────────────────────────
   const STOPWORDS = new Set([
     "the", "a", "an", "and", "or", "but", "if", "then", "so", "to", "of", "in",
@@ -534,6 +555,7 @@
     createLiveLine,
     createLiveTranscript,
     cueCaptionLines,
+    cueCaptionTurns,
     createInsightFeed,
     summarizeSpeech,
     shouldRearmAfterAct,

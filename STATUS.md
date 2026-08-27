@@ -14,18 +14,17 @@
 2. **Coworker desks (DR-0005).** Meeting assist is a grounded stack:
    Say this / Also / Don't say. OpenVault may refine say-this in 300ms;
    timeout or ungrounded lines keep the heuristic (never invent, never
-   send, never a stealth overlay). The HUD live cue bar keeps that
-   stack plus last You/Them and Live system captions when the rest of chrome hides. Loopback `/` paints teach path,
-   meeting card, Today plate, and filed work cards. `/teach` is a
-   measured walk: draw around a control to stack BOX steps (current
-   hold, later dashed), Back/Got it Ask, never invented coords.
-   Click-through overlay stays on the display when HUD hides, with
-   Click/Type in on the current BOX, fixed Next / Then / Back / Got it
-   chrome, plus Draw for a freehand stroke that stores a BOX (Ask, never a buddy).
-   This session links `/workspace?id=` (never send, never Act). Loopback
-   `/document` may download a generated .docx and `/inbox` a generated
-   .eml (never Act, never send). Public those paths stay 404. `/workspace`
-   Run is a named refuse (P-06). Public catalog empty.
+   send, never a stealth overlay). The HUD and loopback host cue bars keep
+   that stack plus last You/Them and Live captions (STT or stored ring)
+   when chrome hides. `/teach` sticky chrome shows Click/Type in on the
+   current BOX. Loopback `/` paints teach path, meeting card, Today plate,
+   and filed work cards. `/teach` stacks drawn BOX steps (current hold,
+   later dashed), Back/Got it Ask, never invented coords. Overlay stays
+   click-through with Click/Type in plus Draw. This session links
+   `/workspace?id=` (never send, never Act). Loopback `/document` may
+   download a generated .docx and `/inbox` a generated .eml (never Act,
+   never send). Public those paths stay 404. `/workspace` Run is a named
+   refuse (P-06). Public catalog empty.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

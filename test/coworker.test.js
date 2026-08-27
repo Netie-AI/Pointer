@@ -36,6 +36,9 @@ const {
   askHostCoworker,
   chipsForArtifact,
   teachWalkPath,
+  teachActionCue,
+  cueCaptionTurns,
+  meetingCaptions,
   publicTeachSnapshot,
   enrichMeetingAssist,
   groundMeetingLine,
@@ -199,6 +202,25 @@ test("meeting assist ships a brief from the ring without acting", () => {
     assert.ok(recap.turns.some((row) => row.speaker === "you" && /ship Friday/.test(row.text)));
     assert.match(recap.heard, /Friday/);
   assert.match(recap.heard, /\$40k/);
+  const caps = cueCaptionTurns(assist.turns, { asked: assist.asked, max: 2 });
+  assert.ok(caps.some((row) => /send the deck/i.test(row.text)));
+  assert.ok(caps.some((row) => /\$40k/.test(row.text)));
+  assert.ok(!caps.some((row) => /launch date/.test(row.text)));
+  assert.deepStrictEqual(
+    meetingCaptions({
+      asked: assist.asked,
+      live: { transcript },
+    }).map((row) => row.text),
+    caps.map((row) => row.text)
+  );
+  assert.strictEqual(teachActionCue({ cue: "1 of 3 Click Save" }), "Click Save");
+  assert.strictEqual(
+    teachActionCue({
+      cue: "1 of 2 Click Save",
+      path: [{ now: true, cue: "Click Save or press Enter" }],
+    }),
+    "Click Save or press Enter"
+  );
   assert.match(recap.deliverable, /## Heard/);
   assert.match(assist.heard, /Friday/);
   const timed = meetingAssist({
@@ -1379,6 +1401,8 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /stroke:/);
   assert.match(hostApp, /paintChrome/);
   assert.match(hostApp, /live-cue-next/);
+  assert.match(hostApp, /live-cue-captions/);
+  assert.match(hostApp, /Live:/);
   assert.doesNotMatch(hostApp, /innerHTML/);
   const hud = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
   const desk = hud.slice(hud.indexOf('$("desk-pill")'), hud.indexOf('$("mode-pill")'));
@@ -1496,6 +1520,8 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   const capFn = hud.slice(hud.indexOf("function paintLiveCueCaptions"), hud.indexOf("function paintMeetingTalk"));
   assert.match(capFn, /Live:/);
   assert.match(capFn, /cueCaptionLines/);
+  assert.match(capFn, /cueCaptionTurns/);
+  assert.match(hud, /cueCaptionTurns/);
   assert.match(capFn, /textContent/);
   assert.doesNotMatch(capFn, /innerHTML/);
   assert.match(hud, /function renderSubtitle/);

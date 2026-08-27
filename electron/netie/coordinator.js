@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
-const { catalog, todayAssist, sessionBundle, advanceLiveTeach, frameLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, teachWalkPath, documentDraftText, inboxDraftText, buildEml } = require("./coworker-desks");
+const { catalog, todayAssist, sessionBundle, advanceLiveTeach, frameLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, meetingCaptions, teachWalkPath, teachActionCue, documentDraftText, inboxDraftText, buildEml } = require("./coworker-desks");
 const { parsePoints } = require("./point-overlay");
 const { buildDocx } = require("./word-coworker");
 
@@ -119,6 +119,8 @@ function createCoordinator(opts = {}) {
     const markers = got.ok ? parsePoints(String(got.artifact.body || "")).points : [];
     const path = desk === "teach" && got.ok ? teachWalkPath(got.artifact.live) : [];
     const turns = desk === "meeting" && got.ok ? liveTalkTurns(got.artifact) : [];
+    const captions = desk === "meeting" && got.ok ? meetingCaptions(got.artifact) : [];
+    const action = desk === "teach" && got.ok ? teachActionCue({ cue: got.artifact.cue, path }) : "";
     const artifact = got.ok
       ? Object.assign({}, got.artifact, { live: undefined })
       : null;
@@ -139,6 +141,8 @@ function createCoordinator(opts = {}) {
         markers,
         path,
         turns,
+        captions,
+        action,
         notes: desk === "meeting" && got.ok ? Boolean(got.artifact.notes) : false,
         also: desk === "meeting" && got.ok ? String(got.artifact.also || "") : "",
         avoid: desk === "meeting" && got.ok ? String(got.artifact.avoid || "") : "",
@@ -164,6 +168,7 @@ function createCoordinator(opts = {}) {
 
   function roomCard(got, desk, fallbackTitle) {
     const live = got.ok ? got.artifact.live : undefined;
+    const path = desk === "teach" && got.ok ? teachWalkPath(live) : [];
     return {
       ok: got.ok,
       desk,
@@ -174,8 +179,10 @@ function createCoordinator(opts = {}) {
       deliverable: got.ok ? String(got.artifact.body || "") : "",
       title: got.ok && got.artifact.title ? got.artifact.title : fallbackTitle,
       advance: desk === "teach" && got.ok && canAdvanceTeach(live),
-      path: desk === "teach" && got.ok ? teachWalkPath(live) : [],
+      path,
+      action: desk === "teach" && got.ok ? teachActionCue({ cue: got.artifact.cue, path }) : "",
       turns: desk === "meeting" && got.ok ? liveTalkTurns(got.artifact) : [],
+      captions: desk === "meeting" && got.ok ? meetingCaptions(got.artifact) : [],
       notes: desk === "meeting" && got.ok ? Boolean(got.artifact.notes) : false,
       also: desk === "meeting" && got.ok ? String(got.artifact.also || "") : "",
       avoid: desk === "meeting" && got.ok ? String(got.artifact.avoid || "") : "",

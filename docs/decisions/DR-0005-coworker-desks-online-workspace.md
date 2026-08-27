@@ -147,7 +147,9 @@ meeting say-this). Current overlay BOX shows Click / Type in / Look at
 inbox/Word/security work cards from `/api/home` (never exec).
 HUD live cue bar paints last system STT lines as Live captions when
 the rest of HUD hides (duplicate They asked / Them stay off; never a
-floating LIVE bar). Loopback `/workspace` This computer dock Run POSTs `/api/workspace/exec`
+floating LIVE bar). Compact HUD falls back to the stored meeting ring
+when STT is quiet. Loopback host chrome paints the same Live captions
+and shows Click/Type in on `/teach` (not `Next: 1 of 3`). Loopback `/workspace` This computer dock Run POSTs `/api/workspace/exec`
 and always fails closed (P-06). Public catalog shows the same refuse.
 Loopback GET `/api/document.docx` returns a generated Word package from
 the live draft (never Act, never Word.app). Public `/api/document.docx`

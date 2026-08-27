@@ -1,6 +1,6 @@
 # coworker desks + online workspace
 
-keywords: desks, meeting assist, meeting llm enrich, teach stack boxes, teach overlay click-through, workspace.exec, document.docx download, inbox.eml download, DR-0005, Clicky, Cluely, OpenWorker, Computer
+keywords: desks, meeting assist, meeting llm enrich, teach stack boxes, teach overlay click-through, workspace.exec, document.docx download, inbox.eml download, meeting cue live captions host, teach action chrome, DR-0005, Clicky, Cluely, OpenWorker, Computer
 main_idea: Pointer beats those products with original desks and a public artifact catalog. Do not vendor their source or unlock P-06.
 
 ## What we studied
@@ -47,6 +47,9 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - HUD insight paints the same You/Them talk in fixed chrome (never a
   bubble, never a cheater overlay). The live cue bar keeps They asked /
   last You/Them / Live system captions / Say this / Also / Don't say when the rest of HUD chrome hides.
+  Compact HUD falls back to the stored ring when STT is quiet. Loopback
+  host chrome paints the same Live captions. `/teach` chrome shows
+  Click/Type in on the current BOX.
 - Loopback `/meeting` paints You/Them turns from the stored ring.
   Say-this reuses your overlapping line or Heard facts, never an
   unrelated last-you dump. Meeting assist is Say this / Also / Don't say

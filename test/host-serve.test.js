@@ -271,6 +271,9 @@ function readAsset(file) {
     assert.match(app, /live-cue-also/);
     assert.match(app, /live-cue-them/);
     assert.match(app, /live-cue-you/);
+    assert.match(app, /live-cue-captions/);
+    assert.match(app, /Live:/);
+    assert.match(app, /teach-brief/);
     assert.match(app, /meeting-talk/);
     assert.doesNotMatch(app, /innerHTML/);
     const meeting = await fetch(new Request("https://host.netie.ai/meeting"));
@@ -330,7 +333,9 @@ function readAsset(file) {
     assert.strictEqual(homeBody.rooms.teach.desk, "teach");
     assert.strictEqual(homeBody.rooms.teach.advance, false);
     assert.deepStrictEqual(homeBody.rooms.teach.path, []);
+    assert.strictEqual(homeBody.rooms.teach.action, "");
     assert.deepStrictEqual(homeBody.rooms.meeting.turns, []);
+    assert.deepStrictEqual(homeBody.rooms.meeting.captions, []);
     assert.strictEqual(homeBody.rooms.meeting.notes, false);
     assert.strictEqual(homeBody.rooms.meeting.also, "");
     assert.strictEqual(homeBody.rooms.meeting.avoid, "");

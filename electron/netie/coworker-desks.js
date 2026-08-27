@@ -683,6 +683,61 @@ function liveTalkTurns(artifact) {
   return talkTurns(parseUtterances(live || ""));
 }
 
+function lastTalkText(turns, speaker) {
+  const rows = Array.isArray(turns) ? turns : [];
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (!rows[i] || rows[i].speaker !== speaker) continue;
+    const text = String(rows[i].text || "").trim();
+    if (text) return text.slice(0, 160);
+  }
+  return "";
+}
+
+/**
+ * Compact cue Live captions from a stored You/Them ring.
+ * Skips They asked and the last Them line. Never Act. Never a stealth overlay.
+ */
+function cueCaptionTurns(turns, opts) {
+  const cfg = opts || {};
+  const max = Number(cfg.max) > 0 ? Number(cfg.max) : 2;
+  const asked = String(cfg.asked || "").trim();
+  const them = String(cfg.them || lastTalkText(turns, "them")).trim();
+  const out = [];
+  const rows = Array.isArray(turns) ? turns : [];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.speaker === "you") continue;
+    const text = String(row.text || "").trim();
+    if (!text || text === asked || text === them) continue;
+    out.push({ text: text.slice(0, 160) });
+  }
+  return out.slice(-max);
+}
+
+function meetingCaptions(artifact) {
+  if (!artifact || typeof artifact !== "object") return [];
+  const turns = liveTalkTurns(artifact);
+  return cueCaptionTurns(turns, {
+    asked: artifact.asked,
+    them: lastTalkText(turns, "them"),
+    max: 2,
+  });
+}
+
+function teachActionCue(teach) {
+  const path = Array.isArray(teach && teach.path) ? teach.path : [];
+  for (let i = 0; i < path.length; i++) {
+    if (path[i] && path[i].now) {
+      const cue = String(path[i].cue || path[i].label || "").trim();
+      if (cue) return cue.slice(0, 80);
+    }
+  }
+  return String((teach && teach.cue) || "")
+    .replace(/^\d+\s+of\s+\d+\s+/i, "")
+    .trim()
+    .slice(0, 80);
+}
+
 function answerFromYourLines(question, utterances) {
   const qWords = contentWords(question);
   if (!qWords.length) return "";
@@ -1093,7 +1148,7 @@ function deskGrounding(deskOrId) {
     lines.push("6. When you mean click here, emit [POINT:x,y:label] percentages. Measured UIA also emits [BOX:left,top,w,h:label]. Crosshair and box only - never a buddy.");
   }
   if (desk.id === "meeting") {
-    lines.push("6. Recap/assist/next from the transcript. Open workspace files ground Heard facts only (not talk). Live cue is They asked plus last You/Them, Live system captions, say-this / Also / Don't say in the fixed top chrome (stays when the rest of HUD hides). OpenVault may refine say-this in 300ms; ungrounded or timed-out lines keep the heuristic. Never join the call. Never a stealth overlay. Never Act.");
+    lines.push("6. Recap/assist/next from the transcript. Open workspace files ground Heard facts only (not talk). Live cue is They asked plus last You/Them, Live captions from the ring or system STT, say-this / Also / Don't say in the fixed top chrome (stays when the rest of HUD hides, and on loopback host chrome). OpenVault may refine say-this in 300ms; ungrounded or timed-out lines keep the heuristic. Never join the call. Never a stealth overlay. Never Act.");
   }
   if (desk.id === "today") {
     lines.push("6. Standing brief from this session log. On your plate lists live commitments and filed inbox/Word drafts. Never invent work. Never Act.");
@@ -2937,6 +2992,8 @@ function publicEmptyRoom(desk, title, reason) {
     advance: false,
     chips: [],
     turns: [],
+    captions: [],
+    action: "",
     notes: false,
     also: "",
     avoid: "",
@@ -3038,6 +3095,9 @@ module.exports = {
   askHostCoworker,
   chipsForArtifact,
   liveTalkTurns,
+  cueCaptionTurns,
+  meetingCaptions,
+  teachActionCue,
   publicMeetingSnapshot,
   publicTeachSnapshot,
   publicSecuritySnapshot,

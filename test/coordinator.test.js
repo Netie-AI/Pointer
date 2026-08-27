@@ -201,6 +201,9 @@ function test(name, fn) {
     assert.ok(Array.isArray(meeting.body.turns));
     assert.ok(meeting.body.turns.some((row) => row.speaker === "them" && /launch date/.test(row.text)));
     assert.ok(meeting.body.turns.some((row) => row.speaker === "you" && /send it Friday/.test(row.text)));
+    assert.ok(Array.isArray(meeting.body.captions));
+    assert.ok(meeting.body.captions.some((row) => /Sarah Chen/.test(row.text)));
+    assert.ok(!meeting.body.captions.some((row) => /launch date/.test(row.text)));
     assert.strictEqual(meeting.body.notes, true);
     const meetingPage = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/meeting" }, (res) => {

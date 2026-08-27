@@ -53,6 +53,18 @@ pre {
   font-size: 12px;
   color: #9aa3b5;
 }
+.live-cue-captions {
+  flex: 1 1 100%;
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+.live-cue-captions[hidden] { display: none; }
+.live-cue-caption {
+  margin: 0;
+  font-size: 12px;
+  color: #9ad;
+}
 .live-cue-bar .live-cue-text {
   margin: 0;
   padding: 0;

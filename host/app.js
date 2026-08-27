@@ -814,6 +814,10 @@ function ensureLiveCueBar() {
   you.hidden = true;
   bar.appendChild(them);
   bar.appendChild(you);
+  const caps = el("div", "live-cue-captions");
+  caps.id = "live-cue-captions";
+  caps.hidden = true;
+  bar.appendChild(caps);
   const also = el("p", "live-cue-heard");
   also.id = "live-cue-also";
   also.hidden = true;
@@ -878,9 +882,13 @@ function paintChrome(home) {
   const heard = String(s.heard || meeting.heard || "").trim();
   const meetingCue = String(meeting.cue || s.cue || "").trim();
   const teachCue = String(teach.cue || "").trim();
+  const teachAction = String(teach.action || "").trim() || String(teachCue).replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
   const plate = String(s.plate || "").trim();
+  const onTeach = Boolean(document.getElementById("teach-brief"));
   let cueLine = "";
-  if (asked && meetingCue) cueLine = "Say this: " + meetingCue;
+  if (onTeach && teachAction) cueLine = teachAction;
+  else if (asked && meetingCue) cueLine = "Say this: " + meetingCue;
+  else if (teachAction) cueLine = teachAction;
   else if (teachCue) cueLine = "Next: " + teachCue;
   else if (plate) cueLine = "Plate: " + plate;
   else if (meetingCue) cueLine = "Say this: " + meetingCue;
@@ -921,8 +929,21 @@ function paintChrome(home) {
     avoidEl.hidden = !avoid;
     avoidEl.textContent = avoid ? "Don't say: " + avoid : "";
   }
+  const cap = document.getElementById("live-cue-captions");
+  const capRows = Array.isArray(meeting.captions) ? meeting.captions : [];
+  if (cap) {
+    cap.replaceChildren();
+    capRows.forEach(function (row) {
+      const text = String((row && row.text) || "").trim();
+      if (!text) return;
+      const p = el("p", "live-cue-caption");
+      p.textContent = "Live: " + text;
+      cap.appendChild(p);
+    });
+    cap.hidden = !cap.childNodes.length;
+  }
   if (textEl) textEl.textContent = cueLine;
-  lastChromeCue = meetingCue || teachCue || plate;
+  lastChromeCue = (onTeach && teachAction) || meetingCue || teachAction || teachCue || plate;
   bar.hidden = false;
   const canWalk = Boolean(teach.advance);
   const back = document.getElementById("live-cue-back");
