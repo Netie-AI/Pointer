@@ -1,3 +1,10 @@
+## 2026-08-27 - Heard clock times and meeting spawn recap
+
+Live meeting Heard strip also lists clock times (`3pm` / `15:00`) from
+the ring. Bare spawn during Meeting/Transcribe recaps the call (and
+still files unsent mail plus a Word draft). Never Acts. P-05 and P-06
+stay parked.
+
 ## 2026-08-27 - Meeting spawn files mail and Word drafts
 
 Spawn of a meeting recap also ships an unsent follow-up and a Word

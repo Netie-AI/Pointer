@@ -110,6 +110,15 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.match(recap.heard, /\$40k/);
   assert.match(recap.deliverable, /## Heard/);
   assert.match(assist.heard, /Friday/);
+  const timed = meetingAssist({
+    transcript: "system: Can we meet Friday at 3 pm for $40k?\nmic: I will join at 15:00.",
+    question: "recap this meeting",
+  });
+  assert.strictEqual(timed.act, false);
+  assert.match(timed.heard, /3pm/i);
+  assert.match(timed.heard, /15:00/);
+  assert.match(timed.deliverable, /\[Friday 3pm\]/i);
+  assert.match(timed.deliverable, /\[15:00\]/);
   const unanswered = meetingAssist({
     transcript: "system: What is the launch date?",
     question: "what should I say",
@@ -562,6 +571,14 @@ test("spawn coworker never acts and never claims the pointer-act lane", () => {
   assert.match(plate.job, /on my plate/);
   assert.strictEqual(plate.act, false);
   assert.doesNotMatch(plate.note, /unsent follow-up/);
+  const during = spawnCoworker({ text: "spawn a coworker", mode: "meeting" });
+  assert.strictEqual(during.desk, "meeting");
+  assert.match(during.job, /recap this meeting/);
+  assert.match(during.note, /unsent follow-up/);
+  assert.strictEqual(during.act, false);
+  const transcribe = spawnCoworker({ text: "spawn a coworker", mode: "transcribe" });
+  assert.strictEqual(transcribe.desk, "meeting");
+  assert.match(transcribe.job, /recap this meeting/);
   const fs = require("fs");
   const path = require("path");
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");

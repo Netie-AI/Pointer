@@ -160,13 +160,22 @@ function splitLines(transcript) {
   return parseUtterances(transcript).map((row) => row.text);
 }
 
-function namedLine(row) {
-  const who = row && row.speaker === "you" ? "You" : "Them";
-  const due = String((row && row.text) || "").match(
+function lineWhen(text) {
+  const t = String(text || "");
+  const bits = [];
+  const due = t.match(
     /\b(today|tomorrow|(mon|tues|wednes|thurs|fri|satur|sun)day)\b/i
   );
-  const tag = due ? ` [${due[0]}]` : "";
-  return `${who}${tag}: ${row && row.text ? row.text : ""}`;
+  if (due) bits.push(due[0]);
+  TIME_RE.lastIndex = 0;
+  const clock = t.match(TIME_RE);
+  if (clock && clock[0]) bits.push(String(clock[0]).replace(/\s+/g, ""));
+  return bits.length ? ` [${bits.join(" ")}]` : "";
+}
+
+function namedLine(row) {
+  const who = row && row.speaker === "you" ? "You" : "Them";
+  return `${who}${lineWhen(row && row.text)}: ${row && row.text ? row.text : ""}`;
 }
 
 function cueFacts(utterances) {
@@ -191,6 +200,8 @@ function looksDecision(line) {
 }
 
 const WHEN_RE = /\b(today|tomorrow|(?:mon|tues|wednes|thurs|fri|satur|sun)day)\b/gi;
+const TIME_RE =
+  /\b(?:(?:1[0-2]|0?[1-9])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)|(?:[01]?\d|2[0-3]):[0-5]\d)\b/gi;
 const MONEY_RE = /\$\s?\d[\d,]*(?:\.\d+)?\s*[kmb]?\b/gi;
 const PCT_RE = /\b\d{1,3}(?:\.\d+)?\s*(?:%|percent)\b/gi;
 const MONTH_RE =
@@ -214,10 +225,12 @@ function heardFacts(utterances) {
   }
   for (const row of Array.isArray(utterances) ? utterances : []) {
     const t = String((row && row.text) || "");
-    for (const re of [WHEN_RE, MONEY_RE, PCT_RE, MONTH_RE, ISO_RE]) {
+    for (const re of [WHEN_RE, TIME_RE, MONEY_RE, PCT_RE, MONTH_RE, ISO_RE]) {
       re.lastIndex = 0;
       const hits = t.match(re) || [];
-      hits.forEach(add);
+      for (const hit of hits) {
+        add(re === TIME_RE ? String(hit).replace(/\s+/g, "") : hit);
+      }
     }
   }
   return out;
@@ -1078,7 +1091,7 @@ function wantsSpawn(text) {
   return false;
 }
 
-function spawnJobText(text) {
+function spawnJobText(text, mode) {
   let t = String(text || "").replace(/\s+/g, " ").trim();
   t = t.replace(
     /^(spawn|start|run|launch)\s+(an?\s+)?(coworker|agent|pointer|buddy)\s+(to|and|that)\s+/i,
@@ -1086,7 +1099,11 @@ function spawnJobText(text) {
   );
   t = t.replace(/^(spawn|start|run|launch)\s+(an?\s+)?(coworker|agent|pointer|buddy)\b[\s,]*/i, "");
   t = t.replace(/\bin the background\b/gi, "").replace(/\s+/g, " ").trim();
-  if (!t || /^(this|it|that)$/i.test(t)) return "what's on my plate";
+  if (!t || /^(this|it|that)$/i.test(t)) {
+    const m = String(mode || "").toLowerCase();
+    if (m === "meeting" || m === "transcribe") return "recap this meeting";
+    return "what's on my plate";
+  }
   return t;
 }
 
@@ -1098,7 +1115,7 @@ function spawnCoworker({ text, mode } = {}) {
   if (!wantsSpawn(text)) {
     return { ok: false, act: false, spawn: false, claimLane: false, reason: "not a spawn request" };
   }
-  const job = spawnJobText(text);
+  const job = spawnJobText(text, mode);
   const desk = pickDesk(job, { mode });
   return {
     ok: true,

@@ -8,7 +8,7 @@ never invented; overlay shows the current step only; fields then primary
 CTA; `Type in` / `Click` cue; `Then:` remaining steps; say `got it` to
 advance), Meeting recaps an
 armed transcript (You/Them lines, weekday tags, They asked chrome, a
-speakable say-this from your answer, a Heard strip of dates/amounts from
+speakable say-this from your answer, a Heard strip of dates/amounts/clock times from
 the ring, and a 300ms cue when they ask), Today
 is the standing session brief with On your plate from live commitments,
 Document reuses the live recap or Today plate on a bare `write in Word`
@@ -22,7 +22,8 @@ security Review live in the fixed insight panel. HUD desk chips Ask,
 never Act. Home `/api/home` lists live rooms for every desk. Loopback
 `/teach` draws a read-only box map from measured markers. Inbox never
 sends (P-05). "Spawn a coworker" runs the named job, or the Today plate
-when bare, and never Acts. Act stays on the laptop.
+when bare (a meeting/transcribe session recaps instead, and files an
+unsent follow-up plus a Word draft). Never Acts. Act stays on the laptop.
 
 | Action | Result |
 |---|---|
