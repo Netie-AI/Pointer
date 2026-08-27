@@ -1,3 +1,10 @@
+## 2026-08-27 - Teach walks one control at a time
+
+Teach overlay shows the current measured control only. `got it` / `next`
+advances, `back` goes back. Live coworker cue also paints the insight
+summary (fixed chrome, not a bubble). Never Acts. P-05 and P-06 stay
+parked.
+
 ## 2026-08-27 - Live HUD cues, meeting coaching, desk handoffs
 
 Teach paints a Next cue (`1 Save`) in fixed HUD chrome with the live

@@ -4,7 +4,8 @@ One UI: center HUD chat with retrieve roulette and a draggable audio dock.
 
 Coworker desks (DR-0005): Teach points at measured on-screen controls
 (UIA rects -> numbered `[POINT:x,y:n label]` and `[BOX:left,top,w,h:n label]`,
-never invented), Meeting recaps an armed transcript (commitments plus a
+never invented; overlay shows the current step only; say `got it` to
+advance), Meeting recaps an armed transcript (commitments plus a
 live say-this cue while a question is still open), Today is the standing
 session brief, Document can reuse the live meeting recap as a Word draft,
 Security reviews injected files and never self-approves. Teach Next cue

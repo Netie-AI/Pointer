@@ -79,3 +79,4 @@ coworker rooms; public `/api/meeting` and `/api/teach` are localFirst empty.
 Security scans injected files only (redacted). Teach labels are numbered.
 Teach Next cue and meeting say-this live in fixed HUD chrome. Recap chips
 hand off to inbox/Word drafts (never send, never write without Cortex).
+Teach overlay shows the current measured control only; `got it` advances.

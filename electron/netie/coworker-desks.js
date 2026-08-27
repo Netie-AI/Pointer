@@ -132,7 +132,7 @@ function pickDesk(text, opts = {}) {
     return DESKS.security;
   }
   if (/\b(inbox|gmail|outlook|slack reply|email)\b/.test(t)) return DESKS.inbox;
-  if (/\b(click here|point at|walk me through|teach me|on (my )?screen)\b/.test(t)) {
+  if (/\b(click here|point at|walk me through|teach me|on (my )?screen|got it|next control|i clicked)\b/.test(t)) {
     return DESKS.teach;
   }
   return DESKS.teach;
@@ -492,37 +492,81 @@ function wantedControl(text) {
   return theBtn ? theBtn[1].trim() : "";
 }
 
+/** 1 to advance, -1 to go back, "reset", or 0. Never Acts. */
+function teachAdvance(text) {
+  const q = spoken(text);
+  if (!q) return 0;
+  if (/\b(start over|from the top|reset teach)\b/.test(q)) return "reset";
+  if (/\b(go back|previous control)\b/.test(q) || /^back$/.test(q)) return -1;
+  if (
+    /\b(got it|i clicked|i did that|done with that|next control|next one|skip this|click next)\b/.test(
+      q
+    ) ||
+    /^(next|skip)$/.test(q)
+  ) {
+    return 1;
+  }
+  return 0;
+}
+
+function nextTeachStep(text, current, live) {
+  const q = spoken(text);
+  const adv = teachAdvance(text);
+  if (adv === "reset") return 0;
+  if (/\b(walk me through|teach me|on (my )?screen)\b/.test(q) && adv === 0) return 0;
+  if (typeof adv === "number" && adv !== 0) {
+    if (!live) return 0;
+    return Math.max(0, Number(current) + adv);
+  }
+  const n = Number(current);
+  return Number.isInteger(n) && n > 0 ? n : 0;
+}
+
 /**
  * Teach walkthrough. POINT tokens come from a measured control tree only.
+ * Overlay shows the current step, not every control at once.
  * No tree => no coordinates, and vision still has to see the screen.
  * Never Acts. Never restores a floating buddy.
  */
-function teachAssist({ text, controls, screen } = {}) {
+function teachAssist({ text, controls, screen, step, live } = {}) {
   const t = String(text || "").trim();
   const q = spoken(t);
-  const explicit = /\b(walk me through|teach me|what should i click|click next|point at|on (my )?screen)\b/.test(
-    q
-  );
-  if (!explicit) return { ok: false, act: false, desk: "teach", reason: "not a teach request" };
-  const measured = pointControls(controls, screen, { want: wantedControl(t) });
-  const tokens = measured.map((p) => p.token);
-  const origin = tokens.length
+  const adv = teachAdvance(t);
+  const explicit =
+    adv !== 0 ||
+    /\b(walk me through|teach me|what should i click|click next|point at|on (my )?screen)\b/.test(q);
+  if (!explicit && !live) return { ok: false, act: false, desk: "teach", reason: "not a teach request" };
+  const want = wantedControl(t);
+  const measured = pointControls(controls, screen, { want });
+  const last = Math.max(0, measured.length - 1);
+  const raw = Number(step);
+  const idx = want
+    ? 0
+    : Math.min(last, Number.isInteger(raw) && raw > 0 ? raw : raw === 0 ? 0 : 0);
+  const current = measured[idx];
+  const origin = measured.length
     ? "> coordinates measured from the control tree, not invented"
     : "> do not invent coordinates";
-  const steps = tokens.length
+  const roster = measured.length
     ? measured
-        .map((p, i) => `${i + 1}. ${[p.boxToken, p.token].filter(Boolean).join(" ")}`)
+        .map((p, i) => {
+          const mark = i === idx ? " <- now" : "";
+          const body =
+            i === idx ? [p.boxToken, p.token].filter(Boolean).join(" ") : String(p.name || "control");
+          return `${i + 1}. ${body}${mark}`;
+        })
         .join("\n")
     : [
         "1. Name the control you mean.",
         "2. POINT at it from the screenshot, not from memory.",
-        "3. Say the next move in one short line.",
+        "3. Say got it or next to advance. Pointer will not click.",
       ].join("\n");
   const deliverable = [
     "# Teach walkthrough",
     "",
     "> identity: POINT crosshair, not a floating buddy",
     origin,
+    "> overlay: current step only",
     "> Act only after Cortex gate + human approval",
     "> will not click these points",
     "",
@@ -531,33 +575,40 @@ function teachAssist({ text, controls, screen } = {}) {
     t.slice(0, 800),
     "",
     "## How to point",
-    "Emit `[POINT:x,y:label]` with x,y as 0-100 percentages of the screen. Max 8.",
+    "The overlay shows one measured control. Say `got it` or `next` to advance. `back` goes back.",
+    "Emit `[POINT:x,y:label]` with x,y as 0-100 percentages of the screen. Max 8 measured.",
     "Measured controls also emit `[BOX:left,top,w,h:label]` so the overlay can draw around the real rect.",
     "Off-screen points are dropped. The overlay is a crosshair, an optional box, and a label.",
     "",
-    tokens.length ? "## Controls (measured)" : "## Steps",
-    steps,
+    measured.length ? "## Controls (measured)" : "## Steps",
+    roster,
   ].join("\n");
   return {
     ok: true,
     act: false,
-    skipLlm: tokens.length > 0,
+    skipLlm: measured.length > 0,
     desk: "teach",
     kind: "walkthrough",
     id: "live-teach",
-    title: tokens.length ? "Live teach" : "Teach walkthrough",
-    via: tokens.length ? "uia" : "none",
-    cue: measured[0] ? `1 ${String(measured[0].name || "control").slice(0, 40)}` : "",
-    cueKind: measured[0] ? "point" : "",
-    points: measured.map((p) => ({
-      xPct: p.xPct,
-      yPct: p.yPct,
-      label: p.name,
-      leftPct: p.leftPct,
-      topPct: p.topPct,
-      wPct: p.wPct,
-      hPct: p.hPct,
-    })),
+    title: measured.length ? "Live teach" : "Teach walkthrough",
+    via: measured.length ? "uia" : "none",
+    step: current ? idx : 0,
+    remaining: current ? Math.max(0, measured.length - idx - 1) : 0,
+    cue: current ? `${idx + 1} ${String(current.name || "control").slice(0, 40)}` : "",
+    cueKind: current ? "point" : "",
+    points: current
+      ? [
+          {
+            xPct: current.xPct,
+            yPct: current.yPct,
+            label: current.name,
+            leftPct: current.leftPct,
+            topPct: current.topPct,
+            wPct: current.wPct,
+            hPct: current.hPct,
+          },
+        ]
+      : [],
     deliverable,
   };
 }
@@ -840,8 +891,9 @@ function suggestsFromAssist(assist) {
   }
   if (assist.desk === "teach") {
     add("walk me through this on my screen", "Teach", "*");
+    add("got it, next", "Got it", ">");
     const first = Array.isArray(assist.points) && assist.points[0];
-    if (first && first.label) add(`point at ${first.label}`, "Next", ">");
+    if (first && first.label) add(`point at ${first.label}`, "This one", ">");
   }
   if (assist.desk === "security") {
     add("Security review this session", "Review again", "!");
@@ -938,6 +990,8 @@ function createLiveTeachPump(opts = {}) {
         text: spec.text || "walk me through this on my screen",
         controls: measured && measured.controls,
         screen: measured && measured.screen,
+        step: spec.step,
+        live: true,
       });
       if (!assist.ok || assist.act || !assist.skipLlm) return;
       const key = String(assist.deliverable || "");
@@ -1061,6 +1115,8 @@ module.exports = {
   publicMeetingSnapshot,
   publicTeachSnapshot,
   scanInjectedSecrets,
+  teachAdvance,
+  nextTeachStep,
   deskGrounding,
   canActOnline,
   finishListeningSession,

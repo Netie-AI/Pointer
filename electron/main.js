@@ -148,7 +148,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
-const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock } = require("./netie/coworker-desks");
+const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock, nextTeachStep, teachAdvance } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -305,6 +305,28 @@ function publishSuggests(assist) {
 const liveMeetingPump = createLiveMeetingPump({ delayMs: 900 });
 const liveTeachPump = createLiveTeachPump({ delayMs: 1500 });
 const standingClock = createBriefClock({ delayMs: 30000 });
+let teachStep = 0;
+let teachLive = false;
+function resetTeachWalk() {
+  teachStep = 0;
+  teachLive = false;
+  liveTeachPump.reset();
+}
+function noteTeachStep(text) {
+  if (appMode === "meeting" || appMode === "transcribe") return;
+  if (pickDesk(text, { mode: appMode }).id !== "teach") return;
+  teachStep = nextTeachStep(text, teachStep, teachLive);
+}
+function armTeachWalk(text) {
+  teachLive = true;
+  const adv = teachAdvance(text);
+  liveTeachPump.start({
+    text: adv ? "walk me through this on my screen" : text,
+    step: teachStep,
+    measure: measureTeachControls,
+    onAssist: publishTeachOverlay,
+  });
+}
 function publishLiveCoworker(assist) {
   if (!assist || !assist.ok || assist.act || !assist.deliverable) return;
   publishBrief(assist);
@@ -317,6 +339,12 @@ function publishLiveCoworker(assist) {
     cue: assist.cue || "",
     cueKind: assist.cueKind || (assist.desk === "teach" ? "point" : "say"),
   });
+  const line = assist.cue
+    ? assist.cueKind === "point"
+      ? `Next: ${assist.cue}`
+      : assist.cue
+    : "";
+  if (line) sendHudQuiet({ type: "insight", text: line.slice(0, 240) });
 }
 function publishTeachOverlay(assist) {
   if (!assist || !assist.ok || assist.act) return;
@@ -373,6 +401,8 @@ function localMeetingReply(message, extraTranscript, extra) {
       text: message,
       controls: extra && extra.controls,
       screen: extra && extra.screen,
+      step: teachStep,
+      live: teachLive,
     });
     if (assist.ok) {
       publishLiveCoworker(assist);
@@ -585,7 +615,7 @@ function applyAppMode(modeId, { reason = "" } = {}) {
   if (appMode !== "meeting" && appMode !== "transcribe") {
     liveMeetingPump.reset();
   }
-  liveTeachPump.reset();
+  resetTeachWalk();
   if (spec.autoNotes && (!notes.file || prev !== appMode)) {
     const started = notes.start(appMode);
     try {
@@ -2717,7 +2747,8 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
       error: queued.ok ? undefined : queued.error,
     };
   }
-  const teachHit = teachAssist({ text: asked });
+  noteTeachStep(asked);
+  const teachHit = teachAssist({ text: asked, step: teachStep, live: teachLive });
   const extra = teachHit.ok ? await measureTeachControls() : null;
   const local = localMeetingReply(asked, payload && payload.transcript, extra);
   if (local && local.ok && local.skipLlm) {
@@ -2729,11 +2760,7 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
     });
     if (pointed.points.length) sendHud(toOverlayEvent(local.deliverable));
     if (local.desk === "teach") {
-      liveTeachPump.start({
-        text: asked,
-        measure: measureTeachControls,
-        onAssist: publishTeachOverlay,
-      });
+      armTeachWalk(asked);
     }
     return {
       ok: true,
@@ -2852,10 +2879,16 @@ async function runDeskAssist(message, extraTranscript) {
   if (desk.id === "document") {
     return documentAssist({ text: message, source: liveArtifactBody("live-meeting") });
   }
-  const walkHit = teachAssist({ text: message });
+  const walkHit = teachAssist({ text: message, step: teachStep, live: teachLive });
   if (walkHit.ok) {
     const measured = await measureTeachControls();
-    return teachAssist({ text: message, controls: measured.controls, screen: measured.screen });
+    return teachAssist({
+      text: message,
+      controls: measured.controls,
+      screen: measured.screen,
+      step: teachStep,
+      live: true,
+    });
   }
   return todayAssist({ state: sessionCoworkerState(), question: message });
 }
@@ -2868,6 +2901,7 @@ function enqueueCoworkerJob(message, extraTranscript, spawn) {
     title: (spawn && spawn.title) || "Pointer coworker",
     run: async (ctx) => {
       if (ctx.cancelled) return { ok: false, act: false, reason: "cancelled" };
+      noteTeachStep(message);
       const assist = await runDeskAssist(message, extraTranscript);
       if (assist && assist.ok) {
         publishLiveCoworker(assist);
@@ -2879,11 +2913,7 @@ function enqueueCoworkerJob(message, extraTranscript, spawn) {
         });
         if (pointed.points.length) sendHud(toOverlayEvent(assist.deliverable));
         if (assist.desk === "teach") {
-          liveTeachPump.start({
-            text: message,
-            measure: measureTeachControls,
-            onAssist: publishTeachOverlay,
-          });
+          armTeachWalk(message);
         }
         liveCoordinator.note("brief", assist.title || assist.desk);
       } else if (assist) {
@@ -4100,7 +4130,7 @@ app.whenReady().then(() => {
 
 app.on("will-quit", () => {
   liveMeetingPump.reset();
-  liveTeachPump.reset();
+  resetTeachWalk();
   standingClock.reset();
   liveCoordinator.close().catch(() => {});
   globalShortcut.unregisterAll();

@@ -48,6 +48,7 @@ test("catalog is original first-party desks with no runtime", () => {
 
 test("pickDesk routes Clicky/Cluely/OpenWorker jobs to Pointer desks", () => {
   assert.strictEqual(pickDesk("walk me through this on screen").id, "teach");
+  assert.strictEqual(pickDesk("got it, next").id, "teach");
   assert.strictEqual(pickDesk("what should I say").id, "meeting");
   assert.strictEqual(pickDesk("recap this standup").id, "meeting");
   assert.strictEqual(pickDesk("list next steps").id, "meeting");
@@ -239,9 +240,13 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(walk.id, "live-teach");
   assert.strictEqual(walk.cueKind, "point");
   assert.match(walk.cue, /^1 /);
-  assert.match(walk.deliverable, /\[POINT:25,42:\d+ Save\]/);
-  assert.match(walk.deliverable, /\[BOX:20,40,10,4:\d+ Save\]/);
+  assert.match(walk.deliverable, /current step only/i);
+  assert.match(walk.deliverable, /\[POINT:5,2:\d+ Cancel\]/);
+  assert.match(walk.deliverable, /\[BOX:0,0,10,4:\d+ Cancel\]/);
+  assert.match(walk.deliverable, /<- now/);
   assert.match(walk.deliverable, /will not click/i);
+  assert.doesNotMatch(walk.deliverable, /\[POINT:.*Save/);
+  assert.doesNotMatch(walk.deliverable, /\[BOX:.*Save/);
   assert.doesNotMatch(walk.deliverable, /\[POINT:.*Ghost/);
   assert.doesNotMatch(walk.deliverable, /\[BOX:.*Ghost/);
   assert.doesNotMatch(walk.deliverable, /\[POINT:.*Dead/);
@@ -255,6 +260,23 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(pin.points[0].label, "Cancel");
   assert.strictEqual(pin.points[0].xPct, 5);
   assert.strictEqual(pin.cue, "1 Cancel");
+  const two = teachAssist({
+    text: "next",
+    controls,
+    screen,
+    step: 1,
+    live: true,
+  });
+  assert.strictEqual(two.act, false);
+  assert.strictEqual(two.step, 1);
+  assert.match(two.cue, /^2 Save$/);
+  assert.match(two.deliverable, /\[POINT:25,42:\d+ Save\]/);
+  assert.doesNotMatch(two.deliverable, /\[POINT:.*Cancel/);
+  const { nextTeachStep, teachAdvance } = require("../electron/netie/coworker-desks");
+  assert.strictEqual(teachAdvance("got it"), 1);
+  assert.strictEqual(nextTeachStep("walk me through this on my screen", 3, true), 0);
+  assert.strictEqual(nextTeachStep("next", 0, true), 1);
+  assert.strictEqual(nextTeachStep("next", 0, false), 0);
   const emptyTree = teachAssist({
     text: "walk me through this on my screen",
     controls: [{ name: "Save", controlType: "Button" }],
@@ -270,6 +292,10 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(main, /listControls/);
   assert.match(main, /publishLiveCoworker/);
   assert.match(main, /liveArtifactBody/);
+  assert.match(main, /noteTeachStep/);
+  assert.match(main, /armTeachWalk/);
+  const livePub = main.slice(main.indexOf("function publishLiveCoworker"), main.indexOf("function publishTeachOverlay"));
+  assert.match(livePub, /type: "insight"/);
   const ask = main.slice(main.indexOf('ipcMain.handle("hud:ask"'), main.indexOf("P4-BG-AGENTS"));
   assert.match(ask, /toOverlayEvent/);
   assert.doesNotMatch(ask, /driver\./);
@@ -519,6 +545,23 @@ async function asyncTest(name, fn) {
     await Promise.resolve();
     assert.strictEqual(hits.length, 1);
     pump.reset();
+    const tree2 = [
+      { name: "Cancel", controlType: "Button", rect: { x: 0, y: 0, width: 100, height: 40 } },
+      { name: "Save", controlType: "Button", rect: { x: 200, y: 400, width: 100, height: 40 } },
+    ];
+    pump.start({
+      text: "walk me through this on my screen",
+      step: 1,
+      measure: () => ({ controls: tree2, screen }),
+      onAssist: (a) => hits.push(a),
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.strictEqual(hits.length, 2);
+    assert.match(hits[1].cue, /^2 Save$/);
+    assert.match(hits[1].deliverable, /\[POINT:25,42:\d+ Save\]/);
+    assert.doesNotMatch(hits[1].deliverable, /\[POINT:.*Cancel/);
+    pump.reset();
     pump.start({
       text: "walk me through this on my screen",
       measure: () => ({ controls: [], screen }),
@@ -526,7 +569,7 @@ async function asyncTest(name, fn) {
     });
     await Promise.resolve();
     await Promise.resolve();
-    assert.strictEqual(hits.length, 1);
+    assert.strictEqual(hits.length, 2);
     const fs = require("fs");
     const path = require("path");
     const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");

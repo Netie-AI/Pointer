@@ -26,7 +26,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   `/teach` are loopback rooms; public `/api/meeting` and `/api/teach` are empty.
 - Security scans injected attachments/workspace bodies only and redacts
   hits. Never walks disk. Never self-approves.
-- Measured teach labels are numbered (`1 Save`). Meeting recap lists
+- Measured teach labels are numbered (`1 Save`). Overlay shows the
+  current step only; `got it` / `next` advances. Meeting recap lists
   commitments; `next` stays a separate section. Teach Next cue and
   meeting say-this live in the fixed insight panel. Recap chips hand
   off to inbox/Word drafts.
