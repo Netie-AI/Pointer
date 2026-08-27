@@ -1,3 +1,10 @@
+## 2026-08-27 - Teach keys, downloadable briefs, named Word notes
+
+Teach cues name the key (`Type in Email then Tab`, `Click Save or press
+Enter`). Loopback desk pages and workspace artifacts copy/download as
+markdown files. Meeting spawn Word notes title `Notes with Sarah Chen`.
+Never a .docx without Cortex. Never Acts. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Heard orgs, download session, copy teach walk
 
 Meeting Heard lists spoken orgs (`from Acme` / `I work at Stripe`) from

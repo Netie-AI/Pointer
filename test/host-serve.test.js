@@ -121,6 +121,8 @@ function readAsset(file) {
     assert.match(page, /id="session-md"/);
     assert.match(page, /id="session-copy"/);
     assert.match(page, /id="session-download"/);
+    assert.match(page, /id="artifact-copy"/);
+    assert.match(page, /id="artifact-download"/);
   });
 
   await test("public fetch serves /today and style.css from host/", async () => {
@@ -173,6 +175,8 @@ function readAsset(file) {
     assert.match(app, /writeText/);
     assert.match(app, /createObjectURL/);
     assert.match(app, /pointer-session.md/);
+    assert.match(app, /briefFileName/);
+    assert.match(app, /artifact-copy/);
     assert.doesNotMatch(paint, /innerHTML/);
     assert.match(app, /Live session stays on the laptop/);
     assert.match(app, /paintTeachMap/);
@@ -190,6 +194,8 @@ function readAsset(file) {
     assert.match(meetingText, /id="meeting-brief"/);
     assert.match(meetingText, /id="meeting-asked-web"/);
     assert.match(meetingText, /id="meeting-heard-web"/);
+    assert.match(meetingText, /id="brief-copy"/);
+    assert.match(meetingText, /id="brief-download"/);
     const meetingApi = handlePublicRequest({ method: "GET", pathname: "/api/meeting" });
     assert.strictEqual(JSON.parse(meetingApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(meetingApi.body).exec, false);
@@ -202,7 +208,8 @@ function readAsset(file) {
     assert.match(teachText, /id="teach-brief"/);
     assert.match(teachText, /id="teach-cue-web"/);
     assert.match(teachText, /id="teach-rest-web"/);
-    assert.match(teachText, /id="teach-copy"/);
+    assert.match(teachText, /id="brief-copy"/);
+    assert.match(teachText, /id="brief-download"/);
     const teachApi = handlePublicRequest({ method: "GET", pathname: "/api/teach" });
     assert.strictEqual(JSON.parse(teachApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(teachApi.body).exec, false);
@@ -233,12 +240,15 @@ function readAsset(file) {
     assert.deepStrictEqual(homeBody.session.files, []);
     const documentPage = await fetch(new Request("https://host.netie.ai/document"));
     assert.strictEqual(documentPage.status, 200);
-    assert.match(await documentPage.text(), /id="document-brief"/);
+    const documentHtml = await documentPage.text();
+    assert.match(documentHtml, /id="document-brief"/);
+    assert.match(documentHtml, /id="brief-copy"/);
     const inboxPage = await fetch(new Request("https://host.netie.ai/inbox"));
     assert.strictEqual(inboxPage.status, 200);
     const inboxHtml = await inboxPage.text();
     assert.match(inboxHtml, /id="inbox-brief"/);
     assert.match(inboxHtml, /id="inbox-heard-web"/);
+    assert.match(inboxHtml, /id="brief-copy"/);
     const documentApi = handlePublicRequest({ method: "GET", pathname: "/api/document" });
     assert.strictEqual(JSON.parse(documentApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(documentApi.body).exec, false);

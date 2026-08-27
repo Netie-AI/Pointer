@@ -67,13 +67,14 @@ function paintEvents(events) {
   });
 }
 
-function paintBrief(text) {
+function paintBrief(text, desk, localFirst) {
   const root = document.getElementById("brief");
   if (!root) return;
   root.replaceChildren();
   const pre = el("pre");
   pre.textContent = text || "";
   root.appendChild(pre);
+  setBriefButtons(text, desk || "today", localFirst);
 }
 
 function paintArtifacts(items) {
@@ -124,19 +125,32 @@ function openArtifact(id) {
         show("policy", "refused: workspace must not grow a runtime");
         return;
       }
-      root.replaceChildren();
-      const pre = el("pre");
-      pre.textContent =
+      const text =
         body && body.ok && body.artifact
           ? String(body.artifact.body || "")
           : (body && body.reason) || "live artifacts stay on the laptop";
+      root.replaceChildren();
+      const pre = el("pre");
+      pre.textContent = text;
       root.appendChild(pre);
+      const ok = Boolean(body && body.ok && body.artifact && String(body.artifact.body || "").trim());
+      lastArtifactText = ok ? String(body.artifact.body) : "";
+      lastArtifactFile = briefFileName((body && body.artifact && (body.artifact.desk || body.artifact.id)) || id);
+      const copyBtn = document.getElementById("artifact-copy");
+      const dlBtn = document.getElementById("artifact-download");
+      if (copyBtn) copyBtn.hidden = !ok;
+      if (dlBtn) dlBtn.hidden = !ok;
     })
     .catch((err) => {
       root.replaceChildren();
       const pre = el("pre");
       pre.textContent = String(err);
       root.appendChild(pre);
+      lastArtifactText = "";
+      const copyBtn = document.getElementById("artifact-copy");
+      const dlBtn = document.getElementById("artifact-download");
+      if (copyBtn) copyBtn.hidden = true;
+      if (dlBtn) dlBtn.hidden = true;
     });
 }
 
@@ -250,7 +264,7 @@ if (todayPage) {
           plate.hidden = !plateText;
           plate.textContent = plateText ? "Plate: " + plateText : "";
         }
-        paintBrief((t && (t.deliverable || t.brief)) || "");
+        paintBrief((t && (t.deliverable || t.brief)) || "", "today", Boolean(t && t.localFirst));
         paintEvents((t && (t.events || t.today)) || []);
         return !(t && t.localFirst);
       });
@@ -306,10 +320,7 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse, askedId) {
         const pre = el("pre");
         pre.textContent = (m && m.deliverable) || "";
         page.appendChild(pre);
-        const teachCopy = document.getElementById("teach-copy");
-        if (teachCopy && pageId === "teach-brief") {
-          teachCopy.hidden = !String((m && m.deliverable) || "").trim() || Boolean(m && m.localFirst);
-        }
+        setBriefButtons((m && m.deliverable) || "", (m && m.desk) || "brief", Boolean(m && m.localFirst));
         return !(m && m.localFirst);
       });
   });
@@ -502,6 +513,37 @@ function downloadMarkdown(filename, text) {
   URL.revokeObjectURL(url);
 }
 
+function briefFileName(desk) {
+  const d = String(desk || "brief")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "")
+    .slice(0, 24);
+  return "pointer-" + (d || "brief") + ".md";
+}
+
+let lastBriefText = "";
+let lastBriefFile = "pointer-brief.md";
+let lastArtifactText = "";
+let lastArtifactFile = "pointer-artifact.md";
+
+function setBriefButtons(text, desk, localFirst) {
+  const has = Boolean(String(text || "").trim()) && !localFirst;
+  lastBriefText = has ? String(text) : "";
+  lastBriefFile = briefFileName(desk);
+  const copyBtn = document.getElementById("brief-copy");
+  const dlBtn = document.getElementById("brief-download");
+  if (copyBtn) copyBtn.hidden = !has;
+  if (dlBtn) dlBtn.hidden = !has;
+}
+
+function copyPlain(text) {
+  const body = String(text || "");
+  if (!body) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(body).catch(function () {});
+  }
+}
+
 const sessionCopy = document.getElementById("session-copy");
 if (sessionCopy) {
   sessionCopy.addEventListener("click", function () {
@@ -517,10 +559,31 @@ if (sessionDownload) {
   });
 }
 
-const teachCopyBtn = document.getElementById("teach-copy");
-if (teachCopyBtn) {
-  teachCopyBtn.addEventListener("click", function () {
-    copyNodeText("teach-brief");
+const briefCopy = document.getElementById("brief-copy");
+if (briefCopy) {
+  briefCopy.addEventListener("click", function () {
+    copyPlain(lastBriefText);
+  });
+}
+
+const briefDownload = document.getElementById("brief-download");
+if (briefDownload) {
+  briefDownload.addEventListener("click", function () {
+    downloadMarkdown(lastBriefFile, lastBriefText);
+  });
+}
+
+const artifactCopy = document.getElementById("artifact-copy");
+if (artifactCopy) {
+  artifactCopy.addEventListener("click", function () {
+    copyPlain(lastArtifactText);
+  });
+}
+
+const artifactDownload = document.getElementById("artifact-download");
+if (artifactDownload) {
+  artifactDownload.addEventListener("click", function () {
+    downloadMarkdown(lastArtifactFile, lastArtifactText);
   });
 }
 

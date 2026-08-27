@@ -434,8 +434,8 @@ test("teach assist emits POINT tokens from measured controls only", () => {
     screen,
   });
   assert.strictEqual(form.act, false);
-  assert.match(form.cue, /^1 of 3 Type in Email$/);
-  assert.match(form.rest, /Click Save \/ Click Cancel/);
+  assert.match(form.cue, /^1 of 3 Type in Email then Tab$/);
+  assert.match(form.rest, /Click Save or press Enter \/ Click Cancel/);
   const submit = teachAssist({
     text: "next",
     controls: [
@@ -447,7 +447,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
     step: 1,
     live: true,
   });
-  assert.match(submit.cue, /^2 of 3 Click Save$/);
+  assert.match(submit.cue, /^2 of 3 Click Save or press Enter$/);
   assert.match(submit.rest, /^Click Cancel$/);
   const { nextTeachStep, teachAdvance } = require("../electron/netie/coworker-desks");
   assert.strictEqual(teachAdvance("got it"), 1);
@@ -717,6 +717,17 @@ test("document assist drafts and never writes Word", () => {
   assert.match(fromToday.deliverable, /standing-today/);
   assert.match(fromToday.deliverable, /send it Friday/);
   assert.doesNotMatch(fromToday.deliverable, /will execute/i);
+  const named = documentAssist({
+    text: "write this recap in Word",
+    source: "# Meeting brief\n- ship the deck Friday",
+    transcript: "system: Hi this is Sarah Chen from acme.\nmic: I will send it Friday.",
+  });
+  assert.strictEqual(named.act, false);
+  assert.match(named.title, /Notes with Sarah Chen at Acme/);
+  assert.match(named.cue, /Sarah Chen at Acme/);
+  assert.match(named.cue, /not a \.docx/);
+  assert.match(named.deliverable, /Notes with Sarah Chen at Acme/);
+  assert.doesNotMatch(named.deliverable, /will execute/i);
 });
 
 test("spawn coworker never acts and never claims the pointer-act lane", () => {
@@ -791,6 +802,7 @@ test("meeting spawn follow-ons ship inbox and Word drafts without acting", () =>
   assert.strictEqual(doc.skipLlm, true);
   assert.match(doc.deliverable, /not a \.docx/);
   assert.match(doc.deliverable, /send it Friday/);
+  assert.match(doc.deliverable, /Notes with Sarah Chen/);
   const scanHit = follows.find((row) => row.desk === "security");
   assert.strictEqual(scanHit.id, "live-security");
   assert.match(scanHit.deliverable, /injected files only|no secret patterns|Findings/);
@@ -998,7 +1010,7 @@ async function asyncTest(name, fn) {
     assert.strictEqual(hits.length, 1);
     assert.strictEqual(hits[0].act, false);
     assert.match(hits[0].deliverable, /\[BOX:20,40,10,4:\d+ Save\]/);
-  assert.match(hits[0].cue, /^1 of 1 Click Save$/);
+  assert.match(hits[0].cue, /^1 of 1 Click Save or press Enter$/);
     assert.strictEqual(hits[0].cueKind, "point");
     if (tick) await tick();
     await Promise.resolve();

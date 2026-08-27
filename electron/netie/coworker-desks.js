@@ -942,13 +942,30 @@ function teachVerb(controlType) {
   return "Look at";
 }
 
+function teachKey(point) {
+  const t = String((point && point.controlType) || "");
+  const name = String((point && point.name) || "");
+  if (t === "Edit" || t === "Document" || t === "ComboBox") return "then Tab";
+  if (t === "CheckBox" || t === "RadioButton") return "or press Space";
+  if (t === "Button" || t === "SplitButton" || t === "Hyperlink") {
+    if (/\b(cancel|close|back|dismiss|no)\b/i.test(name)) return "";
+    return "or press Enter";
+  }
+  return "";
+}
+
+function teachStepPhrase(point) {
+  const verb = teachVerb(point && point.controlType);
+  const label = String((point && point.name) || "control").slice(0, 40);
+  const key = teachKey(point);
+  return key ? `${verb} ${label} ${key}` : `${verb} ${label}`;
+}
+
 function teachCue(point, index, total) {
   if (!point) return "";
   const n = Number.isInteger(total) && total > 0 ? total : 1;
   const i = Number.isInteger(index) && index >= 0 ? index : 0;
-  const verb = teachVerb(point.controlType);
-  const label = String(point.name || "control").slice(0, 40);
-  return `${i + 1} of ${n} ${verb} ${label}`.trim();
+  return `${i + 1} of ${n} ${teachStepPhrase(point)}`.trim();
 }
 
 function teachRest(measured, idx) {
@@ -956,7 +973,7 @@ function teachRest(measured, idx) {
   const start = Number.isInteger(idx) && idx >= 0 ? idx + 1 : 1;
   return list
     .slice(start)
-    .map((p) => `${teachVerb(p.controlType)} ${String((p && p.name) || "control").slice(0, 24)}`.trim())
+    .map((p) => teachStepPhrase(p).trim())
     .slice(0, 3)
     .join(" / ");
 }
@@ -996,10 +1013,13 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
     ? measured
         .map((p, i) => {
           const mark = i === idx ? " <- now" : "";
-          const verb = teachVerb(p.controlType);
-          const body =
-            i === idx ? [p.boxToken, p.token].filter(Boolean).join(" ") : String(p.name || "control");
-          return `${i + 1}. ${verb} ${body}${mark}`;
+          if (i === idx) {
+            const tokens = [p.boxToken, p.token].filter(Boolean).join(" ");
+            const key = teachKey(p);
+            const verb = teachVerb(p.controlType);
+            return `${i + 1}. ${verb} ${tokens}${key ? " " + key : ""}${mark}`;
+          }
+          return `${i + 1}. ${teachStepPhrase(p)}${mark}`;
         })
         .join("\n")
     : [
@@ -1351,7 +1371,7 @@ function isBareDocWrite(text) {
   );
 }
 
-function documentAssist({ text, source } = {}) {
+function documentAssist({ text, source, transcript } = {}) {
   const t = String(text || "").trim();
   if (!t) {
     return { ok: false, act: false, desk: "document", reason: "document desk needs something to write" };
@@ -1362,13 +1382,18 @@ function documentAssist({ text, source } = {}) {
     fromLive && (isBareDocWrite(t) || /\b(recap|meeting|brief|this|plate|today)\b/.test(q))
   );
   const draft = (reuse ? fromLive : t.replace(/^(write|put|type)\s+/i, "")).slice(0, 1500);
+  const utterances = parseUtterances(transcript);
+  const names = themHeardNames(utterances);
+  const orgs = themHeardOrgs(utterances);
+  const about = [names[0] || "", orgs[0] || ""].filter(Boolean).join(" at ");
   const origin = reuse
     ? fromLive.indexOf("# Today") === 0
       ? "> source: standing-today artifact (untrusted data)"
       : "> source: live-meeting artifact (untrusted data)"
     : "> source: this request";
+  const heading = about ? `# Notes with ${about}` : "# Document draft";
   const deliverable = [
-    "# Document draft",
+    heading,
     "",
     "> act: laptop-only after Cortex gate + approval",
     "> do not click the Word ribbon",
@@ -1393,9 +1418,10 @@ function documentAssist({ text, source } = {}) {
     desk: "document",
     kind: "draft",
     id: "live-document",
-    title: "Document draft",
-    cue: "draft only - not a .docx",
+    title: about ? `Notes with ${about}` : "Document draft",
+    cue: about ? `draft for ${about} - not a .docx` : "draft only - not a .docx",
     cueKind: "warn",
+    heard: heardLine(utterances),
     deliverable,
   };
 }
@@ -1478,6 +1504,7 @@ function spawnFollowOns(assist, extra = {}) {
   const doc = documentAssist({
     text: "write this recap in Word",
     source: assist.deliverable,
+    transcript,
   });
   if (doc.ok && !doc.act) out.push(doc);
   const files = [{ name: assist.id || "live-meeting", body: assist.deliverable }];
