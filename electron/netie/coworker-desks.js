@@ -1214,7 +1214,7 @@ function spawnCoworker({ text, mode } = {}) {
       `${desk.label} coworker spawned.`,
       `Job: ${job.slice(0, 80)}.`,
       desk.id === "meeting"
-        ? "It will ship a recap plus an unsent follow-up and a Word draft behind the LIVE bar."
+        ? "It will ship a recap plus an unsent follow-up, a Word draft, and a security review behind the LIVE bar."
         : "It will ship a brief behind the LIVE bar.",
       "Will not Act. No Cortex gate => no OS actions.",
       "workspace.exec stays refused (P-06).",
@@ -1225,8 +1225,9 @@ function spawnCoworker({ text, mode } = {}) {
 /**
  * Meeting spawn bundle. Recap stays the live cue; follow-ons persist as
  * workspace artifacts only. Inbox is never sent (P-05). Document is not
- * a .docx without Cortex. Today/Teach/Security spawn does not invent
- * mail or Word. Never Acts.
+ * a .docx without Cortex. Security scans those injected bodies only
+ * (no disk). Today/Teach spawn does not invent mail, Word, or a review.
+ * Never Acts.
  */
 function spawnFollowOns(assist, extra = {}) {
   if (!assist || !assist.ok || assist.act) return [];
@@ -1243,6 +1244,15 @@ function spawnFollowOns(assist, extra = {}) {
     source: assist.deliverable,
   });
   if (doc.ok && !doc.act) out.push(doc);
+  const files = [{ name: assist.id || "live-meeting", body: assist.deliverable }];
+  for (const follow of out) {
+    files.push({ name: follow.id || follow.desk, body: follow.deliverable });
+  }
+  const scan = securityAssist({
+    text: "security review this session",
+    files,
+  });
+  if (scan.ok && !scan.act) out.push(scan);
   return out;
 }
 
@@ -1470,7 +1480,7 @@ function sessionHref(desk) {
 }
 
 function emptySession(extra) {
-  return Object.assign(
+  const base = Object.assign(
     {
       ok: true,
       act: false,
@@ -1484,6 +1494,37 @@ function emptySession(extra) {
     },
     extra || {}
   );
+  base.markdown = sessionMarkdown(base);
+  return base;
+}
+
+function sessionMarkdown(bundle) {
+  const s = bundle || {};
+  const lines = [
+    "# This session",
+    "",
+    "> act: never",
+    "> exec: parked (P-06)",
+    "> send: parked (P-05)",
+    "",
+  ];
+  if (s.asked) lines.push("They asked: " + String(s.asked), "");
+  if (s.heard) lines.push("Heard: " + String(s.heard), "");
+  if (s.cue) lines.push("Say this: " + String(s.cue), "");
+  if (s.plate) lines.push("Plate: " + String(s.plate), "");
+  lines.push("## Filed", "");
+  const files = Array.isArray(s.files) ? s.files : [];
+  if (!files.length) lines.push("- none yet");
+  else {
+    for (const row of files) {
+      const cue = String((row && row.cue) || "").trim();
+      const desk = String((row && row.desk) || "desk");
+      const title = String((row && row.title) || (row && row.id) || "artifact");
+      const href = String((row && row.href) || "");
+      lines.push(`- ${title} (${desk}${href ? " " + href : ""})${cue ? " - " + cue : ""}`);
+    }
+  }
+  return lines.join("\n").slice(0, 4000);
 }
 
 /**
@@ -1512,7 +1553,7 @@ function sessionBundle(artifacts, plateCue) {
   const teach = byId.get("live-teach") || {};
   const plate = String(plateCue || "").trim().slice(0, 240);
   if (!files.length && !plate) return emptySession();
-  return {
+  const bundle = {
     ok: true,
     act: false,
     exec: false,
@@ -1523,6 +1564,8 @@ function sessionBundle(artifacts, plateCue) {
     plate,
     files,
   };
+  bundle.markdown = sessionMarkdown(bundle);
+  return bundle;
 }
 
 function publicSessionSnapshot() {
@@ -1625,6 +1668,7 @@ module.exports = {
   publicHomeSnapshot,
   sessionBundle,
   publicSessionSnapshot,
+  sessionMarkdown,
   scanInjectedSecrets,
   FRAME_TEACH_TEXT,
   shouldTeachFramedRegion,

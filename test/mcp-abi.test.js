@@ -51,6 +51,7 @@ function test(name, fn) {
     assert.ok(r.result.tools.includes("security.live"));
     assert.ok(r.result.tools.includes("inbox.live"));
     assert.ok(r.result.tools.includes("document.live"));
+    assert.ok(r.result.tools.includes("session.live"));
     assert.ok(r.result.tools.includes("workspace.get"));
   });
 
@@ -252,6 +253,20 @@ function test(name, fn) {
     assert.strictEqual(documentLive.result.ok, true);
     assert.strictEqual(documentLive.result.exec, false);
     assert.match(documentLive.result.artifact.cue, /not a \.docx/);
+    const sessionLive = await mcp.handle(
+      { jsonrpc: "2.0", id: 21, method: "session.live" },
+      { coordinator: coord }
+    );
+    assert.strictEqual(sessionLive.result.ok, true);
+    assert.strictEqual(sessionLive.result.exec, false);
+    assert.strictEqual(sessionLive.result.act, false);
+    assert.strictEqual(sessionLive.result.empty, false);
+    assert.ok(sessionLive.result.files.some((row) => row.id === "live-meeting"));
+    assert.ok(sessionLive.result.files.some((row) => row.id === "live-inbox"));
+    assert.match(sessionLive.result.markdown, /This session/);
+    const missing = await mcp.handle({ jsonrpc: "2.0", id: 22, method: "session.live" });
+    assert.ok(missing.error);
+    assert.match(missing.error.message, /coordinator missing/);
     const unknown = await mcp.handle({ jsonrpc: "2.0", id: 14, method: "browser.run" });
     assert.ok(unknown.error);
     assert.match(unknown.error.message, /unknown tool/);

@@ -8,6 +8,8 @@
  * refusal so a Computer-shaped caller cannot smuggle a runtime through us.
  */
 
+const { publicSessionSnapshot } = require("./coworker-desks");
+
 function nowMs(clock) {
   return typeof clock === "function" ? clock() : Date.now();
 }
@@ -88,18 +90,7 @@ function publicWorkspaceSnapshot(desks) {
     coordinator: "http://127.0.0.1:18010",
     desks: Array.isArray(desks) ? desks.slice() : [],
     artifacts: [],
-    session: {
-      ok: true,
-      act: false,
-      exec: false,
-      empty: true,
-      localFirst: true,
-      asked: "",
-      heard: "",
-      cue: "",
-      plate: "",
-      files: [],
-    },
+    session: publicSessionSnapshot(),
     reason: "workspace artifacts and Act stay on the laptop; this host has no runtime (P-06)",
   };
 }

@@ -83,6 +83,9 @@ test("session bundle is a catalog of filed desks and never execs", () => {
   assert.match(bundle.heard, /\$40k/);
   assert.match(bundle.cue, /We'll ship Friday/);
   assert.match(bundle.plate, /send it Friday/);
+  assert.match(bundle.markdown, /They asked/);
+  assert.match(bundle.markdown, /\/inbox/);
+  assert.match(empty.markdown, /none yet/);
   assert.deepStrictEqual(
     bundle.files.map((row) => row.id),
     ["live-meeting", "live-inbox", "live-document"]
@@ -658,6 +661,7 @@ test("spawn coworker never acts and never claims the pointer-act lane", () => {
   assert.strictEqual(recap.desk, "meeting");
   assert.match(recap.job, /recap this meeting/);
   assert.match(recap.note, /unsent follow-up/);
+  assert.match(recap.note, /security review/);
   assert.strictEqual(recap.act, false);
   const plate = spawnCoworker({ text: "spawn a coworker" });
   assert.ok(plate.ok);
@@ -696,11 +700,12 @@ test("meeting spawn follow-ons ship inbox and Word drafts without acting", () =>
   assert.strictEqual(recap.desk, "meeting");
   assert.strictEqual(recap.act, false);
   const follows = spawnFollowOns(recap, { transcript });
-  assert.strictEqual(follows.length, 2);
+  assert.strictEqual(follows.length, 3);
   assert.ok(follows.every((row) => row.ok && row.act === false));
   const desks = follows.map((row) => row.desk);
   assert.ok(desks.includes("inbox"));
   assert.ok(desks.includes("document"));
+  assert.ok(desks.includes("security"));
   const mail = follows.find((row) => row.desk === "inbox");
   assert.strictEqual(mail.id, "live-inbox");
   assert.match(mail.deliverable, /not sent/i);
@@ -711,6 +716,22 @@ test("meeting spawn follow-ons ship inbox and Word drafts without acting", () =>
   assert.strictEqual(doc.skipLlm, true);
   assert.match(doc.deliverable, /not a \.docx/);
   assert.match(doc.deliverable, /send it Friday/);
+  const scanHit = follows.find((row) => row.desk === "security");
+  assert.strictEqual(scanHit.id, "live-security");
+  assert.match(scanHit.deliverable, /injected files only|no secret patterns|Findings/);
+  assert.doesNotMatch(scanHit.deliverable, /will execute/i);
+  const hot = meetingAssist({
+    transcript: "system: key is AKIAIOSFODNN7EXAMPLE\nmic: I will rotate it Friday.",
+    question: "recap this meeting",
+  });
+  const hotFollows = spawnFollowOns(hot, {
+    transcript: "system: key is AKIAIOSFODNN7EXAMPLE\nmic: I will rotate it Friday.",
+  });
+  const hotScan = hotFollows.find((row) => row.desk === "security");
+  assert.ok(hotScan);
+  assert.strictEqual(hotScan.act, false);
+  assert.match(hotScan.deliverable, /AKIA\*\*\*\*/);
+  assert.doesNotMatch(hotScan.deliverable, /AKIAIOSFODNN7EXAMPLE/);
   assert.strictEqual(spawnFollowOns(todayAssist({ question: "what's on my plate" })).length, 0);
   const walk = teachAssist({ text: "walk me through this on my screen" });
   assert.strictEqual(spawnFollowOns(walk).length, 0);

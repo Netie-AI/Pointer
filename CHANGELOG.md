@@ -1,3 +1,10 @@
+## 2026-08-27 - session.live MCP and spawn security review
+
+Loopback MCP `session.live` returns the This session catalog as markdown
+plus file links. Meeting spawn also files a security review of those
+injected briefs (redacted, no disk). Public `/mcp` stays 404. Never Acts.
+P-05 and P-06 stay parked.
+
 ## 2026-08-27 - This session catalog on home and workspace
 
 Loopback `/` and `/workspace` show a This session catalog: They asked,

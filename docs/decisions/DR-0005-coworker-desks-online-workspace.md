@@ -57,7 +57,7 @@ fail-closed (Hard rule 2).
 5. **First-party MCP grows, still closed.** Added tools:
    `desks.list`, `desks.pick`, `teach.point`, `teach.live`, `today.brief`,
    `meeting.live`, `security.review`, `security.live`, `inbox.live`,
-   `document.live`, `workspace.list`,
+   `document.live`, `session.live`, `workspace.list`,
    `workspace.get`, `workspace.put`, `workspace.exec` (always refuse).
    `teach.point` emits overlay tokens from injected measured controls only.
    `security.review` scans injected file bodies only and redacts hits.
@@ -108,3 +108,6 @@ Today plate lists filed inbox/Word drafts from that spawn.
 Loopback `/` and `/workspace` show a This session catalog of those
 artifacts (They asked / Heard / say-this / plate / file links). Public
 copies stay empty. `workspace.exec` still always errors.
+`session.live` is the loopback MCP read of that catalog (never exec).
+Meeting spawn also files a security review of those injected bodies
+(redacted, no disk, never self-approve).

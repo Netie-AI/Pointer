@@ -27,7 +27,9 @@ filed inbox and Word links, no runtime). Loopback
 `/teach` draws a read-only box map from measured markers. Inbox never
 sends (P-05). "Spawn a coworker" runs the named job, or the Today plate
 when bare (a meeting/transcribe session recaps instead, and files an
-unsent follow-up plus a Word draft). Never Acts. Act stays on the laptop.
+unsent follow-up, a Word draft, and a security review of those injected
+bodies). Loopback MCP `session.live` reads the This session catalog.
+Never Acts. Act stays on the laptop.
 
 | Action | Result |
 |---|---|
