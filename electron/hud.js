@@ -1182,6 +1182,18 @@ $("insight-actions").addEventListener("click", (event) => {
 if (btnShowTranscript) {
   btnShowTranscript.addEventListener("click", () => setInsightView("transcripts"));
 }
+$("desk-pill").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-desk]");
+  if (!button) return;
+  const q = String(button.dataset.q || "");
+  if (!q) return;
+  document.querySelectorAll("#desk-pill button").forEach((b) => {
+    b.classList.toggle("active", b === button);
+  });
+  askInput.value = q;
+  if (button.dataset.autoask === "1") doAsk();
+  else askInput.focus();
+});
 $("mode-pill").addEventListener("click", async (event) => {
   if (agentBusy) {
     answerMeta.textContent = "Agent busy — mode locked";

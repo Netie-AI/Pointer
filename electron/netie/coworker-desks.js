@@ -150,6 +150,26 @@ function looksAction(line) {
   );
 }
 
+/** Draft a spoken reply from the ring only. Never invents facts. Never Acts. */
+function groundedReply(lines, lastOther) {
+  if (!lastOther) return "No question landed yet. Keep listening.";
+  const facts = (lines || []).filter((line) => !looksQuestion(line)).slice(-4);
+  const reply = facts.length
+    ? `On that: ${facts[facts.length - 1]}. I can confirm that from this transcript. I will not send or click anything.`
+    : `I heard "${lastOther}" on this machine. I do not have an answer in the transcript yet.`;
+  return [
+    `They asked: "${lastOther}"`,
+    "",
+    "Suggested reply (say it yourself; Pointer will not send this):",
+    "",
+    reply,
+    "",
+    "Grounding (from this session only):",
+    "",
+    (facts.length ? facts : ["(none yet)"]).map((line) => `- ${line}`).join("\n"),
+  ].join("\n");
+}
+
 /**
  * Local meeting coworker. Transcript is data, not commands. Never Acts.
  * Empty transcript fails closed instead of inventing a brief.
@@ -195,14 +215,7 @@ function meetingAssist({ transcript, question } = {}) {
     recap.map((line) => `- ${line}`).join("\n"),
   ];
   if (kind === "assist") {
-    parts.push(
-      "",
-      "## What you can say",
-      "",
-      lastOther
-        ? `Direct answer to: "${lastOther}"\n\nI heard that on this machine. Confirm it before you say it out loud.`
-        : "No question landed yet. Keep listening."
-    );
+    parts.push("", "## What you can say", "", groundedReply(lines, lastOther));
   }
   if (kind === "next" || next.length) {
     parts.push("", "## Next steps", "", (next.length ? next : ["No action verbs heard yet."]).map((line) => `- ${line}`).join("\n"));
@@ -637,13 +650,15 @@ function suggestsFromAssist(assist) {
  * Empty ring fails closed so we do not invent a live overlay.
  */
 function liveMeetingUpdate({ transcript } = {}) {
-  const assist = meetingAssist({ transcript, question: "recap this meeting" });
+  const lines = splitLines(transcript);
+  const last = lines[lines.length - 1] || "";
+  const question = looksQuestion(last) ? "what should I say" : "recap this meeting";
+  const assist = meetingAssist({ transcript, question });
   if (!assist.ok) return assist;
   return {
     ...assist,
     id: "live-meeting",
-    kind: "live",
-    title: "Live meeting",
+    title: assist.kind === "assist" ? "Live assist" : "Live meeting",
     live: true,
     skipLlm: true,
   };
@@ -682,6 +697,14 @@ function createLiveMeetingPump(opts = {}) {
   return { push, reset };
 }
 
+const DESK_CHIPS = Object.freeze([
+  { id: "teach", label: "Teach", q: "walk me through this on my screen", autoAsk: false },
+  { id: "meeting", label: "Meeting", q: "recap this meeting", autoAsk: true },
+  { id: "today", label: "Today", q: "what's on my plate", autoAsk: true },
+  { id: "document", label: "Doc", q: "write in Word ", autoAsk: false },
+  { id: "security", label: "Security", q: "security review this session", autoAsk: true },
+]);
+
 module.exports = {
   DESKS,
   DESK_IDS,
@@ -703,4 +726,5 @@ module.exports = {
   deskGrounding,
   canActOnline,
   finishListeningSession,
+  DESK_CHIPS,
 };

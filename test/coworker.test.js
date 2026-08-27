@@ -17,6 +17,7 @@ const {
   suggestsFromAssist,
   liveMeetingUpdate,
   createLiveMeetingPump,
+  DESK_CHIPS,
 } = require("../electron/netie/coworker-desks");
 const { plannerGrounding } = require("../electron/netie/coworker");
 
@@ -80,6 +81,8 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.strictEqual(assist.kind, "assist");
   assert.strictEqual(assist.act, false);
   assert.match(assist.deliverable, /launch date/);
+  assert.match(assist.deliverable, /will not send/i);
+  assert.match(assist.deliverable, /Suggested reply/);
   const next = meetingAssist({ transcript, question: "list next steps" });
   assert.strictEqual(next.kind, "next");
   assert.match(next.deliverable, /send it/);
@@ -274,6 +277,28 @@ test("live meeting update fails closed with no transcript and never acts", () =>
   assert.strictEqual(live.live, true);
   assert.strictEqual(live.id, "live-meeting");
   assert.match(live.deliverable, /send the deck/);
+  const asked = liveMeetingUpdate({
+    transcript: "mic: I will send it Friday.\nsystem: What is the launch date?",
+  });
+  assert.strictEqual(asked.kind, "assist");
+  assert.strictEqual(asked.act, false);
+  assert.match(asked.deliverable, /Suggested reply/);
+});
+
+test("desk chips ask, never act", () => {
+  assert.ok(DESK_CHIPS.every((c) => c.q && c.id));
+  assert.ok(DESK_CHIPS.some((c) => c.id === "meeting" && c.autoAsk === true));
+  assert.ok(DESK_CHIPS.some((c) => c.id === "teach" && c.autoAsk === false));
+  const fs = require("fs");
+  const path = require("path");
+  const html = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");
+  assert.match(html, /id="desk-pill"/);
+  assert.doesNotMatch(html, /clicky-orb|stage-orb/);
+  const hud = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
+  const desk = hud.slice(hud.indexOf('$("desk-pill")'), hud.indexOf('$("mode-pill")'));
+  assert.match(desk, /doAsk\(\)/);
+  assert.doesNotMatch(desk, /doAct\(\)/);
+  assert.doesNotMatch(desk, /hud:act/);
 });
 
 test("live meeting pump ships one brief after quiet and skips duplicates", () => {

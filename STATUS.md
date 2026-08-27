@@ -12,11 +12,10 @@
    coordinator at `127.0.0.1:18010` (`/` `/today` `/lanes` `/skills`
    `/workspace`). Public Worker serves the same pages; `/mcp` and
    live lanes stay on the laptop. P-05 stays parked.
-2. **Coworker desks + online catalog (DR-0005).** Original desks:
-   teach, meeting, today, document, security. Inbox drafts not sent.
-   Meeting/Transcribe pump a live recap into fixed HUD chrome and
-   never Act. Loopback workspace opens artifact bodies; public id
-   fetches 404. Spawn queues a background brief. P-06 parked.
+2. **Coworker desks + online catalog (DR-0005).** Live meeting assist
+   drafts a grounded reply when the last line is a question. HUD desk
+   chips Ask, never Act. Home paints the standing brief. Workspace
+   filters artifacts. Spawn never claims pointer-act. P-06 parked.
    GitHub Actions blocked on org billing.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 

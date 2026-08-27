@@ -26,6 +26,14 @@ pre {
 .refuse { color: #f88; }
 #artifacts, #events, #hits, #drafts { padding-left: 18px; }
 #brief pre, #artifact-body pre { margin-top: 8px; }
+input[type="search"] {
+  width: 100%;
+  box-sizing: border-box;
+  background: #1a1a1a;
+  color: #eee;
+  border: 1px solid #333;
+  padding: 8px;
+}
 button.artifact {
   display: block;
   width: 100%;

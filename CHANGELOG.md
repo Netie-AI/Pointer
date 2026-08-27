@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Live assist on questions, desk chips, coworker home
+
+A question on the transcript ring switches the live meeting pump to
+assist and drafts a grounded reply (never sent). Fixed HUD desk chips
+Ask, never Act. Home paints the standing brief instead of a JSON dump.
+Workspace artifacts filter by title/desk. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Live meeting brief and read-only artifact browser
 
 Meeting/Transcribe utterances debounce into a live recap in the fixed

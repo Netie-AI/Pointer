@@ -19,6 +19,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - `coworker-desks.js`: teach / meeting / today / document / security (+ parked inbox).
 - Local meeting Recap/Assist/Next from the transcript ring. `act: false`.
 - Live meeting pump: debounce utterances into the fixed insight panel.
+  A question on the ring switches the brief to assist.
+- HUD desk chips Ask, never Act. Home paints the standing brief.
 - Standing `/today` brief from the session log. Empty is honest, not invented.
 - `spawnCoworker`: background brief, never claims pointer-act, never Acts.
 - `workspace.js`: artifact catalog. `exec()` always refuses (P-06). `get` is

@@ -55,12 +55,29 @@ function paintBrief(text) {
 }
 
 function paintArtifacts(items) {
+  artifactCache = Array.isArray(items) ? items.slice() : [];
+  renderArtifactList();
+}
+
+let artifactCache = [];
+
+function renderArtifactList() {
   const root = document.getElementById("artifacts");
   if (!root) return;
+  const q = String((document.getElementById("artifact-filter") || {}).value || "")
+    .toLowerCase()
+    .trim();
+  const items = q
+    ? artifactCache.filter((row) =>
+        `${row.title || ""} ${row.desk || ""} ${row.id || ""}`.toLowerCase().includes(q)
+      )
+    : artifactCache;
   root.replaceChildren();
-  if (!items || !items.length) {
+  if (!items.length) {
     const li = el("li", "muted");
-    li.textContent = "No artifacts on this host. Live briefs stay on 127.0.0.1:18010.";
+    li.textContent = artifactCache.length
+      ? "No artifacts match that filter."
+      : "No artifacts on this host. Live briefs stay on 127.0.0.1:18010.";
     root.appendChild(li);
     return;
   }
@@ -185,6 +202,11 @@ if (workspacePage) {
       );
     })
     .catch((err) => show("policy", String(err)));
+}
+
+const artifactFilter = document.getElementById("artifact-filter");
+if (artifactFilter) {
+  artifactFilter.addEventListener("input", renderArtifactList);
 }
 
 const todayPage = document.getElementById("brief");

@@ -175,6 +175,9 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 }
 .mode-pill button.active { background: rgba(255,255,255,0.16); color: var(--text); }
 .hud.theme-light .mode-pill button.active { background: rgba(0,0,0,0.08); }
+.desk-pill button { font-size: 11px; }
+.hud.agent-busy .desk-pill { opacity: 0.55; }
+.hud.agent-busy .desk-pill button { pointer-events: none; }
 /* General is a companion, not an agent — no act affordance at all. */
 .hud.mode-general .act-button { display: none; }
 

@@ -95,6 +95,8 @@ function readAsset(file) {
     assert.match(app, /ws\.exec/);
     assert.match(app, /openArtifact/);
     assert.match(app, /paintLanes/);
+    assert.match(app, /artifact-filter/);
+    assert.match(page, /id="artifact-filter"/);
     const leak = handlePublicRequest({
       method: "GET",
       pathname: "/api/workspace",
@@ -117,6 +119,8 @@ function readAsset(file) {
     const homeText = await home.text();
     assert.match(homeText, /Pointer coworker/);
     assert.match(homeText, /id="desks"/);
+    assert.match(homeText, /id="brief"/);
+    assert.doesNotMatch(homeText, /id="state"/);
     const html = await fetch(new Request("https://host.netie.ai/today"));
     assert.strictEqual(html.status, 200);
     const text = await html.text();
