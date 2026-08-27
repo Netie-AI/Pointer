@@ -1228,7 +1228,14 @@ async function askBuddy({ message, dataUrl }) {
       return "";
     }
   })();
-  const hotContext = [hot.summaryText(), memCtx ? `\nPersonal memory:\n${memCtx}` : ""]
+  const deskCtx = (() => {
+    try {
+      return plannerGrounding(message, { mode: appMode });
+    } catch {
+      return "";
+    }
+  })();
+  const hotContext = [hot.summaryText(), memCtx ? `\nPersonal memory:\n${memCtx}` : "", deskCtx]
     .filter(Boolean)
     .join("\n");
 

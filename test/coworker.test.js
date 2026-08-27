@@ -79,5 +79,14 @@ test("planner grounding names the desk and refuses online exec", () => {
   assert.match(deskGrounding("teach"), /\[POINT:/);
 });
 
+test("Ask vision chat is grounded by the desk, not only the Act planner", () => {
+  const fs = require("fs");
+  const path = require("path");
+  const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
+  const ask = main.slice(main.indexOf("async function askBuddy"), main.indexOf("function plannerContext"));
+  assert.match(ask, /plannerGrounding\(message/);
+  assert.match(ask, /deskCtx/);
+});
+
 console.log(`\n${pass} passed, ${fails.length} failed`);
 process.exit(fails.length ? 1 : 0);
