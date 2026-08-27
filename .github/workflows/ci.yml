@@ -62,6 +62,7 @@ jobs:
           node test/invariants/governed-docs.test.js
           node test/invariants/ipc-bridge.test.js
           node test/invariants/word-sink.test.js
+          node test/invariants/hud-bug-report.test.js
 
       - name: Unit suite
         run: npm test

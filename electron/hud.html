@@ -78,6 +78,9 @@
               </div>
             </div>
           </div>
+          <button type="button" class="ask-pill ghost" id="bugReportBtn" title="Report a problem" aria-label="Report a problem">
+            <span>Report a problem</span>
+          </button>
           <button type="button" class="ask-pill ghost" id="btn-hide-top" title="Show / Hide">
             <span>Show/Hide</span>
             <kbd>Ctrl</kbd><kbd>`</kbd>
@@ -246,6 +249,27 @@
            back into a floating companion. Never .chrome — it must not eat clicks. -->
       <div class="point-layer" id="point-layer" aria-hidden="true"></div>
 
+      <!-- #29: persistent HUD report. Local form only: copy diagnostics after
+           the founder confirms. No mailer, no fetch, no cloud relay. -->
+      <form class="enquire glass chrome" id="bug-report-panel" hidden>
+        <header class="panel-head">
+          <span class="spark">✦</span>
+          <span>Report a problem</span>
+        </header>
+        <p class="enquire-why">
+          Stays on this device. Copy diagnostics only after you confirm. Nothing is sent.
+        </p>
+        <label class="enquire-field" for="bug-report-note">
+          <span>What went wrong</span>
+          <textarea id="bug-report-note" name="note" rows="3" maxlength="4000" placeholder="What happened, and what you expected"></textarea>
+        </label>
+        <pre class="bug-report-preview" id="bug-report-preview" aria-live="polite"></pre>
+        <div class="enquire-actions">
+          <button type="button" class="act-button" id="btn-bug-copy">Copy diagnostics</button>
+          <button type="button" class="text-btn" id="btn-bug-cancel">Cancel</button>
+        </div>
+      </form>
+
       <div class="bg-status chrome" id="bg-status">
         <span id="bg-status-text"></span>
         <button type="button" class="text-btn" id="btn-bg-cancel">Stop</button>
@@ -253,6 +277,7 @@
     </div>
     <script src="netie-sound.js"></script>
     <script src="netie/hud-live.js"></script>
+    <script src="netie/bug-report.js"></script>
     <script src="netie/attachments.js"></script>
     <script src="hud-audio.js"></script>
     <script src="hud.js"></script>

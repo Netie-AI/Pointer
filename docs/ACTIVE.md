@@ -25,6 +25,7 @@ the issue wins.
 |------|------|
 | Electron main / Act loop | `electron/main.js` |
 | HUD | `electron/hud.html`, `hud.js`, `hud.css` |
+| HUD report-a-problem | `electron/netie/bug-report.js` (`#bugReportBtn`) |
 | Recipes / coworker SOPs | `electron/netie/recipes.js`, `coworker.js` |
 | Word safe API | `electron/netie/word-coworker.js` |
 | Driver (SendInput) | `electron/netie/driver.js` |
