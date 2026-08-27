@@ -998,9 +998,15 @@ function todayAssist({ state, question, localFirst } = {}) {
     const desk = row.desk ? ` (${row.desk})` : "";
     return `- ${title}${desk}`;
   });
-  const plate = localFirst ? [] : plateFacts(s).concat(filedPlate(s));
+  const commitments = localFirst ? [] : plateFacts(s);
+  const filed = localFirst ? [] : filedPlate(s);
+  const plate = commitments.concat(filed);
   const plateLines = plate.map((row) => `- ${speakable(row.text)}`);
-  const plateCue = plate.length ? speakable(plate[plate.length - 1].text) : "";
+  const plateCue = commitments.length
+    ? speakable(commitments[commitments.length - 1].text)
+    : filed.length
+      ? speakable(filed[filed.length - 1].text)
+      : "";
   const jobLines = jobs.slice(-8).map((row) => `- ${row.title || row.id}: ${row.status || "unknown"}`);
   const draftLines = drafts.slice(-8).map((row) => `- ${row.title || row.id} (hint)`);
 
