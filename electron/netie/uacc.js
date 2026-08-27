@@ -185,6 +185,7 @@ function computerStatus(opts = {}) {
       api: "/api/meeting",
       notes: "GET /api/meeting?notes=1",
       export: "GET /api/meeting?export=1",
+      recap: "GET /api/meeting?recap=1",
       kinds: ["say", "recap", "followups"],
     },
     drive: {
@@ -217,6 +218,7 @@ function computerStatus(opts = {}) {
         "GET /api/observe?selection=1",
         "GET /api/meeting?notes=1",
         "GET /api/meeting?export=1",
+        "GET /api/meeting?recap=1",
         "POST /api/meeting kind recap",
         "POST /api/meeting kind followups",
         "POST /api/meeting screenshot false",

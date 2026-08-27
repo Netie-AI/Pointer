@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Copy last meeting recap from main
+
+Cluely-class Recap copy: HUD Copy recap and GET /api/meeting?recap=1
+read the last Cortex-gated recap in main. The renderer cannot supply
+the paste payload. Empty stays a refusal. GitHub CI on this account
+is still a spending-limit cutoff (0 steps), not a product fail. No
+GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - Language hotkey pins STT too
 
 OpenWillow-class language: Ctrl+Alt+L / HUD Dictation+Scribe language

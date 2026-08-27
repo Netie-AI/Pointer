@@ -24,9 +24,10 @@
    plan locally. `focus: notepad then type: hello` chains local verbs.
    Ask captures a fresh screen (Clicky sees-what-you-see). Ctrl+Enter is
    Cluely Assist (meeting say, or "what am I looking at"). Copy notes and
-   `GET /api/meeting?export=1` share live markdown. MCP meeting assist
-   captures a fresh screen unless `screenshot: false` (live suggest opts
-   out). Meeting live Say line refreshes as notes grow (fail-closed).
+   `GET /api/meeting?export=1` share live markdown. Copy recap and
+   `GET /api/meeting?recap=1` share the last Recap from main. MCP meeting
+   assist captures a fresh screen unless `screenshot: false` (live suggest
+   opts out). Meeting live Say line refreshes as notes grow (fail-closed).
    Follow-ups land as clickable Ask chips (Cortex gated).
    Scribe/observe read focused selection via UIA and skip password boxes.
    Tray switches Agent/General/Transcribe/Scribe/Meeting without opening

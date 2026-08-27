@@ -65,7 +65,7 @@ const {
   isUsableTarget,
   pickWindowSource,
 } = require("./netie/delivery");
-const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetingNotes } = require("./netie/meeting");
+const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetingNotes, exportMeetingRecap, normalizeMeetingKind } = require("./netie/meeting");
 const { createHoldMonitor, DICTATE_HOLD_VKS, comboVks, normalizeDictateHotkeys } = require("./netie/holdkey");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
@@ -216,6 +216,13 @@ const eco = new NetieEcosystem({
 /** Last non-Pointer foreground window dictation/scribe should type into. */
 let deliveryTarget = null;
 const pendingScribe = createPendingScribe();
+/** Last Cortex-gated meeting recap. Copied from main, never from the renderer. */
+let lastMeetingRecap = "";
+function rememberMeetingRecap(kind, text) {
+  if (normalizeMeetingKind(kind) !== "recap") return;
+  const body = String(text || "").trim();
+  if (body) lastMeetingRecap = body;
+}
 function liveComputerStatus() {
   const sttUrl =
     sanitizeSttUrl(settings.get("sttUrl")) ||
@@ -391,6 +398,9 @@ const liveMcp = createMcpAbi({
           dataUrl,
           hotContext: plannerContext(String((assist && assist.asked) || "")),
         }),
+    }).then((r) => {
+      if (r && r.ok) rememberMeetingRecap(r.kind, r.text);
+      return r;
     });
   },
 });
@@ -398,6 +408,7 @@ const liveCoordinator = createCoordinator({
   mcp: liveMcp,
   computerStatus: () => liveComputerStatus(),
   meetingNotes: () => (notes.file ? notes.tail(8000) : null),
+  meetingRecap: () => lastMeetingRecap || null,
   scribePending: () => pendingScribe.peek(),
 });
 const brain = new PersonalBrain({
@@ -3369,6 +3380,7 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
       text: rMeet.ok ? pointedMeet.text : failureMeet.text,
     });
     if (rMeet.ok && hasPoints(rMeet.text)) sendHud(toOverlayEvent(rMeet.text));
+    if (rMeet.ok) rememberMeetingRecap(assist.kind, pointedMeet.text);
     return rMeet.ok
       ? { ok: true, reply: pointedMeet.text, points: pointedMeet.points, degraded: rMeet.degraded }
       : {
@@ -4492,6 +4504,20 @@ ipcMain.handle("hud:meetingNotes", async (_e, payload) => {
     try {
       await shell.openPath(verdict.path);
       return { ok: true, path: verdict.path };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  }
+  if (action === "recap" || action === "copy-recap") {
+    const exp = exportMeetingRecap(lastMeetingRecap);
+    if (!exp.ok) {
+      sendHud({ type: "answer", meta: "Recap", text: exp.reason });
+      return { ok: false, error: exp.reason };
+    }
+    try {
+      await driver.clipboardSet(exp.markdown);
+      sendHud({ type: "answer", meta: "Recap", text: "Meeting recap copied." });
+      return { ok: true, copied: true };
     } catch (err) {
       return { ok: false, error: String(err.message || err) };
     }

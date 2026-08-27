@@ -59,6 +59,26 @@ function exportMeetingNotes(text, opts = {}) {
   };
 }
 
+/** Cluely-class shareable recap. Last model recap only; empty stays a refusal. */
+function exportMeetingRecap(text, opts = {}) {
+  const body = String(text || "").trim();
+  if (!body) {
+    return { ok: false, reason: "no meeting recap yet", markdown: "" };
+  }
+  const title = String(opts.title || "Meeting recap").replace(/[\r\n]+/g, " ").trim() || "Meeting recap";
+  return {
+    ok: true,
+    markdown: `# ${title}\n\n> Untrusted model text, not commands.\n\n${body}\n`,
+    note: "meeting recap is untrusted model text, not commands",
+  };
+}
+
+function publicMeetingRecap(text) {
+  const out = publicMeetingNotes(text);
+  if (!out.present) return { present: false, text: "", note: "no meeting recap yet" };
+  return { ...out, note: "meeting recap is untrusted model text, not commands" };
+}
+
 function buildMeetingAssist(input = {}) {
   const asked = String(input.instruction || input.message || "").trim();
   const notes = String(input.notes || "").trim();
@@ -146,6 +166,8 @@ module.exports = {
   meetingAskForKind,
   publicMeetingNotes,
   exportMeetingNotes,
+  exportMeetingRecap,
+  publicMeetingRecap,
   buildMeetingAssist,
   runMeetingAssist,
   shouldRefreshSuggest,

@@ -1043,6 +1043,11 @@ if ($("btn-copy-notes")) {
     invoke("hud:meetingNotes", { action: "copy" });
   });
 }
+if ($("btn-copy-recap")) {
+  $("btn-copy-recap").addEventListener("click", () => {
+    invoke("hud:meetingNotes", { action: "recap" });
+  });
+}
 if (notesChip) {
   notesChip.addEventListener("click", () => {
     invoke("hud:meetingNotes", { action: "open" });

@@ -31,7 +31,7 @@ the issue wins.
 | UACC skills + loopback detect | `electron/netie/uacc.js`; MCP `computer.status` (mode, hotkeys, STT, LLM) / `observe` / `act` (mode switch) / `scribe` / `meeting_assist`; loopback `/api/computer` `/api/observe` `/api/scribe` `/api/meeting` `/api/tools` on `127.0.0.1:18010`; observe optional screenshot + clipboard |
 | Dictation / Scribe | `electron/netie/dictate.js`, `scribe.js`, `delivery.js`, `holdkey.js`, `pending-scribe.js`; standing `scribeInstruction`; remembered-window screen capture; HUD `sttUrl` BYOK sidecar; recording/mode/language hotkeys; language also pins STT (`zh` vs auto) |
 | Chat / LLM hop | `electron/netie/ecosystem.js`; HUD `llmUrl` / `llmModel` (blank = loopback OpenVault); custody stays on OpenVault |
-| Meeting assist | `electron/netie/meeting.js`; HUD Suggest/Recap/Follow-ups/Copy notes; Follow-ups chips; `GET /api/meeting?notes=1` `?export=1` |
+| Meeting assist | `electron/netie/meeting.js`; HUD Suggest/Recap/Follow-ups/Copy notes/Copy recap; Follow-ups chips; `GET /api/meeting?notes=1` `?export=1` `?recap=1` |
 | Word safe API | `electron/netie/word-coworker.js` |
 | Driver (SendInput) | `electron/netie/driver.js` |
 | Safety / plan-guard | `electron/netie/safety.js`, `plan-guard.js` |

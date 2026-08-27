@@ -61,6 +61,9 @@ async function run() {
       assert.ok(/buildMeetingAssist/.test(main), "meeting mode must offer Cluely-class assist");
       assert.ok(/meetingNotes/.test(main), "GET /api/meeting?notes=1 must read live notes");
       assert.ok(/exportMeetingNotes/.test(main), "Copy notes must export from the live file in main");
+      assert.ok(/exportMeetingRecap/.test(main), "Copy recap must export the last recap in main");
+      assert.ok(/rememberMeetingRecap/.test(main), "a Recap answer must be remembered in main");
+      assert.ok(/action === "recap"/.test(main), "hud:meetingNotes recap must not take renderer text");
       assert.ok(/ipcMain\.handle\("hud:meetingNotes"/.test(main), "hud:meetingNotes must exist");
       const assistFn = main.slice(main.indexOf("meetingAssist: async"));
       assert.ok(/params\.screenshot !== false/.test(assistFn), "meeting_assist must capture unless screenshot is false");

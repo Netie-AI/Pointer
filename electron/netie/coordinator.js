@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { TOOLS, CATALOG } = require("./mcp-abi");
-const { publicMeetingNotes, exportMeetingNotes } = require("./meeting");
+const { publicMeetingNotes, exportMeetingNotes, publicMeetingRecap, exportMeetingRecap } = require("./meeting");
 const { publicPendingTranscript } = require("./pending-scribe");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
@@ -130,6 +130,21 @@ function createCoordinator(opts = {}) {
       }
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify({ ok: true, pending: publicPendingTranscript(raw) }));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/meeting" && queryFlag(url, "recap")) {
+      let raw = null;
+      try {
+        raw = typeof opts.meetingRecap === "function" ? opts.meetingRecap() : null;
+      } catch {
+        raw = null;
+      }
+      const recap = publicMeetingRecap(raw);
+      const exp = exportMeetingRecap(recap.text);
+      const body = { ok: true, recap, markdown: exp.markdown, exported: exp.ok };
+      if (!exp.ok) body.reason = exp.reason;
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(body));
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/meeting" && (queryFlag(url, "notes") || queryFlag(url, "export"))) {

@@ -78,6 +78,7 @@ function test(name, fn) {
       mcp,
       computerStatus: () => ({ ok: true, detectable: true, captureVisible: true }),
       meetingNotes: () => "We ship Friday after standup.",
+      meetingRecap: () => "Ship Friday. Sam owns QA.",
       scribePending: () => ({ transcript: "rewrite this email", title: "Notepad", hwnd: "1" }),
     });
     const bad = await Promise.resolve(c.listen({ host: "0.0.0.0", port: 0 }));
@@ -230,6 +231,19 @@ function test(name, fn) {
     assert.match(meetExport.markdown, /# Meeting notes/);
     assert.match(meetExport.markdown, /Friday/);
     assert.match(meetExport.markdown, /not commands/);
+
+    const meetRecap = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/meeting?recap=1" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      }).on("error", reject);
+    });
+    assert.strictEqual(meetRecap.ok, true);
+    assert.strictEqual(meetRecap.exported, true);
+    assert.match(meetRecap.markdown, /# Meeting recap/);
+    assert.match(meetRecap.markdown, /Sam owns QA/);
+    assert.match(meetRecap.recap.note, /untrusted model text/);
 
     const pending = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/scribe?pending=1" }, (res) => {

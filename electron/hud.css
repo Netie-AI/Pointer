@@ -212,11 +212,13 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 #btn-suggest,
 #btn-recap,
 #btn-followups,
-#btn-copy-notes { display: none; }
+#btn-copy-notes,
+#btn-copy-recap { display: none; }
 .hud.mode-meeting #btn-suggest,
 .hud.mode-meeting #btn-recap,
 .hud.mode-meeting #btn-followups,
-.hud.mode-meeting #btn-copy-notes { display: inline-flex; }
+.hud.mode-meeting #btn-copy-notes,
+.hud.mode-meeting #btn-copy-recap { display: inline-flex; }
 #btn-scribe-retry,
 #btn-scribe-paste { display: none; }
 .hud.mode-scribe.has-pending #btn-scribe-retry,
