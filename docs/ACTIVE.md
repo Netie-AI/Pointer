@@ -28,7 +28,7 @@ the issue wins.
 | Recipes / coworker SOPs | `electron/netie/recipes.js`, `coworker.js` |
 | Coworker desks | `electron/netie/coworker-desks.js` (`teach` measured POINT, `meeting` `today` `document` `security`; meeting spawn files inbox+Word drafts, never Act) |
 | UIA targeting | `electron/netie/uia.js` (Act targeting + teach POINT; no invented coords) |
-| Artifact workspace | `electron/netie/workspace.js` (no runtime; public `/workspace` is a catalog) |
+| Artifact workspace | `electron/netie/workspace.js` (no runtime; public `/workspace` is a catalog; loopback home/workspace paint a This session catalog) |
 | Skill search / craft hints | `electron/netie/skill-search.js`, `skills-exec.js` |
 | Coordinator + first-party MCP ABI | `electron/netie/coordinator.js`, `mcp-abi.js`, `host-serve.js`; pages in `host/` (`/` `/today` `/meeting` `/teach` `/security` `/document` `/inbox` `/lanes` `/skills` `/workspace`); public Worker `workers/netie-host.js` |
 | Word safe API | `electron/netie/word-coworker.js` |

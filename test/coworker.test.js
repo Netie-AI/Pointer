@@ -20,6 +20,8 @@ const {
   createLiveMeetingPump,
   createLiveTeachPump,
   createBriefClock,
+  sessionBundle,
+  publicSessionSnapshot,
   DESK_CHIPS,
   FRAME_TEACH_TEXT,
   shouldTeachFramedRegion,
@@ -47,6 +49,49 @@ test("catalog is original first-party desks with no runtime", () => {
   assert.strictEqual(DESKS.today.act, "never");
   assert.strictEqual(DESKS.inbox.parked, "P-05");
   assert.ok(!catalog().some((d) => d.actions && d.actions.length));
+});
+
+test("session bundle is a catalog of filed desks and never execs", () => {
+  const empty = sessionBundle([]);
+  assert.strictEqual(empty.empty, true);
+  assert.strictEqual(empty.exec, false);
+  assert.strictEqual(empty.act, false);
+  assert.deepStrictEqual(empty.files, []);
+  const pub = publicSessionSnapshot();
+  assert.strictEqual(pub.localFirst, true);
+  assert.strictEqual(pub.empty, true);
+  assert.strictEqual(pub.exec, false);
+  const bundle = sessionBundle(
+    [
+      {
+        id: "live-meeting",
+        desk: "meeting",
+        title: "Live meeting",
+        cue: "We'll ship Friday for $40k.",
+        asked: "What is the launch date?",
+        heard: "Friday / $40k",
+      },
+      { id: "live-inbox", desk: "inbox", title: "Draft reply", cue: "not sent - parked P-05" },
+      { id: "live-document", desk: "document", title: "Document draft", cue: "draft only - not a .docx" },
+    ],
+    "I'll send it Friday."
+  );
+  assert.strictEqual(bundle.empty, false);
+  assert.strictEqual(bundle.exec, false);
+  assert.strictEqual(bundle.act, false);
+  assert.match(bundle.asked, /launch date/);
+  assert.match(bundle.heard, /\$40k/);
+  assert.match(bundle.cue, /We'll ship Friday/);
+  assert.match(bundle.plate, /send it Friday/);
+  assert.deepStrictEqual(
+    bundle.files.map((row) => row.id),
+    ["live-meeting", "live-inbox", "live-document"]
+  );
+  assert.strictEqual(bundle.files[0].href, "/meeting");
+  assert.strictEqual(bundle.files[1].href, "/inbox");
+  assert.strictEqual(bundle.files[2].href, "/document");
+  const sneaky = sessionBundle([{ id: "live-meeting", desk: "../etc", title: "nope", cue: "x" }]);
+  assert.strictEqual(sneaky.files[0].href, "/workspace");
 });
 
 test("pickDesk routes Clicky/Cluely/OpenWorker jobs to Pointer desks", () => {

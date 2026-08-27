@@ -58,6 +58,10 @@ test("public snapshot is local-first with empty artifacts and no exec", () => {
   assert.strictEqual(snap.localFirst, true);
   assert.strictEqual(snap.exec, false);
   assert.deepStrictEqual(snap.artifacts, []);
+  assert.ok(snap.session);
+  assert.strictEqual(snap.session.empty, true);
+  assert.strictEqual(snap.session.exec, false);
+  assert.deepStrictEqual(snap.session.files, []);
   assert.ok(snap.desks.some((d) => d.id === "teach"));
   assert.match(snap.reason, /no runtime/);
 });

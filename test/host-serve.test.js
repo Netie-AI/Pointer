@@ -116,6 +116,8 @@ function readAsset(file) {
     const skills = await fetch(new Request("https://host.netie.ai/skills"));
     assert.match(await skills.text(), /id="hits"/);
     assert.match(page, /id="artifact-body"/);
+    assert.match(page, /id="session"/);
+    assert.match(page, /id="session-files"/);
   });
 
   await test("public fetch serves /today and style.css from host/", async () => {
@@ -126,6 +128,8 @@ function readAsset(file) {
     assert.match(homeText, /Pointer coworker/);
     assert.match(homeText, /id="desks"/);
     assert.match(homeText, /id="rooms"/);
+    assert.match(homeText, /id="session"/);
+    assert.match(homeText, /id="session-files"/);
     assert.match(homeText, /id="brief"/);
     assert.doesNotMatch(homeText, /id="state"/);
     const html = await fetch(new Request("https://host.netie.ai/today"));
@@ -154,6 +158,8 @@ function readAsset(file) {
     assert.match(app, /\/api\/inbox/);
     assert.match(app, /\/api\/home/);
     assert.match(app, /paintRooms/);
+    assert.match(app, /paintSession/);
+    assert.match(app, /Live session stays on the laptop/);
     assert.match(app, /paintTeachMap/);
     assert.match(app, /teach-map/);
     assert.match(app, /They asked/);
@@ -205,6 +211,10 @@ function readAsset(file) {
     assert.strictEqual(homeBody.rooms.teach.desk, "teach");
     assert.strictEqual(homeBody.rooms.inbox.desk, "inbox");
     assert.strictEqual(homeBody.rooms.document.desk, "document");
+    assert.ok(homeBody.session);
+    assert.strictEqual(homeBody.session.empty, true);
+    assert.strictEqual(homeBody.session.exec, false);
+    assert.deepStrictEqual(homeBody.session.files, []);
     const documentPage = await fetch(new Request("https://host.netie.ai/document"));
     assert.strictEqual(documentPage.status, 200);
     assert.match(await documentPage.text(), /id="document-brief"/);

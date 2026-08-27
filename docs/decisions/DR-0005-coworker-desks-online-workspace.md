@@ -105,3 +105,6 @@ Meeting/Transcribe recaps the call instead of the Today plate.
 Say-this weaves Heard times and amounts into the speakable line; a date
 or budget question with no answer still uses Heard facts (never invents).
 Today plate lists filed inbox/Word drafts from that spawn.
+Loopback `/` and `/workspace` show a This session catalog of those
+artifacts (They asked / Heard / say-this / plate / file links). Public
+copies stay empty. `workspace.exec` still always errors.

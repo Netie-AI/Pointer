@@ -215,6 +215,7 @@ if (workspacePage) {
       );
       paintDesks((ws && ws.desks) || (state && state.desks) || []);
       paintArtifacts((ws && ws.artifacts) || []);
+      paintSession(ws && ws.session, Boolean(ws && ws.localFirst));
       const coord = (ws && ws.coordinator) || (state && state.coordinator) || "http://127.0.0.1:18010";
       show(
         "hint",
@@ -361,6 +362,14 @@ function paintRooms(rooms, localFirst) {
     pre.textContent = String(r.deliverable || "").slice(0, 400);
     card.appendChild(h);
     card.appendChild(cue);
+    if (id === "meeting") {
+      const askedText = String(r.asked || "").trim();
+      if (askedText) {
+        const asked = el("p", "muted");
+        asked.textContent = "They asked: " + askedText;
+        card.appendChild(asked);
+      }
+    }
     if (id === "teach" && restText) {
       const then = el("p", "muted");
       then.textContent = "Then: " + restText;
@@ -377,6 +386,78 @@ function paintRooms(rooms, localFirst) {
   });
 }
 
+function paintSession(session, localFirst) {
+  const root = document.getElementById("session");
+  if (!root) return;
+  const askedEl = document.getElementById("session-asked");
+  const heardEl = document.getElementById("session-heard");
+  const cueEl = document.getElementById("session-cue");
+  const plateEl = document.getElementById("session-plate");
+  const filesEl = document.getElementById("session-files");
+  const s = session || {};
+  const files = Array.isArray(s.files) ? s.files : [];
+  const asked = String(s.asked || "").trim();
+  const heard = String(s.heard || "").trim();
+  const cue = String(s.cue || "").trim();
+  const plate = String(s.plate || "").trim();
+  const empty = Boolean(s.empty) || (!files.length && !asked && !heard && !cue && !plate);
+  function setLine(node, prefix, text) {
+    if (!node) return;
+    node.hidden = !text;
+    node.textContent = text ? prefix + text : "";
+  }
+  if (localFirst) {
+    root.hidden = false;
+    setLine(askedEl, "", "");
+    setLine(heardEl, "", "");
+    setLine(cueEl, "", "");
+    setLine(plateEl, "", "");
+    if (filesEl) {
+      filesEl.replaceChildren();
+      const li = el("li", "muted");
+      li.textContent = "Live session stays on the laptop. Open 127.0.0.1:18010 while Pointer is running.";
+      filesEl.appendChild(li);
+    }
+    return;
+  }
+  root.hidden = empty;
+  setLine(askedEl, "They asked: ", asked);
+  setLine(heardEl, "Heard: ", heard);
+  setLine(cueEl, "Say this: ", cue);
+  setLine(plateEl, "Plate: ", plate);
+  if (!filesEl) return;
+  filesEl.replaceChildren();
+  if (!files.length) {
+    const li = el("li", "muted");
+    li.textContent = empty ? "No live session yet." : "No filed artifacts yet.";
+    filesEl.appendChild(li);
+    return;
+  }
+  files.forEach((row) => {
+    const li = el("li");
+    const a = el("a");
+    const desk = String(row.desk || "");
+    a.href =
+      desk === "teach" ||
+      desk === "meeting" ||
+      desk === "today" ||
+      desk === "document" ||
+      desk === "security" ||
+      desk === "inbox"
+        ? "/" + desk
+        : "/workspace";
+    a.textContent = String(row.title || row.id || "artifact");
+    li.appendChild(a);
+    const cueText = String(row.cue || "").trim();
+    if (cueText) {
+      const extra = el("span", "muted");
+      extra.textContent = " - " + cueText;
+      li.appendChild(extra);
+    }
+    filesEl.appendChild(li);
+  });
+}
+
 const roomsPage = document.getElementById("rooms");
 if (roomsPage) {
   pollWhileLive(function () {
@@ -389,6 +470,7 @@ if (roomsPage) {
         }
         show("policy", (h && h.reason) || "live coworker rooms; Act stays on the laptop");
         paintRooms((h && h.rooms) || {}, Boolean(h && h.localFirst));
+        paintSession(h && h.session, Boolean(h && h.localFirst));
         return !(h && h.localFirst);
       });
   });

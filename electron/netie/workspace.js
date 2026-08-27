@@ -88,6 +88,18 @@ function publicWorkspaceSnapshot(desks) {
     coordinator: "http://127.0.0.1:18010",
     desks: Array.isArray(desks) ? desks.slice() : [],
     artifacts: [],
+    session: {
+      ok: true,
+      act: false,
+      exec: false,
+      empty: true,
+      localFirst: true,
+      asked: "",
+      heard: "",
+      cue: "",
+      plate: "",
+      files: [],
+    },
     reason: "workspace artifacts and Act stay on the laptop; this host has no runtime (P-06)",
   };
 }

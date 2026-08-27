@@ -1452,6 +1452,83 @@ function createBriefClock(opts = {}) {
   return { start, reset };
 }
 
+const LIVE_SESSION_IDS = Object.freeze([
+  "live-meeting",
+  "live-inbox",
+  "live-document",
+  "live-teach",
+  "standing-today",
+  "live-security",
+]);
+
+function sessionHref(desk) {
+  const id = String(desk || "");
+  if (id === "teach" || id === "meeting" || id === "today" || id === "document" || id === "security" || id === "inbox") {
+    return "/" + id;
+  }
+  return "/workspace";
+}
+
+function emptySession(extra) {
+  return Object.assign(
+    {
+      ok: true,
+      act: false,
+      exec: false,
+      empty: true,
+      asked: "",
+      heard: "",
+      cue: "",
+      plate: "",
+      files: [],
+    },
+    extra || {}
+  );
+}
+
+/**
+ * Computer-shaped session catalog. Artifacts you can open, never a runtime.
+ * Public copies stay empty. Never Acts.
+ */
+function sessionBundle(artifacts, plateCue) {
+  const list = Array.isArray(artifacts) ? artifacts : [];
+  const byId = new Map();
+  for (const a of list) {
+    if (a && a.id) byId.set(String(a.id), a);
+  }
+  const files = [];
+  for (const id of LIVE_SESSION_IDS) {
+    const a = byId.get(id);
+    if (!a) continue;
+    files.push({
+      id: a.id,
+      desk: a.desk || "",
+      title: a.title || a.id,
+      cue: String(a.cue || "").slice(0, 160),
+      href: sessionHref(a.desk),
+    });
+  }
+  const meeting = byId.get("live-meeting") || {};
+  const teach = byId.get("live-teach") || {};
+  const plate = String(plateCue || "").trim().slice(0, 240);
+  if (!files.length && !plate) return emptySession();
+  return {
+    ok: true,
+    act: false,
+    exec: false,
+    empty: false,
+    asked: String(meeting.asked || "").slice(0, 160),
+    heard: String(meeting.heard || "").slice(0, 160),
+    cue: String(meeting.cue || teach.cue || "").slice(0, 240),
+    plate,
+    files,
+  };
+}
+
+function publicSessionSnapshot() {
+  return emptySession({ localFirst: true, reason: "live session stays on the laptop" });
+}
+
 function publicEmptyRoom(desk, title, reason) {
   return {
     localFirst: true,
@@ -1506,6 +1583,7 @@ function publicHomeSnapshot() {
       security: publicSecuritySnapshot(),
       inbox: publicInboxSnapshot(),
     },
+    session: publicSessionSnapshot(),
     ok: true,
   };
 }
@@ -1545,6 +1623,8 @@ module.exports = {
   publicDocumentSnapshot,
   publicInboxSnapshot,
   publicHomeSnapshot,
+  sessionBundle,
+  publicSessionSnapshot,
   scanInjectedSecrets,
   FRAME_TEACH_TEXT,
   shouldTeachFramedRegion,

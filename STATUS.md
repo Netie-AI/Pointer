@@ -12,10 +12,9 @@
    `/workspace`). Public Worker is the same catalog; `/mcp` stays on
    the laptop. P-05 parked.
 2. **Coworker desks (DR-0005).** HUD Walk/Frame walks the framed region
-   (Ask, never Act). Meeting say-this weaves Heard times and amounts.
-   Meeting spawn files recap plus unsent mail and a Word draft; Today
-   plate lists those drafts. Public catalog empty. P-06 parked. GitHub
-   Actions blocked on org billing.
+   (Ask, never Act). Meeting say-this weaves Heard; spawn files recap
+   plus unsent mail and a Word draft. Loopback home/workspace show a
+   This session catalog (no runtime). Public catalog empty. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

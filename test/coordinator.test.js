@@ -291,6 +291,24 @@ function test(name, fn) {
     assert.match(home.body.rooms.today.deliverable, /# Today/);
     assert.match(home.body.rooms.document.cue, /not a \.docx/);
     assert.match(home.body.rooms.inbox.cue, /not sent/);
+    assert.ok(home.body.session);
+    assert.strictEqual(home.body.session.exec, false);
+    assert.strictEqual(home.body.session.empty, false);
+    assert.match(home.body.session.asked, /launch date/);
+    assert.match(home.body.session.heard, /Friday/);
+    assert.ok(home.body.session.files.some((row) => row.id === "live-inbox" && row.href === "/inbox"));
+    assert.ok(home.body.session.files.some((row) => row.id === "live-document" && row.href === "/document"));
+    const listedWs = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/workspace" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(listedWs.body.exec, false);
+    assert.ok(listedWs.body.session);
+    assert.strictEqual(listedWs.body.session.exec, false);
+    assert.ok(listedWs.body.session.files.some((row) => row.id === "live-meeting"));
     const homePage = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/" }, (res) => {
         const chunks = [];
@@ -300,6 +318,8 @@ function test(name, fn) {
     });
     assert.strictEqual(homePage.status, 200);
     assert.match(homePage.body, /id="rooms"/);
+    assert.match(homePage.body, /id="session"/);
+    assert.match(homePage.body, /id="session-files"/);
     const miss = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/workspace?id=nope" }, (res) => {
         const chunks = [];

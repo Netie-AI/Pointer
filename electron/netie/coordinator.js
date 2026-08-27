@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
-const { catalog, todayAssist } = require("./coworker-desks");
+const { catalog, todayAssist, sessionBundle } = require("./coworker-desks");
 const { parsePoints } = require("./point-overlay");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
@@ -237,6 +237,7 @@ function createCoordinator(opts = {}) {
             security: roomCard(workspace.get("live-security"), "security", "Security"),
             inbox: roomCard(workspace.get("live-inbox"), "inbox", "Inbox"),
           },
+          session: sessionBundle(workspace.list(), todayBrief.cue),
         })
       );
       return;
@@ -250,7 +251,21 @@ function createCoordinator(opts = {}) {
         return;
       }
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify(workspace.snapshot()));
+      const todayBrief = todayAssist({
+        state: {
+          today,
+          lanes: snapshot().lanes,
+          drafts,
+          artifacts: workspace.list(),
+          jobs: [],
+        },
+      });
+      res.end(
+        JSON.stringify({
+          ...workspace.snapshot(),
+          session: sessionBundle(workspace.list(), todayBrief.cue),
+        })
+      );
       return;
     }
     if (req.method === "POST" && (url.pathname === "/api/workspace/exec" || url.pathname === "/exec")) {
