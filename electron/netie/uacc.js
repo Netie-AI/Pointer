@@ -200,6 +200,7 @@ function computerStatus(opts = {}) {
         "GET /api/meeting?export=1",
         "POST /api/meeting kind recap",
         "POST /api/meeting kind followups",
+        "POST /api/meeting screenshot false",
         "POST /api/scribe {\"retry\":true}",
         "POST /api/scribe {\"dictate\":true}",
       ],

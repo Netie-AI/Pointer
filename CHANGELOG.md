@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Meeting assist sees this screen unless asked not to
+
+`computer.meeting_assist` and `POST /api/meeting` capture a fresh crop
+so agents can ask about the call and the display. Live Suggest passes
+`screenshot: false` so an 8s debounce does not screenshot the room on
+a loop. GitHub CI on this account is still a spending-limit cutoff
+(0 steps), not a product fail. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - Shareable meeting notes as markdown
 
 Cluely notes: `GET /api/meeting?export=1` returns markdown tagged as

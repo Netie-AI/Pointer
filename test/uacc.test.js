@@ -117,6 +117,7 @@ function test(name, fn) {
     assert.deepStrictEqual(shown.meeting.kinds, ["say", "recap", "followups"]);
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?notes=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?export=1"));
+    assert.ok(shown.drive.instructions.includes("POST /api/meeting screenshot false"));
     assert.ok(shown.drive.instructions.includes("focus: notepad"));
     assert.ok(shown.drive.instructions.includes("focus: notepad then type: hello"));
     assert.ok(shown.drive.instructions.includes("click: Save"));

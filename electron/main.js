@@ -307,17 +307,22 @@ const liveMcp = createMcpAbi({
       execute: (actions) => executeApproved(actions, { ignoreHudMode: true }),
     }),
   scribe: async (params) => runScribeApi(params),
-  meetingAssist: (params) =>
-    runMeetingAssist(params, {
+  meetingAssist: async (params) => {
+    let dataUrl = (lastCapture && lastCapture.dataUrl) || null;
+    if (!params || params.screenshot !== false) {
+      dataUrl = await captureNowForAsk();
+    }
+    return runMeetingAssist(params, {
       secure: cortexGate,
       notes: () => notes.tail(4000),
       complete: async (assist) =>
         eco.visionChat({
           message: `${assist.system}\n\n${assist.user}`,
-          dataUrl: lastCapture && lastCapture.dataUrl,
+          dataUrl,
           hotContext: plannerContext(String((assist && assist.asked) || "")),
         }),
-    }),
+    });
+  },
 });
 const liveCoordinator = createCoordinator({
   mcp: liveMcp,
@@ -717,7 +722,7 @@ async function refreshMeetingSuggest() {
         jsonrpc: "2.0",
         id: 1,
         method: "computer.meeting_assist",
-        params: { notes: notesText },
+        params: { notes: notesText, screenshot: false },
       },
       {}
     );

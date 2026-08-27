@@ -45,6 +45,9 @@ async function run() {
       assert.ok(/meetingNotes/.test(main), "GET /api/meeting?notes=1 must read live notes");
       assert.ok(/exportMeetingNotes/.test(main), "Copy notes must export from the live file in main");
       assert.ok(/ipcMain\.handle\("hud:meetingNotes"/.test(main), "hud:meetingNotes must exist");
+      const assistFn = main.slice(main.indexOf("meetingAssist: async"));
+      assert.ok(/params\.screenshot !== false/.test(assistFn), "meeting_assist must capture unless screenshot is false");
+      assert.ok(/screenshot: false/.test(main), "live suggest must not recapture every debounce");
       assert.ok(/payload && payload.kind/.test(main), "hud:ask must pass recap/followups kind");
       assert.ok(/createPendingScribe/.test(main), "failed Scribe must keep a pending transcript");
       assert.ok(/retryPendingScribe/.test(main), "OpenWillow retry must re-run the pending take");
