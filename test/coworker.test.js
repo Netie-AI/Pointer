@@ -100,12 +100,15 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.doesNotMatch(assist.cue, /decided to/);
   assert.match(recap.cue, /We'll ship Friday/);
   assert.doesNotMatch(recap.cue, /decided to/);
+  assert.match(assist.asked, /launch date/);
+  assert.match(recap.asked, /send the deck/);
   const unanswered = meetingAssist({
     transcript: "system: What is the launch date?",
     question: "what should I say",
   });
   assert.strictEqual(unanswered.act, false);
   assert.match(unanswered.cue, /no answer/);
+  assert.match(unanswered.asked, /launch date/);
   const next = meetingAssist({ transcript, question: "list next steps" });
   assert.strictEqual(next.kind, "next");
   assert.match(next.deliverable, /## Next steps/);
@@ -392,7 +395,9 @@ test("today assist ships a standing brief and never invents work", () => {
   assert.strictEqual(empty.act, false);
   assert.strictEqual(empty.skipLlm, true);
   assert.match(empty.deliverable, /nothing yet/);
+  assert.match(empty.deliverable, /On your plate/);
   assert.match(empty.deliverable, /P-06/);
+  assert.strictEqual(empty.cue || "", "");
   assert.doesNotMatch(empty.deliverable, /send the deck/);
   const filled = todayAssist({
     state: {
@@ -406,6 +411,23 @@ test("today assist ships a standing brief and never invents work", () => {
   assert.match(filled.deliverable, /Standup recap/);
   assert.match(filled.deliverable, /Meeting coworker: running/);
   assert.strictEqual(filled.act, false);
+  const plated = todayAssist({
+    state: {
+      transcript: "system: Can you send the deck?\nmic: I will send it Friday.",
+    },
+  });
+  assert.strictEqual(plated.act, false);
+  assert.match(plated.cue, /send it Friday/);
+  assert.match(plated.deliverable, /On your plate/);
+  assert.match(plated.deliverable, /I'll send it Friday/);
+  assert.doesNotMatch(plated.deliverable, /will execute/i);
+  const publicPlate = todayAssist({
+    state: { transcript: "mic: I will send it Friday." },
+    localFirst: true,
+  });
+  assert.strictEqual(publicPlate.act, false);
+  assert.strictEqual(publicPlate.cue || "", "");
+  assert.doesNotMatch(publicPlate.deliverable, /send it Friday/);
 });
 
 test("document assist drafts and never writes Word", () => {
@@ -482,6 +504,7 @@ test("live meeting update fails closed with no transcript and never acts", () =>
   assert.match(asked.deliverable, /Suggested reply/);
   assert.ok(asked.cue);
   assert.match(asked.cue, /send it Friday/);
+  assert.match(asked.asked, /launch date/);
 });
 
 test("desk chips ask, never act", () => {
@@ -540,14 +563,19 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /event\.type === "live-brief"/);
   assert.match(hud, /paintLiveBrief/);
   assert.match(hud, /meeting-cue/);
+  assert.match(hud, /meeting-asked/);
+  assert.match(hud, /They asked/);
+  assert.match(hud, /event\.asked/);
   assert.match(hud, /point-box/);
   assert.match(hud, /event\.hold/);
   assert.match(hud, /renderPoints\(event\.points, event\.ttlMs, event\.hold\)/);
   const html = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");
   assert.match(html, /id="meeting-cue"/);
+  assert.match(html, /id="meeting-asked"/);
   assert.doesNotMatch(html, /clicky-orb|stage-orb/);
   const mainCue = main.slice(main.indexOf("function publishLiveCoworker"), main.indexOf("function publishTeachOverlay"));
   assert.match(mainCue, /cue:/);
+  assert.match(mainCue, /asked:/);
   assert.match(mainCue, /cueKind/);
   assert.match(hud, /cueDisplay/);
   assert.match(hud, /Next:/);

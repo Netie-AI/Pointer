@@ -1,3 +1,9 @@
+## 2026-08-27 - They asked chrome and Today plate
+
+Fixed HUD and loopback `/meeting` show `They asked` above say-this. Today
+lists On your plate from live commitments and never invents work on the
+public catalog. Never Acts. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Teach Click/Type walk and 300ms question cue
 
 Teach walks fields, then the primary CTA, then dismiss (`Type in Email` then

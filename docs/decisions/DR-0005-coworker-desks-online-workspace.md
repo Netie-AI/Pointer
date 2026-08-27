@@ -86,6 +86,8 @@ rooms; public copies are localFirst empty. Recap lists `## Decisions`.
 Teach walks fields then the primary CTA (`Type in` before `Click Save`).
 Overlay holds until `got it`. HUD Back / Got it Ask the next step (never
 Act). Recap labels You vs Them and tags a weekday when heard; say-this is
-a speakable line from your answer. Meeting questions cue in 300ms.
+a speakable line from your answer. Meeting questions cue in 300ms. HUD
+and loopback `/meeting` show `They asked` above say-this. Today plates
+live commitments on loopback and stays empty on the public catalog.
 Loopback `/teach` maps measured BOX markers read-only. Public copies stay
 empty.

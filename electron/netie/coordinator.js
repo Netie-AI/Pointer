@@ -125,6 +125,7 @@ function createCoordinator(opts = {}) {
         localFirst: false,
         desk,
         cue: got.ok ? String(got.artifact.cue || "") : "",
+        asked: got.ok ? String(got.artifact.asked || "") : "",
         deliverable: got.ok ? String(got.artifact.body || "") : "",
         markers,
         artifact: got.ok ? got.artifact : null,
@@ -138,6 +139,7 @@ function createCoordinator(opts = {}) {
       ok: got.ok,
       desk,
       cue: got.ok ? String(got.artifact.cue || "") : "",
+      asked: got.ok ? String(got.artifact.asked || "") : "",
       deliverable: got.ok ? String(got.artifact.body || "") : "",
       title: got.ok && got.artifact.title ? got.artifact.title : fallbackTitle,
     };
@@ -170,6 +172,7 @@ function createCoordinator(opts = {}) {
           desk: assist.desk,
           kind: assist.kind,
           title: assist.title,
+          cue: assist.cue || "",
           deliverable: assist.deliverable,
           events: today.slice(-40),
           artifacts: workspace.publicList(),
@@ -222,7 +225,7 @@ function createCoordinator(opts = {}) {
             today: {
               ok: todayBrief.ok,
               desk: "today",
-              cue: "",
+              cue: todayBrief.cue || "",
               deliverable: todayBrief.deliverable || "",
               title: todayBrief.title || "Today",
             },

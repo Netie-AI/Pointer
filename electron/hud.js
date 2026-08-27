@@ -119,6 +119,7 @@ function paintLiveBrief(event) {
   const brief = $("coworker-brief");
   const meta = $("coworker-brief-meta");
   const cueEl = $("meeting-cue");
+  const askedEl = $("meeting-asked");
   const copyBtn = $("btn-copy-cue");
   const cueRow = $("cue-row");
   const teachBack = $("btn-teach-back");
@@ -137,6 +138,10 @@ function paintLiveBrief(event) {
       cueEl.hidden = true;
       cueEl.textContent = "";
     }
+    if (askedEl) {
+      askedEl.hidden = true;
+      askedEl.textContent = "";
+    }
     if (cueRow) cueRow.hidden = true;
     if (copyBtn) copyBtn.hidden = true;
     if (teachBack) teachBack.hidden = true;
@@ -150,6 +155,11 @@ function paintLiveBrief(event) {
   if (meta) {
     meta.hidden = false;
     meta.textContent = `${(event && event.desk) || "meeting"} coworker · live · never acts`;
+  }
+  const asked = String((event && event.asked) || "").trim().slice(0, 160);
+  if (askedEl) {
+    askedEl.hidden = !asked;
+    askedEl.textContent = asked ? `They asked: ${asked}` : "";
   }
   if (cueEl) {
     cueEl.hidden = !cue;

@@ -150,8 +150,9 @@ function test(name, fn) {
       id: "live-meeting",
       title: "Live assist",
       desk: "meeting",
-      body: "# Meeting brief\n- ship it",
-      cue: "I will send it Friday.",
+      body: "# Meeting brief\n## Commitments\n- You [Friday]: I will send it Friday.",
+      cue: "I'll send it Friday.",
+      asked: "What is the launch date?",
     });
     const meeting = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/meeting" }, (res) => {
@@ -164,6 +165,7 @@ function test(name, fn) {
     assert.strictEqual(meeting.body.act, false);
     assert.strictEqual(meeting.body.exec, false);
     assert.match(meeting.body.cue, /Friday/);
+    assert.match(meeting.body.asked, /launch date/);
     const meetingPage = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/meeting" }, (res) => {
         const chunks = [];
@@ -173,6 +175,7 @@ function test(name, fn) {
     });
     assert.strictEqual(meetingPage.status, 200);
     assert.match(meetingPage.body, /meeting-brief/);
+    assert.match(meetingPage.body, /meeting-asked-web/);
     c.workspace.put({
       id: "live-teach",
       title: "Live teach",
@@ -276,6 +279,8 @@ function test(name, fn) {
     assert.strictEqual(home.body.exec, false);
     assert.match(home.body.rooms.teach.cue, /Click Save/);
     assert.match(home.body.rooms.meeting.cue, /Friday/);
+    assert.match(home.body.rooms.meeting.asked, /launch date/);
+    assert.match(home.body.rooms.today.cue, /send it Friday/);
     assert.match(home.body.rooms.security.cue, /do not approve/);
     assert.match(home.body.rooms.today.deliverable, /# Today/);
     assert.match(home.body.rooms.document.cue, /not a \.docx/);

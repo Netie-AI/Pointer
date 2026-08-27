@@ -131,6 +131,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/paintLiveBrief/.test(js));
       assert.ok(/coworker-brief/.test(read("electron/hud.html")), "live brief lives in fixed insight chrome");
       assert.ok(/id="meeting-cue"/.test(read("electron/hud.html")), "say-this cue is fixed chrome, not a bubble");
+      assert.ok(/id="meeting-asked"/.test(read("electron/hud.html")), "They asked is fixed chrome, not a bubble");
       assert.ok(/id="btn-copy-cue"/.test(read("electron/hud.html")), "copy say-this is a button in the insight panel");
       const copy = js.slice(js.indexOf("const btnCopyCue"), js.indexOf('$("mode-pill")'));
       assert.ok(/hud:copyText/.test(copy), "copy uses clipboard, not Act");

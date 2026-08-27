@@ -311,6 +311,10 @@ function meetingAssist({ transcript, question } = {}) {
     skipLlm,
     title: `Meeting ${kind}`,
     cue: spokenCue(kind, utterances, lastOther),
+    asked:
+      lastAsked && looksQuestion(lastAsked.text)
+        ? String(lastAsked.text).slice(0, 160)
+        : "",
     deliverable,
   };
 }
@@ -332,10 +336,10 @@ function deskGrounding(deskOrId) {
     lines.push("6. When you mean click here, emit [POINT:x,y:label] percentages. Measured UIA also emits [BOX:left,top,w,h:label]. Crosshair and box only - never a buddy.");
   }
   if (desk.id === "meeting") {
-    lines.push("6. Recap/assist/next from the transcript. Live cue is say-this in the fixed insight panel. Never join the call. Never Act.");
+    lines.push("6. Recap/assist/next from the transcript. Live cue is They asked plus say-this in the fixed insight panel. Never join the call. Never Act.");
   }
   if (desk.id === "today") {
-    lines.push("6. Standing brief from this session log. Never invent work. Never Act.");
+    lines.push("6. Standing brief from this session log. On your plate lists live commitments. Never invent work. Never Act.");
   }
   if (desk.id === "document") {
     lines.push("6. word_docx_write / word_from_clipboard. Do not click the Word UI.");
@@ -766,6 +770,33 @@ function laneLine(id, held) {
  * Standing Today brief. Empty session is honest, not invented work.
  * Never Acts. Does not dump artifact bodies.
  */
+function plateFacts(state) {
+  const s = state || {};
+  const chunks = [];
+  if (s.transcript) chunks.push(String(s.transcript));
+  const arts = Array.isArray(s.artifacts) ? s.artifacts : [];
+  for (const a of arts) {
+    if (a && (a.id === "live-meeting" || a.desk === "meeting") && a.body) {
+      chunks.push(String(a.body));
+    }
+  }
+  const text = chunks.join("\n");
+  const fromRing = parseUtterances(text).filter(
+    (row) => looksAction(row.text) || looksDecision(row.text)
+  );
+  if (fromRing.length) return fromRing.slice(-6);
+  const bullets = [];
+  for (const line of String(text).split(/\n/)) {
+    const m = String(line || "").match(/^\s*-\s+(.+)/);
+    if (!m) continue;
+    const raw = String(m[1] || "")
+      .replace(/^(You|Them)(\s+\[[^\]]+\])?:\s+/i, "")
+      .trim();
+    if (raw && (looksAction(raw) || looksDecision(raw))) bullets.push({ text: raw, speaker: "you" });
+  }
+  return bullets.slice(-6);
+}
+
 function todayAssist({ state, question, localFirst } = {}) {
   const s = state || {};
   const events = Array.isArray(s.today) ? s.today : [];
@@ -786,6 +817,9 @@ function todayAssist({ state, question, localFirst } = {}) {
     const desk = row.desk ? ` (${row.desk})` : "";
     return `- ${title}${desk}`;
   });
+  const plate = localFirst ? [] : plateFacts(s);
+  const plateLines = plate.map((row) => `- ${speakable(row.text)}`);
+  const plateCue = plate.length ? speakable(plate[plate.length - 1].text) : "";
   const jobLines = jobs.slice(-8).map((row) => `- ${row.title || row.id}: ${row.status || "unknown"}`);
   const draftLines = drafts.slice(-8).map((row) => `- ${row.title || row.id} (hint)`);
 
@@ -809,7 +843,11 @@ function todayAssist({ state, question, localFirst } = {}) {
     "",
     "## What happened",
     "",
-    happened.length ? happened.join("\n") : "- nothing yet"
+    happened.length ? happened.join("\n") : "- nothing yet",
+    "",
+    "## On your plate",
+    "",
+    plateLines.length ? plateLines.join("\n") : "- nothing yet"
   );
   if (draftLines.length) {
     parts.push("", "## Hint drafts", "", draftLines.join("\n"));
@@ -839,6 +877,7 @@ function todayAssist({ state, question, localFirst } = {}) {
     kind: "brief",
     skipLlm: true,
     title: "Today",
+    cue: plateCue,
     deliverable: parts.join("\n"),
   };
 }
@@ -871,6 +910,8 @@ function publicTodaySnapshot() {
     kind: assist.kind,
     title: assist.title,
     deliverable: assist.deliverable,
+    cue: assist.cue || "",
+    asked: "",
     ok: true,
   };
 }
@@ -1167,6 +1208,7 @@ function publicEmptyRoom(desk, title, reason) {
     act: false,
     exec: false,
     cue: "",
+    asked: "",
     deliverable: "",
     markers: [],
     coordinator: "http://127.0.0.1:18010",

@@ -133,6 +133,7 @@ function readAsset(file) {
     const text = await html.text();
     assert.match(text, /host\.netie\.ai \/today/);
     assert.match(text, /id="brief"/);
+    assert.match(text, /id="today-cue-web"/);
     assert.match(text, /id="events"/);
     const todayApi = handlePublicRequest({ method: "GET", pathname: "/api/today" });
     assert.strictEqual(todayApi.status, 200);
@@ -155,15 +156,19 @@ function readAsset(file) {
     assert.match(app, /paintRooms/);
     assert.match(app, /paintTeachMap/);
     assert.match(app, /teach-map/);
+    assert.match(app, /They asked/);
+    assert.match(app, /Plate:/);
     assert.doesNotMatch(app, /innerHTML/);
     const meeting = await fetch(new Request("https://host.netie.ai/meeting"));
     assert.strictEqual(meeting.status, 200);
     const meetingText = await meeting.text();
     assert.match(meetingText, /id="meeting-brief"/);
+    assert.match(meetingText, /id="meeting-asked-web"/);
     const meetingApi = handlePublicRequest({ method: "GET", pathname: "/api/meeting" });
     assert.strictEqual(JSON.parse(meetingApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(meetingApi.body).exec, false);
     assert.strictEqual(JSON.parse(meetingApi.body).cue, "");
+    assert.strictEqual(JSON.parse(meetingApi.body).asked, "");
     const teach = await fetch(new Request("https://host.netie.ai/teach"));
     assert.strictEqual(teach.status, 200);
     const teachText = await teach.text();

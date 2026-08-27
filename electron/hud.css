@@ -456,6 +456,11 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   border: 1px solid var(--line-soft); border-radius: 12px;
   background: color-mix(in srgb, var(--surface), #000 18%);
 }
+.meeting-asked {
+  margin: 0 0 6px; padding: 0;
+  font-size: 11px; line-height: 1.4; font-weight: 500;
+  color: var(--muted, #9aa3b5);
+}
 .meeting-cue {
   margin: 0 0 8px; padding: 8px 10px;
   font-size: 12px; line-height: 1.4; font-weight: 650;

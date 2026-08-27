@@ -243,6 +243,12 @@ if (todayPage) {
           return false;
         }
         show("policy", (t && t.reason) || "standing brief; Act stays on the laptop");
+        const plate = document.getElementById("today-cue-web");
+        const plateText = String((t && t.cue) || "").trim();
+        if (plate) {
+          plate.hidden = !plateText;
+          plate.textContent = plateText ? "Plate: " + plateText : "";
+        }
         paintBrief((t && (t.deliverable || t.brief)) || "");
         paintEvents((t && (t.events || t.today)) || []);
         return !(t && t.localFirst);
@@ -250,7 +256,7 @@ if (todayPage) {
   });
 }
 
-function paintLiveRoom(pageId, apiPath, cueId, refuse) {
+function paintLiveRoom(pageId, apiPath, cueId, refuse, askedId) {
   const page = document.getElementById(pageId);
   if (!page) return;
   pollWhileLive(function () {
@@ -271,8 +277,16 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse) {
               ? "Next: "
               : (m && m.desk) === "meeting"
                 ? "Say this: "
-                : "Review: ";
+                : (m && m.desk) === "today"
+                  ? "Plate: "
+                  : "Review: ";
           cue.textContent = text ? prefix + text : "";
+        }
+        const askedEl = askedId ? document.getElementById(askedId) : null;
+        const asked = String((m && m.asked) || "").trim();
+        if (askedEl) {
+          askedEl.hidden = !asked;
+          askedEl.textContent = asked ? "They asked: " + asked : "";
         }
         page.replaceChildren();
         paintTeachMap(page, (m && m.markers) || []);
@@ -284,7 +298,7 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse) {
   });
 }
 
-paintLiveRoom("meeting-brief", "/api/meeting", "meeting-cue-web", "refused: meeting must not grow a runtime");
+paintLiveRoom("meeting-brief", "/api/meeting", "meeting-cue-web", "refused: meeting must not grow a runtime", "meeting-asked-web");
 paintLiveRoom("teach-brief", "/api/teach", "teach-cue-web", "refused: teach must not grow a runtime");
 paintLiveRoom("security-brief", "/api/security", "security-cue-web", "refused: security must not grow a runtime");
 paintLiveRoom("document-brief", "/api/document", "document-cue-web", "refused: document must not grow a runtime");
@@ -325,7 +339,7 @@ function paintRooms(rooms, localFirst) {
     const cue = el("p", "muted");
     const cueText = String(r.cue || "").trim();
     if (cueText) {
-      const prefix = id === "teach" ? "Next: " : id === "meeting" ? "Say this: " : id === "today" ? "" : "Review: ";
+      const prefix = id === "teach" ? "Next: " : id === "meeting" ? "Say this: " : id === "today" ? "Plate: " : "Review: ";
       cue.textContent = prefix + cueText;
     } else {
       cue.textContent = localFirst ? "Live " + id + " stays on the laptop." : "No live " + id + " yet.";

@@ -292,6 +292,7 @@ function publishBrief(assist) {
       desk: assist.desk || "teach",
       body: assist.deliverable,
       cue: assist.cue || "",
+      asked: assist.asked || "",
     });
   } catch {
     return null;
@@ -338,6 +339,7 @@ function publishLiveCoworker(assist) {
     act: false,
     text: assist.deliverable,
     cue: assist.cue || "",
+    asked: assist.asked || "",
     cueKind:
       assist.cueKind ||
       (assist.desk === "teach" ? "point" : assist.desk === "security" ? "warn" : "say"),
@@ -2841,6 +2843,7 @@ function sessionCoworkerState() {
     drafts: snap.drafts,
     artifacts: liveCoordinator.workspace.list(),
     jobs: bgJobs.list(),
+    transcript: heardTranscript(),
   };
 }
 
