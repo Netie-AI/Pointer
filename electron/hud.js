@@ -988,6 +988,18 @@ if ($("btn-followups")) {
     doAsk({ kind: "followups" });
   });
 }
+if ($("btn-scribe-retry")) {
+  $("btn-scribe-retry").addEventListener("click", () => {
+    setChatOpen(true);
+    invoke("hud:ask", { message: "", attachments: [], retryScribe: true });
+  });
+}
+if ($("btn-scribe-paste")) {
+  $("btn-scribe-paste").addEventListener("click", () => {
+    setChatOpen(true);
+    invoke("hud:ask", { message: "", attachments: [], dictatePending: true });
+  });
+}
 
 $("btn-roulette").addEventListener("click", async () => {
   if (hudRoot.classList.contains("morph-hidden")) {
@@ -1452,6 +1464,9 @@ function onHudEvent(event) {
   }
   if (event.type === "insight") insightSummary.textContent = event.text || "";
   if (event.type === "suggest") applySuggest(event.text);
+  if (event.type === "scribe-pending") {
+    hudRoot.classList.toggle("has-pending", Boolean(event.pending && event.pending.present));
+  }
   if (event.type === "auto-listen") {
     armCapture({
       mic: Boolean(event.mic),

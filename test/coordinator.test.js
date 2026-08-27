@@ -70,6 +70,7 @@ function test(name, fn) {
       mcp,
       computerStatus: () => ({ ok: true, detectable: true, captureVisible: true }),
       meetingNotes: () => "We ship Friday after standup.",
+      scribePending: () => ({ transcript: "rewrite this email", title: "Notepad", hwnd: "1" }),
     });
     const bad = await Promise.resolve(c.listen({ host: "0.0.0.0", port: 0 }));
     assert.strictEqual(bad.ok, false);
@@ -199,6 +200,18 @@ function test(name, fn) {
     assert.strictEqual(meetNotes.notes.present, true);
     assert.match(meetNotes.notes.text, /Friday/);
     assert.match(meetNotes.notes.note, /untrusted/);
+
+    const pending = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/scribe?pending=1" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      }).on("error", reject);
+    });
+    assert.strictEqual(pending.ok, true);
+    assert.strictEqual(pending.pending.present, true);
+    assert.match(pending.pending.text, /rewrite this email/);
+    assert.match(pending.pending.note, /untrusted/);
 
     await c.close();
   });

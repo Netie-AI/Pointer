@@ -155,6 +155,11 @@ function computerStatus(opts = {}) {
       available: opts.scribeAvailable === true || opts.actAvailable === true,
       gated: true,
       api: "/api/scribe",
+      pending: opts.scribePending && opts.scribePending.present
+        ? opts.scribePending
+        : { present: false },
+      retry: "POST /api/scribe {\"retry\":true}",
+      dictate: "POST /api/scribe {\"dictate\":true}",
     },
     meeting: {
       available: opts.meetingAvailable === true || opts.actAvailable === true,
@@ -192,6 +197,8 @@ function computerStatus(opts = {}) {
         "GET /api/meeting?notes=1",
         "POST /api/meeting kind recap",
         "POST /api/meeting kind followups",
+        "POST /api/scribe {\"retry\":true}",
+        "POST /api/scribe {\"dictate\":true}",
       ],
       gated: "Cortex /dms/secure. Clicks and launches need approved:true.",
     },

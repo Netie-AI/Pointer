@@ -15,7 +15,9 @@
    Scribe rewrites then pastes. Optional screen context. Esc cancels
    listening. Hold Ctrl+Alt+Space (release to stop; Linux stays toggle).
    Ctrl+Alt+M/L. Meeting Suggest, Recap, and Follow-ups pills. Live notes
-   at `GET /api/meeting?notes=1`. Teach LINE and PATH marks.
+   at `GET /api/meeting?notes=1`. Failed Scribe keeps a pending transcript
+   so Retry or Paste as-is can finish (`POST /api/scribe` retry/dictate).
+   Teach LINE and PATH marks.
    `focus:` matches a window title; `click: Save` aims by name. Autostart
    is a setting. MCP `tools.list` and `GET /api/tools` return schemas.
    `wait` / `scroll` / `doubleclick` / `rightclick` / `hover` / `replace:`

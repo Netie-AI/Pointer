@@ -118,9 +118,12 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       );
       assert.ok(html.includes('id="btn-recap"'), "meeting Recap stays in fixed top chrome");
       assert.ok(html.includes('id="btn-followups"'), "meeting Follow-ups stays in fixed top chrome");
+      assert.ok(html.includes('id="btn-scribe-retry"'), "Scribe Retry stays in fixed top chrome");
+      assert.ok(html.includes('id="btn-scribe-paste"'), "Scribe Paste as-is stays in fixed top chrome");
       const css = read("electron/hud.css");
       assert.ok(/\.hud\.mode-meeting #btn-recap/.test(css), "Recap is meeting-only");
       assert.ok(/\.hud\.mode-meeting #btn-followups/.test(css), "Follow-ups is meeting-only");
+      assert.ok(/\.hud\.mode-scribe\.has-pending #btn-scribe-retry/.test(css), "Retry is pending-Scribe only");
     }),
 
     T("every enquire input is labelled and reachable", async () => {

@@ -215,6 +215,10 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .hud.mode-meeting #btn-suggest,
 .hud.mode-meeting #btn-recap,
 .hud.mode-meeting #btn-followups { display: inline-flex; }
+#btn-scribe-retry,
+#btn-scribe-paste { display: none; }
+.hud.mode-scribe.has-pending #btn-scribe-retry,
+.hud.mode-scribe.has-pending #btn-scribe-paste { display: inline-flex; }
 .suggest-strip {
   display: none; position: absolute; top: 64px; left: 50%; transform: translateX(-50%);
   z-index: 28; max-width: min(720px, 86vw); padding: 7px 12px; border-radius: 12px;

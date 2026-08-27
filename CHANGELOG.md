@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Retry failed Scribe or paste the raw transcript
+
+If Scribe cannot rewrite (no Cortex, empty model, paste miss), Pointer keeps
+the voice take and remembered window. Retry re-runs the rewrite. Paste as-is
+inserts the raw transcript. `POST /api/scribe {"retry":true}` /
+`{"dictate":true}` plus `GET /api/scribe?pending=1`. Esc still cancels.
+No GPLv3 dump. No third-party MCP servers.
+
 ## 2026-08-27 - Meeting recap, follow-ups, and live notes for agents
 
 Meeting mode adds Recap and Follow-ups pills next to Suggest (fixed top

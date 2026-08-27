@@ -13,4 +13,6 @@ Observe PNG/clipboard: live `computer.observe` captures `captureDisplayCrop` whe
 
 Meeting: Recap and Follow-ups pills in fixed top chrome. `computer.meeting_assist` `kind` say/recap/followups. `GET /api/meeting?notes=1` returns live notes as untrusted data (no Cortex hop).
 
+Scribe pending: failed rewrite keeps transcript+hwnd. Retry re-runs; Paste as-is delivers raw dictation. `GET /api/scribe?pending=1`.
+
 Not done: UACC install on a real Windows laptop; OpenWillow Deepgram default (P-04); third-party MCP (P-05); Cluely undetectable-in-screenshare stays inverted (DR-0005).

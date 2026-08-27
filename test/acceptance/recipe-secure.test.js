@@ -44,6 +44,9 @@ async function run() {
       assert.ok(/buildMeetingAssist/.test(main), "meeting mode must offer Cluely-class assist");
       assert.ok(/meetingNotes/.test(main), "GET /api/meeting?notes=1 must read live notes");
       assert.ok(/payload && payload.kind/.test(main), "hud:ask must pass recap/followups kind");
+      assert.ok(/createPendingScribe/.test(main), "failed Scribe must keep a pending transcript");
+      assert.ok(/retryPendingScribe/.test(main), "OpenWillow retry must re-run the pending take");
+      assert.ok(/usePendingDictation/.test(main), "pending dictation must paste the raw transcript");
     }),
 
     T("hud:act recipe branch calls secureBeforeAct before maybeRunPlan", () => {

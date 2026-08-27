@@ -13,6 +13,7 @@ const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { TOOLS, CATALOG } = require("./mcp-abi");
 const { publicMeetingNotes } = require("./meeting");
+const { publicPendingTranscript } = require("./pending-scribe");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
 
@@ -118,6 +119,17 @@ function createCoordinator(opts = {}) {
     if (req.method === "GET" && url.pathname === "/api/state") {
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(snapshot()));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/scribe" && queryFlag(url, "pending")) {
+      let raw = null;
+      try {
+        raw = typeof opts.scribePending === "function" ? opts.scribePending() : null;
+      } catch {
+        raw = null;
+      }
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: true, pending: publicPendingTranscript(raw) }));
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/meeting" && queryFlag(url, "notes")) {

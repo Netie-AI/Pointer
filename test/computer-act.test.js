@@ -322,6 +322,26 @@ function test(name, fn) {
     assert.strictEqual(r.delivered, false);
   });
 
+  await test("pending scribe keeps the transcript for retry or raw paste", () => {
+    const { createPendingScribe } = require("../electron/netie/pending-scribe");
+    const store = createPendingScribe();
+    assert.strictEqual(store.public().present, false);
+    const saved = store.save({
+      transcript: "make this a polite email",
+      target: { hwnd: "42", title: "Notepad" },
+      reason: "no Cortex /dms/secure gate",
+    });
+    assert.strictEqual(saved.ok, true);
+    assert.strictEqual(store.public().present, true);
+    assert.strictEqual(store.public().hwnd, true);
+    assert.match(store.transcript().text, /polite email/);
+    assert.match(store.transcript().note, /untrusted/);
+    const taken = store.take();
+    assert.strictEqual(taken.hwnd, "42");
+    assert.strictEqual(store.public().present, false);
+    assert.strictEqual(store.save({ transcript: "" }).ok, false);
+  });
+
   await test("MCP computer.scribe and meeting_assist refuse without runners", async () => {
     const mcp = createMcpAbi();
     const scribe = await mcp.handle({

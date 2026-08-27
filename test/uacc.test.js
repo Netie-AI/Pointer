@@ -108,6 +108,8 @@ function test(name, fn) {
     assert.strictEqual(shown.scribe.available, true);
     assert.strictEqual(shown.scribe.gated, true);
     assert.strictEqual(shown.scribe.api, "/api/scribe");
+    assert.strictEqual(shown.scribe.pending.present, false);
+    assert.ok(shown.drive.instructions.includes("POST /api/scribe {\"retry\":true}"));
     assert.strictEqual(shown.meeting.available, true);
     assert.strictEqual(shown.meeting.api, "/api/meeting");
     assert.strictEqual(shown.meeting.notes, "GET /api/meeting?notes=1");

@@ -56,6 +56,7 @@ const {
   nextScribeLanguage,
   normalizeScribeLanguage,
 } = require("./netie/scribe");
+const { createPendingScribe } = require("./netie/pending-scribe");
 const {
   snapshotTarget,
   deliverTextActions,
@@ -181,12 +182,14 @@ const hot = new HotMemory();
 const eco = new NetieEcosystem({ deviceId: `netie-clicks:${hot.deviceId}` });
 /** Last non-Pointer foreground window dictation/scribe should type into. */
 let deliveryTarget = null;
+const pendingScribe = createPendingScribe();
 function liveComputerStatus() {
   return computerStatus({
     captureVisible: captureVisible(),
     uacc: detectUacc(),
     actAvailable: true,
     delivery: publicTarget(deliveryTarget),
+    scribePending: pendingScribe.public(),
   });
 }
 
@@ -303,46 +306,7 @@ const liveMcp = createMcpAbi({
       },
       execute: (actions) => executeApproved(actions, { ignoreHudMode: true }),
     }),
-  scribe: async (params) => {
-    if (settings.get("scribeScreenContext") === true) {
-      try {
-        await captureDisplayCrop(null);
-      } catch {
-        /* screen is optional reference data */
-      }
-    }
-    return runComputerScribe(
-      {
-        ...(params && typeof params === "object" ? params : {}),
-        hasScreenshot: Boolean(lastCapture && lastCapture.dataUrl),
-      },
-      {
-        secure: cortexGate,
-        language: () => normalizeScribeLanguage(settings.get("scribeLanguage")),
-        writingStyle: () => settings.get("writingStyle") || "",
-        personalContext: () => settings.get("personalContext") || "",
-        copySelection: async () => {
-          try {
-            await driver.perform({ type: "clipboard_baseline" });
-            await driver.perform({ type: "press", value: "ctrl+c" });
-            await driver.perform({ type: "wait", ms: 120 });
-            const clip = await driver.clipboardGet();
-            return String((clip && clip.text) || "").trim();
-          } catch {
-            return "";
-          }
-        },
-        complete: async (req) =>
-          eco.visionChat({
-            message: `${req.system}\n\n${req.user}`,
-            dataUrl: lastCapture && lastCapture.dataUrl,
-            hotContext: plannerContext(String((req && req.user) || "")),
-          }),
-        deliver: (text, extra) =>
-          deliverIntoTarget(text, { via: "paste", replace: Boolean(extra && extra.replace) }),
-      }
-    );
-  },
+  scribe: async (params) => runScribeApi(params),
   meetingAssist: (params) =>
     runMeetingAssist(params, {
       secure: cortexGate,
@@ -359,6 +323,7 @@ const liveCoordinator = createCoordinator({
   mcp: liveMcp,
   computerStatus: () => liveComputerStatus(),
   meetingNotes: () => (notes.file ? notes.tail(8000) : null),
+  scribePending: () => pendingScribe.peek(),
 });
 const brain = new PersonalBrain({
   deviceId: `netie-clicks:${hot.deviceId}`,
@@ -1535,7 +1500,7 @@ async function toggleDictateHotkey() {
 
 async function deliverIntoTarget(text, opts = {}) {
   const planned = deliverTextActions(text, {
-    target: deliveryTarget,
+    target: opts.target || deliveryTarget,
     via: opts.via || "paste",
     replace: Boolean(opts.replace),
   });
@@ -1549,6 +1514,116 @@ async function deliverIntoTarget(text, opts = {}) {
     }
   }
   return { ok: results.every((r) => r && r.ok !== false), results, actions: planned.actions };
+}
+
+function restorePendingTarget(row) {
+  if (!row || !row.hwnd) return;
+  deliveryTarget = {
+    ok: true,
+    hwnd: row.hwnd,
+    title: row.title || "",
+    proc: "",
+  };
+}
+
+function publishScribePending() {
+  sendHudQuiet({ type: "scribe-pending", pending: pendingScribe.public() });
+}
+
+function rememberFailedScribe(transcript, reason) {
+  pendingScribe.save({
+    transcript,
+    target: deliveryTarget,
+    reason: reason || "scribe failed",
+  });
+  publishScribePending();
+}
+
+async function usePendingDictation() {
+  const row = pendingScribe.take();
+  publishScribePending();
+  if (!row) return { ok: false, reason: "no pending dictation" };
+  restorePendingTarget(row);
+  const delivered = await deliverIntoTarget(row.transcript, {
+    via: "paste",
+    target: deliveryTarget,
+  });
+  if (!delivered.ok) {
+    pendingScribe.save({
+      transcript: row.transcript,
+      hwnd: row.hwnd,
+      title: row.title,
+      reason: "paste failed",
+    });
+    publishScribePending();
+  }
+  sendHud({
+    type: "answer",
+    meta: "Scribe",
+    text: delivered.ok
+      ? String(row.transcript || "").slice(0, 400)
+      : "Could not paste the pending transcript.",
+  });
+  return { ok: Boolean(delivered && delivered.ok), dictated: true, delivered };
+}
+
+async function retryPendingScribe() {
+  const row = pendingScribe.take();
+  publishScribePending();
+  if (!row) return { ok: false, reason: "no pending scribe" };
+  restorePendingTarget(row);
+  return runScribeTurn({ instruction: row.transcript, source: "retry" });
+}
+
+async function runScribeApi(params) {
+  const src = params && typeof params === "object" ? params : {};
+  if (src.retry === true) return retryPendingScribe();
+  if (src.dictate === true || src.useDictation === true) return usePendingDictation();
+  if (settings.get("scribeScreenContext") === true) {
+    try {
+      await captureDisplayCrop(null);
+    } catch {
+      /* screen is optional reference data */
+    }
+  }
+  const instruction = String(src.instruction || src.message || src.text || src.goal || "").trim();
+  const r = await runComputerScribe(
+    {
+      ...src,
+      hasScreenshot: Boolean(lastCapture && lastCapture.dataUrl),
+    },
+    {
+      secure: cortexGate,
+      language: () => normalizeScribeLanguage(settings.get("scribeLanguage")),
+      writingStyle: () => settings.get("writingStyle") || "",
+      personalContext: () => settings.get("personalContext") || "",
+      copySelection: async () => {
+        try {
+          await driver.perform({ type: "clipboard_baseline" });
+          await driver.perform({ type: "press", value: "ctrl+c" });
+          await driver.perform({ type: "wait", ms: 120 });
+          const clip = await driver.clipboardGet();
+          return String((clip && clip.text) || "").trim();
+        } catch {
+          return "";
+        }
+      },
+      complete: async (req) =>
+        eco.visionChat({
+          message: `${req.system}\n\n${req.user}`,
+          dataUrl: lastCapture && lastCapture.dataUrl,
+          hotContext: plannerContext(String((req && req.user) || "")),
+        }),
+      deliver: (text, extra) =>
+        deliverIntoTarget(text, { via: "paste", replace: Boolean(extra && extra.replace) }),
+    }
+  );
+  if (!r.ok) rememberFailedScribe(instruction, r.reason);
+  else {
+    pendingScribe.clear();
+    publishScribePending();
+  }
+  return r;
 }
 
 async function runScribeTurn({ instruction, source = "ask" } = {}) {
@@ -1594,18 +1669,26 @@ async function runScribeTurn({ instruction, source = "ask" } = {}) {
     }
   );
   if (r.blocked) {
+    rememberFailedScribe(text, r.reason);
     sendHud({
       type: "answer",
       meta: "Scribe",
-      text: "Scribe paste is off until Cortex /dms/secure is up.",
+      text: "Scribe paste is off until Cortex /dms/secure is up. Retry or paste as-is.",
     });
     return r;
   }
   if (!r.ok) {
-    sendHud({ type: "answer", meta: "Scribe", text: r.reason || "Scribe failed" });
+    rememberFailedScribe(text, r.reason);
+    sendHud({ type: "answer", meta: "Scribe", text: (r.reason || "Scribe failed") + " Retry or paste as-is." });
     return r;
   }
   const delivered = r.delivered;
+  if (!delivered || !delivered.ok) {
+    rememberFailedScribe(text, "paste failed");
+  } else {
+    pendingScribe.clear();
+    publishScribePending();
+  }
   sendHud({
     type: "answer",
     meta: "Scribe",
@@ -1615,7 +1698,7 @@ async function runScribeTurn({ instruction, source = "ask" } = {}) {
         : `Wrote the draft but could not paste (${((delivered && delivered.results) || [])
             .map((row) => row.error)
             .filter(Boolean)
-            .join("; ") || "no target"}).`,
+            .join("; ") || "no target"}). Retry or paste as-is.`,
   });
   return {
     ok: Boolean(delivered && delivered.ok),
@@ -1874,8 +1957,13 @@ function releaseKillSwitch() {
 function cancelDictateListen() {
   dictateHold.stop();
   listenMic = false;
+  const hadPending = pendingScribe.clear();
+  if (hadPending) publishScribePending();
   sendHudQuiet({ type: "auto-listen", mic: false, system: listenSystem, paused: hudPaused });
-  sendHudQuiet({ type: "insight", text: "Dictation cancelled." });
+  sendHudQuiet({
+    type: "insight",
+    text: hadPending ? "Scribe pending cancelled." : "Dictation cancelled.",
+  });
 }
 
 function syncDictateCancelHotkey() {
@@ -3078,6 +3166,8 @@ ipcMain.handle("hud:ready", async () => ({
 }));
 
 ipcMain.handle("hud:ask", async (_e, payload) => {
+  if (payload && payload.retryScribe) return retryPendingScribe();
+  if (payload && payload.dictatePending) return usePendingDictation();
   const message = (payload && payload.message) || "";
   if (appMode === "scribe") {
     const r = await runScribeTurn({ instruction: message, source: "ask" });

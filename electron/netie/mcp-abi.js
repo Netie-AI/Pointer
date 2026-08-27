@@ -92,11 +92,16 @@ const CATALOG = Object.freeze([
   },
   {
     name: "computer.scribe",
-    description: "Rewrite or compose, then paste into the remembered window. Cortex gated.",
+    description:
+      "Rewrite or compose, then paste into the remembered window. Cortex gated. retry true re-runs a failed take; dictate true pastes the raw transcript.",
     inputSchema: {
       type: "object",
-      properties: { instruction: { type: "string" }, selectedText: { type: "string" } },
-      required: ["instruction"],
+      properties: {
+        instruction: { type: "string" },
+        selectedText: { type: "string" },
+        retry: { type: "boolean" },
+        dictate: { type: "boolean" },
+      },
     },
   },
   {
