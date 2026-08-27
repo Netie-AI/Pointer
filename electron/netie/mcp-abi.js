@@ -5,7 +5,7 @@
  * workspace.exec is a named refusal - it is not a runtime.
  */
 
-const { catalog, pickDesk } = require("./coworker-desks");
+const { catalog, pickDesk, teachAssist } = require("./coworker-desks");
 
 const TOOLS = Object.freeze([
   "tools.list",
@@ -16,6 +16,7 @@ const TOOLS = Object.freeze([
   "lanes.list",
   "desks.list",
   "desks.pick",
+  "teach.point",
   "today.brief",
   "workspace.list",
   "workspace.get",
@@ -77,6 +78,14 @@ function createMcpAbi(opts = {}) {
       if (method === "desks.pick") {
         const desk = pickDesk(params.goal || params.text || "", { mode: params.mode });
         return rpcResult(id, { desk: { id: desk.id, label: desk.label, act: desk.act } });
+      }
+      if (method === "teach.point") {
+        const assist = teachAssist({
+          text: params.text || params.goal || "walk me through this on my screen",
+          controls: params.controls,
+          screen: params.screen,
+        });
+        return rpcResult(id, { ...assist, act: false, exec: false });
       }
       if (method === "today.brief") {
         if (!coord) return rpcError(id, -32000, "coordinator missing");

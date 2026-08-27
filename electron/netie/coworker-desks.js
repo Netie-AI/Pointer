@@ -7,6 +7,8 @@
  * grant Act, never emit executable actions, and never run a cloud runtime.
  */
 
+const { pointControls } = require("./uia");
+
 const DESKS = Object.freeze({
   teach: Object.freeze({
     id: "teach",
@@ -336,22 +338,57 @@ function finishListeningSession({ mode, transcript } = {}) {
 }
 
 /**
- * Teach walkthrough. Never invents POINT coordinates. Vision still has to
- * see the screen. Local brief only names the format and the job.
+ * Pull a named control out of a teach request. "walk me through this" is
+ * not a name. "point at Save" is.
  */
-function teachAssist({ text } = {}) {
+function wantedControl(text) {
+  const q = spoken(text)
+    .replace(/\bon (my )?screen\b.*$/, "")
+    .trim();
+  const named = q.match(
+    /\b(?:click|press|tap|hit|point at|point to|select)\s+(?:the\s+)?([a-z0-9][a-z0-9 &/_'-]{0,40}?)(?:\s+button|\s+link|\s+field|\s+tab|\s+menu)?(?:\s+please)?$/
+  );
+  if (named) {
+    const label = named[1].replace(/\b(please|now|here|this|that)\b/g, "").trim();
+    if (label && !/^(the|a|an|my|it|on)$/.test(label)) return label;
+  }
+  const theBtn = q.match(
+    /\bthe\s+([a-z0-9][a-z0-9 &/_'-]{1,40})\s+(?:button|link|field|box|tab|menu)\b/
+  );
+  return theBtn ? theBtn[1].trim() : "";
+}
+
+/**
+ * Teach walkthrough. POINT tokens come from a measured control tree only.
+ * No tree => no coordinates, and vision still has to see the screen.
+ * Never Acts. Never restores a floating buddy.
+ */
+function teachAssist({ text, controls, screen } = {}) {
   const t = String(text || "").trim();
   const q = spoken(t);
   const explicit = /\b(walk me through|teach me|what should i click|click next|point at|on (my )?screen)\b/.test(
     q
   );
   if (!explicit) return { ok: false, act: false, desk: "teach", reason: "not a teach request" };
+  const measured = pointControls(controls, screen, { want: wantedControl(t) });
+  const tokens = measured.map((p) => p.token);
+  const origin = tokens.length
+    ? "> coordinates measured from the control tree, not invented"
+    : "> do not invent coordinates";
+  const steps = tokens.length
+    ? measured.map((p, i) => `${i + 1}. ${p.token}`).join("\n")
+    : [
+        "1. Name the control you mean.",
+        "2. POINT at it from the screenshot, not from memory.",
+        "3. Say the next move in one short line.",
+      ].join("\n");
   const deliverable = [
     "# Teach walkthrough",
     "",
     "> identity: POINT crosshair, not a floating buddy",
-    "> do not invent coordinates",
+    origin,
     "> Act only after Cortex gate + human approval",
+    "> will not click these points",
     "",
     "## Request",
     "",
@@ -361,18 +398,18 @@ function teachAssist({ text } = {}) {
     "Emit `[POINT:x,y:label]` with x,y as 0-100 percentages of the screen. Max 8.",
     "Off-screen points are dropped. The overlay is a crosshair and a label.",
     "",
-    "## Steps",
-    "1. Name the control you mean.",
-    "2. POINT at it from the screenshot, not from memory.",
-    "3. Say the next move in one short line.",
+    tokens.length ? "## Controls (measured)" : "## Steps",
+    steps,
   ].join("\n");
   return {
     ok: true,
     act: false,
-    skipLlm: false,
+    skipLlm: tokens.length > 0,
     desk: "teach",
     kind: "walkthrough",
     title: "Teach walkthrough",
+    via: tokens.length ? "uia" : "none",
+    points: measured.map((p) => ({ xPct: p.xPct, yPct: p.yPct, label: p.name })),
     deliverable,
   };
 }
@@ -635,6 +672,11 @@ function suggestsFromAssist(assist) {
     add("What's on my plate?", "Today", "*");
     add("Recap this meeting", "Recap", ">");
     add("Security review this session", "Security", "!");
+  }
+  if (assist.desk === "teach") {
+    add("walk me through this on my screen", "Teach", "*");
+    const first = Array.isArray(assist.points) && assist.points[0];
+    if (first && first.label) add(`point at ${first.label}`, "Next", ">");
   }
   const lines = String(assist.deliverable || "").split(/\n/);
   for (const line of lines) {

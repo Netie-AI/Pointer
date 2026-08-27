@@ -12,11 +12,10 @@
    coordinator at `127.0.0.1:18010` (`/` `/today` `/lanes` `/skills`
    `/workspace`). Public Worker serves the same pages; `/mcp` and
    live lanes stay on the laptop. P-05 stays parked.
-2. **Coworker desks + online catalog (DR-0005).** Live meeting assist
-   drafts a grounded reply when the last line is a question. HUD desk
-   chips Ask, never Act. Home paints the standing brief. Workspace
-   filters artifacts. Spawn never claims pointer-act. P-06 parked.
-   GitHub Actions blocked on org billing.
+2. **Coworker desks + online catalog (DR-0005).** Teach emits POINT
+   tokens from measured UIA rects (never invented). No tree => vision
+   still runs. Live meeting assist, HUD chips Ask. Spawn never claims
+   pointer-act. P-06 parked. GitHub Actions blocked on org billing.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

@@ -1,6 +1,10 @@
-# CHANGELOG
+## 2026-08-27 - Teach points from measured controls, never invented
 
-Append-only. Never edited, only added to. Newest first.
+Teach walkthroughs emit `[POINT:x,y:label]` from UI Automation bounding
+rects (percent of the capture). No tree, no coordinates, vision still
+runs. Overlay is the existing crosshair. Never Acts. First-party MCP
+`teach.point` is the same rule with injected controls; unknown tools
+still refuse. P-05 and P-06 stay parked.
 
 ## 2026-08-27 - Live assist on questions, desk chips, coworker home
 

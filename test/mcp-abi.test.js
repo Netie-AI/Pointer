@@ -44,6 +44,7 @@ function test(name, fn) {
     assert.ok(!r.result.tools.includes("shell.exec"));
     assert.ok(r.result.tools.includes("workspace.exec"));
     assert.ok(r.result.tools.includes("desks.list"));
+    assert.ok(r.result.tools.includes("teach.point"));
     assert.ok(r.result.tools.includes("today.brief"));
     assert.ok(r.result.tools.includes("workspace.get"));
   });
@@ -137,6 +138,27 @@ function test(name, fn) {
     assert.strictEqual(got.result.act, false);
     assert.strictEqual(got.result.exec, false);
     assert.match(got.result.artifact.body, /Meeting brief/);
+    const pointed = await mcp.handle(
+      {
+        jsonrpc: "2.0",
+        id: 13,
+        method: "teach.point",
+        params: {
+          text: "walk me through this on my screen",
+          screen: { x: 0, y: 0, width: 1000, height: 1000 },
+          controls: [
+            { name: "Save", controlType: "Button", rect: { x: 200, y: 400, width: 100, height: 40 } },
+          ],
+        },
+      }
+    );
+    assert.strictEqual(pointed.result.ok, true);
+    assert.strictEqual(pointed.result.act, false);
+    assert.strictEqual(pointed.result.exec, false);
+    assert.match(pointed.result.deliverable, /\[POINT:25,42:Save\]/);
+    const unknown = await mcp.handle({ jsonrpc: "2.0", id: 14, method: "browser.run" });
+    assert.ok(unknown.error);
+    assert.match(unknown.error.message, /unknown tool/);
   });
 
   await test("local recipe search still hits fill right", async () => {

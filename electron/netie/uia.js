@@ -203,9 +203,108 @@ async function findControl(label, opts = {}) {
   return { ...pct, via: "uia", name: best.candidate.name, score: best.score };
 }
 
+/**
+ * Dump the foreground tree. Same probe as findControl, no winner.
+ * Inject `run` so Linux tests never spawn PowerShell.
+ */
+async function listControls(opts = {}) {
+  if (typeof opts.run !== "function") return [];
+  let stdout;
+  try {
+    stdout = await opts.run(buildProbeScript(opts.label || ".", opts));
+  } catch {
+    return [];
+  }
+  return parseProbeOutput(stdout);
+}
+
+/** Overlay cap. A screen full of dots is not teaching. */
+const MAX_TEACH_POINTS = 8;
+
+function pointLabel(name) {
+  const clean = String(name || "")
+    .replace(/[\[\]]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 40);
+  return clean || "control";
+}
+
+function formatPointToken(pct, name) {
+  const x = Math.round(Number(pct.xPct) * 10) / 10;
+  const y = Math.round(Number(pct.yPct) * 10) / 10;
+  return `[POINT:${x},${y}:${pointLabel(name)}]`;
+}
+
+function interactivity(candidate) {
+  const t = String((candidate && candidate.controlType) || "");
+  if (t === "Button" || t === "Hyperlink" || t === "MenuItem" || t === "SplitButton") return 0;
+  if (
+    t === "Edit" ||
+    t === "CheckBox" ||
+    t === "RadioButton" ||
+    t === "ComboBox" ||
+    t === "TabItem" ||
+    t === "ListItem"
+  ) {
+    return 1;
+  }
+  return 2;
+}
+
+/**
+ * Measured POINT tokens from a control tree. Never invents coordinates.
+ * Missing rect, missing screen, off-screen, or disabled => skipped.
+ */
+function pointControls(controls, screen, opts = {}) {
+  const maxRaw = Number(opts.max);
+  const max = Number.isFinite(maxRaw)
+    ? Math.min(MAX_TEACH_POINTS, Math.max(0, Math.floor(maxRaw)))
+    : MAX_TEACH_POINTS;
+  const want = String(opts.want || "").trim();
+  const list = Array.isArray(controls) ? controls : [];
+  const out = [];
+  const seen = new Set();
+
+  function add(candidate) {
+    if (!candidate || out.length >= max) return false;
+    if (candidate.enabled === false || candidate.offscreen === true) return false;
+    const pct = rectToPct(candidate.rect, screen);
+    if (!pct) return false;
+    const key = `${pointLabel(candidate.name)}|${Math.round(pct.xPct)}|${Math.round(pct.yPct)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    out.push({
+      xPct: pct.xPct,
+      yPct: pct.yPct,
+      name: candidate.name,
+      token: formatPointToken(pct, candidate.name),
+      via: "uia",
+    });
+    return true;
+  }
+
+  if (want) {
+    const best = chooseCandidate(want, list);
+    if (best) add(best.candidate);
+  }
+
+  const ranked = list.slice().sort((a, b) => {
+    const d = interactivity(a) - interactivity(b);
+    if (d) return d;
+    return area(a) - area(b);
+  });
+  for (const candidate of ranked) {
+    if (out.length >= max) break;
+    add(candidate);
+  }
+  return out;
+}
+
 module.exports = {
   TARGET_CONTROL_TYPES,
   MAX_CANDIDATES,
+  MAX_TEACH_POINTS,
   normalize,
   scoreCandidate,
   chooseCandidate,
@@ -214,4 +313,7 @@ module.exports = {
   buildProbeScript,
   parseProbeOutput,
   findControl,
+  listControls,
+  pointControls,
+  formatPointToken,
 };

@@ -169,8 +169,58 @@ test("teach assist never invents POINT coordinates and never acts", () => {
   assert.strictEqual(walk.ok, true);
   assert.strictEqual(walk.act, false);
   assert.strictEqual(walk.skipLlm, false);
+  assert.strictEqual(walk.via, "none");
+  assert.deepStrictEqual(walk.points, []);
   assert.match(walk.deliverable, /do not invent coordinates/i);
   assert.doesNotMatch(walk.deliverable, /\[POINT:\s*\d/);
+});
+
+test("teach assist emits POINT tokens from measured controls only", () => {
+  const screen = { x: 0, y: 0, width: 1000, height: 1000 };
+  const controls = [
+    { name: "Cancel", controlType: "Button", rect: { x: 0, y: 0, width: 100, height: 40 } },
+    { name: "Save", controlType: "Button", rect: { x: 200, y: 400, width: 100, height: 40 } },
+    { name: "Ghost", controlType: "Button", offscreen: true, rect: { x: 10, y: 10, width: 10, height: 10 } },
+    { name: "Dead", controlType: "Button", enabled: false, rect: { x: 50, y: 50, width: 10, height: 10 } },
+  ];
+  const walk = teachAssist({
+    text: "walk me through this on my screen",
+    controls,
+    screen,
+  });
+  assert.strictEqual(walk.ok, true);
+  assert.strictEqual(walk.act, false);
+  assert.strictEqual(walk.skipLlm, true);
+  assert.strictEqual(walk.via, "uia");
+  assert.match(walk.deliverable, /\[POINT:25,42:Save\]/);
+  assert.match(walk.deliverable, /will not click/i);
+  assert.doesNotMatch(walk.deliverable, /\[POINT:.*Ghost/);
+  assert.doesNotMatch(walk.deliverable, /\[POINT:.*Dead/);
+  const pin = teachAssist({
+    text: "point at Cancel on my screen",
+    controls,
+    screen,
+  });
+  assert.strictEqual(pin.act, false);
+  assert.ok(pin.points.length >= 1);
+  assert.strictEqual(pin.points[0].label, "Cancel");
+  assert.strictEqual(pin.points[0].xPct, 5);
+  const emptyTree = teachAssist({
+    text: "walk me through this on my screen",
+    controls: [{ name: "Save", controlType: "Button" }],
+    screen,
+  });
+  assert.strictEqual(emptyTree.skipLlm, false);
+  assert.doesNotMatch(emptyTree.deliverable, /\[POINT:\s*\d/);
+  const fs = require("fs");
+  const path = require("path");
+  const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
+  assert.match(main, /measureTeachControls/);
+  assert.match(main, /listControls/);
+  const ask = main.slice(main.indexOf('ipcMain.handle("hud:ask"'), main.indexOf("P4-BG-AGENTS"));
+  assert.match(ask, /toOverlayEvent/);
+  assert.doesNotMatch(ask, /driver\./);
+  assert.doesNotMatch(ask, /hud:act/);
 });
 
 test("inbox assist drafts and never sends", () => {

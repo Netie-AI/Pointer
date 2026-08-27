@@ -28,6 +28,7 @@ const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
 const { ensureActionCoords } = require("./netie/targeting");
+const { listControls } = require("./netie/uia");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
@@ -93,10 +94,43 @@ function runUiaProbe(script) {
 
 /** UIA context for ensureActionCoords, or null when it cannot help. */
 function uiaContext(region) {
+  if (process.platform !== "win32") return null;
   if (!UIA_ENABLED || uiaFailures >= 3) return null;
   if (driver.dryRun) return null; // never spawn a probe in a dry run
   if (!region || !region.width) return null;
   return { run: runUiaProbe, screen: region };
+}
+
+/** Capture region, or the display under the cursor. Teach needs percents. */
+function teachScreenRegion() {
+  if (lastCapture && lastCapture.region && Number(lastCapture.region.width) > 0) {
+    return lastCapture.region;
+  }
+  try {
+    const bounds = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).bounds;
+    if (bounds && Number(bounds.width) > 0) {
+      return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+    }
+  } catch {
+    /* tests / no display */
+  }
+  return null;
+}
+
+/**
+ * Measured controls for Teach. Empty on Linux, dry-run, or UIA stand-down.
+ * Never clicks. A failed probe is "no points", not an invented overlay.
+ */
+async function measureTeachControls() {
+  const region = teachScreenRegion();
+  const ctx = uiaContext(region);
+  if (!ctx) return { controls: [], screen: region };
+  try {
+    const controls = await listControls(ctx);
+    return { controls, screen: ctx.screen };
+  } catch {
+    return { controls: [], screen: ctx.screen };
+  }
 }
 const {
   MAX_REPLANS,
@@ -278,7 +312,7 @@ function publishLiveMeeting(assist) {
     text: assist.deliverable,
   });
 }
-function localMeetingReply(message, extraTranscript) {
+function localMeetingReply(message, extraTranscript, extra) {
   const desk = pickDesk(message, { mode: appMode });
   const wantsMeeting =
     desk.id === "meeting" || appMode === "meeting" || appMode === "transcribe";
@@ -322,8 +356,16 @@ function localMeetingReply(message, extraTranscript) {
     return null;
   }
   if (desk.id === "teach") {
-    const assist = teachAssist({ text: message });
-    if (assist.ok) publishBrief(assist);
+    const assist = teachAssist({
+      text: message,
+      controls: extra && extra.controls,
+      screen: extra && extra.screen,
+    });
+    if (assist.ok) {
+      publishBrief(assist);
+      publishSuggests(assist);
+      if (assist.skipLlm) return assist;
+    }
     return null;
   }
   return null;
@@ -2662,10 +2704,25 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
       error: queued.ok ? undefined : queued.error,
     };
   }
-  const local = localMeetingReply(asked, payload && payload.transcript);
+  const teachHit = teachAssist({ text: asked });
+  const extra = teachHit.ok ? await measureTeachControls() : null;
+  const local = localMeetingReply(asked, payload && payload.transcript, extra);
   if (local && local.ok && local.skipLlm) {
-    sendHud({ type: "answer", meta: `${local.desk} · ${local.kind}`, text: local.deliverable });
-    return { ok: true, reply: local.deliverable, desk: local.desk, local: true, act: false };
+    const pointed = parsePoints(local.deliverable);
+    sendHud({
+      type: "answer",
+      meta: `${local.desk} · ${local.kind}`,
+      text: pointed.text || local.deliverable,
+    });
+    if (pointed.points.length) sendHud(toOverlayEvent(local.deliverable));
+    return {
+      ok: true,
+      reply: pointed.text || local.deliverable,
+      desk: local.desk,
+      local: true,
+      act: false,
+      points: pointed.points,
+    };
   }
   if (local && !local.ok) {
     sendHud({ type: "answer", meta: local.desk || "coworker", text: local.reason });
@@ -2721,7 +2778,7 @@ function sessionCoworkerState() {
   };
 }
 
-function runDeskAssist(message, extraTranscript) {
+async function runDeskAssist(message, extraTranscript) {
   const desk = pickDesk(message, { mode: appMode });
   if (desk.id === "meeting") {
     return meetingAssist({
@@ -2733,8 +2790,11 @@ function runDeskAssist(message, extraTranscript) {
   if (desk.id === "inbox") return inboxAssist({ text: message });
   if (desk.id === "today") return todayAssist({ state: sessionCoworkerState(), question: message });
   if (desk.id === "document") return documentAssist({ text: message });
-  const walk = teachAssist({ text: message });
-  if (walk.ok) return walk;
+  const walkHit = teachAssist({ text: message });
+  if (walkHit.ok) {
+    const measured = await measureTeachControls();
+    return teachAssist({ text: message, controls: measured.controls, screen: measured.screen });
+  }
   return todayAssist({ state: sessionCoworkerState(), question: message });
 }
 
@@ -2746,15 +2806,17 @@ function enqueueCoworkerJob(message, extraTranscript, spawn) {
     title: (spawn && spawn.title) || "Pointer coworker",
     run: async (ctx) => {
       if (ctx.cancelled) return { ok: false, act: false, reason: "cancelled" };
-      const assist = runDeskAssist(message, extraTranscript);
+      const assist = await runDeskAssist(message, extraTranscript);
       if (assist && assist.ok) {
         publishBrief(assist);
         publishSuggests(assist);
+        const pointed = parsePoints(assist.deliverable);
         sendHud({
           type: "answer",
           meta: `${assist.desk} · background`,
-          text: assist.deliverable,
+          text: pointed.text || assist.deliverable,
         });
+        if (pointed.points.length) sendHud(toOverlayEvent(assist.deliverable));
         liveCoordinator.note("brief", assist.title || assist.desk);
       } else if (assist) {
         sendHud({

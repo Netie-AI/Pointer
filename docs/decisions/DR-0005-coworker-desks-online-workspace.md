@@ -55,8 +55,9 @@ fail-closed (Hard rule 2).
    artifacts and MCP stay on `127.0.0.1:18010`. `workspace.exec` is a
    first-party method that always errors. P-06 stays parked.
 5. **First-party MCP grows, still closed.** Added tools:
-   `desks.list`, `desks.pick`, `today.brief`, `workspace.list`,
+   `desks.list`, `desks.pick`, `teach.point`, `today.brief`, `workspace.list`,
    `workspace.get`, `workspace.put`, `workspace.exec` (always refuse).
+   `teach.point` emits overlay tokens from injected measured controls only.
    Unknown methods still refuse. No third-party MCP load. Public
    `workspace.get` / `?id=` stays on the laptop.
 

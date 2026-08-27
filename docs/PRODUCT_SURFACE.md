@@ -2,7 +2,8 @@
 
 One UI: center HUD chat with retrieve roulette and a draggable audio dock.
 
-Coworker desks (DR-0005): Teach points at the screen, Meeting recaps an armed
+Coworker desks (DR-0005): Teach points at measured on-screen controls
+(UIA rects -> `[POINT:x,y:label]`, never invented), Meeting recaps an armed
 transcript (live assist when they ask a question), Today is the standing
 session brief, Document writes Word, Security never self-approves. HUD desk
 chips Ask, never Act. `/today` and home paint the brief. Online `/workspace`

@@ -111,6 +111,44 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
       assert.strictEqual(uia.psLiteral("it's"), "'it''s'");
     }),
 
+    T("listControls returns the tree and a failure is empty, not invented", async () => {
+      const listed = await uia.listControls({
+        run: runWith([
+          { name: "Save", controlType: "Button", rect: rect(200, 400, 100, 40) },
+          { name: "Cancel", controlType: "Button", rect: rect(0, 0, 100, 40) },
+        ]),
+      });
+      assert.strictEqual(listed.length, 2);
+      const failed = await uia.listControls({
+        run: async () => {
+          throw new Error("powershell timed out");
+        },
+      });
+      assert.deepStrictEqual(failed, []);
+      assert.deepStrictEqual(await uia.listControls({}), []);
+    }),
+
+    T("pointControls emits measured percents and never invents them", async () => {
+      const points = uia.pointControls(
+        [
+          { name: "Cancel", controlType: "Button", rect: rect(0, 0, 100, 40) },
+          { name: "Save", controlType: "Button", rect: rect(200, 400, 100, 40) },
+          { name: "Hint", controlType: "Text", rect: rect(10, 10, 400, 400) },
+          { name: "Gone", controlType: "Button", offscreen: true, rect: rect(10, 10, 10, 10) },
+        ],
+        SCREEN,
+        { want: "Save" }
+      );
+      assert.strictEqual(points[0].name, "Save");
+      assert.strictEqual(points[0].xPct, 25);
+      assert.strictEqual(points[0].yPct, 42);
+      assert.strictEqual(points[0].via, "uia");
+      assert.ok(points.every((p) => p.name !== "Gone"));
+      assert.ok(points.length <= uia.MAX_TEACH_POINTS);
+      assert.deepStrictEqual(uia.pointControls(null, SCREEN), []);
+      assert.deepStrictEqual(uia.pointControls([{ name: "Save", controlType: "Button", rect: rect(0, 0, 10, 10) }], null), []);
+    }),
+
     T("no confident match means no coordinates — vision gets its turn", async () => {
       const found = await uia.findControl("Save", {
         run: runWith([{ name: "Something else entirely", controlType: "Button", rect: rect(0, 0, 10, 10) }]),
