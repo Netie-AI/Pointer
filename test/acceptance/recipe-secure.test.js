@@ -47,6 +47,13 @@ async function run() {
       assert.ok(/createPendingScribe/.test(main), "failed Scribe must keep a pending transcript");
       assert.ok(/retryPendingScribe/.test(main), "OpenWillow retry must re-run the pending take");
       assert.ok(/usePendingDictation/.test(main), "pending dictation must paste the raw transcript");
+      assert.ok(/async function captureNowForAsk/.test(main), "Ask must capture the live screen");
+      const hudAsk = main.slice(main.indexOf('ipcMain.handle("hud:ask"'));
+      const hudAskBody = hudAsk.slice(0, hudAsk.indexOf('ipcMain.handle("hud:bgList"'));
+      const retryIdx = hudAskBody.indexOf("retryScribe");
+      const captureIdx = hudAskBody.indexOf("captureNowForAsk");
+      assert.ok(retryIdx >= 0 && captureIdx > retryIdx, "retry/dictate must not recapture");
+      assert.ok(/captureNowForAsk\(/.test(hudAskBody), "hud:ask must grab a fresh screenshot");
     }),
 
     T("hud:act recipe branch calls secureBeforeAct before maybeRunPlan", () => {

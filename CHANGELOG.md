@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Chain local act verbs and capture the live screen on Ask
+
+`computer.act` plans `focus: notepad then type: hello` as two local steps
+(semicolon and newlines too). `type: hello then world` stays one type.
+Ask (meeting and general) grabs a fresh display crop so the model sees
+this screen, not a stale region. Retry/dictate Scribe still skip capture.
+No GPLv3 dump. No third-party MCP servers.
+
 ## 2026-08-27 - Retry failed Scribe or paste the raw transcript
 
 If Scribe cannot rewrite (no Cortex, empty model, paste miss), Pointer keeps

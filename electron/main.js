@@ -1349,6 +1349,17 @@ async function ensureCaptureForPlan() {
   }
 }
 
+/** Fresh screenshot for Ask so the model sees this screen, not a stale crop. */
+async function captureNowForAsk() {
+  try {
+    const cap = await captureDisplayCrop(null);
+    if (cap && cap.dataUrl) return cap.dataUrl;
+  } catch (err) {
+    console.error("captureNowForAsk:", err.message || err);
+  }
+  return (lastCapture && lastCapture.dataUrl) || null;
+}
+
 /**
  * Resolve vault placeholders on a recipe/skills plan. If profile fields are
  * missing, ask the human (enquire) — never type `{{vault…}}` into a form.
@@ -3185,7 +3196,7 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
       sendHud({ type: "answer", meta: "Meeting", text: assist.reason });
       return { ok: false, error: assist.reason };
     }
-    const dataUrlMeet = (lastCapture && lastCapture.dataUrl) || null;
+    const dataUrlMeet = await captureNowForAsk();
     const rMeet = await askBuddy({
       message: `${assist.system}\n\n${assist.user}`,
       dataUrl: dataUrlMeet,
@@ -3212,7 +3223,7 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
           blocked: rMeet.blocked,
         };
   }
-  const dataUrl = (lastCapture && lastCapture.dataUrl) || null;
+  const dataUrl = await captureNowForAsk();
   showStage();
   // Attached files become part of the question, fenced as data (#23). Before
   // this the renderer showed a chip and sent nothing at all.

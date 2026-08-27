@@ -197,6 +197,29 @@ function test(name, fn) {
     assert.strictEqual(namedRight.actions[0].target, "Close");
   });
 
+  await test("planFromInstruction chains local verbs and keeps type: then as one step", () => {
+    const { planFromInstruction, splitInstructionSteps } = require("../electron/netie/computer-act");
+    const chained = planFromInstruction("focus: notepad then type: hello", {
+      windows: [{ hwnd: "77", title: "Untitled - Notepad", proc: "notepad" }],
+    });
+    assert.strictEqual(chained.ok, true);
+    assert.strictEqual(chained.source, "chain");
+    assert.strictEqual(chained.actions[0].type, "focus_hwnd");
+    assert.strictEqual(chained.actions[0].hwnd, "77");
+    assert.strictEqual(chained.actions[1].type, "type");
+    assert.strictEqual(chained.actions[1].value, "hello");
+    const typedThen = planFromInstruction("type: hello then world");
+    assert.strictEqual(typedThen.ok, true);
+    assert.strictEqual(typedThen.source, "type");
+    assert.strictEqual(typedThen.actions.length, 1);
+    assert.strictEqual(typedThen.actions[0].value, "hello then world");
+    assert.deepStrictEqual(splitInstructionSteps("type: hello then world"), ["type: hello then world"]);
+    assert.deepStrictEqual(splitInstructionSteps("focus: notepad then type: hello"), [
+      "focus: notepad",
+      "type: hello",
+    ]);
+  });
+
   await test("computer.act uses deps.windows when planning focus:", async () => {
     const r = await runComputerAct(
       { instruction: "focus: notepad", approved: true },

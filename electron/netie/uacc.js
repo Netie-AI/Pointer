@@ -187,6 +187,7 @@ function computerStatus(opts = {}) {
         "wait 400",
         "scroll down",
         "focus: notepad",
+        "focus: notepad then type: hello",
         "focus hwnd: 12345",
         "open: notepad",
         "deliver: hello",

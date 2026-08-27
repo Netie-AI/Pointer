@@ -1,6 +1,6 @@
 ---
-keywords: UACC, captureVisible, computer.observe, screenshot, clipboard, PATH overlay, computer.act, Scribe, delivery, IBM Plex, DR-0005
-main_idea: Founder DR-0005 makes Pointer screenshotable, ships UACC READ skills, loopback computer.status/observe/act (PNG + clipboard on observe), remembered-window dictation, Scribe, and PATH teach strokes. OpenWillow wholesale remains P-04.
+keywords: UACC, captureVisible, computer.observe, screenshot, clipboard, PATH overlay, computer.act, chain, captureNowForAsk, Scribe, delivery, IBM Plex, DR-0005
+main_idea: Founder DR-0005 makes Pointer screenshotable, ships UACC READ skills, loopback computer.status/observe/act (PNG + clipboard on observe), chained local verbs, Ask live crop, remembered-window dictation, Scribe, and PATH teach strokes. OpenWillow wholesale remains P-04.
 ---
 
 # UACC detectable HUD (DR-0005)
@@ -14,5 +14,7 @@ Observe PNG/clipboard: live `computer.observe` captures `captureDisplayCrop` whe
 Meeting: Recap and Follow-ups pills in fixed top chrome. `computer.meeting_assist` `kind` say/recap/followups. `GET /api/meeting?notes=1` returns live notes as untrusted data (no Cortex hop).
 
 Scribe pending: failed rewrite keeps transcript+hwnd. Retry re-runs; Paste as-is delivers raw dictation. `GET /api/scribe?pending=1`.
+
+Act chain: `focus: notepad then type: hello` concatenates local plans (`source: chain`). `type: hello then world` stays one type. Ask uses `captureNowForAsk` (fresh `captureDisplayCrop`) for meeting + general; retry/dictate skip it.
 
 Not done: UACC install on a real Windows laptop; OpenWillow Deepgram default (P-04); third-party MCP (P-05); Cluely undetectable-in-screenshare stays inverted (DR-0005).

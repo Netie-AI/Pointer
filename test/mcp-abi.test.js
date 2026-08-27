@@ -56,6 +56,8 @@ function test(name, fn) {
     const scribe = r.result.catalog.find((t) => t.name === "computer.scribe");
     assert.ok(scribe.inputSchema.properties.retry);
     assert.ok(scribe.inputSchema.properties.dictate);
+    const act = r.result.catalog.find((t) => t.name === "computer.act");
+    assert.match(act.description, /focus: notepad then type: hello/);
   });
 
   await test("lanes.claim goes through MCP and conflicts", async () => {

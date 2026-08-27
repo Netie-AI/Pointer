@@ -68,7 +68,27 @@ function parseNamedInstruction(type, text) {
   return { ok: true, source: type, actions: [{ type, target: hit[1].trim() }] };
 }
 
-function planFromInstruction(instruction, opts = {}) {
+const MAX_CHAIN = 8;
+
+function looksLocalStep(text) {
+  return /^(?:please\s+)?(?:observe|screenshot|screen info|type\s*:|dictate\s*:|click|doubleclick|rightclick|hover|wait|scroll|press\s+|open\s*:|focus|deliver\s*:|replace\s*:|copy|paste|select)/i.test(
+    String(text || "").trim()
+  );
+}
+
+function splitInstructionSteps(instruction) {
+  const text = String(instruction || "").trim();
+  if (!text) return [];
+  const parts = text
+    .split(/\s+then\s+|;\s*|\n+/i)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length < 2) return [text];
+  if (!parts.every(looksLocalStep)) return [text];
+  return parts.slice(0, MAX_CHAIN);
+}
+
+function planOneInstruction(instruction, opts = {}) {
   const text = String(instruction || "").trim();
   if (!text) return { ok: false, reason: "empty instruction" };
   const match = typeof opts.matchRecipe === "function" ? opts.matchRecipe : defaultMatchRecipe;
@@ -171,6 +191,23 @@ function planFromInstruction(instruction, opts = {}) {
   return { ok: false, reason: "no local plan for instruction" };
 }
 
+function planFromInstruction(instruction, opts = {}) {
+  const text = String(instruction || "").trim();
+  if (!text) return { ok: false, reason: "empty instruction" };
+  const steps = splitInstructionSteps(text);
+  if (steps.length < 2) return planOneInstruction(text, opts);
+  const actions = [];
+  for (const step of steps) {
+    const planned = planOneInstruction(step, opts);
+    if (!planned || planned.ok === false) {
+      return { ok: false, reason: (planned && planned.reason) || "chain step failed", step };
+    }
+    actions.push(...(planned.actions || []));
+  }
+  if (!actions.length) return { ok: false, reason: "no local plan for instruction" };
+  return { ok: true, source: "chain", actions };
+}
+
 async function prepareComputerAct(params, deps = {}) {
   const req = parseActRequest(params);
   if (!req.actions.length && !req.instruction) {
@@ -248,7 +285,10 @@ async function runComputerAct(params, deps = {}) {
 module.exports = {
   parseActRequest,
   actSecureText,
+  splitInstructionSteps,
+  planOneInstruction,
   planFromInstruction,
   prepareComputerAct,
   runComputerAct,
+  MAX_CHAIN,
 };
