@@ -1,3 +1,10 @@
+## 2026-08-27 - Meeting OpenVault enrich stays grounded
+
+OpenVault may refine meeting say-this in 300ms. Timeout, missing
+OpenVault, or an ungrounded line keeps the local Say this / Also /
+Don't say heuristic. Never invents. Never a stealth overlay. Never
+Acts. Public copies stay empty. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Meeting assist is Say this / Also / Don't say
 
 Loopback `/meeting` and HUD insight paint a grounded suggestion stack

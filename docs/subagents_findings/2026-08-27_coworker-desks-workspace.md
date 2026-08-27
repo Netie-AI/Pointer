@@ -1,6 +1,6 @@
 # coworker desks + online workspace
 
-keywords: desks, meeting assist, workspace.exec, DR-0005, Clicky, Cluely, OpenWorker, Computer
+keywords: desks, meeting assist, meeting llm enrich, workspace.exec, DR-0005, Clicky, Cluely, OpenWorker, Computer
 main_idea: Pointer beats those products with original desks and a public artifact catalog. Do not vendor their source or unlock P-06.
 
 ## What we studied
@@ -44,7 +44,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - Loopback `/meeting` paints You/Them turns from the stored ring.
   Say-this reuses your overlapping line or Heard facts, never an
   unrelated last-you dump. Meeting assist is Say this / Also / Don't say
-  (never invent, never send, never a cheater overlay).
+  (never invent, never send, never a cheater overlay). OpenVault may
+  refine say-this in 300ms; timeout or ungrounded lines keep the heuristic.
 - Loopback This session files link to `/workspace?id=` and chrome shows
   `Open:` the working set. Ask chips review that body. Public `?id=` 404.
 - Loopback `/` paints the live teach path, meeting say-this, Today

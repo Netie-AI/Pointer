@@ -131,6 +131,8 @@ only, never talk. HUD insight paints the same talk in fixed chrome
 (never a bubble).
 Say-this / Also / Don't say is a grounded stack: your overlapping line or
 Heard facts, never an unrelated last-you dump, never invent, never send.
+OpenVault may refine say-this in 300ms; ungrounded or timed-out lines
+keep the local heuristic. Never Act.
 Loopback `/teach` paints a walk path from measured
 BOX/POINT (current hold, later dashed, Got it Ask, never Act). Loopback
 `/` paints that teach path, meeting card, Today plate, and filed

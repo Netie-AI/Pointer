@@ -866,6 +866,215 @@ function meetingAssist({ transcript, question, notes } = {}) {
   };
 }
 
+const MEETING_LLM_MS = 300;
+
+function meetingEnrichSystem() {
+  return [
+    "You write one short spoken reply for a live meeting.",
+    "Use only Heard facts. If Heard does not answer, reply exactly NO_ANSWER.",
+    "Do not invent dates, names, amounts, or commitments.",
+    "Do not send mail. Do not click. Do not mention overlay, stealth, Clicky, or Cluely.",
+  ].join(" ");
+}
+
+function meetingEnrichUser(assist) {
+  return [
+    `Heard:\n${assist && assist.heard ? assist.heard : "(none)"}`,
+    "",
+    `They asked: ${assist && assist.asked ? assist.asked : ""}`,
+    "",
+    `Draft: ${assist && assist.cue ? assist.cue : ""}`,
+    "",
+    "Reply with one short sentence the human can say, or NO_ANSWER.",
+  ].join("\n");
+}
+
+function llmText(data) {
+  const content =
+    data && data.choices && data.choices[0] && data.choices[0].message
+      ? data.choices[0].message.content
+      : "";
+  if (Array.isArray(content)) {
+    return content.map((part) => (part && part.text) || "").join(" ").trim();
+  }
+  return String(content || "").trim();
+}
+
+function heardFactList(assist) {
+  return String((assist && assist.heard) || "")
+    .split(/\s*\/\s*/)
+    .map((row) => row.trim())
+    .filter(Boolean);
+}
+
+function inventedTokens(line, blob) {
+  const t = String(line || "");
+  const low = String(blob || "").toLowerCase();
+  const money = t.match(/\$[\d,]+(?:\.\d+)?|\b\d+\s?k\b/gi) || [];
+  for (const m of money) {
+    const compact = m.replace(/\s+/g, "").toLowerCase();
+    if (low.includes(compact)) continue;
+    const digits = m.replace(/[^\d]/g, "");
+    if (digits && low.includes(digits) && /\$|k/i.test(low)) continue;
+    return true;
+  }
+  const when =
+    t.match(
+      /\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b|\b\d{4}-\d{2}-\d{2}\b/gi
+    ) || [];
+  for (const w of when) {
+    if (!low.includes(String(w).toLowerCase())) return true;
+  }
+  return false;
+}
+
+/**
+ * LLM say-this may only reuse Heard facts. Invented dates/names/amounts
+ * fail closed to the heuristic. Never Act. Never stealth.
+ */
+function groundMeetingLine(line, assist) {
+  let t = String(line || "").replace(/\s+/g, " ").trim();
+  t = t.replace(/^["'`]+|["'`]+$/g, "");
+  if (!t || t.length > 72) return "";
+  if (/^NO_ANSWER\b/i.test(t)) return "";
+  if (/\b(stealth|overlay|clicky|cluely|do not send|don't send)\b/i.test(t)) return "";
+  const facts = heardFactList(assist);
+  if (!facts.length) return "";
+  const blob = `${assist && assist.heard ? assist.heard : ""} ${assist && assist.cue ? assist.cue : ""}`;
+  if (inventedTokens(t, blob)) return "";
+  const hit = facts.some((f) => {
+    const token = String(f || "").trim();
+    if (!token) return false;
+    if (t.toLowerCase().includes(token.toLowerCase())) return true;
+    const aw = contentWords(t);
+    const set = new Set(contentWords(token));
+    return aw.some((w) => set.has(w));
+  });
+  if (!hit) return "";
+  return speakable(t).slice(0, 160);
+}
+
+function withEnrichedCue(assist, cue) {
+  const next = String(cue || "").trim();
+  if (!next || !assist || next === assist.cue) return assist;
+  const also = distinctFrom(assist.also, [next]);
+  let deliverable = String(assist.deliverable || "");
+  const marker = "Suggested reply (say it yourself; Pointer will not send this):";
+  const idx = deliverable.indexOf(marker);
+  if (idx >= 0) {
+    const head = deliverable.slice(0, idx + marker.length);
+    const tail = deliverable.slice(idx + marker.length);
+    deliverable = head + tail.replace(/\n\n[^\n]+/, `\n\n${next} I will not send or click anything.`);
+  }
+  if (assist.also) {
+    if (also) deliverable = deliverable.replace(/\nAlso:\n[^\n]*/, `\nAlso:\n${also}`);
+    else deliverable = deliverable.replace(/\nAlso:\n[^\n]*/, "");
+  }
+  return {
+    ...assist,
+    cue: next,
+    also,
+    avoid: assist.avoid || "",
+    deliverable,
+    enriched: true,
+    act: false,
+    skipLlm: true,
+  };
+}
+
+async function readLlm(res) {
+  if (!res) return "";
+  if (typeof res.json === "function") {
+    try {
+      return llmText(await res.json());
+    } catch {
+      return "";
+    }
+  }
+  if (typeof res.text === "function") {
+    try {
+      const raw = await res.text();
+      try {
+        return llmText(JSON.parse(raw));
+      } catch {
+        return String(raw || "").trim();
+      }
+    } catch {
+      return "";
+    }
+  }
+  return llmText(res);
+}
+
+/**
+ * Optional OpenVault refine of say-this. Heuristic is the floor: missing
+ * fetch, timeout, or an ungrounded line keeps the local stack. Ask only.
+ * Never Act. Injected fetch/timers so tests do not sleep.
+ */
+async function enrichMeetingAssist(assist, opts = {}) {
+  if (!assist || !assist.ok || assist.act) return assist;
+  if (assist.kind === "next" || !assist.asked) return assist;
+  const fetchFn = opts.fetch;
+  if (typeof fetchFn !== "function") return assist;
+  const rawUrl = Object.prototype.hasOwnProperty.call(opts, "url")
+    ? opts.url
+    : Object.prototype.hasOwnProperty.call(opts, "openvaultUrl")
+      ? opts.openvaultUrl
+      : process.env.NETIE_OPENVAULT_URL;
+  const url = String(rawUrl || "")
+    .trim()
+    .replace(/\/$/, "");
+  if (!url) return assist;
+  if (!heardFactList(assist).length) return assist;
+  const timeoutMs = Number.isFinite(Number(opts.timeoutMs))
+    ? Math.max(0, Number(opts.timeoutMs))
+    : MEETING_LLM_MS;
+  const Abort = opts.AbortController || (typeof AbortController !== "undefined" ? AbortController : null);
+  const ac = Abort ? new Abort() : null;
+  const setT = typeof opts.setTimeoutImpl === "function" ? opts.setTimeoutImpl : setTimeout;
+  const clearT = typeof opts.clearTimeoutImpl === "function" ? opts.clearTimeoutImpl : clearTimeout;
+  let timer = null;
+  try {
+    const req = Promise.resolve(
+      fetchFn(`${url}/v1/chat/completions`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+          ...(opts.headers || {}),
+        },
+        body: JSON.stringify({
+          model: opts.model || "default",
+          temperature: 0,
+          max_tokens: 40,
+          messages: [
+            { role: "system", content: meetingEnrichSystem() },
+            { role: "user", content: meetingEnrichUser(assist) },
+          ],
+        }),
+        signal: ac ? ac.signal : undefined,
+      })
+    );
+    const timeout = new Promise((_, reject) => {
+      timer = setT(() => {
+        if (ac) ac.abort();
+        const err = new Error("meeting llm timeout");
+        err.code = "timeout";
+        reject(err);
+      }, timeoutMs);
+    });
+    const res = await Promise.race([req, timeout]);
+    if (!res || res.ok === false) return assist;
+    const grounded = groundMeetingLine(await readLlm(res), assist);
+    if (!grounded) return assist;
+    return withEnrichedCue(assist, grounded);
+  } catch {
+    return assist;
+  } finally {
+    if (timer) clearT(timer);
+  }
+}
+
 function deskGrounding(deskOrId) {
   const desk = typeof deskOrId === "string" ? getDesk(deskOrId) : deskOrId || DESKS.teach;
   const lines = [
@@ -883,7 +1092,7 @@ function deskGrounding(deskOrId) {
     lines.push("6. When you mean click here, emit [POINT:x,y:label] percentages. Measured UIA also emits [BOX:left,top,w,h:label]. Crosshair and box only - never a buddy.");
   }
   if (desk.id === "meeting") {
-    lines.push("6. Recap/assist/next from the transcript. Open workspace files ground Heard facts only (not talk). Live cue is They asked plus say-this / Also / Don't say in the fixed insight panel. Never join the call. Never a stealth overlay. Never Act.");
+    lines.push("6. Recap/assist/next from the transcript. Open workspace files ground Heard facts only (not talk). Live cue is They asked plus say-this / Also / Don't say in the fixed insight panel. OpenVault may refine say-this in 300ms; ungrounded or timed-out lines keep the heuristic. Never join the call. Never a stealth overlay. Never Act.");
   }
   if (desk.id === "today") {
     lines.push("6. Standing brief from this session log. On your plate lists live commitments and filed inbox/Word drafts. Never invent work. Never Act.");
@@ -2206,13 +2415,16 @@ function createLiveMeetingPump(opts = {}) {
   const questionMs = hasQuestion ? Math.max(0, Number(opts.questionMs)) : hasDelay ? quietMs : 300;
   const setT = typeof opts.setTimeoutImpl === "function" ? opts.setTimeoutImpl : setTimeout;
   const clearT = typeof opts.clearTimeoutImpl === "function" ? opts.clearTimeoutImpl : clearTimeout;
+  const enrich = typeof opts.enrich === "function" ? opts.enrich : null;
   let timer = null;
   let lastKey = "";
+  let seq = 0;
 
   function reset() {
     if (timer) clearT(timer);
     timer = null;
     lastKey = "";
+    seq += 1;
   }
 
   function waitMs(transcript) {
@@ -2225,12 +2437,22 @@ function createLiveMeetingPump(opts = {}) {
     if (timer) clearT(timer);
     timer = setT(() => {
       timer = null;
+      const mine = ++seq;
       const assist = liveMeetingUpdate({ transcript });
       if (!assist.ok) return;
-      const key = String(assist.deliverable || "");
+      const key = String(transcript || "");
       if (!key || key === lastKey) return;
       lastKey = key;
       if (typeof onBrief === "function") onBrief(assist);
+      if (!enrich || assist.kind !== "assist" || !assist.asked) return;
+      Promise.resolve(enrich(assist))
+        .then((next) => {
+          if (mine !== seq) return;
+          if (!next || !next.ok || next.act || !next.enriched) return;
+          if (next.cue === assist.cue) return;
+          if (typeof onBrief === "function") onBrief(next);
+        })
+        .catch(() => {});
     }, waitMs(transcript));
   }
 
@@ -2540,6 +2762,9 @@ module.exports = {
   getDesk,
   pickDesk,
   meetingAssist,
+  enrichMeetingAssist,
+  groundMeetingLine,
+  MEETING_LLM_MS,
   securityAssist,
   teachAssist,
   inboxAssist,

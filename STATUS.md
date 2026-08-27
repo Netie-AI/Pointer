@@ -12,10 +12,11 @@
    `/workspace`). Public Worker is the same catalog; `/mcp` stays on
    the laptop. P-05 parked.
 2. **Coworker desks (DR-0005).** Meeting assist is a grounded stack:
-   Say this / Also / Don't say in HUD insight and `/meeting` (never
-   invent, never send, never a stealth overlay). Loopback `/` paints
-   teach path, meeting card, Today plate, and filed work cards. `/teach`
-   is a measured walk (Back/Got it Ask). This session links
+   Say this / Also / Don't say. OpenVault may refine say-this in 300ms;
+   timeout or ungrounded lines keep the heuristic (never invent, never
+   send, never a stealth overlay). Loopback `/` paints teach path,
+   meeting card, Today plate, and filed work cards. `/teach` is a
+   measured walk (Back/Got it Ask). This session links
    `/workspace?id=` (never send, never a .docx, never Act). Public
    catalog empty. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.

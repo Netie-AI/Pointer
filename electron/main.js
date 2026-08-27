@@ -162,7 +162,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
-const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, spawnFollowOns, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock, nextTeachStep, teachAdvance, FRAME_TEACH_TEXT, shouldTeachFramedRegion } = require("./netie/coworker-desks");
+const { pickDesk, meetingAssist, enrichMeetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, spawnFollowOns, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock, nextTeachStep, teachAdvance, FRAME_TEACH_TEXT, shouldTeachFramedRegion } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -309,6 +309,11 @@ function publishBrief(assist) {
       asked: assist.asked || "",
       rest: assist.rest || "",
       heard: assist.heard || "",
+      notes: Boolean(assist.notes),
+      also: assist.also || "",
+      avoid: assist.avoid || "",
+      preview: assist.preview || "",
+      findings: Array.isArray(assist.findings) ? assist.findings : [],
       live: assist.live,
     });
   } catch {
@@ -320,7 +325,25 @@ function publishSuggests(assist) {
   if (!items.length) return;
   sendHud({ type: "suggests", items });
 }
-const liveMeetingPump = createLiveMeetingPump({ delayMs: 900 });
+function meetingEnrichOpts() {
+  return {
+    fetch: typeof fetch === "function" ? fetch.bind(globalThis) : undefined,
+    url: process.env.NETIE_OPENVAULT_URL || `http://127.0.0.1:${OPENVAULT_PORT}`,
+    timeoutMs: 300,
+  };
+}
+function queueMeetingEnrich(assist) {
+  if (!assist || !assist.ok || assist.act || assist.desk !== "meeting") return;
+  if (!assist.asked) return;
+  void enrichMeetingAssist(assist, meetingEnrichOpts()).then((next) => {
+    if (!next || !next.enriched || next.act || next.cue === assist.cue) return;
+    publishLiveCoworker(next);
+  });
+}
+const liveMeetingPump = createLiveMeetingPump({
+  delayMs: 900,
+  enrich: (assist) => enrichMeetingAssist(assist, meetingEnrichOpts()),
+});
 const liveTeachPump = createLiveTeachPump({ delayMs: 1500 });
 const standingClock = createBriefClock({ delayMs: 30000 });
 let teachStep = 0;
@@ -408,6 +431,7 @@ function localMeetingReply(message, extraTranscript, extra) {
     }
     if (!assist.skipLlm) return null;
     publishLiveCoworker(assist);
+    queueMeetingEnrich(assist);
     return assist;
   }
   if (desk.id === "security") {

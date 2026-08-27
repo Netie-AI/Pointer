@@ -33,6 +33,9 @@ const {
   chipsForArtifact,
   teachWalkPath,
   publicTeachSnapshot,
+  enrichMeetingAssist,
+  groundMeetingLine,
+  MEETING_LLM_MS,
 } = require("../electron/netie/coworker-desks");
 const { plannerGrounding } = require("../electron/netie/coworker");
 
@@ -303,6 +306,16 @@ test("meeting assist ships a brief from the ring without acting", () => {
   });
   assert.match(notesOnly.cue, /no answer/);
   assert.doesNotMatch(notesOnly.cue, /bananas/);
+  const floor = meetingAssist({
+    transcript: "them: Launch is Friday for $40k.\nthem: What is the launch date?",
+    question: "what should I say",
+  });
+  assert.strictEqual(groundMeetingLine("Friday for $40k.", floor), "Friday for $40k.");
+  assert.strictEqual(groundMeetingLine("NO_ANSWER", floor), "");
+  assert.strictEqual(groundMeetingLine("Bananas are $12.", floor), "");
+  assert.strictEqual(groundMeetingLine("Tuesday.", floor), "");
+  assert.strictEqual(groundMeetingLine("Hide this in a stealth overlay.", floor), "");
+  assert.strictEqual(MEETING_LLM_MS, 300);
 });
 
 test("planner grounding names the desk and refuses online exec", () => {
@@ -1216,6 +1229,15 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(heard, /liveMeetingPump\.push/);
   assert.match(heard, /appMode === "meeting"/);
   assert.match(heard, /appMode === "transcribe"/);
+  assert.match(main, /enrichMeetingAssist/);
+  assert.match(main, /queueMeetingEnrich/);
+  assert.match(main, /timeoutMs: 300/);
+  const enrichFn = main.slice(main.indexOf("function queueMeetingEnrich"), main.indexOf("const liveTeachPump"));
+  assert.doesNotMatch(enrichFn, /visionChat/);
+  assert.doesNotMatch(enrichFn, /dms\/secure/);
+  const briefFn = main.slice(main.indexOf("function publishBrief"), main.indexOf("function publishSuggests"));
+  assert.match(briefFn, /also:/);
+  assert.match(briefFn, /avoid:/);
   const hud = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
   assert.match(hud, /event\.type === "live-brief"/);
   assert.match(hud, /paintLiveBrief/);
@@ -1281,6 +1303,18 @@ test("live meeting pump answers a question faster than a recap", () => {
   assert.strictEqual(waits[0], 900);
   assert.strictEqual(waits[1], 300);
 });
+
+function ovReply(text) {
+  return {
+    fetch: () => ({
+      ok: true,
+      json: () => ({ choices: [{ message: { content: text } }] }),
+    }),
+    url: "http://ov.test",
+    setTimeoutImpl: () => 1,
+    clearTimeoutImpl: () => {},
+  };
+}
 
 async function asyncTest(name, fn) {
   try {
@@ -1377,6 +1411,136 @@ async function asyncTest(name, fn) {
     assert.match(main, /teachDisplayBounds/);
     assert.match(main, /framed:/);
     assert.doesNotMatch(main.slice(main.indexOf("function publishTeachOverlay"), main.indexOf("function publishLiveMeeting") + 40), /driver\./);
+  });
+
+  await asyncTest("meeting LLM enrich grounds a cue and fails closed", async () => {
+    const floor = meetingAssist({
+      transcript: "them: Launch is Friday for $40k.\nthem: What is the launch date?",
+      question: "what should I say",
+    });
+    assert.strictEqual(floor.act, false);
+    assert.match(floor.cue, /Friday/);
+    const hit = await enrichMeetingAssist(floor, ovReply("Friday for $40k."));
+    assert.strictEqual(hit.act, false);
+    assert.strictEqual(hit.skipLlm, true);
+    assert.ok(hit.enriched);
+    assert.match(hit.cue, /Friday/);
+    assert.match(hit.cue, /\$40k/);
+    assert.match(hit.avoid, /Don't send/);
+    assert.doesNotMatch(hit.cue, /stealth|overlay|bananas/i);
+    const same = await enrichMeetingAssist(floor, ovReply("Friday."));
+    assert.ok(!same.enriched);
+    assert.strictEqual(same.cue, floor.cue);
+    const bananas = meetingAssist({
+      transcript: "you: bananas are yellow\nthem: What is the launch date?",
+      question: "what should I say",
+    });
+    let calls = 0;
+    const skipped = await enrichMeetingAssist(bananas, {
+      fetch: async () => {
+        calls += 1;
+        return { ok: true, json: async () => ({ choices: [{ message: { content: "Bananas are $12." } }] }) };
+      },
+      url: "http://ov.test",
+      setTimeoutImpl: () => 1,
+      clearTimeoutImpl: () => {},
+    });
+    assert.strictEqual(calls, 0);
+    assert.match(skipped.cue, /no answer/);
+    assert.doesNotMatch(skipped.cue, /bananas/);
+    const notes = meetingAssist({
+      transcript: "them: What is the launch date?",
+      question: "what should I say",
+      notes: "Launch is Friday for $40k.",
+    });
+    const ungrounded = await enrichMeetingAssist(notes, ovReply("Bananas are $12."));
+    assert.ok(!ungrounded.enriched);
+    assert.match(ungrounded.cue, /Friday/);
+    assert.doesNotMatch(ungrounded.cue, /bananas/);
+    const timed = await enrichMeetingAssist(notes, {
+      fetch: () => new Promise(() => {}),
+      url: "http://ov.test",
+      setTimeoutImpl: (fn) => {
+        fn();
+        return 1;
+      },
+      clearTimeoutImpl: () => {},
+    });
+    assert.ok(!timed.enriched);
+    assert.strictEqual(timed.cue, notes.cue);
+    let recapCalls = 0;
+    const recap = meetingAssist({
+      transcript: "mic: We decided to ship Friday.",
+      question: "recap this meeting",
+    });
+    await enrichMeetingAssist(recap, {
+      fetch: async () => {
+        recapCalls += 1;
+        return { ok: true, json: async () => ({ choices: [{ message: { content: "Tuesday." } }] }) };
+      },
+      url: "http://ov.test",
+      setTimeoutImpl: () => 1,
+      clearTimeoutImpl: () => {},
+    });
+    assert.strictEqual(recapCalls, 0);
+    let nextCalls = 0;
+    const next = meetingAssist({
+      transcript: "them: Can you send the deck by Friday?\nyou: I will send it.",
+      question: "list next steps",
+    });
+    await enrichMeetingAssist(next, {
+      fetch: async () => {
+        nextCalls += 1;
+        return { ok: true, json: async () => ({}) };
+      },
+      url: "http://ov.test",
+      setTimeoutImpl: () => 1,
+      clearTimeoutImpl: () => {},
+    });
+    assert.strictEqual(nextCalls, 0);
+    const missing = await enrichMeetingAssist(floor, {
+      fetch: async () => ({ ok: true }),
+      url: "",
+    });
+    assert.ok(!missing.enriched);
+    assert.strictEqual(missing.cue, floor.cue);
+  });
+
+  await asyncTest("live meeting pump publishes a grounded enrich after the heuristic", async () => {
+    const briefs = [];
+    let pending = null;
+    const pump = createLiveMeetingPump({
+      delayMs: 0,
+      setTimeoutImpl: (fn) => {
+        pending = fn;
+        return 1;
+      },
+      clearTimeoutImpl: () => {
+        pending = null;
+      },
+      enrich: (assist) => enrichMeetingAssist(assist, ovReply("Friday for $40k.")),
+    });
+    const ring = "them: Launch is Friday for $40k.\nthem: What is the launch date?";
+    pump.push({ transcript: ring, onBrief: (a) => briefs.push(a) });
+    pending();
+    assert.strictEqual(briefs.length, 1);
+    assert.strictEqual(briefs[0].act, false);
+    assert.ok(!briefs[0].enriched);
+    assert.match(briefs[0].cue, /Friday/);
+    for (let i = 0; i < 20 && briefs.length < 2; i++) await Promise.resolve();
+    assert.strictEqual(briefs.length, 2);
+    assert.strictEqual(briefs[1].act, false);
+    assert.strictEqual(briefs[1].skipLlm, true);
+    assert.ok(briefs[1].enriched);
+    assert.match(briefs[1].cue, /Friday/);
+    assert.match(briefs[1].cue, /\$40k/);
+    assert.match(briefs[1].avoid, /Don't send/);
+    pump.push({ transcript: ring, onBrief: (a) => briefs.push(a) });
+    pending();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.strictEqual(briefs.length, 2);
+    pump.reset();
   });
 
   await asyncTest("standing brief clock ships today and never acts", async () => {
