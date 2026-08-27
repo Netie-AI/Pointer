@@ -154,6 +154,7 @@ function createCoordinator(opts = {}) {
   }
 
   function roomCard(got, desk, fallbackTitle) {
+    const live = got.ok ? got.artifact.live : undefined;
     return {
       ok: got.ok,
       desk,
@@ -163,7 +164,9 @@ function createCoordinator(opts = {}) {
       heard: got.ok ? String(got.artifact.heard || "") : "",
       deliverable: got.ok ? String(got.artifact.body || "") : "",
       title: got.ok && got.artifact.title ? got.artifact.title : fallbackTitle,
-      advance: desk === "teach" && got.ok && canAdvanceTeach(got.artifact.live),
+      advance: desk === "teach" && got.ok && canAdvanceTeach(live),
+      path: desk === "teach" && got.ok ? teachWalkPath(live) : [],
+      turns: desk === "meeting" && got.ok ? liveTalkTurns(got.artifact) : [],
     };
   }
 

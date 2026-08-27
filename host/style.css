@@ -177,6 +177,10 @@ pre {
 .teach-map-rail li.now { color: #eee; font-weight: 650; }
 .teach-map-rail li.then { color: #9ad; }
 .teach-map-rail li.done { color: #555; }
+.stage .teach-map {
+  height: min(32vh, 280px);
+  min-height: 180px;
+}
 .meeting-card {
   margin: 0 0 12px;
   padding: 16px 18px;
@@ -200,6 +204,7 @@ pre {
   color: #9ad;
   font-size: 13px;
 }
+.meeting-talk {
   list-style: none;
   margin: 0 0 12px;
   padding: 0;
@@ -215,9 +220,10 @@ pre {
 }
 .meeting-talk li:last-child { border-bottom: 0; }
 .talk-who {
-  flex: 0 0 42px;
+  flex: 0 0 48px;
   color: #9ad;
   font-weight: 650;
+  padding-right: 8px;
 }
 .talk-them .talk-who { color: #c9a; }
 .talk-now { background: #1a222a; }

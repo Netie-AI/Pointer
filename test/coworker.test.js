@@ -1219,6 +1219,7 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(html, /id="meeting-asked"/);
   assert.match(html, /id="meeting-talk"/);
   assert.match(hud, /paintMeetingTalk/);
+  assert.match(hud, /You:/);
   assert.match(hud, /event\.turns/);
   assert.match(html, /id="live-cue-bar"/);
   assert.match(html, /id="live-cue-text"/);

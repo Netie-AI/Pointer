@@ -472,8 +472,12 @@ function test(name, fn) {
     assert.strictEqual(home.body.exec, false);
     assert.match(home.body.rooms.teach.cue, /Click Save/);
     assert.strictEqual(home.body.rooms.teach.advance, true);
+    assert.ok(Array.isArray(home.body.rooms.teach.path));
+    assert.ok(home.body.rooms.teach.path.some((p) => p.now && /Save/.test(p.label)));
     assert.match(home.body.rooms.meeting.cue, /Friday/);
     assert.match(home.body.rooms.meeting.asked, /launch date/);
+    assert.ok(Array.isArray(home.body.rooms.meeting.turns));
+    assert.ok(home.body.rooms.meeting.turns.some((row) => /Sarah Chen/.test(row.text)));
     assert.match(home.body.rooms.today.cue, /send it Friday/);
     assert.match(home.body.rooms.security.cue, /do not approve/);
     assert.match(home.body.rooms.today.deliverable, /# Today/);
@@ -506,6 +510,7 @@ function test(name, fn) {
     });
     assert.strictEqual(homePage.status, 200);
     assert.match(homePage.body, /id="rooms"/);
+    assert.match(homePage.body, /id="stage"/);
     assert.match(homePage.body, /id="session"/);
     assert.match(homePage.body, /id="session-files"/);
     assert.match(homePage.body, /id="session-md"/);

@@ -140,6 +140,7 @@ function readAsset(file) {
     assert.match(homeText, /Pointer coworker/);
     assert.match(homeText, /id="desks"/);
     assert.match(homeText, /id="rooms"/);
+    assert.match(homeText, /id="stage"/);
     assert.match(homeText, /id="session"/);
     assert.match(homeText, /id="session-files"/);
     assert.match(homeText, /id="session-md"/);
@@ -175,6 +176,7 @@ function readAsset(file) {
     assert.match(app, /\/api\/inbox/);
     assert.match(app, /\/api\/home/);
     assert.match(app, /paintRooms/);
+    assert.match(app, /paintStage/);
     assert.match(app, /paintSession/);
     assert.match(app, /paintChrome/);
     assert.match(app, /live-cue-bar/);
@@ -215,6 +217,7 @@ function readAsset(file) {
     assert.match(cssText, /teach-map-rail/);
     assert.match(cssText, /teach-map-key/);
     assert.match(cssText, /meeting-card-say/);
+    assert.match(cssText, /stage \.teach-map/);
     assert.match(cssText, /bottom: 36px/);
     assert.match(app, /They asked/);
     assert.match(app, /Heard:/);
@@ -227,6 +230,8 @@ function readAsset(file) {
     assert.match(app, /meeting-filed/);
     assert.match(app, /paintTalk/);
     assert.match(app, /paintMeetingCard/);
+    assert.match(app, /paintStage/);
+    assert.match(app, /You:/);
     assert.match(app, /meeting-card-say/);
     assert.match(app, /meeting-talk/);
     assert.doesNotMatch(app, /innerHTML/);
@@ -286,6 +291,8 @@ function readAsset(file) {
     assert.strictEqual(homeBody.rooms.security.cue, "");
     assert.strictEqual(homeBody.rooms.teach.desk, "teach");
     assert.strictEqual(homeBody.rooms.teach.advance, false);
+    assert.deepStrictEqual(homeBody.rooms.teach.path, []);
+    assert.deepStrictEqual(homeBody.rooms.meeting.turns, []);
     assert.strictEqual(homeBody.rooms.inbox.desk, "inbox");
     assert.strictEqual(homeBody.rooms.document.desk, "document");
     assert.ok(homeBody.session);

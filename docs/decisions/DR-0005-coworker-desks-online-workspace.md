@@ -131,5 +131,7 @@ only, never talk. HUD insight paints the same talk in fixed chrome
 (never a bubble).
 Say-this reuses your overlapping line or Heard facts, never an unrelated
 last-you dump. Loopback `/teach` paints a walk path from measured
-BOX/POINT (current hold, later dashed, Got it Ask, never Act). Public POST
+BOX/POINT (current hold, later dashed, Got it Ask, never Act). Loopback
+`/` paints that teach path and meeting card from `/api/home` (never exec).
+Public POST
 `/api/ask` stays 404.

@@ -465,6 +465,7 @@ function postAsk(ask) {
           paintChrome(h);
           if (document.getElementById("rooms")) {
             paintRooms((h && h.rooms) || {}, Boolean(h && h.localFirst));
+            paintStage((h && h.rooms) || {}, Boolean(h && h.localFirst));
             paintSession(h && h.session, Boolean(h && h.localFirst));
           }
         })
@@ -513,7 +514,7 @@ function paintTalk(root, m) {
     const now = Boolean(row.asked) && asked && text === asked;
     const li = el("li", "talk-" + (you ? "you" : "them") + (now ? " talk-now" : ""));
     const who = el("span", "talk-who");
-    who.textContent = you ? "You" : "Them";
+    who.textContent = you ? "You:" : "Them:";
     const body = el("span", "talk-text");
     body.textContent = text;
     li.appendChild(who);
@@ -854,6 +855,19 @@ function paintTeachMap(root, m) {
   root.appendChild(map);
 }
 
+function paintStage(rooms, localFirst) {
+  const root = document.getElementById("stage");
+  if (!root) return;
+  root.replaceChildren();
+  if (localFirst) {
+    root.hidden = true;
+    return;
+  }
+  paintTeachMap(root, (rooms && rooms.teach) || {});
+  paintMeetingCard(root, (rooms && rooms.meeting) || {});
+  root.hidden = !root.childNodes.length;
+}
+
 function paintRooms(rooms, localFirst) {
   const root = document.getElementById("rooms");
   if (!root) return;
@@ -1107,6 +1121,7 @@ if (roomsPage) {
         }
         show("policy", (h && h.reason) || "live coworker rooms; Act stays on the laptop");
         paintRooms((h && h.rooms) || {}, Boolean(h && h.localFirst));
+        paintStage((h && h.rooms) || {}, Boolean(h && h.localFirst));
         paintSession(h && h.session, Boolean(h && h.localFirst));
         paintChrome(h);
         return !(h && h.localFirst);

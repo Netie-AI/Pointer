@@ -134,7 +134,7 @@ function paintMeetingTalk(event, asked) {
     li.className = "talk-" + (you ? "you" : "them") + (now ? " talk-now" : "");
     const who = document.createElement("span");
     who.className = "talk-who";
-    who.textContent = you ? "You" : "Them";
+    who.textContent = you ? "You:" : "Them:";
     const body = document.createElement("span");
     body.className = "talk-text";
     body.textContent = text;

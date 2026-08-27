@@ -1,3 +1,9 @@
+## 2026-08-27 - Home paints the live session theater
+
+Loopback `/` paints the live teach path and meeting say-this card from
+`/api/home` (Ask, never Act, never a runtime). Public copies stay empty.
+P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Meeting answer card; open file grounds Heard
 
 Loopback `/meeting` paints a say-this answer card (They asked / say-this /
