@@ -268,6 +268,31 @@
     };
   }
 
+  /**
+   * Compact HUD cue captions: last system STT lines that are not already
+   * They asked or Them on the bar. Never a floating LIVE bar, never Act.
+   */
+  function cueCaptionLines(lines, opts) {
+    const cfg = opts || {};
+    const max = Number(cfg.max) > 0 ? Number(cfg.max) : 2;
+    const asked = String(cfg.asked || "").trim();
+    const them = String(cfg.them || "").trim();
+    const out = [];
+    const rows = Array.isArray(lines) ? lines : [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.source !== "system") continue;
+      const text = String(row.text || "").trim();
+      if (!text) continue;
+      if (text === asked || text === them) continue;
+      out.push({
+        text: text.slice(0, 160),
+        partial: Boolean(row.partial),
+      });
+    }
+    return out.slice(-max);
+  }
+
   // ── HUD-05 · live insights from speech ────────────────────────────────────
   const STOPWORDS = new Set([
     "the", "a", "an", "and", "or", "but", "if", "then", "so", "to", "of", "in",
@@ -508,6 +533,7 @@
     createAutoSend,
     createLiveLine,
     createLiveTranscript,
+    cueCaptionLines,
     createInsightFeed,
     summarizeSpeech,
     shouldRearmAfterAct,

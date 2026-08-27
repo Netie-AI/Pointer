@@ -1093,7 +1093,7 @@ function deskGrounding(deskOrId) {
     lines.push("6. When you mean click here, emit [POINT:x,y:label] percentages. Measured UIA also emits [BOX:left,top,w,h:label]. Crosshair and box only - never a buddy.");
   }
   if (desk.id === "meeting") {
-    lines.push("6. Recap/assist/next from the transcript. Open workspace files ground Heard facts only (not talk). Live cue is They asked plus last You/Them, say-this / Also / Don't say in the fixed top chrome (stays when the rest of HUD hides). OpenVault may refine say-this in 300ms; ungrounded or timed-out lines keep the heuristic. Never join the call. Never a stealth overlay. Never Act.");
+    lines.push("6. Recap/assist/next from the transcript. Open workspace files ground Heard facts only (not talk). Live cue is They asked plus last You/Them, Live system captions, say-this / Also / Don't say in the fixed top chrome (stays when the rest of HUD hides). OpenVault may refine say-this in 300ms; ungrounded or timed-out lines keep the heuristic. Never join the call. Never a stealth overlay. Never Act.");
   }
   if (desk.id === "today") {
     lines.push("6. Standing brief from this session log. On your plate lists live commitments and filed inbox/Word drafts. Never invent work. Never Act.");

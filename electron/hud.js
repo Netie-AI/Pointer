@@ -57,6 +57,7 @@ const {
   createAutoSend,
   createLiveLine,
   createLiveTranscript,
+  cueCaptionLines,
   createInsightFeed,
   createHoldToTalk,
   shouldRearmAfterAct,
@@ -104,6 +105,9 @@ function paintSuggests(mode) {
 
 let lastCueText = "";
 let lastCueKind = "say";
+let lastCueAsked = "";
+let lastThemLine = "";
+let cueBarHasBrief = false;
 function cueCopyLabel(kind) {
   if (kind === "point") return "Copy next";
   if (kind === "warn") return "Copy review";
@@ -125,6 +129,25 @@ function lastTalkLine(turns, speaker) {
     if (text) return text.slice(0, 160);
   }
   return "";
+}
+function paintLiveCueCaptions() {
+  const cap = $("live-cue-captions");
+  if (!cap) return false;
+  cap.replaceChildren();
+  const rows = typeof cueCaptionLines === "function"
+    ? cueCaptionLines(liveFeed.lines(), { asked: lastCueAsked, them: lastThemLine, max: 2 })
+    : [];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const p = document.createElement("p");
+    p.className = "live-cue-caption";
+    p.textContent = (row.partial ? "Live... " : "Live: ") + row.text;
+    cap.appendChild(p);
+  }
+  cap.hidden = rows.length === 0;
+  const bar = $("live-cue-bar");
+  if (bar) bar.hidden = !cueBarHasBrief && rows.length === 0;
+  return rows.length > 0;
 }
 function paintMeetingTalk(event, asked) {
   const root = $("meeting-talk");
@@ -202,6 +225,8 @@ function paintLiveBrief(event) {
   const youLine = meetingDesk ? lastTalkLine(event.turns, "you") : "";
   const themShow = Boolean(themLine && themLine !== asked);
   const youShow = Boolean(youLine);
+  lastCueAsked = asked;
+  lastThemLine = themLine;
   if (!text || (event && event.act)) {
     brief.hidden = true;
     if (meta) meta.hidden = true;
@@ -252,7 +277,11 @@ function paintLiveBrief(event) {
     if (barCopy) barCopy.hidden = true;
     lastCueText = "";
     lastCueKind = "say";
+    lastCueAsked = "";
+    lastThemLine = "";
+    cueBarHasBrief = false;
     paintMeetingTalk({ desk: "", turns: [] }, "");
+    paintLiveCueCaptions();
     return;
   }
   brief.hidden = false;
@@ -286,7 +315,9 @@ function paintLiveBrief(event) {
     copyBtn.hidden = !cue;
     copyBtn.textContent = cueCopyLabel(kind);
   }
-  if (bar) bar.hidden = !cue && !askedLine && !themShow && !youShow;
+  cueBarHasBrief = Boolean(cue || askedLine || themShow || youShow);
+  if (bar) bar.hidden = !cueBarHasBrief;
+  paintLiveCueCaptions();
   if (barAsked) {
     barAsked.hidden = !askedLine;
     barAsked.textContent = askedLine;
@@ -363,6 +394,7 @@ function renderSubtitle() {
       feed.textContent = listening || systemAudio ? "Listening…" : "No transcripts yet.";
     }
   }
+  paintLiveCueCaptions();
 }
 
 /**

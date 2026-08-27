@@ -1,3 +1,10 @@
+## 2026-08-27 - Compact HUD keeps Live captions from system STT
+
+HUD live cue bar paints last system STT lines as Live captions when
+the rest of HUD hides. Duplicate They asked / Them lines stay off.
+Not a floating LIVE bar, not a stealth overlay. P-05 and P-06 stay
+parked.
+
 ## 2026-08-27 - Workspace Run is a named Computer refuse
 
 Loopback `/workspace` keeps a This computer dock. Run POSTs

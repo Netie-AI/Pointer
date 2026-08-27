@@ -46,7 +46,7 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   that stores a BOX (never a buddy).
 - HUD insight paints the same You/Them talk in fixed chrome (never a
   bubble, never a cheater overlay). The live cue bar keeps They asked /
-  last You/Them / Say this / Also / Don't say when the rest of HUD chrome hides.
+  last You/Them / Live system captions / Say this / Also / Don't say when the rest of HUD chrome hides.
 - Loopback `/meeting` paints You/Them turns from the stored ring.
   Say-this reuses your overlapping line or Heard facts, never an
   unrelated last-you dump. Meeting assist is Say this / Also / Don't say

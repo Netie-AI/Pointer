@@ -97,7 +97,7 @@ never Act); tray Frame stays capture for Act. Loopback `/teach` shows
 `Then:` remaining steps. Empty UIA still boxes the framed region in
 display percents (never invented control coords). Live Next / Then /
 Got it stay in the top cue bar when chat is compact, and that bar
-keeps They asked / last You/Them / Say this / Also / Don't say when the rest of HUD
+keeps They asked / last You/Them / Live system captions / Say this / Also / Don't say when the rest of HUD
 hides (never a peek orb, never a stealth overlay). Meeting Heard lists
 dates and amounts from the ring (`Friday / $40k`) plus clock times
 (`3pm` / `15:00`) in HUD and `/meeting`.
@@ -144,7 +144,9 @@ Got it Ask and Draw (freehand stroke, stored BOX) to stack a drawn step (never a
 meeting say-this). Loopback
 `/` paints that teach path, meeting card, Today plate, and filed
 inbox/Word/security work cards from `/api/home` (never exec).
-Loopback `/workspace` This computer dock Run POSTs `/api/workspace/exec`
+HUD live cue bar paints last system STT lines as Live captions when
+the rest of HUD hides (duplicate They asked / Them stay off; never a
+floating LIVE bar). Loopback `/workspace` This computer dock Run POSTs `/api/workspace/exec`
 and always fails closed (P-06). Public catalog shows the same refuse.
 Public POST
 `/api/ask` stays 404.
