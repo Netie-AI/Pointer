@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Copy last meeting Say from main
+
+Cluely-class Copy say copies the last Suggest/Say from main, not the
+renderer. `GET /api/meeting?say=1` shares the same text. Empty stays a
+refusal. Still Cortex-gated to produce. GitHub CI on this account is
+still a spending-limit cutoff (0 steps), not a product fail. No GPLv3
+dump. No third-party MCP.
+
 ## 2026-08-27 - HUD Ask plans click window: locally
 
 Ask and clicks:go use the same local verb planner as MCP. Recipes still

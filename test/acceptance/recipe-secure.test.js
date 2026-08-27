@@ -66,7 +66,9 @@ async function run() {
       assert.ok(/meetingNotes/.test(main), "GET /api/meeting?notes=1 must read live notes");
       assert.ok(/exportMeetingNotes/.test(main), "Copy notes must export from the live file in main");
       assert.ok(/exportMeetingRecap/.test(main), "Copy recap must export the last recap in main");
-      assert.ok(/rememberMeetingRecap/.test(main), "a Recap answer must be remembered in main");
+      assert.ok(/rememberMeetingShare/.test(main), "a Recap or Say answer must be remembered in main");
+      assert.ok(/exportMeetingSay/.test(main), "Copy say must export the last Say in main");
+      assert.ok(/action === "say"/.test(main), "hud:meetingNotes say must not take renderer text");
       assert.ok(/action === "recap"/.test(main), "hud:meetingNotes recap must not take renderer text");
       assert.ok(/ipcMain\.handle\("hud:meetingNotes"/.test(main), "hud:meetingNotes must exist");
       const assistFn = main.slice(main.indexOf("meetingAssist: async"));

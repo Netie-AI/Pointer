@@ -65,7 +65,7 @@ const {
   isUsableTarget,
   pickWindowSource,
 } = require("./netie/delivery");
-const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetingNotes, exportMeetingRecap, normalizeMeetingKind } = require("./netie/meeting");
+const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetingNotes, exportMeetingRecap, exportMeetingSay, normalizeMeetingKind } = require("./netie/meeting");
 const { createHoldMonitor, DICTATE_HOLD_VKS, comboVks, normalizeDictateHotkeys } = require("./netie/holdkey");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
@@ -216,12 +216,15 @@ const eco = new NetieEcosystem({
 /** Last non-Pointer foreground window dictation/scribe should type into. */
 let deliveryTarget = null;
 const pendingScribe = createPendingScribe();
-/** Last Cortex-gated meeting recap. Copied from main, never from the renderer. */
+/** Last Cortex-gated meeting recap/say. Copied from main, never from the renderer. */
 let lastMeetingRecap = "";
-function rememberMeetingRecap(kind, text) {
-  if (normalizeMeetingKind(kind) !== "recap") return;
+let lastMeetingSay = "";
+function rememberMeetingShare(kind, text) {
+  const k = normalizeMeetingKind(kind);
   const body = String(text || "").trim();
-  if (body) lastMeetingRecap = body;
+  if (!body) return;
+  if (k === "recap") lastMeetingRecap = body;
+  if (k === "say") lastMeetingSay = body;
 }
 
 /** Worker GetWindowRect is physical. Clicks use DIP. Convert when Electron screen is up. */
@@ -438,7 +441,7 @@ const liveMcp = createMcpAbi({
           hotContext: plannerContext(String((assist && assist.asked) || "")),
         }),
     }).then((r) => {
-      if (r && r.ok) rememberMeetingRecap(r.kind, r.text);
+      if (r && r.ok) rememberMeetingShare(r.kind, r.text);
       return r;
     });
   },
@@ -448,6 +451,7 @@ const liveCoordinator = createCoordinator({
   computerStatus: () => liveComputerStatus(),
   meetingNotes: () => (notes.file ? notes.tail(8000) : null),
   meetingRecap: () => lastMeetingRecap || null,
+  meetingSay: () => lastMeetingSay || null,
   scribePending: () => pendingScribe.peek(),
 });
 const brain = new PersonalBrain({
@@ -3535,7 +3539,7 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
       text: rMeet.ok ? pointedMeet.text : failureMeet.text,
     });
     if (rMeet.ok && hasPoints(rMeet.text)) sendHud(toOverlayEvent(rMeet.text));
-    if (rMeet.ok) rememberMeetingRecap(assist.kind, pointedMeet.text);
+    if (rMeet.ok) rememberMeetingShare(assist.kind, pointedMeet.text);
     return rMeet.ok
       ? { ok: true, reply: pointedMeet.text, points: pointedMeet.points, degraded: rMeet.degraded }
       : {
@@ -4728,6 +4732,20 @@ ipcMain.handle("hud:meetingNotes", async (_e, payload) => {
     try {
       await driver.clipboardSet(exp.markdown);
       sendHud({ type: "answer", meta: "Recap", text: "Meeting recap copied." });
+      return { ok: true, copied: true };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  }
+  if (action === "say" || action === "copy-say") {
+    const exp = exportMeetingSay(lastMeetingSay);
+    if (!exp.ok) {
+      sendHud({ type: "answer", meta: "Say", text: exp.reason });
+      return { ok: false, error: exp.reason };
+    }
+    try {
+      await driver.clipboardSet(exp.markdown);
+      sendHud({ type: "answer", meta: "Say", text: "Meeting say copied." });
       return { ok: true, copied: true };
     } catch (err) {
       return { ok: false, error: String(err.message || err) };

@@ -446,9 +446,11 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/action:\s*"open"/.test(js), "Notes live chip must open the live file");
       assert.ok(/id="btn-copy-notes"/.test(html), "Copy notes pill missing from HUD");
       assert.ok(/id="btn-copy-recap"/.test(html), "Copy recap pill missing from HUD");
+      assert.ok(/id="btn-copy-say"/.test(html), "Copy say pill missing from HUD");
       assert.ok(/id="privacy-chip"/.test(html), "privacy chip missing from HUD");
       assert.ok(/id="session-chip"/.test(html), "session chip missing from HUD");
       assert.ok(/action:\s*"recap"/.test(js), "Copy recap must not send renderer text");
+      assert.ok(/action:\s*"say"/.test(js), "Copy say must not send renderer text");
     }),
 
     T("Cluely follow-ups become clickable Ask chips, not raw HTML", () => {
