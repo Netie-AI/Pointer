@@ -1,3 +1,10 @@
+## 2026-08-27 - Teach stage is a drawable BOX walk
+
+Loopback `/teach` lets you drag a box on the stage. That region becomes
+the current BOX in display percents (never invented, never Act). Tiny
+drags fail closed. Public POST `/api/teach` stays 404. Overlay stays on
+the laptop HUD. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Meeting OpenVault enrich stays grounded
 
 OpenVault may refine meeting say-this in 300ms. Timeout, missing

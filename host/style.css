@@ -88,6 +88,11 @@ pre {
   border: 1px solid #333;
   overflow: hidden;
   pointer-events: none;
+  touch-action: none;
+}
+.teach-map.draw {
+  pointer-events: auto;
+  cursor: crosshair;
 }
 .teach-map-cue, .teach-map-then {
   position: absolute;
@@ -145,8 +150,21 @@ pre {
   font-size: 13px;
   max-height: 240px;
 }
-.teach-map-box.now {
+.teach-map-box.drag {
+  border-style: dashed;
   border-color: #9ad;
+  z-index: 3;
+}
+.teach-map-hint {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #9aa3b5;
+  pointer-events: none;
   z-index: 1;
 }
 .teach-map-box.then {

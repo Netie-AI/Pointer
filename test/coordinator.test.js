@@ -362,6 +362,7 @@ function test(name, fn) {
     assert.match(teachPage.body, /id="teach-next"/);
     assert.match(teachPage.body, /id="teach-back"/);
     assert.match(teachPage.body, /Walk path/);
+    assert.match(teachPage.body, /Drag a box/);
     const form = require("../electron/netie/coworker-desks").teachAssist({
       text: "walk me through this on my screen",
       controls: [
@@ -402,6 +403,50 @@ function test(name, fn) {
     assert.ok(Array.isArray(advanced.body.path));
     assert.ok(advanced.body.path.some((p) => p.now && /Save/.test(p.label)));
     assert.ok(advanced.body.path.some((p) => !p.now && !p.later && /Email/.test(p.label)));
+    const savedTeach = c.workspace.get("live-teach");
+    const framed = await new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: "127.0.0.1", port, path: "/api/teach", method: "POST", headers: { "content-type": "application/json" } },
+        (res) => {
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+        }
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ region: { leftPct: 20, topPct: 40, wPct: 10, hPct: 4 }, act: true }));
+    });
+    assert.strictEqual(framed.status, 200);
+    assert.strictEqual(framed.body.ok, true);
+    assert.strictEqual(framed.body.act, false);
+    assert.strictEqual(framed.body.exec, false);
+    assert.ok(!framed.body.live);
+    assert.match(framed.body.cue, /this region/);
+    assert.ok(Array.isArray(framed.body.path));
+    assert.ok(framed.body.path.some((p) => p.now && Number(p.wPct) === 10));
+    const tiny = await new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: "127.0.0.1", port, path: "/api/teach", method: "POST", headers: { "content-type": "application/json" } },
+        (res) => {
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+        }
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ region: { x0: 10, y0: 10, x1: 10.1, y1: 10.1 } }));
+    });
+    assert.strictEqual(tiny.body.ok, false);
+    assert.strictEqual(tiny.body.act, false);
+    c.workspace.put({
+      id: "live-teach",
+      title: savedTeach.artifact.title,
+      desk: "teach",
+      body: savedTeach.artifact.body,
+      cue: savedTeach.artifact.cue,
+      rest: savedTeach.artifact.rest,
+      live: savedTeach.artifact.live,
+    });
     c.workspace.put({
       id: "live-security",
       title: "Security review",

@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
-const { catalog, todayAssist, sessionBundle, advanceLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, teachWalkPath } = require("./coworker-desks");
+const { catalog, todayAssist, sessionBundle, advanceLiveTeach, frameLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, teachWalkPath } = require("./coworker-desks");
 const { parsePoints } = require("./point-overlay");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
@@ -290,6 +290,19 @@ function createCoordinator(opts = {}) {
           res.writeHead(400, { "content-type": "application/json; charset=utf-8" });
           res.end(JSON.stringify({ ok: false, act: false, exec: false, reason: "parse error" }));
           return;
+        }
+        const frame = (body && (body.region || body.frame)) || null;
+        if (frame && typeof frame === "object") {
+          const drawn = frameLiveTeach(workspace, frame);
+          if (drawn.ok && drawn.desk === "teach") {
+            sendLiveRoom(res, "teach", "live-teach");
+            return;
+          }
+          if (!String((body && (body.ask || body.text || body.q)) || "").trim()) {
+            res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ...drawn, live: undefined, act: false, exec: false, localFirst: false, desk: "teach" }));
+            return;
+          }
         }
         const ask = String((body && (body.ask || body.text || body.q)) || "").trim();
         const out = advanceLiveTeach(workspace, ask);

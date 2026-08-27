@@ -8,6 +8,7 @@
  */
 
 const { pointControls, rectToBoxPct, rectToPct, formatPointToken, formatBoxToken } = require("./uia");
+const { clipBox } = require("./point-overlay");
 
 const DESKS = Object.freeze({
   teach: Object.freeze({
@@ -1341,6 +1342,45 @@ function framedRegionPoint(region, display) {
   };
 }
 
+/**
+ * Percents the human drew on /teach. Not invented. Clicky-shaped
+ * freehand, Pointer rules: a BOX, never a buddy, never Act.
+ */
+function parseTeachFrame(spec) {
+  if (!spec || typeof spec !== "object") return null;
+  let left = Number(spec.leftPct);
+  let top = Number(spec.topPct);
+  let w = Number(spec.wPct);
+  let h = Number(spec.hPct);
+  if (!Number.isFinite(left) || !Number.isFinite(w) || !Number.isFinite(top) || !Number.isFinite(h)) {
+    const x0 = Number(spec.x0 != null ? spec.x0 : spec.x);
+    const y0 = Number(spec.y0 != null ? spec.y0 : spec.y);
+    const x1 = Number(spec.x1);
+    const y1 = Number(spec.y1);
+    if (!Number.isFinite(x0) || !Number.isFinite(x1) || !Number.isFinite(y0) || !Number.isFinite(y1)) {
+      return null;
+    }
+    left = Math.min(x0, x1);
+    top = Math.min(y0, y1);
+    w = Math.abs(x1 - x0);
+    h = Math.abs(y1 - y0);
+  }
+  return clipBox(left, top, w, h);
+}
+
+function pctToRegion(box, screen) {
+  const w = Number(screen && screen.width) > 0 ? Number(screen.width) : 1000;
+  const h = Number(screen && screen.height) > 0 ? Number(screen.height) : 1000;
+  const x0 = Number(screen && screen.x) || 0;
+  const y0 = Number(screen && screen.y) || 0;
+  return {
+    x: x0 + (Number(box.leftPct) / 100) * w,
+    y: y0 + (Number(box.topPct) / 100) * h,
+    width: (Number(box.wPct) / 100) * w,
+    height: (Number(box.hPct) / 100) * h,
+  };
+}
+
 /** 1 to advance, -1 to go back, "reset", or 0. Never Acts. */
 function teachAdvance(text) {
   const q = spoken(text);
@@ -1489,6 +1529,51 @@ function advanceLiveTeach(workspace, ask) {
     live: assist.live,
   });
   return { ...assist, live: undefined, exec: false, act: false };
+}
+
+/**
+ * Loopback /teach drag. The human drew the BOX. Never invents.
+ * Never Acts. Empty/tiny drags fail closed.
+ */
+function frameLiveTeach(workspace, spec) {
+  if (!workspace || typeof workspace.put !== "function") {
+    return { ok: false, act: false, exec: false, reason: "workspace missing" };
+  }
+  const box = parseTeachFrame(spec);
+  if (!box) {
+    return {
+      ok: false,
+      act: false,
+      exec: false,
+      desk: "teach",
+      reason: "draw a region on /teach first",
+    };
+  }
+  const got = typeof workspace.get === "function" ? workspace.get("live-teach") : { ok: false };
+  const screen =
+    got.ok && got.artifact && got.artifact.live && got.artifact.live.screen
+      ? got.artifact.live.screen
+      : { x: 0, y: 0, width: 1000, height: 1000 };
+  const region = pctToRegion(box, screen);
+  const assist = teachAssist({
+    text: FRAME_TEACH_TEXT,
+    controls: [],
+    screen,
+    region,
+    framed: true,
+    live: true,
+  });
+  if (!assist || !assist.ok || assist.act) {
+    return { ...(assist || { reason: "frame failed" }), ok: false, act: false, exec: false };
+  }
+  putAssist(workspace, assist);
+  return {
+    ...assist,
+    live: undefined,
+    exec: false,
+    act: false,
+    href: sessionHref("teach"),
+  };
 }
 
 function teachVerb(controlType) {
@@ -2784,6 +2869,8 @@ module.exports = {
   canAdvanceTeach,
   replayTeachWalk,
   advanceLiveTeach,
+  frameLiveTeach,
+  parseTeachFrame,
   teachWalkPath,
   askLiveCoworker,
   askHostCoworker,

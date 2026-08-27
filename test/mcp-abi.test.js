@@ -330,6 +330,20 @@ function test(name, fn) {
     assert.ok(!taught.result.live);
     assert.ok(Array.isArray(taught.result.path));
     assert.ok(taught.result.path.some((p) => p.now && /Save/.test(p.label)));
+    const drawn = await mcp.handle(
+      {
+        jsonrpc: "2.0",
+        id: 17.6,
+        method: "teach.live",
+        params: { region: { leftPct: 20, topPct: 40, wPct: 10, hPct: 4 } },
+      },
+      { coordinator: coord }
+    );
+    assert.strictEqual(drawn.result.ok, true);
+    assert.strictEqual(drawn.result.act, false);
+    assert.strictEqual(drawn.result.exec, false);
+    assert.match(drawn.result.cue, /this region/);
+    assert.ok(!drawn.result.live);
     coord.workspace.put({
       id: "live-security",
       title: "Security review",

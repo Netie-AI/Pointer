@@ -589,7 +589,7 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
   setTeachButtons(m);
   paintDeskChips(pageId.replace("-brief", "-chips"), (m && m.chips) || []);
   page.replaceChildren();
-  paintTeachMap(page, m);
+  paintTeachMap(page, m, pageId === "teach-brief" ? { draw: true, apply: function (next) { applyLiveRoom(page, pageId, cueId, askedId, refuse, next); } } : undefined);
   paintMeetingCard(page, m);
   paintTalk(page, m);
   paintInboxCard(page, m);
@@ -840,22 +840,104 @@ paintLiveRoom("security-brief", "/api/security", "security-cue-web", "refused: s
 paintLiveRoom("document-brief", "/api/document", "document-cue-web", "refused: document must not grow a runtime");
 paintLiveRoom("inbox-brief", "/api/inbox", "inbox-cue-web", "refused: inbox must not grow a runtime");
 
-function paintTeachMap(root, m) {
-  if (!root || !m || m.desk !== "teach" || m.localFirst) return;
-  const path = Array.isArray(m.path) && m.path.length ? m.path : [];
-  const markers = Array.isArray(m.markers) ? m.markers : [];
+function postTeachFrame(box, apply) {
+  fetch("/api/teach", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ region: box, act: false }),
+  })
+    .then((r) => r.json())
+    .then(function (m) {
+      if (!m || !m.ok || m.act || m.exec) return;
+      if (typeof apply === "function") apply(m);
+      fetch("/api/home")
+        .then((r) => r.json())
+        .then(paintChrome)
+        .catch(function () {});
+    })
+    .catch(function () {});
+}
+
+function wireTeachFrame(map, apply) {
+  if (!map || map.dataset.framed === "1") return;
+  map.dataset.framed = "1";
+  let drag = null;
+  let ghost = null;
+  function pctFromEvent(ev) {
+    const r = map.getBoundingClientRect();
+    const w = r.width || 1;
+    const h = r.height || 1;
+    return {
+      x: Math.max(0, Math.min(100, ((ev.clientX - r.left) / w) * 100)),
+      y: Math.max(0, Math.min(100, ((ev.clientY - r.top) / h) * 100)),
+    };
+  }
+  function paintGhost() {
+    if (!drag || !ghost) return;
+    const left = Math.min(drag.x0, drag.x1);
+    const top = Math.min(drag.y0, drag.y1);
+    ghost.style.left = left + "%";
+    ghost.style.top = top + "%";
+    ghost.style.width = Math.abs(drag.x1 - drag.x0) + "%";
+    ghost.style.height = Math.abs(drag.y1 - drag.y0) + "%";
+    ghost.hidden = false;
+  }
+  map.addEventListener("pointerdown", function (ev) {
+    if (ev.button != null && ev.button !== 0) return;
+    const p = pctFromEvent(ev);
+    drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+    if (!ghost) {
+      ghost = el("div", "teach-map-box drag");
+      map.appendChild(ghost);
+    }
+    paintGhost();
+    if (map.setPointerCapture) map.setPointerCapture(ev.pointerId);
+    ev.preventDefault();
+  });
+  map.addEventListener("pointermove", function (ev) {
+    if (!drag) return;
+    const p = pctFromEvent(ev);
+    drag.x1 = p.x;
+    drag.y1 = p.y;
+    paintGhost();
+  });
+  function endDrag() {
+    if (!drag) return;
+    const box = { x0: drag.x0, y0: drag.y0, x1: drag.x1, y1: drag.y1 };
+    drag = null;
+    if (ghost) ghost.hidden = true;
+    if (Math.abs(box.x1 - box.x0) < 0.4 || Math.abs(box.y1 - box.y0) < 0.4) return;
+    postTeachFrame(box, apply);
+  }
+  map.addEventListener("pointerup", endDrag);
+  map.addEventListener("pointercancel", function () {
+    drag = null;
+    if (ghost) ghost.hidden = true;
+  });
+}
+
+function paintTeachMap(root, m, opts) {
+  if (!root || (m && m.desk && m.desk !== "teach") || (m && m.localFirst)) return;
+  const draw = Boolean(opts && opts.draw) && !(m && m.localFirst) && !(m && m.exec);
+  const path = Array.isArray(m && m.path) && m.path.length ? m.path : [];
+  const markers = Array.isArray(m && m.markers) ? m.markers : [];
   const boxes = path.length
     ? path.filter((p) => Number(p.wPct) > 0 && Number(p.hPct) > 0)
     : markers.filter((p) => Number(p.wPct) > 0 && Number(p.hPct) > 0);
   const dots = path.length
     ? path.filter((p) => p.now && Number.isFinite(Number(p.xPct)) && Number.isFinite(Number(p.yPct)))
     : markers.filter((p) => Number.isFinite(Number(p.xPct)) && Number.isFinite(Number(p.yPct)));
-  if (!boxes.length && !dots.length) return;
-  const map = el("div", "teach-map");
-  map.setAttribute("role", "img");
-  const cue = String(m.cue || "").trim();
-  const rest = String(m.rest || "").trim();
-  map.setAttribute("aria-label", cue ? "Next: " + cue : "Teach walk");
+  if (!boxes.length && !dots.length && !draw) return;
+  const map = el("div", draw ? "teach-map draw" : "teach-map");
+  map.setAttribute("role", draw ? "application" : "img");
+  const cue = String((m && m.cue) || "").trim();
+  const rest = String((m && m.rest) || "").trim();
+  map.setAttribute("aria-label", cue ? "Next: " + cue : draw ? "Drag a box on this stage. Never Act." : "Teach walk");
+  if (draw && !boxes.length) {
+    const hint = el("p", "teach-map-hint");
+    hint.textContent = "Drag a box on this stage. Pointer will not click.";
+    map.appendChild(hint);
+  }
   if (cue) {
     const next = el("p", "teach-map-cue");
     next.textContent = "Next: " + cue;
@@ -898,6 +980,7 @@ function paintTeachMap(root, m) {
     });
     map.appendChild(rail);
   }
+  if (draw) wireTeachFrame(map, opts.apply);
   root.appendChild(map);
 }
 

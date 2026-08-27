@@ -206,6 +206,8 @@ function readAsset(file) {
     assert.doesNotMatch(paint, /innerHTML/);
     assert.match(app, /Live session stays on the laptop/);
     assert.match(app, /paintTeachMap/);
+    assert.match(app, /wireTeachFrame/);
+    assert.match(app, /postTeachFrame/);
     assert.match(app, /teach-map/);
     assert.match(app, /teach-map-cue/);
     assert.match(app, /teach-map-mark/);
@@ -217,6 +219,7 @@ function readAsset(file) {
     assert.match(cssText, /teach-map-cue/);
     assert.match(cssText, /teach-map-mark/);
     assert.match(cssText, /teach-map-rail/);
+    assert.match(cssText, /\.teach-map\.draw/);
     assert.match(cssText, /teach-map-key/);
     assert.match(cssText, /meeting-card-say/);
     assert.match(cssText, /meeting-card-also/);

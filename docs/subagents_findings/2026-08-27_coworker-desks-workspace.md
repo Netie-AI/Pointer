@@ -38,7 +38,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - Standing `/today` brief from the session log. Empty is honest, not invented.
 - `spawnCoworker`: background brief, never claims pointer-act, never Acts.
 - Loopback `/teach` paints a large walk stage from measured BOX/POINT
-  (Next/Then on the stage, never invented coords, never Act).
+  (Next/Then on the stage, never invented coords, never Act). Drag a
+  box on that stage to frame a region in display percents.
 - HUD insight paints the same You/Them talk in fixed chrome (never a
   bubble, never a cheater overlay).
 - Loopback `/meeting` paints You/Them turns from the stored ring.

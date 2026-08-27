@@ -28,6 +28,7 @@ const {
   shouldTeachFramedRegion,
   replayTeachWalk,
   advanceLiveTeach,
+  frameLiveTeach,
   askLiveCoworker,
   askHostCoworker,
   chipsForArtifact,
@@ -603,6 +604,34 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   const noLive = advanceLiveTeach(createWorkspace({ clock: () => 2 }), "got it");
   assert.strictEqual(noLive.ok, false);
   assert.strictEqual(noLive.act, false);
+  const tiny = frameLiveTeach(ws, { x0: 10, y0: 10, x1: 10.1, y1: 10.1 });
+  assert.strictEqual(tiny.ok, false);
+  assert.strictEqual(tiny.act, false);
+  assert.strictEqual(tiny.exec, false);
+  const blank = frameLiveTeach(ws, {});
+  assert.strictEqual(blank.ok, false);
+  const drawn = frameLiveTeach(createWorkspace({ clock: () => 9 }), {
+    leftPct: 20,
+    topPct: 40,
+    wPct: 10,
+    hPct: 4,
+  });
+  assert.strictEqual(drawn.ok, true);
+  assert.strictEqual(drawn.act, false);
+  assert.strictEqual(drawn.exec, false);
+  assert.strictEqual(drawn.via, "frame");
+  assert.match(drawn.deliverable, /\[BOX:20,40,10,4:1 this region\]/);
+  assert.match(drawn.cue, /Look at this region/);
+  assert.ok(!drawn.live);
+  const corners = frameLiveTeach(createWorkspace({ clock: () => 10 }), {
+    x0: 30,
+    y0: 50,
+    x1: 20,
+    y1: 40,
+  });
+  assert.strictEqual(corners.ok, true);
+  assert.strictEqual(corners.act, false);
+  assert.match(corners.deliverable, /\[BOX:20,40,10,10:1 this region\]/);
   const fs = require("fs");
   const path = require("path");
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
@@ -1182,9 +1211,12 @@ test("desk chips ask, never act", () => {
   assert.match(hostTeach, /id="teach-next"/);
   assert.match(hostTeach, /id="teach-back"/);
   assert.match(hostTeach, /id="cue-copy"/);
+  assert.match(hostTeach, /Drag a box/);
   const hostApp = fs.readFileSync(path.join(__dirname, "..", "host", "app.js"), "utf8");
   assert.match(hostApp, /got it, next/);
   assert.match(hostApp, /wireTeachAdvance/);
+  assert.match(hostApp, /wireTeachFrame/);
+  assert.match(hostApp, /postTeachFrame/);
   assert.match(hostApp, /paintChrome/);
   assert.match(hostApp, /live-cue-next/);
   assert.doesNotMatch(hostApp, /innerHTML/);
