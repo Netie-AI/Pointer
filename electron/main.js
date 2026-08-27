@@ -33,8 +33,8 @@ const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
 const { Segmenter } = require("./netie/audio");
-const { Transcriber, sanitizeSttUrl, DEFAULT_SIDECAR } = require("./netie/transcriber");
-const { detectModeSwitch, getMode, allowsActions } = require("./netie/modes");
+const { Transcriber, sanitizeSttUrl, isLoopbackSttUrl, DEFAULT_SIDECAR } = require("./netie/transcriber");
+const { detectModeSwitch, getMode, allowsActions, isKnownMode } = require("./netie/modes");
 const { NotesSession } = require("./netie/notes");
 const { SettingsStore } = require("./netie/settings");
 const { createNodGate, isAffirmation } = require("./netie/affirm");
@@ -211,12 +211,22 @@ const eco = new NetieEcosystem({ deviceId: `netie-clicks:${hot.deviceId}` });
 let deliveryTarget = null;
 const pendingScribe = createPendingScribe();
 function liveComputerStatus() {
+  const sttUrl =
+    sanitizeSttUrl(settings.get("sttUrl")) ||
+    sanitizeSttUrl(process.env.NETIE_STT_URL) ||
+    DEFAULT_SIDECAR;
   return computerStatus({
     captureVisible: captureVisible(),
     uacc: detectUacc(),
     actAvailable: true,
     delivery: publicTarget(deliveryTarget),
     scribePending: pendingScribe.public(),
+    mode: appMode,
+    recordingHotkey: settings.get("recordingHotkey") || "Control+Alt+Space",
+    modeHotkey: settings.get("modeHotkey") || "Control+Alt+M",
+    languageHotkey: settings.get("languageHotkey") || "Control+Alt+L",
+    scribeLanguage: settings.get("scribeLanguage") || "English",
+    stt: { url: sttUrl, local: isLoopbackSttUrl(sttUrl) },
   });
 }
 
@@ -242,6 +252,11 @@ const liveMcp = createMcpAbi({
     }),
   craft: craftHint,
   status: () => liveComputerStatus(),
+  setMode: (mode) => {
+    if (!isKnownMode(mode)) return { ok: false, reason: "unknown mode" };
+    applyAppMode(mode, { reason: "mcp" });
+    return { ok: true, mode: getMode(mode).id, gated: false };
+  },
   observe: async (params) => {
     let foreground = null;
     let windows = [];

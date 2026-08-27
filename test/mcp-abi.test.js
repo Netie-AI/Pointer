@@ -61,6 +61,7 @@ function test(name, fn) {
     assert.ok(scribe.inputSchema.properties.dictate);
     const act = r.result.catalog.find((t) => t.name === "computer.act");
     assert.match(act.description, /focus: notepad then type: hello/);
+    assert.ok(act.inputSchema.properties.mode);
   });
 
   await test("lanes.claim goes through MCP and conflicts", async () => {
@@ -112,6 +113,53 @@ function test(name, fn) {
     });
     assert.ok(found.hits.some((h) => h.id === "fill_right" || /fill/.test(h.id)));
     assert.strictEqual(found.draft, null);
+  });
+
+  await test("mode-only computer.act switches without a Cortex gate", async () => {
+    const seen = [];
+    const mcp = createMcpAbi({
+      setMode: (mode) => {
+        if (mode !== "scribe" && mode !== "meeting") {
+          return { ok: false, reason: "unknown mode" };
+        }
+        seen.push(mode);
+        return { ok: true, mode, gated: false };
+      },
+    });
+    const r = await mcp.handle({
+      jsonrpc: "2.0",
+      id: 40,
+      method: "computer.act",
+      params: { mode: "scribe" },
+    });
+    assert.ok(r.result);
+    assert.strictEqual(r.result.ok, true);
+    assert.strictEqual(r.result.mode, "scribe");
+    assert.strictEqual(r.result.gated, false);
+    assert.deepStrictEqual(seen, ["scribe"]);
+    const gatedStill = await mcp.handle({
+      jsonrpc: "2.0",
+      id: 41,
+      method: "computer.act",
+      params: { mode: "scribe", instruction: "type: hi" },
+    });
+    assert.ok(gatedStill.error);
+    assert.match(gatedStill.error.message, /dms\/secure|gate/i);
+    const missing = await createMcpAbi().handle({
+      jsonrpc: "2.0",
+      id: 42,
+      method: "computer.act",
+      params: { mode: "meeting" },
+    });
+    assert.ok(missing.error);
+    const bad = await mcp.handle({
+      jsonrpc: "2.0",
+      id: 43,
+      method: "computer.act",
+      params: { mode: "doom" },
+    });
+    assert.ok(bad.error);
+    assert.match(bad.error.message, /unknown mode/);
   });
 
   console.log(`\n${pass} passed, ${fails.length} failed`);

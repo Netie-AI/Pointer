@@ -2,6 +2,15 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Loopback mode switch and live status
+
+Agents on 127.0.0.1 can read live mode, hotkeys, and STT URL from
+`computer.status`, and switch Agent/General/Transcribe/Scribe/Meeting
+with `POST /api/computer {"mode":"scribe"}` like the tray. Mode-only
+is HUD state, not Cortex-gated. Clicks still fail-closed. GitHub CI
+on this account is still a spending-limit cutoff (0 steps), not a
+product fail. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - Customizable dictation hotkeys
 
 OpenWillow-class shortcuts: recording, Transcribe/Scribe, and language

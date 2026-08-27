@@ -62,7 +62,7 @@ const CATALOG = Object.freeze([
   },
   {
     name: "computer.status",
-    description: "Detectability, UACC probe, delivery target, and instruction verbs.",
+    description: "Detectability, live mode, hotkeys, STT URL, UACC probe, delivery target, and instruction verbs.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -81,13 +81,14 @@ const CATALOG = Object.freeze([
   {
     name: "computer.act",
     description:
-      "Gated OS actions. instruction plans via recipes then type:/click:/focus:/open:/deliver:/replace:/wait/scroll/doubleclick/rightclick/hover. Chain local verbs with then: focus: notepad then type: hello. Clicks and launches need approved true.",
+      "Gated OS actions. instruction plans via recipes then type:/click:/focus:/open:/deliver:/replace:/wait/scroll/doubleclick/rightclick/hover. Chain local verbs with then: focus: notepad then type: hello. Clicks and launches need approved true. mode alone switches Agent/General/Transcribe/Scribe/Meeting like the tray (no Cortex).",
     inputSchema: {
       type: "object",
       properties: {
         instruction: { type: "string" },
         actions: { type: "array" },
         approved: { type: "boolean" },
+        mode: { type: "string", enum: ["agent", "general", "transcribe", "scribe", "meeting"] },
       },
     },
   },
@@ -137,6 +138,7 @@ function createMcpAbi(opts = {}) {
   const act = opts.act;
   const scribe = opts.scribe;
   const meetingAssist = opts.meetingAssist;
+  const setMode = opts.setMode;
 
   async function gated(id, fn, missing, params, ctx) {
     if (typeof fn !== "function") {
@@ -195,6 +197,22 @@ function createMcpAbi(opts = {}) {
         return rpcResult(id, snap);
       }
       if (method === "computer.act") {
+        const p = params && typeof params === "object" ? params : {};
+        const mode = String(p.mode || "").trim().toLowerCase();
+        const hasAct = Boolean(
+          String(p.instruction || p.text || p.goal || "").trim() ||
+            (Array.isArray(p.actions) && p.actions.length)
+        );
+        if (mode && !hasAct) {
+          if (typeof setMode !== "function") {
+            return rpcError(id, -32003, "mode switch missing");
+          }
+          const out = await setMode(mode, ctx);
+          if (out && out.ok === false) {
+            return rpcError(id, -32602, out.reason || "unknown mode");
+          }
+          return rpcResult(id, out);
+        }
         return gated(id, act, "computer.act needs a Cortex /dms/secure gate", params, ctx);
       }
       if (method === "computer.scribe") {

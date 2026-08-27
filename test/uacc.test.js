@@ -105,6 +105,12 @@ function test(name, fn) {
     assert.strictEqual(shown.act.available, true);
     assert.strictEqual(shown.act.gated, true);
     assert.strictEqual(shown.delivery.present, false);
+    assert.strictEqual(shown.mode, "agent");
+    assert.strictEqual(shown.hotkeys.recording, "Control+Alt+Space");
+    assert.strictEqual(shown.hotkeys.assist, "Control+Enter");
+    assert.strictEqual(shown.stt.local, true);
+    assert.strictEqual(shown.scribe.language, "English");
+    assert.ok(shown.drive.instructions.includes("POST /api/computer {\"mode\":\"scribe\"}"));
     assert.strictEqual(shown.scribe.available, true);
     assert.strictEqual(shown.scribe.gated, true);
     assert.strictEqual(shown.scribe.api, "/api/scribe");
@@ -128,6 +134,21 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("GET /api/observe?selection=1"));
     assert.strictEqual(shown.drive.tools, "GET /api/tools");
     assert.match(shown.drive.gated, /dms\/secure/);
+  });
+
+  await test("computer.status publishes live mode, hotkeys, and STT", () => {
+    const live = computerStatus({
+      captureVisible: true,
+      mode: "meeting",
+      scribeLanguage: "Traditional Chinese",
+      recordingHotkey: "Control+Shift+D",
+      stt: { url: "https://stt.example.com", local: false },
+    });
+    assert.strictEqual(live.mode, "meeting");
+    assert.strictEqual(live.scribe.language, "Traditional Chinese");
+    assert.strictEqual(live.hotkeys.recording, "Control+Shift+D");
+    assert.strictEqual(live.stt.local, false);
+    assert.strictEqual(live.stt.url, "https://stt.example.com");
   });
 
   await test("computer.observe reports visibility without leaking clicks", () => {

@@ -66,6 +66,7 @@ async function run() {
       assert.ok(/usePendingDictation/.test(main), "pending dictation must paste the raw transcript");
       assert.ok(/function trayTemplate/.test(main), "OpenWillow tray must list modes");
       assert.ok(/reason: "tray"/.test(main), "tray mode switch must call applyAppMode");
+      assert.ok(/reason: "mcp"/.test(main), "loopback mode switch must call applyAppMode");
       assert.ok(/modeItem\("transcribe", "Transcribe"\)/.test(main), "tray must offer Transcribe");
       assert.ok(/modeItem\("scribe", "Scribe"\)/.test(main), "tray must offer Scribe");
       assert.ok(/modeItem\("meeting", "Meeting"\)/.test(main), "tray must offer Meeting");

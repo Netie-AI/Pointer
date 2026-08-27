@@ -87,4 +87,8 @@ function getMode(id) {
   return MODES[id] || MODES.agent;
 }
 
-module.exports = { MODES, TRIGGERS, detectModeSwitch, getMode, allowsActions };
+function isKnownMode(id) {
+  return Object.prototype.hasOwnProperty.call(MODES, String(id || "").trim());
+}
+
+module.exports = { MODES, TRIGGERS, detectModeSwitch, getMode, allowsActions, isKnownMode };

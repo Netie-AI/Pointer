@@ -151,6 +151,17 @@ function computerStatus(opts = {}) {
           : "no Cortex /dms/secure gate",
     },
     delivery: opts.delivery || { present: false, title: "", hwnd: false },
+    mode: String(opts.mode || "agent"),
+    hotkeys: {
+      recording: String(opts.recordingHotkey || "Control+Alt+Space"),
+      mode: String(opts.modeHotkey || "Control+Alt+M"),
+      language: String(opts.languageHotkey || "Control+Alt+L"),
+      assist: "Control+Enter",
+    },
+    stt: {
+      url: String((opts.stt && opts.stt.url) || "http://127.0.0.1:8766").slice(0, 120),
+      local: !opts.stt || opts.stt.local !== false,
+    },
     scribe: {
       available: opts.scribeAvailable === true || opts.actAvailable === true,
       gated: true,
@@ -158,6 +169,8 @@ function computerStatus(opts = {}) {
       pending: opts.scribePending && opts.scribePending.present
         ? opts.scribePending
         : { present: false },
+      language:
+        opts.scribeLanguage === "Traditional Chinese" ? "Traditional Chinese" : "English",
       retry: "POST /api/scribe {\"retry\":true}",
       dictate: "POST /api/scribe {\"dictate\":true}",
     },
@@ -204,8 +217,9 @@ function computerStatus(opts = {}) {
         "POST /api/meeting screenshot false",
         "POST /api/scribe {\"retry\":true}",
         "POST /api/scribe {\"dictate\":true}",
+        "POST /api/computer {\"mode\":\"scribe\"}",
       ],
-      gated: "Cortex /dms/secure. Clicks and launches need approved:true.",
+      gated: "Mode switch is HUD state. Cortex /dms/secure. Clicks and launches need approved:true.",
     },
   };
 }
