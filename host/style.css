@@ -102,8 +102,8 @@ pre {
   z-index: 2;
   pointer-events: none;
 }
-.teach-map-cue { top: 8px; }
-.teach-map-then { top: 36px; color: #9ad; font-weight: 500; }
+.teach-map-cue { bottom: 36px; top: auto; }
+.teach-map-then { bottom: 8px; top: auto; color: #9ad; font-weight: 500; }
 .teach-map-mark {
   position: absolute;
   width: 12px;
@@ -149,7 +149,7 @@ pre {
   position: absolute;
   right: 8px;
   top: 8px;
-  bottom: 8px;
+  bottom: 56px;
   width: min(36%, 220px);
   margin: 0;
   padding: 6px 10px;

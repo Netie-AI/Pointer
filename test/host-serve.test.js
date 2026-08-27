@@ -212,6 +212,7 @@ function readAsset(file) {
     assert.match(cssText, /teach-map-cue/);
     assert.match(cssText, /teach-map-mark/);
     assert.match(cssText, /teach-map-rail/);
+    assert.match(cssText, /bottom: 36px/);
     assert.match(app, /They asked/);
     assert.match(app, /Heard:/);
     assert.match(app, /-heard-web/);
