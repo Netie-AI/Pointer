@@ -12,7 +12,8 @@
    `/api/scribe` `/api/meeting`. Observe returns live windows. Act/scribe
    fail-closed without Cortex. Transcribe types into the remembered window.
    Scribe rewrites then pastes. Optional screen context. Esc cancels
-   listening. Ctrl+Alt+Space/M/L. Meeting Suggest pill. Teach LINE marks.
+   listening. Hold Ctrl+Alt+Space (release to stop; Linux stays toggle).
+   Ctrl+Alt+M/L. Meeting Suggest pill. Teach LINE marks.
    `focus:` matches a window title; `click: Save` aims by name. Autostart
    is a setting. MCP `tools.list` and `GET /api/tools` return schemas.
    `wait` / `scroll` / `doubleclick` / `rightclick` / `hover` plan locally.

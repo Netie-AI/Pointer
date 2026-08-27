@@ -62,6 +62,7 @@ const {
   publicTarget,
 } = require("./netie/delivery");
 const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest } = require("./netie/meeting");
+const { createHoldMonitor, DICTATE_HOLD_VKS } = require("./netie/holdkey");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
 const { shouldAcceptFrame, detectCaptureCommand } = require("./netie/capture-gate");
@@ -425,6 +426,20 @@ const driver = new InputDriver({
   toPhysical: (pt) => screen.dipToScreenPoint(pt),
 });
 
+/** OpenWillow hold-to-talk: after Ctrl+Alt+Space press, stop when the combo lifts. */
+const dictateHold = createHoldMonitor({
+  intervalMs: 40,
+  poll: () => driver.keysHeld(DICTATE_HOLD_VKS),
+  onRelease: () => {
+    if (!listenMic) return;
+    if (appMode !== "transcribe" && appMode !== "scribe") return;
+    listenMic = false;
+    sendHudQuiet({ type: "auto-listen", mic: false, system: listenSystem, paused: false });
+    sendHudQuiet({ type: "insight", text: "Dictation off - key released." });
+    syncDictateCancelHotkey();
+  },
+});
+
 /** Real Windows pointer swap while Netie acts (opt-in via settings / Agent cursor). */
 const agentPointer = new Pointer({
   enabled: settings.get("cursorBubble") !== false,
@@ -674,6 +689,9 @@ function applyAppMode(modeId, { reason = "" } = {}) {
     void armScribeSession();
   } else {
     scribeSession = { gated: false };
+  }
+  if (appMode !== "transcribe" && appMode !== "scribe") {
+    dictateHold.stop();
   }
   syncDictateCancelHotkey();
   return {
@@ -1461,6 +1479,7 @@ async function toggleDictateHotkey() {
   const target = await snapshotDeliveryNow();
   const delivering = appMode === "transcribe" || appMode === "scribe";
   if (delivering && listenMic) {
+    dictateHold.stop();
     listenMic = false;
     sendHudQuiet({ type: "auto-listen", mic: false, system: listenSystem, paused: false });
     sendHudQuiet({
@@ -1482,11 +1501,12 @@ async function toggleDictateHotkey() {
     if (appMode === "scribe") void armScribeSession();
     sendHudQuiet({ type: "auto-listen", mic: true, system: listenSystem, paused: false });
   }
+  dictateHold.start();
   sendHudQuiet({
     type: "insight",
     text: target.present
-      ? `Dictation on - speaking into ${target.title || "the remembered app"}.`
-      : "Dictation on - click an editor, then speak.",
+      ? `Hold to talk - speaking into ${target.title || "the remembered app"}. Release to stop.`
+      : "Hold to talk - click an editor, then speak. Release to stop.",
   });
   syncDictateCancelHotkey();
   return { ok: true, listening: true, target };
@@ -1831,6 +1851,7 @@ function releaseKillSwitch() {
 }
 
 function cancelDictateListen() {
+  dictateHold.stop();
   listenMic = false;
   sendHudQuiet({ type: "auto-listen", mic: false, system: listenSystem, paused: hudPaused });
   sendHudQuiet({ type: "insight", text: "Dictation cancelled." });
@@ -2446,8 +2467,8 @@ function registerHotkey() {
   } catch {
     /* ok */
   }
-  // OpenWillow-class global dictation: snapshot the current app, then type
-  // into it. Electron cannot true-hold a shortcut, so this toggles listen.
+  // OpenWillow-class global dictation: snapshot the current app, then hold
+  // Ctrl+Alt+Space to speak. Electron only sees the press; release is polled.
   try {
     globalShortcut.register("Control+Alt+Space", () => {
       void toggleDictateHotkey();

@@ -223,6 +223,18 @@ test("dry-run supports drag/open/clipboard without spawning", async () => {
   assert.strictEqual((await d.perform({ type: "open", path: "C:\\Windows\\notepad.exe" })).ok, true);
 });
 
+test("keysHeld reports the worker down flag", async () => {
+  const state = {};
+  const d = new InputDriver({
+    spawnImpl: fakeSpawn((m) => (m.op === "keys" ? { down: true } : null), state),
+  });
+  const r = await d.keysHeld([0x11, 0x12, 0x20]);
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.down, true);
+  assert.ok(state.ops.some((o) => o.op === "keys"));
+  d.dispose();
+});
+
 (async () => {
   for (const { name, fn } of tests) {
     try {

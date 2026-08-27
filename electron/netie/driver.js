@@ -56,6 +56,7 @@ public class NetieInput {
   [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   [DllImport("user32.dll")] public static extern IntPtr SetProcessDpiAwarenessContext(IntPtr value);
+  [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int vKey);
   public const uint INPUT_MOUSE=0; public const uint INPUT_KEYBOARD=1;
   public const uint MOUSEEVENTF_LEFTDOWN=0x0002; public const uint MOUSEEVENTF_LEFTUP=0x0004;
   public const uint MOUSEEVENTF_RIGHTDOWN=0x0008; public const uint MOUSEEVENTF_RIGHTUP=0x0010;
@@ -123,6 +124,9 @@ public class NetieInput {
   public static bool FocusHwnd(long hwnd) {
     return SetForegroundWindow((IntPtr)hwnd);
   }
+  public static bool KeyDown(int vk) {
+    return (GetAsyncKeyState(vk) & 0x8000) != 0;
+  }
 }
 "@
 [NetieInput]::Init()
@@ -182,6 +186,13 @@ while (-not $done) {
           [void]$list.Add(@{ hwnd = [string][int64]$_.MainWindowHandle; title = [string]$_.MainWindowTitle; proc = [string]$_.ProcessName })
         }
         $r.windows = @($list)
+      }
+      'keys' {
+        $down = $true
+        foreach ($vk in @($m.vks)) {
+          if (-not [NetieInput]::KeyDown([int]$vk)) { $down = $false; break }
+        }
+        $r.down = [bool]$down
       }
       'exit'  { $done = $true }
       default { $r.ok = $false; $r.error = "unknown op: $($m.op)" }
@@ -473,6 +484,22 @@ class InputDriver {
         title: String(w.title || "").slice(0, 120),
         proc: String(w.proc || "").slice(0, 40),
       }));
+  }
+
+  /**
+   * True when every VK in the list is currently down (GetAsyncKeyState).
+   * Dry-run reports down:false so hold-to-talk falls back to toggle.
+   */
+  async keysHeld(vks) {
+    const list = (Array.isArray(vks) ? vks : [])
+      .map((n) => Number(n))
+      .filter((n) => Number.isInteger(n) && n > 0 && n < 256)
+      .slice(0, 8);
+    this.last = { op: "keys", vks: list };
+    if (this.dryRun) return { ok: true, down: false, dryRun: true, ...this.last };
+    if (!list.length) return { ok: true, down: false, ...this.last };
+    const r = await this._send({ op: "keys", vks: list }, { timeoutMs: 1500 });
+    return { ok: true, down: r.down === true, ...this.last };
   }
 
   async moveTo(x, y) {

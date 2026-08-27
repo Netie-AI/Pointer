@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Hold Ctrl+Alt+Space to talk, release to stop
+
+OpenWillow hold-to-talk: Electron still only sees the press, then a
+GetAsyncKeyState poll stops listen when Ctrl+Alt+Space lifts. Dry-run and
+Linux never report a physical hold, so those stay tap-to-toggle. Esc still
+cancels. No GPLv3 dump.
+
 ## 2026-08-27 - Live meeting suggest and more agent drive verbs
 
 `GET /api/tools` returns the MCP catalog over HTTP. `computer.act` plans
