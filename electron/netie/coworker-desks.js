@@ -207,10 +207,133 @@ const PCT_RE = /\b\d{1,3}(?:\.\d+)?\s*(?:%|percent)\b/gi;
 const MONTH_RE =
   /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\b/gi;
 const ISO_RE = /\b20\d{2}-\d{2}-\d{2}\b/g;
+const NAME_RE =
+  /\b(?:i(?:['’]?m|\s+am)|this\s+is|my\s+name\s+is)\s+([a-z][a-z'-]{1,20})(?:\s+([a-z][a-z'-]{1,20}))?\b/gi;
+const NAME_STOP = new Set([
+  "going",
+  "gonna",
+  "wanna",
+  "gotta",
+  "here",
+  "just",
+  "not",
+  "the",
+  "so",
+  "really",
+  "very",
+  "also",
+  "now",
+  "back",
+  "done",
+  "good",
+  "fine",
+  "ready",
+  "sorry",
+  "calling",
+  "trying",
+  "looking",
+  "working",
+  "thinking",
+  "saying",
+  "asking",
+  "doing",
+  "getting",
+  "coming",
+  "leaving",
+  "taking",
+  "making",
+  "using",
+  "being",
+  "having",
+  "wanting",
+  "hoping",
+  "planning",
+  "talking",
+  "listening",
+  "joining",
+  "sending",
+  "shipping",
+  "starting",
+  "waiting",
+  "there",
+  "that",
+  "this",
+  "what",
+  "who",
+  "how",
+  "when",
+  "why",
+  "where",
+  "yeah",
+  "yes",
+  "yep",
+  "no",
+  "ok",
+  "okay",
+  "well",
+  "like",
+  "actually",
+  "still",
+  "already",
+  "always",
+  "never",
+  "maybe",
+  "probably",
+  "it",
+  "he",
+  "she",
+  "we",
+  "they",
+  "you",
+  "me",
+  "us",
+  "my",
+  "hi",
+  "hey",
+  "hello",
+  "from",
+  "at",
+  "with",
+  "and",
+  "on",
+  "in",
+  "to",
+  "for",
+  "of",
+  "about",
+  "your",
+  "our",
+  "new",
+  "next",
+  "last",
+  "first",
+  "sure",
+]);
+
+function titleHeardName(word) {
+  return String(word || "")
+    .split("-")
+    .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1).toLowerCase() : part))
+    .join("-");
+}
+
+function addHeardNames(text, add) {
+  NAME_RE.lastIndex = 0;
+  let m;
+  while ((m = NAME_RE.exec(text))) {
+    const first = String(m[1] || "").toLowerCase();
+    const second = String(m[2] || "").toLowerCase();
+    if (!first || NAME_STOP.has(first)) continue;
+    const parts = [titleHeardName(first)];
+    if (second && !NAME_STOP.has(second)) parts.push(titleHeardName(second));
+    add(parts.join(" "));
+    if (m.index === NAME_RE.lastIndex) NAME_RE.lastIndex += 1;
+  }
+}
 
 /**
- * Dates and amounts heard on the ring. Cluely-shaped talk-track, local only.
- * Never invents. Never Acts.
+ * Dates, amounts, and spoken names from the ring. Cluely-shaped talk-track,
+ * local only. Never invents. Never Acts.
  */
 function heardFacts(utterances) {
   const out = [];
@@ -232,6 +355,7 @@ function heardFacts(utterances) {
         add(re === TIME_RE ? String(hit).replace(/\s+/g, "") : hit);
       }
     }
+    addHeardNames(t, add);
   }
   return out;
 }
@@ -248,6 +372,21 @@ function looksMoneyAsk(question) {
   return /\b(how much|price|cost|budget|amount|percent|%)\b/i.test(question || "");
 }
 
+function looksWhoAsk(question) {
+  return /\b(who(?:'s)?|whose|name)\b/i.test(question || "");
+}
+
+function isHeardName(token) {
+  const h = String(token || "").trim();
+  if (!h) return false;
+  if (/\$|%|percent|today|tomorrow|day|am|pm|:\d{2}|\d{4}-\d{2}-\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i.test(
+    h
+  )) {
+    return false;
+  }
+  return /^[A-Z][a-z]+(?:[-\s][A-Z][a-z]+)?$/.test(h);
+}
+
 /**
  * Cluely-shaped talk-track from the ring only. Never invents. Never Acts.
  */
@@ -260,6 +399,8 @@ function answerFromHeard(question, utterances) {
     )
   );
   const money = heard.filter((h) => /\$|%|percent/i.test(h));
+  const names = heard.filter(isHeardName);
+  if (looksWhoAsk(question) && names.length) return speakable(names.join(" / "));
   if (looksWhenAsk(question) && times.length) return speakable(times.join(" / "));
   if (looksMoneyAsk(question) && money.length) return speakable(money.join(" / "));
   return "";
@@ -288,6 +429,10 @@ function weaveHeard(line, utterances) {
 }
 
 function sayThisLine(utterances, lastOther) {
+  if (looksWhoAsk(lastOther)) {
+    const named = answerFromHeard(lastOther, utterances);
+    if (named) return named;
+  }
   const facts = cueFacts(utterances);
   if (facts.length) return weaveHeard(speakable(facts[facts.length - 1]), utterances);
   const fromHeard = answerFromHeard(lastOther, utterances);

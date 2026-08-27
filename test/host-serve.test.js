@@ -118,6 +118,7 @@ function readAsset(file) {
     assert.match(page, /id="artifact-body"/);
     assert.match(page, /id="session"/);
     assert.match(page, /id="session-files"/);
+    assert.match(page, /id="session-md"/);
   });
 
   await test("public fetch serves /today and style.css from host/", async () => {
@@ -130,6 +131,7 @@ function readAsset(file) {
     assert.match(homeText, /id="rooms"/);
     assert.match(homeText, /id="session"/);
     assert.match(homeText, /id="session-files"/);
+    assert.match(homeText, /id="session-md"/);
     assert.match(homeText, /id="brief"/);
     assert.doesNotMatch(homeText, /id="state"/);
     const html = await fetch(new Request("https://host.netie.ai/today"));
@@ -159,6 +161,10 @@ function readAsset(file) {
     assert.match(app, /\/api\/home/);
     assert.match(app, /paintRooms/);
     assert.match(app, /paintSession/);
+    const paint = app.slice(app.indexOf("function paintSession"), app.indexOf("const roomsPage"));
+    assert.match(paint, /session-md/);
+    assert.match(paint, /textContent/);
+    assert.doesNotMatch(paint, /innerHTML/);
     assert.match(app, /Live session stays on the laptop/);
     assert.match(app, /paintTeachMap/);
     assert.match(app, /teach-map/);

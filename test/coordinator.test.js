@@ -320,6 +320,7 @@ function test(name, fn) {
     assert.match(homePage.body, /id="rooms"/);
     assert.match(homePage.body, /id="session"/);
     assert.match(homePage.body, /id="session-files"/);
+    assert.match(homePage.body, /id="session-md"/);
     const miss = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/workspace?id=nope" }, (res) => {
         const chunks = [];

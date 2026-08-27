@@ -394,17 +394,24 @@ function paintSession(session, localFirst) {
   const cueEl = document.getElementById("session-cue");
   const plateEl = document.getElementById("session-plate");
   const filesEl = document.getElementById("session-files");
+  const mdEl = document.getElementById("session-md");
   const s = session || {};
   const files = Array.isArray(s.files) ? s.files : [];
   const asked = String(s.asked || "").trim();
   const heard = String(s.heard || "").trim();
   const cue = String(s.cue || "").trim();
   const plate = String(s.plate || "").trim();
+  const markdown = String(s.markdown || "").trim();
   const empty = Boolean(s.empty) || (!files.length && !asked && !heard && !cue && !plate);
   function setLine(node, prefix, text) {
     if (!node) return;
     node.hidden = !text;
     node.textContent = text ? prefix + text : "";
+  }
+  function setMarkdown(text) {
+    if (!mdEl) return;
+    mdEl.hidden = !text;
+    mdEl.textContent = text || "";
   }
   if (localFirst) {
     root.hidden = false;
@@ -412,6 +419,7 @@ function paintSession(session, localFirst) {
     setLine(heardEl, "", "");
     setLine(cueEl, "", "");
     setLine(plateEl, "", "");
+    setMarkdown("");
     if (filesEl) {
       filesEl.replaceChildren();
       const li = el("li", "muted");
@@ -425,6 +433,7 @@ function paintSession(session, localFirst) {
   setLine(heardEl, "Heard: ", heard);
   setLine(cueEl, "Say this: ", cue);
   setLine(plateEl, "Plate: ", plate);
+  setMarkdown(markdown);
   if (!filesEl) return;
   filesEl.replaceChildren();
   if (!files.length) {

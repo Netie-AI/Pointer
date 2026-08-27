@@ -1,3 +1,11 @@
+## 2026-08-27 - Session file on the page and Heard names
+
+Loopback `/` and `/workspace` paint the This session markdown as a
+readable file (`#session-md`, textContent only). Meeting Heard also
+lists spoken names (`I'm Alex` / `this is Sarah`) from the ring and
+never treats `I'm going Friday` as a name. Never Acts. P-05 and P-06
+stay parked.
+
 ## 2026-08-27 - session.live MCP and spawn security review
 
 Loopback MCP `session.live` returns the This session catalog as markdown

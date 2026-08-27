@@ -13,8 +13,9 @@
    the laptop. P-05 parked.
 2. **Coworker desks (DR-0005).** HUD Walk/Frame walks the framed region
    (Ask, never Act). Meeting spawn files recap, unsent mail, Word draft,
-   and a security review of those bodies. Loopback `session.live` reads
-   the This session catalog. Public catalog empty. P-06 parked.
+   and a security review of those bodies. Loopback home/workspace paint
+   the session file. Heard names come from the ring. Public catalog
+   empty. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

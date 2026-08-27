@@ -22,6 +22,7 @@ const {
   createBriefClock,
   sessionBundle,
   publicSessionSnapshot,
+  heardFacts,
   DESK_CHIPS,
   FRAME_TEACH_TEXT,
   shouldTeachFramedRegion,
@@ -95,6 +96,19 @@ test("session bundle is a catalog of filed desks and never execs", () => {
   assert.strictEqual(bundle.files[2].href, "/document");
   const sneaky = sessionBundle([{ id: "live-meeting", desk: "../etc", title: "nope", cue: "x" }]);
   assert.strictEqual(sneaky.files[0].href, "/workspace");
+});
+
+test("heard names come from the ring and never invent", () => {
+  const facts = heardFacts([
+    { speaker: "you", text: "I'm going Friday" },
+    { speaker: "them", text: "this is Sarah" },
+    { speaker: "you", text: "my name is Alex Chen" },
+    { speaker: "them", text: "I am here just to listen" },
+  ]);
+  assert.ok(facts.includes("Friday"));
+  assert.ok(facts.includes("Sarah"));
+  assert.ok(facts.includes("Alex Chen"));
+  assert.ok(!facts.some((f) => /going|here|just/i.test(f)));
 });
 
 test("pickDesk routes Clicky/Cluely/OpenWorker jobs to Pointer desks", () => {
@@ -191,6 +205,29 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.strictEqual(budgetAsk.act, false);
   assert.match(budgetAsk.cue, /\$40k/);
   assert.doesNotMatch(budgetAsk.cue, /no answer/);
+  const named = meetingAssist({
+    transcript: "mic: I'm Alex.\nsystem: What is your name?",
+    question: "what should I say",
+  });
+  assert.strictEqual(named.act, false);
+  assert.match(named.heard, /Alex/);
+  assert.match(named.cue, /Alex/);
+  assert.doesNotMatch(named.cue, /no answer/);
+  const introduced = meetingAssist({
+    transcript: "system: Hi this is Sarah Chen.\nsystem: Who am I speaking with?",
+    question: "what should I say",
+  });
+  assert.strictEqual(introduced.act, false);
+  assert.match(introduced.heard, /Sarah Chen/);
+  assert.match(introduced.cue, /Sarah Chen/);
+  const notAName = meetingAssist({
+    transcript: "mic: I'm going Friday.\nsystem: What is the launch date?",
+    question: "what should I say",
+  });
+  assert.strictEqual(notAName.act, false);
+  assert.match(notAName.heard, /Friday/);
+  assert.doesNotMatch(notAName.heard, /Going/);
+  assert.doesNotMatch(notAName.heard, /\bgoing\b/i);
   const next = meetingAssist({ transcript, question: "list next steps" });
   assert.strictEqual(next.kind, "next");
   assert.match(next.deliverable, /## Next steps/);
