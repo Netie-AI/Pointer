@@ -500,6 +500,25 @@
     };
   }
 
+  /**
+   * Cluely-class follow-up chips. Numbered or bulleted lines become Ask buttons.
+   * The text stays data: a click routes through doAsk (Cortex gated).
+   */
+  function parseFollowupItems(text) {
+    const items = [];
+    const seen = new Set();
+    for (const line of String(text || "").split(/\r?\n/)) {
+      const m = String(line).trim().match(/^(?:[-*]|\d+[.)])\s+(.{8,240})\s*$/);
+      if (!m) continue;
+      const q = m[1].replace(/^["']|["']$/g, "").trim();
+      if (!q || seen.has(q)) continue;
+      seen.add(q);
+      items.push(q);
+      if (items.length >= 5) break;
+    }
+    return items;
+  }
+
   return {
     AUTO_SEND_MS,
     INSIGHT_WINDOW_MS,
@@ -512,5 +531,6 @@
     createInsightFeed,
     summarizeSpeech,
     shouldRearmAfterAct,
+    parseFollowupItems,
   };
 });

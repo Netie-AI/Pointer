@@ -313,11 +313,33 @@ function applyModeUi(mode, notesPath) {
   if (appMode !== "meeting") applySuggest("");
 }
 
-function applySuggest(text) {
+function applySuggest(text, opts = {}) {
   const strip = $("suggest-strip");
   const body = $("suggest-text");
   if (!strip || !body) return;
   const t = String(text || "").trim();
+  const kicker = strip.querySelector(".suggest-kicker");
+  const parse = window.NetieHudLive && window.NetieHudLive.parseFollowupItems;
+  const items = opts.clickable === true && typeof parse === "function" ? parse(t) : [];
+  body.replaceChildren();
+  if (items.length) {
+    if (kicker) kicker.textContent = "Ask";
+    for (const q of items) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "followup-chip";
+      btn.textContent = q;
+      btn.addEventListener("click", () => {
+        askInput.value = q;
+        setChatOpen(true);
+        doAsk({ kind: "say" });
+      });
+      body.appendChild(btn);
+    }
+    strip.hidden = appMode !== "meeting";
+    return;
+  }
+  if (kicker) kicker.textContent = "Say";
   body.textContent = t;
   strip.hidden = !t || appMode !== "meeting";
 }
@@ -914,6 +936,7 @@ async function doAsk(opts = {}) {
   answerMeta.textContent = result.degraded ? "Answered (degraded)" : "AI response";
   appendMessage("assistant", result.ok ? result.reply || "" : result.error || "Failed");
   answerBody.textContent = "";
+  if (kind === "followups" && result && result.ok) applySuggest(result.reply || "", { clickable: true });
   if (window.NetieSound) (result.ok ? NetieSound.ok : NetieSound.warn)();
 }
 

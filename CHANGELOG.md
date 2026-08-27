@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Clickable meeting follow-ups
+
+Cluely-class Follow-ups: numbered questions become Ask chips on the
+Say strip. A click sends the question through doAsk (Cortex gated).
+Chip labels are text, not HTML. GitHub CI on this account is still a
+spending-limit cutoff (0 steps), not a product fail. No GPLv3 dump.
+No third-party MCP.
+
 ## 2026-08-27 - BYOK LLM URL in settings
 
 OpenWillow-class HTTP chat: HUD `llmUrl` / `llmModel` feed the OpenVault

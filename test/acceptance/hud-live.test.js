@@ -447,6 +447,28 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/id="btn-copy-notes"/.test(html), "Copy notes pill missing from HUD");
     }),
 
+    T("Cluely follow-ups become clickable Ask chips, not raw HTML", () => {
+      const items = live.parseFollowupItems(
+        "1. What is the timeline for Friday?\n2. Who owns QA this week?\nNot a question\n- Can we ship without Sam?"
+      );
+      assert.deepStrictEqual(items, [
+        "What is the timeline for Friday?",
+        "Who owns QA this week?",
+        "Can we ship without Sam?",
+      ]);
+      assert.deepStrictEqual(live.parseFollowupItems("just a say line"), []);
+      const js = read("electron/hud.js");
+      assert.ok(/followup-chip/.test(js), "Follow-ups must render as chips");
+      assert.ok(/btn\.textContent = q/.test(js), "chip label must be text, not HTML");
+      assert.ok(/doAsk\(\{\s*kind:\s*"say"/.test(js), "a chip click must Ask through Cortex");
+      assert.ok(
+        /applySuggest\(result\.reply[^,]+,\s*\{\s*clickable:\s*true/.test(js),
+        "Follow-ups reply must become chips"
+      );
+      const css = read("electron/hud.css");
+      assert.ok(/\.followup-chip/.test(css), "chips need a classy type rule");
+    }),
+
     // ── #23 · attachments reach the payload ─────────────────────────────────
     T("#23 the renderer sends attachment content, not just a chip", () => {
       const js = read("electron/hud.js");
