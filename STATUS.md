@@ -11,10 +11,10 @@
    `/teach` `/security` `/document` `/inbox` `/lanes` `/skills`
    `/workspace`). Public Worker is the same catalog; `/mcp` stays on
    the laptop. P-05 parked.
-2. **Coworker desks (DR-0005).** Meeting recap labels You/Them and tags
-   weekdays. Teach overlay holds; HUD Back/Got it Ask the next step.
-   Cue is `N of M`. Public catalog empty. P-06 parked. GitHub Actions
-   blocked on org billing.
+2. **Coworker desks (DR-0005).** Teach walks the primary CTA first. Meeting
+   say-this is speakable from your answer. HUD Back/Got it Ask. Recap
+   tags You/Them with a weekday. Public catalog empty. P-06 parked.
+   GitHub Actions blocked on org billing.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

@@ -96,8 +96,10 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.match(assist.deliverable, /will not send/i);
   assert.match(assist.deliverable, /Suggested reply/);
   assert.ok(assist.cue);
-  assert.match(assist.cue, /decided to ship/);
-  assert.match(recap.cue, /decided to ship/);
+  assert.match(assist.cue, /We'll ship Friday/);
+  assert.doesNotMatch(assist.cue, /decided to/);
+  assert.match(recap.cue, /We'll ship Friday/);
+  assert.doesNotMatch(recap.cue, /decided to/);
   const unanswered = meetingAssist({
     transcript: "system: What is the launch date?",
     question: "what should I say",
@@ -255,14 +257,14 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(walk.via, "uia");
   assert.strictEqual(walk.id, "live-teach");
   assert.strictEqual(walk.cueKind, "point");
-  assert.match(walk.cue, /^1 of 2 /);
+  assert.match(walk.cue, /^1 of 2 Save/);
   assert.match(walk.deliverable, /current step only/i);
-  assert.match(walk.deliverable, /\[POINT:5,2:\d+ Cancel\]/);
-  assert.match(walk.deliverable, /\[BOX:0,0,10,4:\d+ Cancel\]/);
+  assert.match(walk.deliverable, /\[POINT:25,42:\d+ Save\]/);
+  assert.match(walk.deliverable, /\[BOX:20,40,10,4:\d+ Save\]/);
   assert.match(walk.deliverable, /<- now/);
   assert.match(walk.deliverable, /will not click/i);
-  assert.doesNotMatch(walk.deliverable, /\[POINT:.*Save/);
-  assert.doesNotMatch(walk.deliverable, /\[BOX:.*Save/);
+  assert.doesNotMatch(walk.deliverable, /\[POINT:.*Cancel/);
+  assert.doesNotMatch(walk.deliverable, /\[BOX:.*Cancel/);
   assert.doesNotMatch(walk.deliverable, /\[POINT:.*Ghost/);
   assert.doesNotMatch(walk.deliverable, /\[BOX:.*Ghost/);
   assert.doesNotMatch(walk.deliverable, /\[POINT:.*Dead/);
@@ -285,9 +287,9 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   });
   assert.strictEqual(two.act, false);
   assert.strictEqual(two.step, 1);
-  assert.match(two.cue, /^2 of 2 Save$/);
-  assert.match(two.deliverable, /\[POINT:25,42:\d+ Save\]/);
-  assert.doesNotMatch(two.deliverable, /\[POINT:.*Cancel/);
+  assert.match(two.cue, /^2 of 2 Cancel$/);
+  assert.match(two.deliverable, /\[POINT:5,2:\d+ Cancel\]/);
+  assert.doesNotMatch(two.deliverable, /\[POINT:.*Save/);
   const { nextTeachStep, teachAdvance } = require("../electron/netie/coworker-desks");
   assert.strictEqual(teachAdvance("got it"), 1);
   assert.strictEqual(nextTeachStep("walk me through this on my screen", 3, true), 0);
@@ -591,9 +593,9 @@ async function asyncTest(name, fn) {
     await Promise.resolve();
     await Promise.resolve();
     assert.strictEqual(hits.length, 2);
-    assert.match(hits[1].cue, /^2 of 2 Save$/);
-    assert.match(hits[1].deliverable, /\[POINT:25,42:\d+ Save\]/);
-    assert.doesNotMatch(hits[1].deliverable, /\[POINT:.*Cancel/);
+    assert.match(hits[1].cue, /^2 of 2 Cancel$/);
+    assert.match(hits[1].deliverable, /\[POINT:5,2:\d+ Cancel\]/);
+    assert.doesNotMatch(hits[1].deliverable, /\[POINT:.*Save/);
     pump.reset();
     pump.start({
       text: "walk me through this on my screen",

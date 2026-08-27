@@ -295,6 +295,21 @@ function interactivity(candidate) {
   return 2;
 }
 
+/** Lower is earlier in a teach walk. Save before Cancel. Never clicks. */
+function ctaRank(name) {
+  const n = String(name || "")
+    .replace(/&/g, "")
+    .trim()
+    .toLowerCase();
+  if (
+    /^(save|ok|okay|yes|next|continue|submit|send|done|apply|create|open|start|install|connect)$/.test(n)
+  ) {
+    return 0;
+  }
+  if (/^(cancel|close|no|back|skip|dismiss|not now|later)$/.test(n)) return 2;
+  return 1;
+}
+
 /**
  * Measured POINT tokens from a control tree. Never invents coordinates.
  * Missing rect, missing screen, off-screen, or disabled => skipped.
@@ -341,6 +356,8 @@ function pointControls(controls, screen, opts = {}) {
   const ranked = list.slice().sort((a, b) => {
     const d = interactivity(a) - interactivity(b);
     if (d) return d;
+    const c = ctaRank(a && a.name) - ctaRank(b && b.name);
+    if (c) return c;
     return area(a) - area(b);
   });
   for (const candidate of ranked) {
@@ -377,4 +394,5 @@ module.exports = {
   listControls,
   pointControls,
   formatPointToken,
+  ctaRank,
 };

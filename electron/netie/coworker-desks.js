@@ -200,13 +200,25 @@ function spokenCue(kind, utterances, lastOther) {
   if (!facts.length) {
     return `Heard "${String(lastOther).slice(0, 100)}" - no answer in the transcript yet.`;
   }
-  return String(facts[facts.length - 1]).slice(0, 240);
+  return speakable(facts[facts.length - 1]);
+}
+
+function speakable(fact) {
+  let s = String(fact || "").trim();
+  if (!s) return s;
+  s = s.replace(/^(yes|yeah|yep|ok|okay)[,.]?\s+/i, "");
+  s = s.replace(/\bwe decided to\b/gi, "We'll");
+  s = s.replace(/\bi will\b/gi, "I'll");
+  s = s.replace(/\bwe will\b/gi, "We'll");
+  s = s.replace(/\s+/g, " ").trim();
+  if (s && !/[.!?]$/.test(s)) s += ".";
+  return s.slice(0, 240);
 }
 function groundedReply(utterances, lastOther) {
   if (!lastOther) return "No question landed yet. Keep listening.";
   const facts = cueFacts(utterances);
   const reply = facts.length
-    ? `On that: ${facts[facts.length - 1]}. I can confirm that from this transcript. I will not send or click anything.`
+    ? `On that: ${speakable(facts[facts.length - 1])} I can confirm that from this transcript. I will not send or click anything.`
     : `I heard "${lastOther}" on this machine. I do not have an answer in the transcript yet.`;
   return [
     `They asked: "${lastOther}"`,

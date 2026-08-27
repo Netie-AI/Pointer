@@ -4,18 +4,19 @@ One UI: center HUD chat with retrieve roulette and a draggable audio dock.
 
 Coworker desks (DR-0005): Teach points at measured on-screen controls
 (UIA rects -> numbered `[POINT:x,y:n label]` and `[BOX:left,top,w,h:n label]`,
-never invented; overlay shows the current step only; say `got it` to
-advance), Meeting recaps an armed transcript (You/Them lines, commitments,
-decisions, and a say-this cue from *your* answer while a question is still
-open), Today is the standing session brief, Document can reuse the live
-meeting recap as a Word draft, Security reviews injected files and never
-self-approves. Teach overlay holds the current control until `got it`;
-fixed HUD chrome has Back / Got it (Ask, never Act). Teach cue is
-`N of M Label`. Recap tags a weekday when heard. Teach Next cue, meeting
-say-this, and security Review live in the fixed insight panel. HUD desk chips Ask, never Act. Home `/api/home` lists live
-rooms for every desk. Loopback `/teach` draws a read-only box map from
-measured markers. Inbox never sends (P-05). "Spawn a coworker" queues a
-background brief and never Acts. Act stays on the laptop.
+never invented; overlay shows the current step only; primary CTA first;
+say `got it` to advance), Meeting recaps an armed transcript (You/Them
+lines, weekday tags, and a speakable say-this from your answer), Today is
+the standing session brief, Document can reuse the live meeting recap as a
+Word draft, Security reviews injected files and never self-approves.
+Teach overlay holds the current control until `got it`. Fixed HUD chrome
+has Back / Got it (Ask, never Act). Teach cue is `N of M Label`. Recap
+tags a weekday when heard. Teach Next cue, meeting say-this, and
+security Review live in the fixed insight panel. HUD desk chips Ask,
+never Act. Home `/api/home` lists live rooms for every desk. Loopback
+`/teach` draws a read-only box map from measured markers. Inbox never
+sends (P-05). "Spawn a coworker" queues a background brief and never
+Acts. Act stays on the laptop.
 
 | Action | Result |
 |---|---|

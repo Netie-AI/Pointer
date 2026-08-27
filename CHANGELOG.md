@@ -1,3 +1,9 @@
+## 2026-08-27 - Primary teach walk and speakable say-this
+
+Teach walks the primary CTA first (Save before Cancel). Meeting say-this is a
+speakable line (`We'll ship Friday`) from your answer, never sent. Never Acts.
+P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Teach Got it chrome and due-tagged recap
 
 Fixed insight chrome shows Back / Got it during a teach walk (Ask, never Act).
