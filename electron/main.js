@@ -113,6 +113,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
+const { pickDesk, meetingAssist } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -233,6 +234,50 @@ let listenMic = false;
 let listenSystem = false;
 let hudPaused = false;
 let appMode = "agent"; // agent | transcribe | meeting
+const LIVE_HEARD_MAX = 40;
+const liveHeard = [];
+function rememberHeard(source, text) {
+  const t = String(text || "").trim();
+  if (!t) return;
+  liveHeard.push({ t: Date.now(), source: source === "system" ? "system" : "mic", text: t.slice(0, 500) });
+  if (liveHeard.length > LIVE_HEARD_MAX) liveHeard.splice(0, liveHeard.length - LIVE_HEARD_MAX);
+}
+function heardTranscript(extra) {
+  const extraText = String(extra || "").trim();
+  const ring = liveHeard.map((row) => `${row.source}: ${row.text}`).join("\n");
+  return extraText && extraText !== ring ? `${ring}\n${extraText}`.trim() : ring;
+}
+function publishBrief(assist) {
+  if (!assist || !assist.ok || !assist.deliverable) return null;
+  try {
+    return liveCoordinator.workspace.put({
+      kind: assist.kind || "brief",
+      title: assist.title || assist.desk || "brief",
+      desk: assist.desk || "teach",
+      body: assist.deliverable,
+    });
+  } catch {
+    return null;
+  }
+}
+function localMeetingReply(message, extraTranscript) {
+  const desk = pickDesk(message, { mode: appMode });
+  const wantsMeeting =
+    desk.id === "meeting" || appMode === "meeting" || appMode === "transcribe";
+  if (!wantsMeeting) return null;
+  const assist = meetingAssist({
+    transcript: heardTranscript(extraTranscript),
+    question: message,
+  });
+  if (!assist.ok) {
+    const q = String(message || "").toLowerCase();
+    if (/\b(recap|what should i say|assist|next steps?|action item)\b/.test(q)) return assist;
+    return null;
+  }
+  if (!assist.skipLlm) return null;
+  publishBrief(assist);
+  return assist;
+}
 let sttChild = null;
 let canvasWindow = null;
 let cursorTrackTimer = null;
@@ -1241,7 +1286,7 @@ function plannerContext(instruction = "") {
   })();
   let ground = "";
   try {
-    ground = plannerGrounding(instruction);
+    ground = plannerGrounding(instruction, { mode: appMode });
   } catch {
     ground = "";
   }
@@ -2152,6 +2197,13 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
 
   if (intent === "ask" || intent === "code") {
     try {
+      const local = localMeetingReply(message, payload && payload.transcript);
+      if (local && local.ok && local.skipLlm) {
+        pushTurn("user", message);
+        pushTurn("assistant", local.deliverable);
+        sendHud({ type: "answer", meta: `Meeting · ${local.kind}`, text: local.deliverable });
+        return { ok: true, mode: "ask", intent, reply: local.deliverable, desk: "meeting", local: true, act: false };
+      }
       const r = await askBuddy({
         message:
           intent === "code"
@@ -2531,6 +2583,15 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
   // Attached files become part of the question, fenced as data (#23). Before
   // this the renderer showed a chip and sent nothing at all.
   const asked = `${message}${buildAttachmentBlock(payload && payload.attachments)}`;
+  const local = localMeetingReply(asked, payload && payload.transcript);
+  if (local && local.ok && local.skipLlm) {
+    sendHud({ type: "answer", meta: `Meeting · ${local.kind}`, text: local.deliverable });
+    return { ok: true, reply: local.deliverable, desk: "meeting", local: true, act: false };
+  }
+  if (local && !local.ok) {
+    sendHud({ type: "answer", meta: "Meeting", text: local.reason });
+    return { ok: false, error: local.reason, desk: "meeting", local: true, act: false };
+  }
   const r = await askBuddy({ message: asked, dataUrl });
   // P3-POINT-OVERLAY — "click here" is worth more pointed at than described.
   // The tokens are stripped from the prose either way, so a model that emits
@@ -3153,6 +3214,7 @@ function handleUtterance(source, utt) {
             text: `Switched to ${getMode(appMode).label}. (Heard: “${res.text.slice(0, 80)}”)`,
           });
         } else {
+          rememberHeard(source, res.text);
           // System audio is always written to the markdown transcript, whatever
           // the mode: if you armed loopback you are recording something you want
           // to keep. Mic still follows the mode's autoNotes setting.
@@ -3721,7 +3783,7 @@ app.whenReady().then(() => {
       .then((r) => {
         const addr = r && r.address;
         console.log(
-          `Coordinator on http://127.0.0.1:${addr && addr.port ? addr.port : 18010} (/ /today /lanes /skills)`
+          `Coordinator on http://127.0.0.1:${addr && addr.port ? addr.port : 18010} (/ /today /lanes /skills /workspace)`
         );
       })
       .catch((err) => console.error("coordinator listen:", err.message || err));

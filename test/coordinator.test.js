@@ -44,6 +44,7 @@ function test(name, fn) {
     assert.strictEqual(c.pageFor("/today/"), "today");
     assert.strictEqual(c.pageFor("/lanes"), "lanes");
     assert.strictEqual(c.pageFor("/skills"), "skills");
+    assert.strictEqual(c.pageFor("/workspace"), "workspace");
     assert.strictEqual(c.pageFor("/secret"), null);
   });
 
@@ -72,6 +73,50 @@ function test(name, fn) {
       }).on("error", reject);
     });
     assert.ok(st.pages["/today"]);
+    await c.close();
+  });
+
+  await test("loopback workspace put is live and exec is refused", async () => {
+    const c = createCoordinator({ clock: () => 3 });
+    const on = await c.listen({ host: "127.0.0.1", port: 0 });
+    const port = on.address.port;
+    const put = await new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: "127.0.0.1", port, path: "/api/workspace", method: "POST" },
+        (res) => {
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+        }
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ title: "Standup", body: "# Meeting brief\n- ship it", desk: "meeting" }));
+    });
+    assert.strictEqual(put.status, 200);
+    assert.strictEqual(put.body.ok, true);
+    const listed = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/workspace" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      }).on("error", reject);
+    });
+    assert.strictEqual(listed.exec, false);
+    assert.strictEqual(listed.artifacts.length, 1);
+    const exec = await new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: "127.0.0.1", port, path: "/api/workspace/exec", method: "POST" },
+        (res) => {
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+        }
+      );
+      req.on("error", reject);
+      req.end("{}");
+    });
+    assert.strictEqual(exec.status, 404);
+    assert.strictEqual(exec.body.ok, false);
     await c.close();
   });
 

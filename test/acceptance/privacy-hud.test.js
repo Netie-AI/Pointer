@@ -119,6 +119,16 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       );
     }),
 
+    T("meeting Do it cannot reach Act - it asks instead", async () => {
+      const js = read("electron/hud.js");
+      const act = js.slice(js.indexOf("async function doAct"), js.indexOf("async function doAct") + 900);
+      assert.ok(/appMode !== "agent"/.test(act), "non-agent modes must not call hud:act");
+      assert.ok(/doAsk\(\)/.test(act), "meeting Do it must assist, not click");
+      assert.ok(/MEETING_SUGGESTS/.test(js), "meeting mode needs Recap/Assist/Next");
+      assert.ok(/Recap this meeting/.test(js));
+      assert.ok(/What should I say\?/.test(js));
+    }),
+
     T("every enquire input is labelled and reachable", async () => {
       // Accessibility is not a rung on any laziness ladder.
       const js = read("electron/hud.js");

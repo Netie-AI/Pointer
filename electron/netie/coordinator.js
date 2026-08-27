@@ -11,6 +11,8 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
+const { createWorkspace } = require("./workspace");
+const { catalog } = require("./coworker-desks");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
 
@@ -27,6 +29,7 @@ function createCoordinator(opts = {}) {
   const today = [];
   let lastSearch = [];
   let server = null;
+  const workspace = opts.workspace || createWorkspace({ clock });
 
   function snapshot() {
     return {
@@ -37,6 +40,9 @@ function createCoordinator(opts = {}) {
       drafts: drafts.slice(-20),
       lastSearch: lastSearch.slice(),
       today: today.slice(-40),
+      desks: catalog(),
+      workspace: workspace.snapshot(),
+      exec: false,
       bind: server ? server.address() : null,
     };
   }
@@ -111,6 +117,35 @@ function createCoordinator(opts = {}) {
     if (req.method === "GET" && url.pathname === "/api/state") {
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(snapshot()));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/workspace") {
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(workspace.snapshot()));
+      return;
+    }
+    if (req.method === "POST" && (url.pathname === "/api/workspace/exec" || url.pathname === "/exec")) {
+      const refused = workspace.exec();
+      res.writeHead(404, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(refused));
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/workspace") {
+      const chunks = [];
+      req.on("data", (c) => chunks.push(c));
+      req.on("end", () => {
+        let body = {};
+        try {
+          body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+        } catch {
+          res.writeHead(400, { "content-type": "application/json" });
+          res.end(JSON.stringify({ ok: false, reason: "parse error" }));
+          return;
+        }
+        const out = workspace.put(body);
+        res.writeHead(out.ok ? 200 : 400, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(out));
+      });
       return;
     }
     if (req.method === "POST" && url.pathname === "/mcp") {
@@ -198,6 +233,7 @@ function createCoordinator(opts = {}) {
     release,
     rememberSearch,
     noteDraft,
+    workspace,
     listen,
     close,
   };

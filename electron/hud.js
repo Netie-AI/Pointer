@@ -67,6 +67,37 @@ const drag = createDragController();
 const liveLine = createLiveLine();
 const liveFeed = createLiveTranscript({ maxLines: 5 });
 
+const AGENT_SUGGESTS = [
+  { q: "Summarize what I am looking at", ico: "✦", label: "Summarize screen" },
+  { q: "What should I click next?", ico: "›", label: "What next?" },
+  { q: "Suggest follow-up questions", ico: "?", label: "Suggest follow-ups" },
+  { confirm: "Type this into Notes?", ico: "N", label: "Type in Notes?" },
+];
+const MEETING_SUGGESTS = [
+  { q: "Recap this meeting", ico: "✦", label: "Recap" },
+  { q: "What should I say?", ico: "›", label: "Assist" },
+  { q: "List next steps", ico: "?", label: "Next steps" },
+];
+
+function paintSuggests(mode) {
+  const root = $("insight-actions");
+  if (!root) return;
+  const rows = mode === "meeting" || mode === "transcribe" ? MEETING_SUGGESTS : AGENT_SUGGESTS;
+  root.replaceChildren();
+  for (const row of rows) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    if (row.confirm) btn.dataset.confirm = row.confirm;
+    else btn.dataset.q = row.q;
+    const ico = document.createElement("span");
+    ico.className = "q-ico";
+    ico.textContent = row.ico;
+    btn.appendChild(ico);
+    btn.appendChild(document.createTextNode(" " + row.label));
+    root.appendChild(btn);
+  }
+}
+
 /** Mirrors the main-process settings the renderer needs each frame. */
 const hudSettings = { autoSend: false, followCursor: true, liveLines: 5 };
 
@@ -303,6 +334,7 @@ function applyModeUi(mode, notesPath) {
   autoSend.cancel("mode-change");
   hudRoot.classList.remove("mode-agent", "mode-general", "mode-transcribe", "mode-meeting");
   hudRoot.classList.add(`mode-${appMode}`);
+  paintSuggests(appMode);
   document.querySelectorAll("#mode-pill button").forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === appMode);
   });
@@ -846,7 +878,8 @@ async function doAsk() {
   answerBody.textContent = "…";
   if (window.NetieSound) NetieSound.think();
   const sent = attachmentPayload();
-  const result = await invoke("hud:ask", { message, attachments: sent });
+  const transcript = typeof liveFeed.render === "function" ? liveFeed.render() : "";
+  const result = await invoke("hud:ask", { message, attachments: sent, transcript, mode: appMode });
   if (sent.length) clearAttachments();
   answerMeta.textContent = result.degraded ? "Answered (degraded)" : "AI response";
   appendMessage("assistant", result.ok ? result.reply || "" : result.error || "Failed");
@@ -855,10 +888,10 @@ async function doAsk() {
 }
 
 async function doAct() {
-  // General is a companion, not an agent. Hiding the button is cosmetics; this
-  // is the line that means a stray "do it" cannot move the mouse.
-  if (appMode === "general") {
-    answerMeta.textContent = "General mode — answering, not acting";
+  // Listening modes are coworkers, not agents. Hiding the button is cosmetics;
+  // this is the line that means a stray "do it" cannot move the mouse.
+  if (appMode !== "agent") {
+    answerMeta.textContent = `${appMode} mode — answering, not acting`;
     await doAsk();
     return;
   }

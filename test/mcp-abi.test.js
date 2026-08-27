@@ -42,6 +42,8 @@ function test(name, fn) {
     const r = await mcp.handle({ jsonrpc: "2.0", id: 2, method: "tools.list" });
     assert.deepStrictEqual(r.result.tools, TOOLS.slice());
     assert.ok(!r.result.tools.includes("shell.exec"));
+    assert.ok(r.result.tools.includes("workspace.exec"));
+    assert.ok(r.result.tools.includes("desks.list"));
   });
 
   await test("lanes.claim goes through MCP and conflicts", async () => {
@@ -84,6 +86,39 @@ function test(name, fn) {
     assert.strictEqual(found.draft.tier, "hint");
     const hint = craftHint("open the warp drive");
     assert.deepStrictEqual(hint.actions, []);
+  });
+
+  await test("desks.pick and workspace.exec stay first-party and exec-refused", async () => {
+    const coord = createCoordinator();
+    const mcp = createMcpAbi();
+    const desks = await mcp.handle({ jsonrpc: "2.0", id: 6, method: "desks.list" });
+    assert.ok(desks.result.desks.some((d) => d.id === "meeting"));
+    const pick = await mcp.handle(
+      { jsonrpc: "2.0", id: 7, method: "desks.pick", params: { goal: "what should I say" } }
+    );
+    assert.strictEqual(pick.result.desk.id, "meeting");
+    const exec = await mcp.handle(
+      { jsonrpc: "2.0", id: 8, method: "workspace.exec", params: { backend: "container" } },
+      { coordinator: coord }
+    );
+    assert.ok(exec.error);
+    assert.match(exec.error.message, /no runtime/);
+    const put = await mcp.handle(
+      {
+        jsonrpc: "2.0",
+        id: 9,
+        method: "workspace.put",
+        params: { title: "brief", body: "# Meeting brief\n- done", desk: "meeting" },
+      },
+      { coordinator: coord }
+    );
+    assert.strictEqual(put.result.ok, true);
+    const listed = await mcp.handle(
+      { jsonrpc: "2.0", id: 10, method: "workspace.list" },
+      { coordinator: coord }
+    );
+    assert.strictEqual(listed.result.exec, false);
+    assert.strictEqual(listed.result.artifacts.length, 1);
   });
 
   await test("local recipe search still hits fill right", async () => {

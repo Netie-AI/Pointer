@@ -2,6 +2,10 @@
 
 One UI: center HUD chat with retrieve roulette and a draggable audio dock.
 
+Coworker desks (DR-0005): Teach points at the screen, Meeting recaps an armed
+transcript, Document writes Word, Security never self-approves. Online
+`/workspace` is an artifact catalog. Act stays on the laptop.
+
 | Action | Result |
 |---|---|
 | `npm start` | Tray-first launch (HUD stays hidden until needed) |

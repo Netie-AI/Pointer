@@ -5,3 +5,8 @@ Netie Clicks includes ideas and architecture patterns from Clicky:
 Copyright (c) 2026 Farza — MIT License (see vendor copy under OpenVault/vendor/clicky/LICENSE).
 
 Netie Clicks Windows Electron implementation is separate code.
+
+Pointer coworker desks and the host.netie.ai /workspace catalog are original
+Netie code (DR-0005). OpenWorker and Cloudflare Computer were studied as
+product references. Their source is not in this repo.
+

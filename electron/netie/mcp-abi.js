@@ -1,8 +1,11 @@
 "use strict";
 /**
- * First-party MCP-shaped JSON-RPC for the coordinator (DR-0004).
+ * First-party MCP-shaped JSON-RPC for the coordinator (DR-0004 / DR-0005).
  * Unknown methods refuse. Third-party MCP servers are still P-05 / P16.
+ * workspace.exec is a named refusal - it is not a runtime.
  */
+
+const { catalog, pickDesk } = require("./coworker-desks");
 
 const TOOLS = Object.freeze([
   "tools.list",
@@ -11,6 +14,11 @@ const TOOLS = Object.freeze([
   "lanes.claim",
   "lanes.release",
   "lanes.list",
+  "desks.list",
+  "desks.pick",
+  "workspace.list",
+  "workspace.put",
+  "workspace.exec",
 ]);
 
 function rpcResult(id, result) {
@@ -33,6 +41,7 @@ function createMcpAbi(opts = {}) {
       return rpcError(id, -32601, `unknown tool: ${method || "(empty)"}`);
     }
     const coord = ctx.coordinator;
+    const workspace = (coord && coord.workspace) || opts.workspace;
     try {
       if (method === "tools.list") return rpcResult(id, { tools: TOOLS.slice() });
       if (method === "lanes.list") {
@@ -61,6 +70,25 @@ function createMcpAbi(opts = {}) {
         }
         if (coord && draft && draft.ok !== false) coord.noteDraft(draft);
         return rpcResult(id, { ...draft, tier: "hint", actions: [] });
+      }
+      if (method === "desks.list") return rpcResult(id, { desks: catalog() });
+      if (method === "desks.pick") {
+        const desk = pickDesk(params.goal || params.text || "", { mode: params.mode });
+        return rpcResult(id, { desk: { id: desk.id, label: desk.label, act: desk.act } });
+      }
+      if (method === "workspace.list") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        return rpcResult(id, { artifacts: workspace.list(), exec: false });
+      }
+      if (method === "workspace.put") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        return rpcResult(id, workspace.put(params));
+      }
+      if (method === "workspace.exec") {
+        const refused = workspace
+          ? workspace.exec(params)
+          : { ok: false, exec: false, reason: "workspace has no runtime; Act stays on the laptop (P-06)" };
+        return rpcError(id, -32600, refused.reason);
       }
       return rpcError(id, -32601, `unknown tool: ${method}`);
     } catch (err) {

@@ -2,7 +2,24 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Coworker desks and online workspace catalog (DR-0005)
+
+Founder goal: Pointer as the coworker that replaces Clicky and Cluely,
+stronger than OpenWorker, usable online like a Computer workspace.
+Routed as a PRD amendment. Original code only - those repos were
+studied, not vendored, and no license was stripped.
+
+Four first-party desks (`teach`, `meeting`, `document`, `security`) pick
+a job and a finished deliverable. Meeting Recap / Assist / Next run
+from the armed transcript ring and never Act. Listening modes route
+Do it to Ask. Loopback workspace stores briefs; public
+`host.netie.ai/workspace` is a catalog with `exec: false`. First-party
+MCP adds `desks.*` and `workspace.*`; `workspace.exec` is a named
+refusal. P-05 and P-06 stay parked. Fail-closed Act and fixed HUD
+chrome are unchanged.
+
 ## 2026-08-26 - Public host.netie.ai Worker shell (DR-0004)
+
 
 Same pages as the loopback coordinator (`/` `/today` `/lanes` `/skills`).
 The Cloudflare Worker (`workers/netie-host.js`, `wrangler.jsonc`) serves

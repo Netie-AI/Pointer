@@ -55,6 +55,7 @@ function readAsset(file) {
     assert.strictEqual(body.lanes.cortex, null);
     assert.deepStrictEqual(body.drafts, []);
     assert.ok(/laptop/.test(body.reason));
+    assert.strictEqual(body.exec, false);
     const snap = publicSnapshot();
     snap.lanes["pointer-act"] = { owner: "should-not-leak" };
     const again = JSON.parse(handlePublicRequest({ method: "GET", pathname: "/api/state" }).body);
@@ -67,6 +68,24 @@ function readAsset(file) {
     assert.match(a.body, /127\.0\.0\.1/);
     const b = handlePublicRequest({ method: "GET", pathname: "/mcp/tools" });
     assert.strictEqual(b.status, 404);
+  });
+
+  await test("public workspace is a catalog with no runtime", async () => {
+    const routed = handlePublicRequest({ method: "GET", pathname: "/api/workspace" });
+    assert.strictEqual(routed.status, 200);
+    const body = JSON.parse(routed.body);
+    assert.strictEqual(body.localFirst, true);
+    assert.strictEqual(body.exec, false);
+    assert.deepStrictEqual(body.artifacts, []);
+    assert.ok(body.desks.some((d) => d.id === "teach"));
+    const exec = handlePublicRequest({ method: "POST", pathname: "/api/workspace/exec" });
+    assert.strictEqual(exec.status, 404);
+    const write = handlePublicRequest({ method: "POST", pathname: "/api/workspace" });
+    assert.strictEqual(write.status, 404);
+    const fetch = createPublicFetch(readAsset);
+    const html = await fetch(new Request("https://host.netie.ai/workspace"));
+    assert.strictEqual(html.status, 200);
+    assert.match(await html.text(), /no runtime/i);
   });
 
   await test("public fetch serves /today and style.css from host/", async () => {

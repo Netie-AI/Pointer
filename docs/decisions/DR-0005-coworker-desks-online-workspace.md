@@ -1,0 +1,65 @@
+---
+status: proposed
+date: 2026-08-27
+decision-makers: founder
+---
+
+# DR-0005 - Coworker desks and an online artifact workspace
+
+## Context and Problem Statement
+
+Founder request (2026-08-27): Pointer must be the coworker that replaces
+Clicky (heyclicky.com) and Cluely, stronger than OpenWorker, and usable
+online the way Cloudflare Computer is a workspace you can reach from the
+web. The same request asked to "clone" those projects and strip licenses.
+
+This is a PRD amendment. It does not reopen EPIC-P04/P07. It does not
+unlock P-05 (third-party MCP / connector marketplace) or P-06 (compute
+box / sandboxed runtime). Harvested skills still cannot fill `hit.actions`
+(DR-0003). Fixed top chrome stays product identity (DR-0002). Act stays
+fail-closed (Hard rule 2).
+
+## Considered Options
+
+- **Vendor OpenWorker and Cloudflare Computer, strip licenses.** Illegal,
+  and it would import a connector marketplace plus a cloud runtime Pointer
+  has already parked. Rejected.
+- **Unlock P-06 and run Act in a Worker.** The laptop has not failed a
+  real session twice, and the founder has not picked Cloudflare vs
+  MacBook vs VPS. Rejected.
+- **Original coworker desks plus a workspace with no runtime.** Chosen.
+  Pointer already has screen Act, Word, POINT teach, capture-hidden HUD,
+  and a public host shell. What was missing was the specialist-desk
+  catalog (finished deliverables, not chat) and an online page that can
+  show those artifacts without executing anything.
+
+## Decision Outcome
+
+1. **Original code only.** Pointer does not vendor OpenWorker, Cloudflare
+   Computer, Clicky, or Cluely. Architecture is studied; implementations
+   are written here. NOTICE keeps the existing Clicky MIT attribution for
+   the week-1 inspiration. No license is stripped.
+2. **Four first-party desks.** `teach` (screen walkthrough with POINT
+   tokens, no floating identity), `meeting` (recap / assist / next steps
+   from an armed transcript), `document` (Word coworker), `security`
+   (review that cannot self-approve). An `inbox` id exists as a parked
+   hint that names P-05; it never sends mail.
+3. **Meeting assist is honest.** Capture-hidden HUD and on-device STT
+   stay. Pointer is not an undetectable interview cheater. Recap/assist
+   run locally from the transcript ring and do not Act. General /
+   Transcribe / Meeting still cannot reach the driver.
+4. **Online workspace is an artifact catalog, not a computer.** Public
+   `host.netie.ai/workspace` lists desks and refuses `/exec`. Live
+   artifacts and MCP stay on `127.0.0.1:18010`. `workspace.exec` is a
+   first-party method that always errors. P-06 stays parked.
+5. **First-party MCP grows, still closed.** Added tools:
+   `desks.list`, `desks.pick`, `workspace.list`, `workspace.put`,
+   `workspace.exec` (always refuse). Unknown methods still refuse. No
+   third-party MCP load.
+
+## Confirmation
+
+`test/coworker.test.js`, `test/workspace.test.js`, plus the existing
+`test/host-serve.test.js`, `test/mcp-abi.test.js`, and
+`test/coordinator.test.js` extensions. Public `/mcp` and `/api/workspace/exec`
+stay 404/refused. Meeting local assist returns `act: false`.

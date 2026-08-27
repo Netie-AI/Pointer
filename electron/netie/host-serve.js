@@ -6,11 +6,15 @@
  * 127.0.0.1:18010 - this surface never proxies them.
  */
 
+const { catalog } = require("./coworker-desks");
+const { publicWorkspaceSnapshot } = require("./workspace");
+
 const PAGES = Object.freeze({
   "/": "home",
   "/today": "today",
   "/lanes": "lanes",
   "/skills": "skills",
+  "/workspace": "workspace",
 });
 
 const PAGE_FILES = Object.freeze({
@@ -18,9 +22,18 @@ const PAGE_FILES = Object.freeze({
   "/today": "today.html",
   "/lanes": "lanes.html",
   "/skills": "skills.html",
+  "/workspace": "workspace.html",
 });
 
-const PUBLIC_FILES = Object.freeze(["index.html", "today.html", "lanes.html", "skills.html", "style.css", "app.js"]);
+const PUBLIC_FILES = Object.freeze([
+  "index.html",
+  "today.html",
+  "lanes.html",
+  "skills.html",
+  "workspace.html",
+  "style.css",
+  "app.js",
+]);
 const PUBLIC_FILE_SET = new Set(PUBLIC_FILES);
 
 function normalizePath(pathname) {
@@ -55,6 +68,7 @@ function publicSnapshot() {
     drafts: [],
     lastSearch: [],
     today: [],
+    exec: false,
     reason: "live lanes and MCP stay on the laptop",
   };
 }
@@ -83,11 +97,32 @@ function handlePublicRequest({ method, pathname } = {}) {
   if (clean === "/mcp" || clean.startsWith("/mcp/")) {
     return { status: 404, headers: textHeaders(), body: "mcp stays on 127.0.0.1" };
   }
+  if (clean === "/api/workspace/exec" || clean === "/exec") {
+    return {
+      status: 404,
+      headers: textHeaders(),
+      body: "workspace has no runtime; Act stays on the laptop",
+    };
+  }
   if (verb === "GET" && clean === "/api/state") {
     return {
       status: 200,
       headers: jsonHeaders(),
       body: JSON.stringify(publicSnapshot()),
+    };
+  }
+  if (verb === "GET" && clean === "/api/workspace") {
+    return {
+      status: 200,
+      headers: jsonHeaders(),
+      body: JSON.stringify(publicWorkspaceSnapshot(catalog())),
+    };
+  }
+  if (verb === "POST" && (clean === "/api/workspace" || clean === "/api/workspace/put")) {
+    return {
+      status: 404,
+      headers: textHeaders(),
+      body: "workspace writes stay on 127.0.0.1",
     };
   }
   if (verb === "GET") {
