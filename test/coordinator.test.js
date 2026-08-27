@@ -70,6 +70,7 @@ function test(name, fn) {
     });
     assert.strictEqual(html.status, 200);
     assert.match(html.body, /\/today/);
+    assert.match(html.body, /today-chips/);
     const st = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/state" }, (res) => {
         const chunks = [];
@@ -135,6 +136,8 @@ function test(name, fn) {
     assert.ok(today.body.artifacts.some((row) => /Standup/.test(row.title)));
     assert.match(today.body.deliverable, /# Today/);
     assert.match(today.body.deliverable, /Standup/);
+    assert.ok(Array.isArray(today.body.chips));
+    assert.ok(today.body.chips.some((row) => /follow-up email/.test(row.q)));
     const got = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/workspace?id=" + encodeURIComponent(listed.artifacts[0].id) }, (res) => {
         const chunks = [];
@@ -263,6 +266,25 @@ function test(name, fn) {
     assert.strictEqual(assisted.body.desk, "meeting");
     assert.ok(Array.isArray(assisted.body.chips));
     assert.ok(!assisted.body.live);
+    const askedHost = await new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: "127.0.0.1", port, path: "/api/ask", method: "POST", headers: { "content-type": "application/json" } },
+        (res) => {
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+        }
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ ask: "draft a follow-up email from this meeting", act: true }));
+    });
+    assert.strictEqual(askedHost.status, 200);
+    assert.strictEqual(askedHost.body.ok, true);
+    assert.strictEqual(askedHost.body.act, false);
+    assert.strictEqual(askedHost.body.exec, false);
+    assert.strictEqual(askedHost.body.desk, "inbox");
+    assert.ok(!askedHost.body.live);
+    assert.match(askedHost.body.deliverable, /Hi Sarah Chen/);
     c.workspace.put({
       id: "live-teach",
       title: "Live teach",

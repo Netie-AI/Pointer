@@ -29,7 +29,9 @@ filed inbox and Word links, no runtime). Loopback host pages keep They asked / H
 it Ask the next step on loopback (never Act). Copy next / Copy say-this
 copy the cue line. Loopback `/meeting` Ask chips file an unsent follow-up
 and a Word draft from the stored transcript (never send, never a `.docx`,
-teach walks stay on `/teach`). Today plate lists your commitments, not the meeting
+teach walks stay on `/teach`). Loopback sticky chrome has a fixed Ask bar
+on every page (`/api/ask`, never Act). `/today` chips file Recap / mail /
+Word / security the same way. Today plate lists your commitments, not the meeting
 say-this dump. Inbox never
 sends (P-05). "Spawn a coworker" runs the named job, or the Today plate
 when bare (a meeting/transcribe session recaps instead, and files an

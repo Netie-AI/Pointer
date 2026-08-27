@@ -1,3 +1,10 @@
+## 2026-08-27 - Host Ask bar and Today chips
+
+Loopback sticky chrome keeps a fixed Ask bar on every page (never Act,
+never a floating buddy). `got it` / `back` still advance a stored teach
+walk. `/today` chips file Recap / mail / Word / security the same way.
+Public POST `/api/ask` stays 404. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Host meeting chips file inbox and Word
 
 Loopback `/meeting` Ask chips (Assist / Draft email / Write in Word)

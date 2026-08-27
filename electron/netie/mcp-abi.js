@@ -5,7 +5,7 @@
  * workspace.exec is a named refusal - it is not a runtime.
  */
 
-const { catalog, pickDesk, teachAssist, securityAssist, sessionBundle, advanceLiveTeach, askLiveCoworker } = require("./coworker-desks");
+const { catalog, pickDesk, teachAssist, securityAssist, sessionBundle, advanceLiveTeach, askLiveCoworker, askHostCoworker } = require("./coworker-desks");
 
 const TOOLS = Object.freeze([
   "tools.list",
@@ -16,6 +16,7 @@ const TOOLS = Object.freeze([
   "lanes.list",
   "desks.list",
   "desks.pick",
+  "desks.ask",
   "teach.point",
   "teach.live",
   "today.brief",
@@ -85,6 +86,12 @@ function createMcpAbi(opts = {}) {
       if (method === "desks.pick") {
         const desk = pickDesk(params.goal || params.text || "", { mode: params.mode });
         return rpcResult(id, { desk: { id: desk.id, label: desk.label, act: desk.act } });
+      }
+      if (method === "desks.ask") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        const ask = String(params.ask || params.text || params.goal || "").trim();
+        const out = askHostCoworker(workspace, ask);
+        return rpcResult(id, { ...out, live: undefined, act: false, exec: false });
       }
       if (method === "teach.point") {
         const assist = teachAssist({

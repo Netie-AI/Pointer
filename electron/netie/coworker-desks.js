@@ -1477,6 +1477,7 @@ function todayAssist({ state, question, localFirst } = {}) {
     desk: "today",
     kind: "brief",
     skipLlm: true,
+    id: "standing-today",
     title: "Today",
     cue: plateCue,
     deliverable: parts.join("\n"),
@@ -1513,6 +1514,7 @@ function publicTodaySnapshot() {
     deliverable: assist.deliverable,
     cue: assist.cue || "",
     asked: "",
+    chips: [],
     ok: true,
   };
 }
@@ -1749,6 +1751,29 @@ function askLiveCoworker(workspace, ask) {
   };
 }
 
+function looksTeachAdvance(ask) {
+  const adv = teachAdvance(ask);
+  return adv === "reset" || adv === 1 || adv === -1;
+}
+
+/**
+ * Loopback Ask from sticky host chrome. Never Acts. Teach "got it"/"back"
+ * advances a stored walk. Other desks file through askLiveCoworker.
+ */
+function askHostCoworker(workspace, ask) {
+  if (!workspace || typeof workspace.get !== "function" || typeof workspace.put !== "function") {
+    return { ok: false, act: false, exec: false, reason: "workspace missing" };
+  }
+  const q = String(ask || "").trim();
+  if (!q) return { ok: false, act: false, exec: false, reason: "ask required" };
+  const teach = workspace.get("live-teach");
+  if (teach.ok && canAdvanceTeach(teach.artifact.live) && looksTeachAdvance(q)) {
+    const out = advanceLiveTeach(workspace, q);
+    return { ...out, live: undefined, exec: false, act: false, href: sessionHref("teach") };
+  }
+  return askLiveCoworker(workspace, q);
+}
+
 /**
  * Follow-up chips for the HUD suggest row. Transcript questions become
  * buttons. Never commands. Caps at 6.
@@ -1775,6 +1800,8 @@ function suggestsFromAssist(assist) {
   if (assist.desk === "today") {
     add("What's on my plate?", "Today", "*");
     add("Recap this meeting", "Recap", ">");
+    add("draft a follow-up email from this meeting", "Draft email", "@");
+    add("write this recap in Word", "Write in Word", "W");
     add("Security review this session", "Security", "!");
   }
   if (assist.desk === "teach") {
@@ -2161,6 +2188,7 @@ module.exports = {
   replayTeachWalk,
   advanceLiveTeach,
   askLiveCoworker,
+  askHostCoworker,
   publicMeetingSnapshot,
   publicTeachSnapshot,
   publicSecuritySnapshot,

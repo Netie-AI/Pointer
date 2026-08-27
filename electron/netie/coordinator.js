@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
-const { catalog, todayAssist, sessionBundle, advanceLiveTeach, canAdvanceTeach, askLiveCoworker, suggestsFromAssist } = require("./coworker-desks");
+const { catalog, todayAssist, sessionBundle, advanceLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist } = require("./coworker-desks");
 const { parsePoints } = require("./point-overlay");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
@@ -194,9 +194,37 @@ function createCoordinator(opts = {}) {
           deliverable: assist.deliverable,
           events: today.slice(-40),
           artifacts: workspace.publicList(),
+          chips: suggestsFromAssist(assist).map((c) => ({ q: c.q, label: c.label })),
           reason: "live today on loopback; no runtime",
         })
       );
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/ask") {
+      const chunks = [];
+      req.on("data", (c) => chunks.push(c));
+      req.on("end", () => {
+        let body = {};
+        try {
+          body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+        } catch {
+          res.writeHead(400, { "content-type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, act: false, exec: false, reason: "parse error" }));
+          return;
+        }
+        const ask = String((body && (body.ask || body.text || body.q)) || "").trim();
+        const out = askHostCoworker(workspace, ask);
+        if (out.ok && out.desk === "meeting") {
+          sendLiveRoom(res, "meeting", "live-meeting");
+          return;
+        }
+        if (out.ok && out.desk === "teach") {
+          sendLiveRoom(res, "teach", "live-teach");
+          return;
+        }
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ...out, live: undefined, act: false, exec: false, localFirst: false }));
+      });
       return;
     }
     if (req.method === "POST" && url.pathname === "/api/meeting") {

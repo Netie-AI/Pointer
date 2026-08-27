@@ -44,6 +44,7 @@ function test(name, fn) {
     assert.ok(!r.result.tools.includes("shell.exec"));
     assert.ok(r.result.tools.includes("workspace.exec"));
     assert.ok(r.result.tools.includes("desks.list"));
+    assert.ok(r.result.tools.includes("desks.ask"));
     assert.ok(r.result.tools.includes("teach.point"));
     assert.ok(r.result.tools.includes("today.brief"));
     assert.ok(r.result.tools.includes("teach.live"));
@@ -106,6 +107,29 @@ function test(name, fn) {
       { jsonrpc: "2.0", id: 7, method: "desks.pick", params: { goal: "what should I say" } }
     );
     assert.strictEqual(pick.result.desk.id, "meeting");
+    coord.workspace.put({
+      id: "live-meeting",
+      title: "Live assist",
+      desk: "meeting",
+      body: "# Meeting brief\nhello",
+      cue: "I'll send it Friday.",
+      live: { transcript: "them: I'm Sarah Chen\nyou: I will send it Friday." },
+    });
+    const asked = await mcp.handle(
+      {
+        jsonrpc: "2.0",
+        id: 7.5,
+        method: "desks.ask",
+        params: { ask: "draft a follow-up email from this meeting" },
+      },
+      { coordinator: coord }
+    );
+    assert.strictEqual(asked.result.ok, true);
+    assert.strictEqual(asked.result.act, false);
+    assert.strictEqual(asked.result.exec, false);
+    assert.strictEqual(asked.result.desk, "inbox");
+    assert.ok(!asked.result.live);
+    assert.match(asked.result.deliverable, /Hi Sarah Chen/);
     const exec = await mcp.handle(
       { jsonrpc: "2.0", id: 8, method: "workspace.exec", params: { backend: "container" } },
       { coordinator: coord }
@@ -127,7 +151,8 @@ function test(name, fn) {
       { coordinator: coord }
     );
     assert.strictEqual(listed.result.exec, false);
-    assert.strictEqual(listed.result.artifacts.length, 1);
+    assert.ok(listed.result.artifacts.length >= 1);
+    assert.ok(listed.result.artifacts.some((row) => row.title === "brief"));
     const brief = await mcp.handle(
       { jsonrpc: "2.0", id: 11, method: "today.brief" },
       { coordinator: coord }

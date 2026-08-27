@@ -196,6 +196,13 @@ function handlePublicRequest({ method, pathname, search } = {}) {
       body: JSON.stringify(publicWorkspaceSnapshot(catalog())),
     };
   }
+  if (verb === "POST" && clean === "/api/ask") {
+    return {
+      status: 404,
+      headers: textHeaders(),
+      body: "coworker ask stays on 127.0.0.1",
+    };
+  }
   if (verb === "POST" && clean === "/api/meeting") {
     return {
       status: 404,

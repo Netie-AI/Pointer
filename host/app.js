@@ -267,24 +267,115 @@ if (todayPage) {
   pollWhileLive(function () {
     return fetch("/api/today")
       .then((r) => r.json())
-      .then((t) => {
-        if (t && t.exec) {
-          show("policy", "refused: today must not grow a runtime");
-          return false;
-        }
-        show("policy", (t && t.reason) || "standing brief; Act stays on the laptop");
-        const plate = document.getElementById("today-cue-web");
-        const plateText = String((t && t.cue) || "").trim();
-        if (plate) {
-          plate.hidden = !plateText;
-          plate.textContent = plateText ? "Plate: " + plateText : "";
-        }
-        setCueButton(plateText, Boolean(t && t.localFirst));
-        paintBrief((t && (t.deliverable || t.brief)) || "", "today", Boolean(t && t.localFirst));
-        paintEvents((t && (t.events || t.today)) || []);
-        return !(t && t.localFirst);
-      });
+      .then(applyToday);
   });
+}
+
+function applyToday(t) {
+  if (t && t.exec) {
+    show("policy", "refused: today must not grow a runtime");
+    return false;
+  }
+  show("policy", (t && t.reason) || "standing brief; Act stays on the laptop");
+  const plate = document.getElementById("today-cue-web");
+  const plateText = String((t && t.cue) || "").trim();
+  if (plate) {
+    plate.hidden = !plateText;
+    plate.textContent = plateText ? "Plate: " + plateText : "";
+  }
+  setCueButton(plateText, Boolean(t && t.localFirst));
+  paintBrief((t && (t.deliverable || t.brief)) || "", "today", Boolean(t && t.localFirst));
+  paintEvents((t && (t.events || t.today)) || []);
+  paintTodayChips((t && t.chips) || []);
+  return !(t && t.localFirst);
+}
+
+function paintTodayChips(chips) {
+  const root = document.getElementById("today-chips");
+  if (!root) return;
+  root.replaceChildren();
+  (chips || []).forEach(function (c) {
+    const q = String(c.q || "").trim();
+    if (!q) return;
+    const b = el("button");
+    b.type = "button";
+    b.textContent = String(c.label || q).slice(0, 48);
+    b.addEventListener("click", function () { postAsk(q); });
+    root.appendChild(b);
+  });
+}
+
+function pageDesk() {
+  const p = String((typeof location !== "undefined" && location.pathname) || "/").replace(/\/+$/, "") || "/";
+  if (p === "/today") return "today";
+  if (p === "/meeting") return "meeting";
+  if (p === "/teach") return "teach";
+  if (p === "/security") return "security";
+  if (p === "/document") return "document";
+  if (p === "/inbox") return "inbox";
+  return "";
+}
+
+function postAsk(ask) {
+  fetch("/api/ask", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ask: ask, act: false }),
+  })
+    .then((r) => r.json())
+    .then(function (out) {
+      const filed = document.getElementById("host-filed") || document.getElementById("today-filed");
+      const ok = Boolean(out && out.ok);
+      if (filed) {
+        let line = "";
+        if (ok) {
+          const here = pageDesk();
+          line =
+            out.desk === here
+              ? "Updated " + (out.desk || "desk") + (out.cue ? " - " + out.cue : "") + ". Never Act."
+              : "Filed " +
+                (out.title || out.desk) +
+                " (" +
+                (out.href || "") +
+                ")" +
+                (out.cue ? " - " + out.cue : "") +
+                ". Never sent. Never a .docx. Never Act.";
+        } else if (out && out.reason) {
+          line = String(out.reason);
+        }
+        filed.hidden = !line;
+        filed.textContent = line;
+      }
+      if (out && out.ok && out.desk === "meeting" && typeof meetingApply === "function") {
+        fetch("/api/meeting")
+          .then((r) => r.json())
+          .then(meetingApply)
+          .catch(function () {});
+      }
+      if (out && out.ok && out.desk === "teach" && typeof teachApply === "function") {
+        fetch("/api/teach")
+          .then((r) => r.json())
+          .then(teachApply)
+          .catch(function () {});
+      }
+      if (document.getElementById("brief")) {
+        fetch("/api/today")
+          .then((r) => r.json())
+          .then(applyToday)
+          .catch(function () {});
+      }
+      fetch("/api/home")
+        .then((r) => r.json())
+        .then(function (h) {
+          paintChrome(h);
+          if (document.getElementById("rooms")) {
+            paintRooms((h && h.rooms) || {}, Boolean(h && h.localFirst));
+            paintSession(h && h.session, Boolean(h && h.localFirst));
+          }
+        })
+        .catch(function () {});
+    })
+    .catch(function () {});
 }
 
 function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
@@ -349,10 +440,12 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse, askedId) {
       .then(apply);
   });
   if (pageId === "teach-brief") wireTeachAdvance(apply);
+  if (pageId === "teach-brief") teachApply = apply;
   if (pageId === "meeting-brief") meetingApply = apply;
 }
 
 let meetingApply = null;
+let teachApply = null;
 
 function paintMeetingChips(chips) {
   const root = document.getElementById("meeting-chips");
@@ -474,12 +567,37 @@ function ensureLiveCueBar() {
   bar.appendChild(heard);
   bar.appendChild(text);
   bar.appendChild(actions);
+  const form = el("form", "live-cue-ask");
+  form.id = "host-ask-form";
+  const input = document.createElement("input");
+  input.id = "host-ask";
+  input.type = "text";
+  input.autocomplete = "off";
+  input.setAttribute("aria-label", "Ask the coworker");
+  input.placeholder = "Ask the coworker (never Act)";
+  const go = el("button");
+  go.id = "host-ask-go";
+  go.type = "submit";
+  go.textContent = "Ask";
+  form.appendChild(input);
+  form.appendChild(go);
+  const filed = el("p", "muted");
+  filed.id = "host-filed";
+  filed.hidden = true;
+  bar.appendChild(form);
+  bar.appendChild(filed);
   const header = document.querySelector("header");
   if (header && header.parentNode) header.parentNode.insertBefore(bar, header.nextSibling);
   else document.body.insertBefore(bar, document.body.firstChild);
   back.addEventListener("click", function () { postTeach("back"); });
   next.addEventListener("click", function () { postTeach("got it, next"); });
   copy.addEventListener("click", function () { copyPlain(lastChromeCue); });
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    const q = String(input.value || "").trim();
+    if (!q) return;
+    postAsk(q);
+  });
   return bar;
 }
 
@@ -518,7 +636,7 @@ function paintChrome(home) {
   }
   if (textEl) textEl.textContent = cueLine;
   lastChromeCue = meetingCue || teachCue || plate;
-  bar.hidden = !(asked || heard || cueLine);
+  bar.hidden = false;
   const canWalk = Boolean(teach.advance);
   const back = document.getElementById("live-cue-back");
   const next = document.getElementById("live-cue-next");

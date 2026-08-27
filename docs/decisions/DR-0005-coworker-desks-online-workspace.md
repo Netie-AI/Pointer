@@ -55,7 +55,7 @@ fail-closed (Hard rule 2).
    artifacts and MCP stay on `127.0.0.1:18010`. `workspace.exec` is a
    first-party method that always errors. P-06 stays parked.
 5. **First-party MCP grows, still closed.** Added tools:
-   `desks.list`, `desks.pick`, `teach.point`, `teach.live`, `today.brief`,
+   `desks.list`, `desks.pick`, `desks.ask`, `teach.point`, `teach.live`, `today.brief`,
    `meeting.live`, `security.review`, `security.live`, `inbox.live`,
    `document.live`, `session.live`, `workspace.list`,
    `workspace.get`, `workspace.put`, `workspace.exec` (always refuse).
@@ -120,3 +120,6 @@ from `/api/home` (Back / Got it Ask, never Act). Public copies hide it.
 Loopback `/meeting` Ask chips file inbox/Word drafts from the stored
 transcript (POST `/api/meeting`, never Act, public copy 404). Teach
 walks stay on `/teach`.
+Loopback sticky chrome has a fixed Ask bar (POST `/api/ask`, never Act).
+`desks.ask` is the MCP form of that Ask. `/today` chips file the same
+way. Public POST `/api/ask` stays 404.

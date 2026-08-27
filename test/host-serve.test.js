@@ -91,6 +91,8 @@ function readAsset(file) {
     assert.strictEqual(teachPost.status, 404);
     const meetingPost = handlePublicRequest({ method: "POST", pathname: "/api/meeting" });
     assert.strictEqual(meetingPost.status, 404);
+    const askPost = handlePublicRequest({ method: "POST", pathname: "/api/ask" });
+    assert.strictEqual(askPost.status, 404);
     const fetch = createPublicFetch(readAsset);
     const html = await fetch(new Request("https://host.netie.ai/workspace"));
     assert.strictEqual(html.status, 200);
@@ -150,6 +152,7 @@ function readAsset(file) {
     assert.match(text, /host\.netie\.ai \/today/);
     assert.match(text, /id="brief"/);
     assert.match(text, /id="today-cue-web"/);
+    assert.match(text, /id="today-chips"/);
     assert.match(text, /id="events"/);
     const todayApi = handlePublicRequest({ method: "GET", pathname: "/api/today" });
     assert.strictEqual(todayApi.status, 200);
@@ -158,6 +161,7 @@ function readAsset(file) {
     assert.strictEqual(todayBody.act, false);
     assert.strictEqual(todayBody.exec, false);
     assert.deepStrictEqual(todayBody.events, []);
+    assert.deepStrictEqual(todayBody.chips, []);
     assert.match(todayBody.deliverable, /nothing yet/);
     assert.match(todayBody.deliverable, /P-06/);
     const app = fs.readFileSync(path.join(HOST, "app.js"), "utf8");
@@ -173,6 +177,10 @@ function readAsset(file) {
     assert.match(app, /paintSession/);
     assert.match(app, /paintChrome/);
     assert.match(app, /live-cue-bar/);
+    assert.match(app, /host-ask/);
+    assert.match(app, /postAsk/);
+    assert.match(app, /\/api\/ask/);
+    assert.match(app, /paintTodayChips/);
     const paint = app.slice(app.indexOf("function paintSession"), app.indexOf("const roomsPage"));
     assert.match(paint, /session-md/);
     assert.match(paint, /session-copy/);

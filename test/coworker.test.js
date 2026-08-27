@@ -29,6 +29,7 @@ const {
   replayTeachWalk,
   advanceLiveTeach,
   askLiveCoworker,
+  askHostCoworker,
 } = require("../electron/netie/coworker-desks");
 const { plannerGrounding } = require("../electron/netie/coworker");
 
@@ -700,11 +701,71 @@ test("askLiveCoworker files inbox and Word from a stored meeting and never acts"
   assert.strictEqual(empty.act, false);
 });
 
+test("askHostCoworker Asks from chrome and advances a stored teach walk", () => {
+  const { createWorkspace } = require("../electron/netie/workspace");
+  const transcript = [
+    "them: I'm Sarah Chen",
+    "them: we're with Acme",
+    "them: Can we ship Friday for $40k?",
+    "you: I will send it Friday.",
+  ].join("\n");
+  const recap = meetingAssist({ transcript, question: "recap this meeting" });
+  const ws = createWorkspace({ clock: () => 4 });
+  ws.put({
+    id: recap.id,
+    desk: recap.desk,
+    title: recap.title,
+    body: recap.deliverable,
+    cue: recap.cue,
+    asked: recap.asked,
+    heard: recap.heard,
+    live: recap.live,
+  });
+  const mail = askHostCoworker(ws, "draft a follow-up email from this meeting");
+  assert.strictEqual(mail.ok, true);
+  assert.strictEqual(mail.act, false);
+  assert.strictEqual(mail.exec, false);
+  assert.strictEqual(mail.desk, "inbox");
+  assert.match(mail.deliverable, /Hi Sarah Chen/);
+  const form = teachAssist({
+    text: "walk me through this on my screen",
+    controls: [
+      { name: "Cancel", controlType: "Button", rect: { x: 0, y: 0, width: 100, height: 40 } },
+      { name: "Save", controlType: "Button", rect: { x: 200, y: 400, width: 100, height: 40 } },
+      { name: "Email", controlType: "Edit", rect: { x: 50, y: 80, width: 200, height: 32 } },
+    ],
+    screen: { x: 0, y: 0, width: 1000, height: 1000 },
+  });
+  ws.put({
+    id: "live-teach",
+    desk: "teach",
+    title: "Live teach",
+    body: form.deliverable,
+    cue: form.cue,
+    rest: form.rest,
+    live: form.live,
+  });
+  const stepped = askHostCoworker(ws, "got it, next");
+  assert.strictEqual(stepped.ok, true);
+  assert.strictEqual(stepped.act, false);
+  assert.strictEqual(stepped.desk, "teach");
+  assert.strictEqual(stepped.href, "/teach");
+  assert.match(stepped.cue, /Click Save or press Enter/);
+  const refused = askHostCoworker(ws, "walk me through this on my screen");
+  assert.strictEqual(refused.ok, false);
+  assert.strictEqual(refused.act, false);
+  assert.match(refused.reason, /\/teach/);
+  const blank = askHostCoworker(ws, "");
+  assert.strictEqual(blank.ok, false);
+  assert.strictEqual(blank.act, false);
+});
+
 test("today assist ships a standing brief and never invents work", () => {
   const empty = todayAssist({ state: {} });
   assert.strictEqual(empty.ok, true);
   assert.strictEqual(empty.act, false);
   assert.strictEqual(empty.skipLlm, true);
+  assert.strictEqual(empty.id, "standing-today");
   assert.match(empty.deliverable, /nothing yet/);
   assert.match(empty.deliverable, /On your plate/);
   assert.match(empty.deliverable, /P-06/);
