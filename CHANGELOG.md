@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Global dictation hotkey and meeting assist
+
+Ctrl+Alt+Space snapshots the current app then toggles Transcribe
+listen (Electron cannot true-hold a shortcut). HUD hold-to-talk
+refreshes that target. Meeting mode Ask (empty = what should I say)
+uses live notes as untrusted data. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - Remembered-window delivery, Scribe mode, instruction plans
 
 Dictation and Scribe restore the last non-Pointer window (focus_hwnd)

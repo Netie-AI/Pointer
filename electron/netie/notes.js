@@ -60,6 +60,19 @@ class NotesSession {
     return { path: this.file, lines: this.lines };
   }
 
+  /** Last N characters of the live notes file (meeting assist context). */
+  tail(maxChars = 4000) {
+    if (!this.file || !fs.existsSync(this.file)) return "";
+    let text = "";
+    try {
+      text = fs.readFileSync(this.file, "utf8");
+    } catch {
+      return "";
+    }
+    const n = Number(maxChars) > 0 ? Number(maxChars) : 4000;
+    return text.length > n ? text.slice(-n) : text;
+  }
+
   stop() {
     if (!this.file) return null;
     fs.appendFileSync(this.file, `\n---\n\n> ended: ${new Date().toISOString()}\n`, "utf8");

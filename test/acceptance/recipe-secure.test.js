@@ -25,6 +25,8 @@ async function run() {
       assert.ok(/planFromInstruction/.test(main), "computer.act must plan from an instruction");
       assert.ok(/runScribeTurn/.test(main), "Scribe must complete then paste");
       assert.ok(/deliverIntoTarget/.test(main), "dictation/scribe must restore the remembered window");
+      assert.ok(/Control\+Alt\+Space/.test(main), "global dictation hotkey must snapshot the current app");
+      assert.ok(/buildMeetingAssist/.test(main), "meeting mode must offer Cluely-class assist");
     }),
 
     T("hud:act recipe branch calls secureBeforeAct before maybeRunPlan", () => {

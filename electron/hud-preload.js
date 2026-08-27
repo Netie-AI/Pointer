@@ -32,6 +32,7 @@ const INVOKE = [
   "hud:clickyHold",
   "hud:clickyExit",
   "hud:clickyStatus",
+  "hud:snapshotDelivery",
   "hud:bgList",
   "hud:bgCancel",
   "hud:importMemory",

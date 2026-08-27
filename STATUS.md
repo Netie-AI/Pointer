@@ -11,7 +11,9 @@
    `computer.status` / `observe` / `act`. Act is Cortex-gated then
    reviewPlan; instruction text plans via recipes then type/click.
    Transcribe types into the remembered app window. Scribe is a first-class
-   mode: copy selection, rewrite, paste. IBM Plex HUD, no liquid glass.
+   mode: copy selection, rewrite, paste. Ctrl+Alt+Space snapshots the
+   current app then toggles dictation. Meeting Ask is Cluely-class assist
+   from live notes. IBM Plex HUD, no liquid glass.
    P-04 (OpenWillow wholesale) stays parked.
 2. **Generative tools (DR-0004).** Search then craft a hint. Coordinator
    at `127.0.0.1:18010`. Public Worker is pages only. P-06 parked.

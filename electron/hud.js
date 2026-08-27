@@ -757,6 +757,11 @@ const holdToTalk = createHoldToTalk({
     }
   },
   start: async () => {
+    try {
+      await invoke("hud:snapshotDelivery");
+    } catch {
+      /* last remembered window still stands */
+    }
     const started = await capture.start("mic");
     if (!started.ok) return started;
     listening = true;
@@ -843,18 +848,19 @@ if (btnShowTranscript) {
 
 async function doAsk() {
   const message = askInput.value.trim() || finalBits.slice(-1)[0] || "";
-  if (!message) return;
+  if (!message && appMode !== "meeting") return;
+  const asked = message || "what should I say";
   autoSend.cancel("sent");
   dismissCleanToast();
   setChatOpen(true);
-  appendMessage("user", message, true);
+  appendMessage("user", asked, true);
   askInput.value = "";
   setLivePartial("");
   answerMeta.textContent = "Thinking…";
   answerBody.textContent = "…";
   if (window.NetieSound) NetieSound.think();
   const sent = attachmentPayload();
-  const result = await invoke("hud:ask", { message, attachments: sent });
+  const result = await invoke("hud:ask", { message: asked, attachments: sent });
   if (sent.length) clearAttachments();
   answerMeta.textContent = result.degraded ? "Answered (degraded)" : "AI response";
   appendMessage("assistant", result.ok ? result.reply || "" : result.error || "Failed");

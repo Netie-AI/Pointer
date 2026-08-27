@@ -419,6 +419,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
     T("#25 the renderer binds every hard stop the module declares", () => {
       const js = read("electron/hud.js");
       assert.ok(/createHoldToTalk\(/.test(js), "hold-to-talk is not wired into the HUD at all");
+      assert.ok(/hud:snapshotDelivery/.test(js), "hold-to-talk must refresh the remembered target window");
       for (const evt of ["pointerup", "pointercancel", "pointerleave"]) {
         assert.ok(js.includes(`"${evt}"`), `${evt} is not bound in the renderer`);
       }
@@ -431,7 +432,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       const js = read("electron/hud.js");
       assert.ok(/attachmentPayload\(\)/.test(js), "no attachment payload is built");
       assert.ok(
-        /invoke\("hud:ask",\s*\{\s*message,\s*attachments/.test(js),
+        /invoke\("hud:ask",\s*\{\s*message(?::\s*asked)?,\s*attachments/.test(js),
         "hud:ask does not carry attachments"
       );
       assert.ok(
