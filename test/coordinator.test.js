@@ -117,6 +117,19 @@ function test(name, fn) {
     });
     assert.strictEqual(exec.status, 404);
     assert.strictEqual(exec.body.ok, false);
+    const today = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/today" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(today.status, 200);
+    assert.strictEqual(today.body.act, false);
+    assert.strictEqual(today.body.exec, false);
+    assert.ok(today.body.artifacts.some((row) => /Standup/.test(row.title)));
+    assert.match(today.body.deliverable, /# Today/);
+    assert.match(today.body.deliverable, /Standup/);
     await c.close();
   });
 

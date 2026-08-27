@@ -6,7 +6,7 @@
  * 127.0.0.1:18010 - this surface never proxies them.
  */
 
-const { catalog } = require("./coworker-desks");
+const { catalog, publicTodaySnapshot } = require("./coworker-desks");
 const { publicWorkspaceSnapshot } = require("./workspace");
 
 const PAGES = Object.freeze({
@@ -109,6 +109,13 @@ function handlePublicRequest({ method, pathname } = {}) {
       status: 200,
       headers: jsonHeaders(),
       body: JSON.stringify(publicSnapshot()),
+    };
+  }
+  if (verb === "GET" && clean === "/api/today") {
+    return {
+      status: 200,
+      headers: jsonHeaders(),
+      body: JSON.stringify(publicTodaySnapshot()),
     };
   }
   if (verb === "GET" && clean === "/api/workspace") {

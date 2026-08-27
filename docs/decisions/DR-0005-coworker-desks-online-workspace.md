@@ -39,11 +39,13 @@ fail-closed (Hard rule 2).
    Computer, Clicky, or Cluely. Architecture is studied; implementations
    are written here. NOTICE keeps the existing Clicky MIT attribution for
    the week-1 inspiration. No license is stripped.
-2. **Four first-party desks.** `teach` (screen walkthrough with POINT
+2. **Four first-party desks, plus Today.** `teach` (screen walkthrough with POINT
    tokens, no floating identity), `meeting` (recap / assist / next steps
    from an armed transcript), `document` (Word coworker), `security`
-   (review that cannot self-approve). An `inbox` id exists as a parked
-   hint that names P-05; it never sends mail.
+   (review that cannot self-approve). `today` is the standing session
+   brief (OpenWorker-shaped, original). An `inbox` id exists as a parked
+   hint that names P-05; it never sends mail. Voice "spawn a coworker"
+   queues a background brief and never claims `pointer-act`.
 3. **Meeting assist is honest.** Capture-hidden HUD and on-device STT
    stay. Pointer is not an undetectable interview cheater. Recap/assist
    run locally from the transcript ring and do not Act. General /
@@ -53,13 +55,14 @@ fail-closed (Hard rule 2).
    artifacts and MCP stay on `127.0.0.1:18010`. `workspace.exec` is a
    first-party method that always errors. P-06 stays parked.
 5. **First-party MCP grows, still closed.** Added tools:
-   `desks.list`, `desks.pick`, `workspace.list`, `workspace.put`,
-   `workspace.exec` (always refuse). Unknown methods still refuse. No
-   third-party MCP load.
+   `desks.list`, `desks.pick`, `today.brief`, `workspace.list`,
+   `workspace.put`, `workspace.exec` (always refuse). Unknown methods
+   still refuse. No third-party MCP load.
 
 ## Confirmation
 
 `test/coworker.test.js`, `test/workspace.test.js`, plus the existing
 `test/host-serve.test.js`, `test/mcp-abi.test.js`, and
 `test/coordinator.test.js` extensions. Public `/mcp` and `/api/workspace/exec`
-stay 404/refused. Meeting local assist returns `act: false`.
+stay 404/refused. Meeting local assist returns `act: false`. Today brief
+and coworker spawn return `act: false` and never claim `pointer-act`.

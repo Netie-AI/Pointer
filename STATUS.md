@@ -12,15 +12,12 @@
    coordinator at `127.0.0.1:18010` (`/` `/today` `/lanes` `/skills`
    `/workspace`). Public Worker serves the same pages; `/mcp` and
    live lanes stay on the laptop. P-05 stays parked.
-2. **Coworker desks + online catalog (DR-0005).** Original `teach`
-   `meeting` `document` `security` desks. Meeting Recap/Assist/Next
-   from the armed transcript, never Act. Stop on Meeting writes a
-   recap into notes + workspace. Security review ships a checklist
-   that cannot self-approve. Teach walkthroughs never invent POINT
-   coords. Inbox drafts are not sent. Recap paints follow-up chips
-   in the HUD. Public `/workspace` paints the desk catalog and
-   refuses exec. P-06 stays parked. GitHub Actions is blocked on
-   org billing.
+2. **Coworker desks + online catalog (DR-0005).** Original desks:
+   teach, meeting, today, document, security. Inbox drafts not sent.
+   `/today` is a standing brief, not a JSON dump. Voice "spawn a
+   coworker" queues a background brief and never Acts. Public
+   `/workspace` is a catalog; exec refused. P-06 parked. GitHub
+   Actions blocked on org billing.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

@@ -113,7 +113,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
-const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, suggestsFromAssist } = require("./netie/coworker-desks");
+const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, suggestsFromAssist } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -295,6 +295,18 @@ function localMeetingReply(message, extraTranscript) {
     if (!assist.ok || !assist.skipLlm) return assist.ok ? null : assist;
     publishBrief(assist);
     return assist;
+  }
+  if (desk.id === "today") {
+    const assist = todayAssist({ state: sessionCoworkerState(), question: message });
+    if (!assist.ok || !assist.skipLlm) return assist.ok ? null : assist;
+    publishBrief(assist);
+    publishSuggests(assist);
+    return assist;
+  }
+  if (desk.id === "document") {
+    const assist = documentAssist({ text: message });
+    if (assist.ok) publishBrief(assist);
+    return null;
   }
   if (desk.id === "teach") {
     const assist = teachAssist({ text: message });
@@ -2615,6 +2627,25 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
   // Attached files become part of the question, fenced as data (#23). Before
   // this the renderer showed a chip and sent nothing at all.
   const asked = `${message}${buildAttachmentBlock(payload && payload.attachments)}`;
+  const spawn = spawnCoworker({ text: asked, mode: appMode });
+  if (spawn.ok) {
+    const queued = enqueueCoworkerJob(asked, payload && payload.transcript, spawn);
+    sendHud({
+      type: "answer",
+      meta: `${spawn.desk} · spawn`,
+      text: spawn.note + (queued.ok ? "" : ` Queue: ${queued.error || "failed"}`),
+    });
+    return {
+      ok: queued.ok,
+      spawn: true,
+      act: false,
+      claimLane: false,
+      desk: spawn.desk,
+      id: queued.id,
+      reply: spawn.note,
+      error: queued.ok ? undefined : queued.error,
+    };
+  }
   const local = localMeetingReply(asked, payload && payload.transcript);
   if (local && local.ok && local.skipLlm) {
     sendHud({ type: "answer", meta: `${local.desk} · ${local.kind}`, text: local.deliverable });
@@ -2654,9 +2685,77 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
 const bgJobs = createJobQueue({
   concurrency: 1,
   onChange: (job, sum) => {
+    try {
+      liveCoordinator.note("job", `${job.title} ${job.status}`);
+    } catch {
+      // coordinator note is best-effort; HUD status still ships
+    }
     sendHudQuiet({ type: "bg", job, summary: sum, text: describeQueue(sum) });
   },
 });
+
+function sessionCoworkerState() {
+  const snap = liveCoordinator.snapshot();
+  return {
+    today: snap.today,
+    lanes: snap.lanes,
+    drafts: snap.drafts,
+    artifacts: liveCoordinator.workspace.list(),
+    jobs: bgJobs.list(),
+  };
+}
+
+function runDeskAssist(message, extraTranscript) {
+  const desk = pickDesk(message, { mode: appMode });
+  if (desk.id === "meeting") {
+    return meetingAssist({
+      transcript: heardTranscript(extraTranscript),
+      question: message,
+    });
+  }
+  if (desk.id === "security") return securityAssist({ text: message });
+  if (desk.id === "inbox") return inboxAssist({ text: message });
+  if (desk.id === "today") return todayAssist({ state: sessionCoworkerState(), question: message });
+  if (desk.id === "document") return documentAssist({ text: message });
+  const walk = teachAssist({ text: message });
+  if (walk.ok) return walk;
+  return todayAssist({ state: sessionCoworkerState(), question: message });
+}
+
+/**
+ * Background coworker. Produces a brief. Never claims pointer-act. Never Acts.
+ */
+function enqueueCoworkerJob(message, extraTranscript, spawn) {
+  const queued = bgJobs.add({
+    title: (spawn && spawn.title) || "Pointer coworker",
+    run: async (ctx) => {
+      if (ctx.cancelled) return { ok: false, act: false, reason: "cancelled" };
+      const assist = runDeskAssist(message, extraTranscript);
+      if (assist && assist.ok) {
+        publishBrief(assist);
+        publishSuggests(assist);
+        sendHud({
+          type: "answer",
+          meta: `${assist.desk} · background`,
+          text: assist.deliverable,
+        });
+        liveCoordinator.note("brief", assist.title || assist.desk);
+      } else if (assist) {
+        sendHud({
+          type: "answer",
+          meta: (spawn && spawn.desk) || "coworker",
+          text: assist.reason || "coworker had nothing to ship",
+        });
+      }
+      return { ...(assist || {}), act: false, spawn: true, claimLane: false };
+    },
+  });
+  if (queued.ok) {
+    liveCoordinator.note("spawn", (spawn && spawn.desk) || "coworker");
+    void bgJobs.drain();
+  }
+  return queued;
+}
 
 ipcMain.handle("hud:bgList", async () => ({
   ok: true,

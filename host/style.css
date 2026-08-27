@@ -24,4 +24,5 @@ pre {
 .desk p { margin: 0 0 6px; }
 .muted { color: #9ad; }
 .refuse { color: #f88; }
-#artifacts { padding-left: 18px; }
+#artifacts, #events { padding-left: 18px; }
+#brief pre { margin-top: 8px; }

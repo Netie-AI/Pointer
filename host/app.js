@@ -28,6 +28,32 @@ function paintDesks(desks) {
   });
 }
 
+function paintEvents(events) {
+  const root = document.getElementById("events");
+  if (!root) return;
+  root.replaceChildren();
+  if (!events || !events.length) {
+    const li = el("li", "muted");
+    li.textContent = "No session events on this host. Open 127.0.0.1:18010/today while Pointer is running.";
+    root.appendChild(li);
+    return;
+  }
+  events.forEach((row) => {
+    const li = el("li");
+    li.textContent = (row.kind || "note") + " · " + (row.detail || "");
+    root.appendChild(li);
+  });
+}
+
+function paintBrief(text) {
+  const root = document.getElementById("brief");
+  if (!root) return;
+  root.replaceChildren();
+  const pre = el("pre");
+  pre.textContent = text || "";
+  root.appendChild(pre);
+}
+
 function paintArtifacts(items) {
   const root = document.getElementById("artifacts");
   if (!root) return;
@@ -87,6 +113,22 @@ if (workspacePage) {
           ? "This is the public catalog. Open " + coord + " while Pointer is running for live briefs."
           : "Live workspace on this machine. Exec stays refused."
       );
+    })
+    .catch((err) => show("policy", String(err)));
+}
+
+const todayPage = document.getElementById("brief");
+if (todayPage) {
+  fetch("/api/today")
+    .then((r) => r.json())
+    .then((t) => {
+      if (t && t.exec) {
+        show("policy", "refused: today must not grow a runtime");
+        return;
+      }
+      show("policy", (t && t.reason) || "standing brief; Act stays on the laptop");
+      paintBrief((t && (t.deliverable || t.brief)) || "");
+      paintEvents((t && (t.events || t.today)) || []);
     })
     .catch((err) => show("policy", String(err)));
 }

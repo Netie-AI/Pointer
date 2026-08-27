@@ -10,6 +10,10 @@ const {
   securityAssist,
   teachAssist,
   inboxAssist,
+  todayAssist,
+  documentAssist,
+  wantsSpawn,
+  spawnCoworker,
   suggestsFromAssist,
 } = require("../electron/netie/coworker-desks");
 const { plannerGrounding } = require("../electron/netie/coworker");
@@ -29,9 +33,10 @@ function test(name, fn) {
 
 test("catalog is original first-party desks with no runtime", () => {
   const ids = catalog().map((d) => d.id);
-  assert.deepStrictEqual(ids, ["teach", "meeting", "document", "security", "inbox"]);
+  assert.deepStrictEqual(ids, ["teach", "meeting", "today", "document", "security", "inbox"]);
   assert.strictEqual(canActOnline(), false);
   assert.strictEqual(DESKS.meeting.act, "never");
+  assert.strictEqual(DESKS.today.act, "never");
   assert.strictEqual(DESKS.inbox.parked, "P-05");
   assert.ok(!catalog().some((d) => d.actions && d.actions.length));
 });
@@ -44,7 +49,10 @@ test("pickDesk routes Clicky/Cluely/OpenWorker jobs to Pointer desks", () => {
   assert.strictEqual(pickDesk("write hello in Word").id, "document");
   assert.strictEqual(pickDesk("security review this repo").id, "security");
   assert.strictEqual(pickDesk("draft a gmail reply").id, "inbox");
+  assert.strictEqual(pickDesk("what's on my plate").id, "today");
+  assert.strictEqual(pickDesk("morning brief").id, "today");
   assert.strictEqual(pickDesk("click Save", { mode: "meeting" }).id, "meeting");
+  assert.strictEqual(pickDesk("what's on my plate", { mode: "meeting" }).id, "meeting");
 });
 
 test("meeting assist fails closed with no transcript and never acts", () => {
@@ -81,6 +89,7 @@ test("planner grounding names the desk and refuses online exec", () => {
   assert.match(g, /workspace.exec/);
   assert.match(deskGrounding("security"), /Never self-approve/);
   assert.match(deskGrounding("teach"), /\[POINT:/);
+  assert.match(deskGrounding("today"), /Never invent work/);
 });
 
 test("Ask vision chat is grounded by the desk, not only the Act planner", () => {
@@ -184,6 +193,71 @@ test("suggestsFromAssist turns transcript questions into HUD chips", () => {
   assert.match(hud, /paintSuggestItems/);
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
   assert.match(main, /type: "suggests"/);
+});
+
+test("today assist ships a standing brief and never invents work", () => {
+  const empty = todayAssist({ state: {} });
+  assert.strictEqual(empty.ok, true);
+  assert.strictEqual(empty.act, false);
+  assert.strictEqual(empty.skipLlm, true);
+  assert.match(empty.deliverable, /nothing yet/);
+  assert.match(empty.deliverable, /P-06/);
+  assert.doesNotMatch(empty.deliverable, /send the deck/);
+  const filled = todayAssist({
+    state: {
+      today: [{ kind: "claim", detail: "pointer-act -> pointer-hud" }],
+      lanes: { "pointer-act": { owner: "pointer-hud", goal: "write hello" } },
+      artifacts: [{ title: "Standup recap", desk: "meeting" }],
+      jobs: [{ title: "Meeting coworker", status: "running" }],
+    },
+  });
+  assert.match(filled.deliverable, /pointer-hud/);
+  assert.match(filled.deliverable, /Standup recap/);
+  assert.match(filled.deliverable, /Meeting coworker: running/);
+  assert.strictEqual(filled.act, false);
+});
+
+test("document assist drafts and never writes Word", () => {
+  const miss = documentAssist({ text: "" });
+  assert.strictEqual(miss.ok, false);
+  const draft = documentAssist({ text: "write hello in Word" });
+  assert.strictEqual(draft.ok, true);
+  assert.strictEqual(draft.act, false);
+  assert.strictEqual(draft.skipLlm, false);
+  assert.match(draft.deliverable, /not a \.docx/);
+  assert.match(draft.deliverable, /word_docx_write/);
+  assert.doesNotMatch(draft.deliverable, /will execute/i);
+});
+
+test("spawn coworker never acts and never claims the pointer-act lane", () => {
+  assert.strictEqual(wantsSpawn("hello"), false);
+  const miss = spawnCoworker({ text: "recap this meeting" });
+  assert.strictEqual(miss.ok, false);
+  assert.strictEqual(miss.act, false);
+  const spawn = spawnCoworker({ text: "spawn an agent and click Buy now" });
+  assert.strictEqual(spawn.ok, true);
+  assert.strictEqual(spawn.act, false);
+  assert.strictEqual(spawn.claimLane, false);
+  assert.strictEqual(spawn.spawn, true);
+  assert.match(spawn.note, /Will not Act/);
+  const recap = spawnCoworker({ text: "spawn a coworker to recap this meeting" });
+  assert.strictEqual(recap.desk, "meeting");
+  assert.strictEqual(recap.act, false);
+  const plate = spawnCoworker({ text: "spawn a coworker" });
+  assert.ok(plate.ok);
+  assert.strictEqual(plate.act, false);
+  const fs = require("fs");
+  const path = require("path");
+  const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
+  assert.match(main, /spawnCoworker/);
+  assert.match(main, /enqueueCoworkerJob/);
+  assert.match(main, /claimLane: false/);
+  const spawnAsk = main.slice(main.indexOf('ipcMain.handle("hud:ask"'), main.indexOf("P4-BG-AGENTS"));
+  assert.match(spawnAsk, /spawnCoworker/);
+  assert.doesNotMatch(spawnAsk, /claim\("pointer-act"/);
+  const job = main.slice(main.indexOf("function enqueueCoworkerJob"), main.indexOf("ipcMain.handle(\"hud:bgList\""));
+  assert.doesNotMatch(job, /claim\("pointer-act"/);
+  assert.doesNotMatch(job, /driver\./);
 });
 
 console.log(`\n${pass} passed, ${fails.length} failed`);

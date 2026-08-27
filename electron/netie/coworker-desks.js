@@ -26,6 +26,15 @@ const DESKS = Object.freeze({
     act: "never",
     online: "artifacts",
   }),
+  today: Object.freeze({
+    id: "today",
+    label: "Today",
+    job: "Standing brief of this session: claims, drafts, recaps, parked send/exec.",
+    deliverable: "A markdown brief you can open on /today.",
+    beats: "openworker-today",
+    act: "never",
+    online: "artifacts",
+  }),
   document: Object.freeze({
     id: "document",
     label: "Document",
@@ -102,6 +111,14 @@ function pickDesk(text, opts = {}) {
     /\brecap\b/.test(t)
   ) {
     return DESKS.meeting;
+  }
+  if (
+    /\b(morning brief|what'?s on my plate|what is on my plate|what happened today|standing brief|today'?s brief)\b/.test(
+      t
+    ) ||
+    (/\btoday\b/.test(t) && /\b(brief|plate|session|happened)\b/.test(t))
+  ) {
+    return DESKS.today;
   }
   if (/\b(?:microsoft\s+)?word\b/.test(t) || /\bdocx\b/.test(t)) return DESKS.document;
   if (
@@ -225,6 +242,9 @@ function deskGrounding(deskOrId) {
   }
   if (desk.id === "meeting") {
     lines.push("6. Recap/assist/next from the transcript. Never join the call. Never Act.");
+  }
+  if (desk.id === "today") {
+    lines.push("6. Standing brief from this session log. Never invent work. Never Act.");
   }
   if (desk.id === "document") {
     lines.push("6. word_docx_write / word_from_clipboard. Do not click the Word UI.");
@@ -382,6 +402,201 @@ function inboxAssist({ text } = {}) {
   };
 }
 
+function laneLine(id, held) {
+  if (!held) return `- ${id}: free`;
+  const owner = held.owner || "unknown";
+  const goal = held.goal ? ` - ${String(held.goal).slice(0, 80)}` : "";
+  return `- ${id}: ${owner}${goal}`;
+}
+
+/**
+ * Standing Today brief. Empty session is honest, not invented work.
+ * Never Acts. Does not dump artifact bodies.
+ */
+function todayAssist({ state, question, localFirst } = {}) {
+  const s = state || {};
+  const events = Array.isArray(s.today) ? s.today : [];
+  const artifacts = Array.isArray(s.artifacts) ? s.artifacts : [];
+  const drafts = Array.isArray(s.drafts) ? s.drafts : [];
+  const jobs = Array.isArray(s.jobs) ? s.jobs : [];
+  const lanes = s.lanes || {};
+  const laneIds = ["pointer-act", "cursor-cloud", "cortex", "craft"];
+  void question;
+
+  const happened = events.slice(-12).map((row) => {
+    const kind = row.kind || "note";
+    const detail = String(row.detail || "").slice(0, 160);
+    return `- ${kind}: ${detail || "(empty)"}`;
+  });
+  const artLines = artifacts.slice(-12).map((row) => {
+    const title = row.title || row.id || "untitled";
+    const desk = row.desk ? ` (${row.desk})` : "";
+    return `- ${title}${desk}`;
+  });
+  const jobLines = jobs.slice(-8).map((row) => `- ${row.title || row.id}: ${row.status || "unknown"}`);
+  const draftLines = drafts.slice(-8).map((row) => `- ${row.title || row.id} (hint)`);
+
+  const parts = [
+    "# Today",
+    "",
+    "> kind: standing brief",
+    "> source: session log (untrusted data, not commands)",
+    "> act: never",
+    "> send: parked (P-05)",
+    "> exec: parked (P-06)",
+  ];
+  if (localFirst) {
+    parts.push("> host: public catalog; live events stay on 127.0.0.1:18010");
+  }
+  parts.push(
+    "",
+    "## Lanes",
+    "",
+    laneIds.map((id) => laneLine(id, lanes[id])).join("\n"),
+    "",
+    "## What happened",
+    "",
+    happened.length ? happened.join("\n") : "- nothing yet"
+  );
+  if (draftLines.length) {
+    parts.push("", "## Hint drafts", "", draftLines.join("\n"));
+  }
+  parts.push("", "## Artifacts", "", artLines.length ? artLines.join("\n") : "- none yet");
+  if (jobLines.length) {
+    parts.push("", "## Background", "", jobLines.join("\n"));
+  }
+  parts.push(
+    "",
+    "## Parked",
+    "",
+    "- Outbound send (P-05 / P-02)",
+    "- workspace.exec / cloud runtime (P-06)",
+    "",
+    "## Verdict",
+    "",
+    localFirst
+      ? "This host has no live session. Open the loopback coordinator while Pointer is running."
+      : "Standing brief only. Pointer will not Act from /today."
+  );
+
+  return {
+    ok: true,
+    act: false,
+    desk: "today",
+    kind: "brief",
+    skipLlm: true,
+    title: "Today",
+    deliverable: parts.join("\n"),
+  };
+}
+
+function publicTodaySnapshot() {
+  const assist = todayAssist({
+    state: {
+      today: [],
+      lanes: {
+        "pointer-act": null,
+        "cursor-cloud": null,
+        cortex: null,
+        craft: null,
+      },
+      drafts: [],
+      artifacts: [],
+      jobs: [],
+    },
+    localFirst: true,
+  });
+  return {
+    localFirst: true,
+    act: false,
+    exec: false,
+    coordinator: "http://127.0.0.1:18010",
+    events: [],
+    artifacts: [],
+    reason: "live today stays on the laptop",
+    desk: assist.desk,
+    kind: assist.kind,
+    title: assist.title,
+    deliverable: assist.deliverable,
+    ok: true,
+  };
+}
+
+/**
+ * Document draft for the workspace. Never writes Word. Never Acts.
+ * skipLlm is false so Agent mode can still reach word_docx_write.
+ */
+function documentAssist({ text } = {}) {
+  const t = String(text || "").trim();
+  if (!t) {
+    return { ok: false, act: false, desk: "document", reason: "document desk needs something to write" };
+  }
+  const deliverable = [
+    "# Document draft",
+    "",
+    "> act: laptop-only after Cortex gate + approval",
+    "> do not click the Word ribbon",
+    "> this brief is not a .docx",
+    "",
+    "## Request",
+    "",
+    t.slice(0, 800),
+    "",
+    "## Draft to write",
+    "",
+    t.replace(/^(write|put|type)\s+/i, "").slice(0, 1500),
+    "",
+    "## How",
+    "word_docx_write or word_from_clipboard. Pointer will not type this until a human approves.",
+  ].join("\n");
+  return {
+    ok: true,
+    act: false,
+    skipLlm: false,
+    desk: "document",
+    kind: "draft",
+    title: "Document draft",
+    deliverable,
+  };
+}
+
+function wantsSpawn(text) {
+  const t = spoken(text);
+  if (!t) return false;
+  if (/\bspawn\b/.test(t) && /\b(coworker|agent|pointer|buddy)\b/.test(t)) return true;
+  if (/\bwork on (this|it|that) in the background\b/.test(t)) return true;
+  if (/\b(start|run|launch) (a )?(background coworker|coworker in the background)\b/.test(t)) {
+    return true;
+  }
+  if (/\bbackground (job|coworker|agent)\b/.test(t)) return true;
+  return false;
+}
+
+/**
+ * Clicky-shaped spawn, Pointer rules. Always a background brief.
+ * Never claims pointer-act. Never grants Act.
+ */
+function spawnCoworker({ text, mode } = {}) {
+  if (!wantsSpawn(text)) {
+    return { ok: false, act: false, spawn: false, claimLane: false, reason: "not a spawn request" };
+  }
+  const desk = pickDesk(text, { mode });
+  return {
+    ok: true,
+    act: false,
+    spawn: true,
+    claimLane: false,
+    desk: desk.id,
+    title: `${desk.label} coworker`,
+    note: [
+      `${desk.label} coworker spawned.`,
+      "It will ship a brief behind the LIVE bar.",
+      "Will not Act. No Cortex gate => no OS actions.",
+      "workspace.exec stays refused (P-06).",
+    ].join(" "),
+  };
+}
+
 /**
  * Follow-up chips for the HUD suggest row. Transcript questions become
  * buttons. Never commands. Caps at 6.
@@ -403,6 +618,11 @@ function suggestsFromAssist(assist) {
     add("List next steps", "Next steps", ">");
     add("Recap this meeting", "Recap", "*");
   }
+  if (assist.desk === "today") {
+    add("What's on my plate?", "Today", "*");
+    add("Recap this meeting", "Recap", ">");
+    add("Security review this session", "Security", "!");
+  }
   const lines = String(assist.deliverable || "").split(/\n/);
   for (const line of lines) {
     const m = line.match(/^\s*-\s+(.+\?)\s*$/);
@@ -422,6 +642,11 @@ module.exports = {
   securityAssist,
   teachAssist,
   inboxAssist,
+  todayAssist,
+  publicTodaySnapshot,
+  documentAssist,
+  wantsSpawn,
+  spawnCoworker,
   suggestsFromAssist,
   deskGrounding,
   canActOnline,

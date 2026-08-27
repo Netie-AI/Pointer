@@ -2,6 +2,15 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Standing Today brief and fail-closed coworker spawn
+
+`/today` is a standing brief of this session (lanes, events, artifacts,
+parked send/exec), not a JSON dump. Public `/api/today` stays local-first
+and empty. Voice "spawn a coworker" queues a background brief behind the
+LIVE bar and never claims pointer-act. Document desk drafts without
+writing Word. MCP `today.brief` is first-party and never Acts. P-05 and
+P-06 stay parked.
+
 ## 2026-08-27 - Teach walkthroughs, unsent inbox drafts, live follow-up chips
 
 Teach requests publish a POINT-format walkthrough and still go to vision;

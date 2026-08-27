@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
-const { catalog } = require("./coworker-desks");
+const { catalog, todayAssist } = require("./coworker-desks");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
 
@@ -117,6 +117,34 @@ function createCoordinator(opts = {}) {
     if (req.method === "GET" && url.pathname === "/api/state") {
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(snapshot()));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/today") {
+      const assist = todayAssist({
+        state: {
+          today,
+          lanes: snapshot().lanes,
+          drafts,
+          artifacts: workspace.list(),
+          jobs: [],
+        },
+      });
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(
+        JSON.stringify({
+          ok: assist.ok,
+          act: false,
+          exec: false,
+          localFirst: false,
+          desk: assist.desk,
+          kind: assist.kind,
+          title: assist.title,
+          deliverable: assist.deliverable,
+          events: today.slice(-40),
+          artifacts: workspace.publicList(),
+          reason: "live today on loopback; no runtime",
+        })
+      );
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/workspace") {
@@ -224,6 +252,18 @@ function createCoordinator(opts = {}) {
     });
   }
 
+  function brief() {
+    return todayAssist({
+      state: {
+        today,
+        lanes: snapshot().lanes,
+        drafts,
+        artifacts: workspace.list(),
+        jobs: [],
+      },
+    });
+  }
+
   const api = {
     LANES,
     PAGES,
@@ -233,6 +273,8 @@ function createCoordinator(opts = {}) {
     release,
     rememberSearch,
     noteDraft,
+    note,
+    brief,
     workspace,
     listen,
     close,

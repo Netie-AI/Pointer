@@ -26,7 +26,7 @@ the issue wins.
 | Electron main / Act loop | `electron/main.js` |
 | HUD | `electron/hud.html`, `hud.js`, `hud.css` |
 | Recipes / coworker SOPs | `electron/netie/recipes.js`, `coworker.js` |
-| Coworker desks | `electron/netie/coworker-desks.js` (`teach` `meeting` `document` `security`) |
+| Coworker desks | `electron/netie/coworker-desks.js` (`teach` `meeting` `today` `document` `security`) |
 | Artifact workspace | `electron/netie/workspace.js` (no runtime; public `/workspace` is a catalog) |
 | Skill search / craft hints | `electron/netie/skill-search.js`, `skills-exec.js` |
 | Coordinator + first-party MCP ABI | `electron/netie/coordinator.js`, `mcp-abi.js`, `host-serve.js`; pages in `host/` (`/` `/today` `/lanes` `/skills` `/workspace`); public Worker `workers/netie-host.js` |
