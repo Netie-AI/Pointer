@@ -56,6 +56,7 @@ function test(name, fn) {
     assert.ok(meeting.inputSchema.properties.kind);
     assert.ok(meeting.inputSchema.properties.screenshot);
     assert.match(meeting.description, /export=1/);
+    assert.match(meeting.description, /say=1/);
     const scribe = r.result.catalog.find((t) => t.name === "computer.scribe");
     assert.ok(scribe.inputSchema.properties.retry);
     assert.ok(scribe.inputSchema.properties.dictate);
