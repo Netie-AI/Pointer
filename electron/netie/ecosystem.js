@@ -48,8 +48,64 @@ function sanitizeModelAction(raw) {
   return out.type ? out : null;
 }
 
+const DEFAULT_CHAT_URL = "http://127.0.0.1:5000";
+const DEFAULT_CHAT_MODEL = "gemini-2.0-flash";
+
+/** OpenAI-shaped chat base. Strips /v1/chat/completions so callers can append. */
+function sanitizeLlmUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw || raw.length > 300) return "";
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return "";
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+  parsed.username = "";
+  parsed.password = "";
+  parsed.search = "";
+  parsed.hash = "";
+  let pathname = String(parsed.pathname || "").replace(/\/+$/, "");
+  if (/\/v1\/chat\/completions$/i.test(pathname)) {
+    pathname = pathname.replace(/\/v1\/chat\/completions$/i, "");
+  } else if (/\/chat\/completions$/i.test(pathname)) {
+    pathname = pathname.replace(/\/chat\/completions$/i, "");
+  }
+  parsed.pathname = pathname || "/";
+  return parsed.toString().replace(/\/$/, "");
+}
+
+function isLoopbackLlmUrl(value) {
+  try {
+    const host = new URL(sanitizeLlmUrl(value) || value).hostname;
+    return host === "127.0.0.1" || host === "localhost" || host === "::1";
+  } catch {
+    return false;
+  }
+}
+
+/** Model id only. Never an API key. */
+function sanitizeLlmModel(value) {
+  const raw = String(value || "").trim();
+  if (!raw || raw.length > 80) return "";
+  if (/^sk-/i.test(raw)) return "";
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$/.test(raw)) return "";
+  return raw;
+}
+
+function readCfgValue(value) {
+  return typeof value === "function" ? value() : value;
+}
+
+function chatCompletionsUrlFromBase(base) {
+  const clean = String(base || "").replace(/\/$/, "");
+  if (/\/v1$/i.test(clean)) return `${clean}/chat/completions`;
+  return `${clean}/v1/chat/completions`;
+}
+
 const DEFAULTS = {
-  openvaultUrl: process.env.NETIE_OPENVAULT_URL || "http://127.0.0.1:5000",
+  openvaultUrl: process.env.NETIE_OPENVAULT_URL || DEFAULT_CHAT_URL,
   cortexUrl: process.env.NETIE_CORTEX_URL || "http://127.0.0.1:8010",
   // Scoped viewer/steward key, never a raw provider key. Cortex ships these
   // demo keys as its own default (packs/dms/security/api_auth.py), so local dev
@@ -58,7 +114,9 @@ const DEFAULTS = {
   cortexKey:
     process.env.NETIE_CORTEX_KEY ||
     (process.env.NETIE_CORTEX_DEMO_KEY === "0" ? "" : "dms-demo-steward-key"),
-  model: process.env.NETIE_CLICK_MODEL || "gemini-2.0-flash",
+  model: process.env.NETIE_CLICK_MODEL || DEFAULT_CHAT_MODEL,
+  /** OpenWillow BYOK LLM base. Empty keeps OpenVault loopback. Function ok (live settings). */
+  chatUrl: "",
   /** Comma list for docs/HUD; OpenVault owns actual failover. */
   providerOrder: (process.env.NETIE_PROVIDER_ORDER || "gemini,anthropic,openai,groq")
     .split(",")
@@ -82,6 +140,28 @@ class NetieEcosystem {
     this._fetch = opts.fetchImpl || ((...a) => globalThis.fetch(...a));
     /** null = unknown, true/false after first Cortex round-trip. */
     this.cortexOnline = null;
+  }
+
+  /**
+   * Chat hop only. Custody stays on openvaultUrl even when this is remote.
+   * Empty HUD/env value keeps the OpenVault loopback default (not Groq).
+   */
+  chatBaseUrl() {
+    const fromChat = sanitizeLlmUrl(readCfgValue(this.cfg.chatUrl));
+    if (fromChat) return fromChat;
+    const fromVault = sanitizeLlmUrl(this.cfg.openvaultUrl);
+    if (fromVault) return fromVault;
+    return DEFAULT_CHAT_URL;
+  }
+
+  chatCompletionsUrl() {
+    return chatCompletionsUrlFromBase(this.chatBaseUrl());
+  }
+
+  chatModel() {
+    const fromCfg = sanitizeLlmModel(readCfgValue(this.cfg.model));
+    if (fromCfg) return fromCfg;
+    return sanitizeLlmModel(process.env.NETIE_CLICK_MODEL) || DEFAULT_CHAT_MODEL;
   }
 
   _cortexHeaders() {
@@ -265,7 +345,7 @@ class NetieEcosystem {
     if (dataUrl) content.push({ type: "image_url", image_url: { url: dataUrl } });
 
     const body = {
-      model: this.cfg.model,
+      model: this.chatModel(),
       messages: [
         { role: "system", content: system },
         { role: "user", content },
@@ -274,7 +354,7 @@ class NetieEcosystem {
     };
 
     try {
-      const res = await this._post(`${this.cfg.openvaultUrl}/v1/chat/completions`, body, {
+      const res = await this._post(this.chatCompletionsUrl(), body, {
         "Content-Type": "application/json",
         Accept: "application/json",
         "x-openfree-identity": `${this.cfg.deviceId}`,
@@ -354,7 +434,7 @@ class NetieEcosystem {
       planner: planned.planner,
       plan_id: planned.planId,
       fallback: planned.fallback,
-      model: this.cfg.model,
+      model: this.chatModel(),
       provider_order: this.cfg.providerOrder,
     });
 
@@ -373,7 +453,7 @@ class NetieEcosystem {
       rationale: planned.rationale,
       skillsUsed: planned.skillsUsed,
       plannerFallback: planned.fallback,
-      model: this.cfg.model,
+      model: this.chatModel(),
       providerOrder: this.cfg.providerOrder,
     };
   }
@@ -508,8 +588,8 @@ class NetieEcosystem {
     const content = [{ type: "text", text: safeInstruction }];
     if (dataUrl) content.push({ type: "image_url", image_url: { url: dataUrl } });
 
-    const res = await this._post(`${this.cfg.openvaultUrl}/v1/chat/completions`, {
-      model: this.cfg.model,
+    const res = await this._post(this.chatCompletionsUrl(), {
+      model: this.chatModel(),
       messages: [
         { role: "system", content: system },
         { role: "user", content },
@@ -622,4 +702,12 @@ class NetieEcosystem {
   }
 }
 
-module.exports = { NetieEcosystem, DEFAULTS };
+module.exports = {
+  NetieEcosystem,
+  DEFAULTS,
+  DEFAULT_CHAT_URL,
+  DEFAULT_CHAT_MODEL,
+  sanitizeLlmUrl,
+  sanitizeLlmModel,
+  isLoopbackLlmUrl,
+};

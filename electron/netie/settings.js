@@ -102,6 +102,15 @@ const DEFAULTS = Object.freeze({
    */
   sttUrl: "",
   /**
+   * OpenWillow BYOK LLM: OpenAI-shaped HTTP base (same slot as
+   * NETIE_OPENVAULT_URL for chat). Empty keeps loopback OpenVault.
+   * Not a Groq default (P-04). Keys stay in OpenVault, never here.
+   * Remote URLs send prompts and screenshots off-device.
+   */
+  llmUrl: "",
+  /** Optional chat model id. Empty keeps NETIE_CLICK_MODEL / OpenVault default. */
+  llmModel: "",
+  /**
    * OpenWillow dictation: type mic speech into the focused app in Transcribe
    * mode. Off only if the user hides it. Session still fail-closes without
    * Cortex /dms/secure when the mode is armed.

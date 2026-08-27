@@ -109,6 +109,8 @@ function test(name, fn) {
     assert.strictEqual(shown.hotkeys.recording, "Control+Alt+Space");
     assert.strictEqual(shown.hotkeys.assist, "Control+Enter");
     assert.strictEqual(shown.stt.local, true);
+    assert.strictEqual(shown.llm.local, true);
+    assert.strictEqual(shown.llm.model, "gemini-2.0-flash");
     assert.strictEqual(shown.scribe.language, "English");
     assert.ok(shown.drive.instructions.includes("POST /api/computer {\"mode\":\"scribe\"}"));
     assert.strictEqual(shown.scribe.available, true);
@@ -136,19 +138,23 @@ function test(name, fn) {
     assert.match(shown.drive.gated, /dms\/secure/);
   });
 
-  await test("computer.status publishes live mode, hotkeys, and STT", () => {
+  await test("computer.status publishes live mode, hotkeys, STT, and LLM", () => {
     const live = computerStatus({
       captureVisible: true,
       mode: "meeting",
       scribeLanguage: "Traditional Chinese",
       recordingHotkey: "Control+Shift+D",
       stt: { url: "https://stt.example.com", local: false },
+      llm: { url: "https://llm.example.com/v1", local: false, model: "openai/gpt-4o" },
     });
     assert.strictEqual(live.mode, "meeting");
     assert.strictEqual(live.scribe.language, "Traditional Chinese");
     assert.strictEqual(live.hotkeys.recording, "Control+Shift+D");
     assert.strictEqual(live.stt.local, false);
     assert.strictEqual(live.stt.url, "https://stt.example.com");
+    assert.strictEqual(live.llm.local, false);
+    assert.strictEqual(live.llm.url, "https://llm.example.com/v1");
+    assert.strictEqual(live.llm.model, "openai/gpt-4o");
   });
 
   await test("computer.observe reports visibility without leaking clicks", () => {

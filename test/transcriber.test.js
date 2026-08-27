@@ -363,6 +363,8 @@ test("BYOK sidecar URL is live and remote STT is not labeled local", async () =>
   const path = require("path");
   const html = fs.readFileSync(path.join(__dirname, "../electron/hud.html"), "utf8");
   assert.ok(html.includes('id="set-stt-url"'));
+  assert.ok(html.includes('id="set-llm-url"'));
+  assert.ok(html.includes('id="set-llm-model"'));
 });
 
 (async () => {

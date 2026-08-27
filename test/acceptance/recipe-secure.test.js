@@ -38,6 +38,9 @@ async function run() {
       assert.ok(/scribeScreenContext/.test(main), "Scribe may attach optional screen context");
       assert.ok(/sanitizeSttUrl/.test(main), "BYOK STT URL must be sanitized before use");
       assert.ok(/next\.sttUrl/.test(main), "settings save must refresh the STT sidecar URL");
+      assert.ok(/sanitizeLlmUrl/.test(main), "BYOK LLM URL must be sanitized before use");
+      assert.ok(/incoming\.llmUrl/.test(main), "settings save must sanitize the LLM URL");
+      assert.ok(/chatUrl:\s*\(\)\s*=>\s*settings\.get\("llmUrl"\)/.test(main), "chat hop must read live llmUrl");
       assert.ok(/async function captureRememberedWindow/.test(main), "Scribe screen must prefer the remembered window");
       assert.ok(/captureRememberedWindow\(/.test(main), "Scribe screen context must call captureRememberedWindow");
       assert.ok(/pickWindowSource/.test(main), "window capture must match hwnd/title, not dump PrintWindow");

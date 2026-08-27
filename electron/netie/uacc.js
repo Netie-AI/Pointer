@@ -162,6 +162,11 @@ function computerStatus(opts = {}) {
       url: String((opts.stt && opts.stt.url) || "http://127.0.0.1:8766").slice(0, 120),
       local: !opts.stt || opts.stt.local !== false,
     },
+    llm: {
+      url: String((opts.llm && opts.llm.url) || "http://127.0.0.1:5000").slice(0, 120),
+      local: !opts.llm || opts.llm.local !== false,
+      model: String((opts.llm && opts.llm.model) || "gemini-2.0-flash").slice(0, 80),
+    },
     scribe: {
       available: opts.scribeAvailable === true || opts.actAvailable === true,
       gated: true,

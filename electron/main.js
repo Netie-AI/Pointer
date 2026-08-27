@@ -23,7 +23,7 @@ const os = require("os");
 const path = require("path");
 const { execFile } = require("child_process");
 const { HotMemory } = require("./hotMemory");
-const { NetieEcosystem } = require("./netie/ecosystem");
+const { NetieEcosystem, sanitizeLlmUrl, sanitizeLlmModel, isLoopbackLlmUrl } = require("./netie/ecosystem");
 const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
@@ -201,12 +201,17 @@ const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
 const API_HOST = "127.0.0.1";
 const OPENVAULT_PORT = 5000;
 const CORTEX_PORT = 8010;
-const API_CHAT_URL = `http://${API_HOST}:${OPENVAULT_PORT}/v1/chat/completions`;
 const HOTKEY = process.env.NETIE_CLICK_HOTKEY || "Control+`";
 
 const TEMP_DIR = path.join(os.tmpdir(), "netie-clicks");
 const hot = new HotMemory();
-const eco = new NetieEcosystem({ deviceId: `netie-clicks:${hot.deviceId}` });
+const eco = new NetieEcosystem({
+  deviceId: `netie-clicks:${hot.deviceId}`,
+  // Functions, not captured strings: `settings` is declared later. The arrows
+  // run on each chat/plan call, so HUD llmUrl/llmModel take effect live.
+  chatUrl: () => settings.get("llmUrl"),
+  model: () => settings.get("llmModel") || process.env.NETIE_CLICK_MODEL || "gemini-2.0-flash",
+});
 /** Last non-Pointer foreground window dictation/scribe should type into. */
 let deliveryTarget = null;
 const pendingScribe = createPendingScribe();
@@ -215,6 +220,14 @@ function liveComputerStatus() {
     sanitizeSttUrl(settings.get("sttUrl")) ||
     sanitizeSttUrl(process.env.NETIE_STT_URL) ||
     DEFAULT_SIDECAR;
+  const llmUrl =
+    sanitizeLlmUrl(settings.get("llmUrl")) ||
+    sanitizeLlmUrl(process.env.NETIE_OPENVAULT_URL) ||
+    "http://127.0.0.1:5000";
+  const llmModel =
+    sanitizeLlmModel(settings.get("llmModel")) ||
+    process.env.NETIE_CLICK_MODEL ||
+    "gemini-2.0-flash";
   return computerStatus({
     captureVisible: captureVisible(),
     uacc: detectUacc(),
@@ -227,6 +240,7 @@ function liveComputerStatus() {
     languageHotkey: settings.get("languageHotkey") || "Control+Alt+L",
     scribeLanguage: settings.get("scribeLanguage") || "English",
     stt: { url: sttUrl, local: isLoopbackSttUrl(sttUrl) },
+    llm: { url: llmUrl, local: isLoopbackLlmUrl(llmUrl), model: llmModel },
   });
 }
 
@@ -2771,7 +2785,7 @@ ipcMain.handle("clicks:getAppInfo", async () => {
     deviceId: hot.deviceId,
     state,
     hotkey: HOTKEY,
-    api: API_CHAT_URL,
+    api: eco.chatCompletionsUrl(),
     cortex: process.env.NETIE_CORTEX_URL || `http://${API_HOST}:${CORTEX_PORT}`,
     ticks: hot.snapshot().length,
     cortexOnline: eco.cortexOnline,
@@ -2783,7 +2797,7 @@ ipcMain.handle("click:getAppInfo", async () => ({
   deviceId: hot.deviceId,
   state,
   hotkey: HOTKEY,
-  api: API_CHAT_URL,
+  api: eco.chatCompletionsUrl(),
 }));
 
 ipcMain.handle("click:captureNow", async () => {
@@ -4130,6 +4144,12 @@ ipcMain.handle("hud:setSettings", async (_e, payload) => {
   const incoming = { ...((payload && payload.settings) || payload || {}) };
   if (Object.prototype.hasOwnProperty.call(incoming, "sttUrl")) {
     incoming.sttUrl = sanitizeSttUrl(incoming.sttUrl);
+  }
+  if (Object.prototype.hasOwnProperty.call(incoming, "llmUrl")) {
+    incoming.llmUrl = sanitizeLlmUrl(incoming.llmUrl);
+  }
+  if (Object.prototype.hasOwnProperty.call(incoming, "llmModel")) {
+    incoming.llmModel = sanitizeLlmModel(incoming.llmModel);
   }
   const keys = normalizeDictateHotkeys({
     recordingHotkey: incoming.recordingHotkey ?? settings.get("recordingHotkey"),

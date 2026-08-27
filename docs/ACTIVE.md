@@ -28,8 +28,9 @@ the issue wins.
 | Recipes / coworker SOPs | `electron/netie/recipes.js`, `coworker.js` |
 | Skill search / craft hints | `electron/netie/skill-search.js`, `skills-exec.js` |
 | Coordinator + first-party MCP ABI | `electron/netie/coordinator.js`, `mcp-abi.js`, `host-serve.js`; pages in `host/`; public Worker `workers/netie-host.js` |
-| UACC skills + loopback detect | `electron/netie/uacc.js`; MCP `computer.status` (mode, hotkeys, STT) / `observe` / `act` (mode switch) / `scribe` / `meeting_assist`; loopback `/api/computer` `/api/observe` `/api/scribe` `/api/meeting` `/api/tools` on `127.0.0.1:18010`; observe optional screenshot + clipboard |
+| UACC skills + loopback detect | `electron/netie/uacc.js`; MCP `computer.status` (mode, hotkeys, STT, LLM) / `observe` / `act` (mode switch) / `scribe` / `meeting_assist`; loopback `/api/computer` `/api/observe` `/api/scribe` `/api/meeting` `/api/tools` on `127.0.0.1:18010`; observe optional screenshot + clipboard |
 | Dictation / Scribe | `electron/netie/dictate.js`, `scribe.js`, `delivery.js`, `holdkey.js`, `pending-scribe.js`; standing `scribeInstruction`; remembered-window screen capture; HUD `sttUrl` BYOK sidecar; recording/mode/language hotkeys |
+| Chat / LLM hop | `electron/netie/ecosystem.js`; HUD `llmUrl` / `llmModel` (blank = loopback OpenVault); custody stays on OpenVault |
 | Meeting assist | `electron/netie/meeting.js`; HUD Suggest/Recap/Follow-ups/Copy notes; `GET /api/meeting?notes=1` `?export=1` |
 | Word safe API | `electron/netie/word-coworker.js` |
 | Driver (SendInput) | `electron/netie/driver.js` |
@@ -44,4 +45,4 @@ the issue wins.
 | Peer | Default | Role |
 |------|---------|------|
 | Cortex | `:8010` | `/dms/secure`, computer-use planner |
-| OpenVault | `:5000` | keys, chat completions fallback, STT |
+| OpenVault | `:5000` | keys, chat completions fallback, STT. HUD `llmUrl` may point chat elsewhere; custody stays here |

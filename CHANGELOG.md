@@ -2,6 +2,15 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - BYOK LLM URL in settings
+
+OpenWillow-class HTTP chat: HUD `llmUrl` / `llmModel` feed the OpenVault
+chat hop (same pattern as NETIE_OPENVAULT_URL). Empty keeps loopback
+OpenVault, not Groq. Remote URLs are labeled off-device. Custody inject
+stays on OpenVault. Keys are never stored in settings.json. GitHub CI
+on this account is still a spending-limit cutoff (0 steps), not a
+product fail. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - Loopback mode switch and live status
 
 Agents on 127.0.0.1 can read live mode, hotkeys, and STT URL from

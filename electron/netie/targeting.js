@@ -33,10 +33,18 @@ async function resolveTargetPoint({ target, dataUrl, eco }) {
   ].join("\n");
 
   try {
+    const chatUrl =
+      typeof eco.chatCompletionsUrl === "function"
+        ? eco.chatCompletionsUrl()
+        : `${String((eco.cfg && eco.cfg.openvaultUrl) || "http://127.0.0.1:5000").replace(/\/$/, "")}/v1/chat/completions`;
+    const model =
+      typeof eco.chatModel === "function"
+        ? eco.chatModel()
+        : (eco.cfg && eco.cfg.model) || "gemini-2.0-flash";
     const res = await eco._post(
-      `${eco.cfg.openvaultUrl}/v1/chat/completions`,
+      chatUrl,
       {
-        model: eco.cfg.model,
+        model,
         messages: [
           { role: "system", content: system },
           {

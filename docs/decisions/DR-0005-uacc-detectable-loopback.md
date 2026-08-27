@@ -42,12 +42,13 @@ arbitrary third-party MCP servers.
    solid panels, fixed top chrome. Clicky ring / stage orb stay banned
    (DR-0002).
 5. **OpenWillow.** Port patterns only (hold-to-talk, dictation, scribe
-   rewrite, BYOK STT URL, remembered target window). No GPLv3 dump (P-04).
-   Scribe is a first-class listening mode that pastes after a Cortex gate.
+   rewrite, BYOK STT URL, BYOK LLM URL/model, remembered target window).
+   No GPLv3 dump (P-04). Scribe is a first-class listening mode that
+   pastes after a Cortex gate. LLM keys stay in OpenVault, not settings.
 
 ## Confirmation
 
 `test/uacc.test.js`, `test/mcp-abi.test.js`, `test/computer-act.test.js`,
-`test/meeting.test.js`, `test/acceptance/live-ux.test.js`,
-`test/acceptance/privacy-hud.test.js`, `test/coordinator.test.js`,
-`test/host-serve.test.js`.
+`test/ecosystem.test.js`, `test/meeting.test.js`,
+`test/acceptance/live-ux.test.js`, `test/acceptance/privacy-hud.test.js`,
+`test/coordinator.test.js`, `test/host-serve.test.js`.

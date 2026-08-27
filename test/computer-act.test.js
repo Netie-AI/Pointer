@@ -179,6 +179,8 @@ function test(name, fn) {
     assert.strictEqual(DEFAULTS.scribeIntoFocus, true);
     assert.strictEqual(DEFAULTS.scribeScreenContext, false);
     assert.strictEqual(DEFAULTS.sttUrl, "");
+    assert.strictEqual(DEFAULTS.llmUrl, "");
+    assert.strictEqual(DEFAULTS.llmModel, "");
     assert.strictEqual(DEFAULTS.recordingHotkey, "Control+Alt+Space");
     assert.strictEqual(DEFAULTS.modeHotkey, "Control+Alt+M");
     assert.strictEqual(DEFAULTS.languageHotkey, "Control+Alt+L");

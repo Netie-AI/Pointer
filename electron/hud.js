@@ -29,7 +29,7 @@ const cleanToast = $("clean-toast");
 const cleanToastText = $("clean-toast-text");
 const clickyOrb = null; // floating Clicky hold removed — Ctrl+Shift+Space arms real OS pointer
 const peekDrop = null;
-const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify"), $("set-autosend"), $("set-cloud-stt"), $("set-stt-url"), $("set-follow"), $("set-capture-visible"), $("set-dictate"), $("set-scribe"), $("set-scribe-screen"), $("set-autostart"), $("set-meeting-suggest"), $("set-recording-hotkey"), $("set-mode-hotkey"), $("set-language-hotkey"), $("set-writing-style"), $("set-scribe-instruction"), $("set-personal-context"), $("set-scribe-language")];
+const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify"), $("set-autosend"), $("set-cloud-stt"), $("set-stt-url"), $("set-llm-url"), $("set-llm-model"), $("set-follow"), $("set-capture-visible"), $("set-dictate"), $("set-scribe"), $("set-scribe-screen"), $("set-autostart"), $("set-meeting-suggest"), $("set-recording-hotkey"), $("set-mode-hotkey"), $("set-language-hotkey"), $("set-writing-style"), $("set-scribe-instruction"), $("set-personal-context"), $("set-scribe-language")];
 
 let listening = false;
 let systemAudio = false;
@@ -335,6 +335,8 @@ async function loadSettings() {
   if ($("set-autosend")) $("set-autosend").checked = settings.autoSend === true;
   if ($("set-cloud-stt")) $("set-cloud-stt").checked = settings.cloudStt === true;
   if ($("set-stt-url")) $("set-stt-url").value = settings.sttUrl || "";
+  if ($("set-llm-url")) $("set-llm-url").value = settings.llmUrl || "";
+  if ($("set-llm-model")) $("set-llm-model").value = settings.llmModel || "";
   if ($("set-follow")) $("set-follow").checked = settings.followCursor !== false;
   if ($("set-capture-visible")) $("set-capture-visible").checked = settings.captureVisible === true;
   if ($("set-dictate")) $("set-dictate").checked = settings.dictateIntoFocus !== false;
@@ -375,6 +377,8 @@ async function saveSettingsFromUi() {
       autoSend: $("set-autosend") ? $("set-autosend").checked : false,
       cloudStt: $("set-cloud-stt") ? $("set-cloud-stt").checked : false,
       sttUrl: $("set-stt-url") ? $("set-stt-url").value.trim() : "",
+      llmUrl: $("set-llm-url") ? $("set-llm-url").value.trim() : "",
+      llmModel: $("set-llm-model") ? $("set-llm-model").value.trim() : "",
       followCursor: $("set-follow") ? $("set-follow").checked : true,
       captureVisible: $("set-capture-visible") ? $("set-capture-visible").checked : false,
       dictateIntoFocus: $("set-dictate") ? $("set-dictate").checked : true,
