@@ -43,7 +43,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   bubble, never a cheater overlay).
 - Loopback `/meeting` paints You/Them turns from the stored ring.
   Say-this reuses your overlapping line or Heard facts, never an
-  unrelated last-you dump. Never a cheater overlay.
+  unrelated last-you dump. Meeting assist is Say this / Also / Don't say
+  (never invent, never send, never a cheater overlay).
 - Loopback This session files link to `/workspace?id=` and chrome shows
   `Open:` the working set. Ask chips review that body. Public `?id=` 404.
 - Loopback `/` paints the live teach path, meeting say-this, Today

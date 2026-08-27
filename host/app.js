@@ -499,6 +499,18 @@ function paintMeetingCard(root, m) {
     say.textContent = cue;
     card.appendChild(say);
   }
+  const also = String(m.also || "").trim();
+  if (also) {
+    const extra = el("p", "meeting-card-also");
+    extra.textContent = "Also: " + also;
+    card.appendChild(extra);
+  }
+  const avoid = String(m.avoid || "").trim();
+  if (avoid) {
+    const no = el("p", "meeting-card-avoid");
+    no.textContent = "Don't say: " + avoid;
+    card.appendChild(no);
+  }
   if (heard) {
     const facts = el("p", "meeting-card-heard");
     facts.textContent = "Heard: " + heard;
@@ -716,6 +728,14 @@ function ensureLiveCueBar() {
   actions.appendChild(copy);
   bar.appendChild(asked);
   bar.appendChild(heard);
+  const also = el("p", "live-cue-heard");
+  also.id = "live-cue-also";
+  also.hidden = true;
+  const avoid = el("p", "live-cue-heard");
+  avoid.id = "live-cue-avoid";
+  avoid.hidden = true;
+  bar.appendChild(also);
+  bar.appendChild(avoid);
   bar.appendChild(text);
   bar.appendChild(actions);
   const openChip = el("p", "live-cue-open");
@@ -788,6 +808,18 @@ function paintChrome(home) {
   if (heardEl) {
     heardEl.hidden = !heard;
     heardEl.textContent = heard ? "Heard: " + heard : "";
+  }
+  const alsoEl = document.getElementById("live-cue-also");
+  const avoidEl = document.getElementById("live-cue-avoid");
+  const also = String(meeting.also || "").trim();
+  const avoid = String(meeting.avoid || "").trim();
+  if (alsoEl) {
+    alsoEl.hidden = !also;
+    alsoEl.textContent = also ? "Also: " + also : "";
+  }
+  if (avoidEl) {
+    avoidEl.hidden = !avoid;
+    avoidEl.textContent = avoid ? "Don't say: " + avoid : "";
   }
   if (textEl) textEl.textContent = cueLine;
   lastChromeCue = meetingCue || teachCue || plate;

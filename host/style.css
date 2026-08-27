@@ -199,6 +199,17 @@ pre {
   line-height: 1.35;
   color: #eee;
 }
+.meeting-card-also {
+  margin: 0 0 8px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #eee;
+}
+.meeting-card-avoid {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #f88;
+}
 .meeting-card-heard {
   margin: 0;
   color: #9ad;

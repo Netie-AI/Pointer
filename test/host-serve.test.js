@@ -219,6 +219,8 @@ function readAsset(file) {
     assert.match(cssText, /teach-map-rail/);
     assert.match(cssText, /teach-map-key/);
     assert.match(cssText, /meeting-card-say/);
+    assert.match(cssText, /meeting-card-also/);
+    assert.match(cssText, /meeting-card-avoid/);
     assert.match(cssText, /today-plate-kicker/);
     assert.match(cssText, /work-rail/);
     assert.match(cssText, /work-card-kicker/);
@@ -246,7 +248,9 @@ function readAsset(file) {
     assert.match(app, /meeting-card-from/);
     assert.match(app, /today-plate/);
     assert.match(app, /On your plate/);
-    assert.match(app, /From the open file/);
+    assert.match(app, /Don't say:/);
+    assert.match(app, /meeting-card-also/);
+    assert.match(app, /live-cue-also/);
     assert.match(app, /meeting-talk/);
     assert.doesNotMatch(app, /innerHTML/);
     const meeting = await fetch(new Request("https://host.netie.ai/meeting"));
@@ -308,6 +312,8 @@ function readAsset(file) {
     assert.deepStrictEqual(homeBody.rooms.teach.path, []);
     assert.deepStrictEqual(homeBody.rooms.meeting.turns, []);
     assert.strictEqual(homeBody.rooms.meeting.notes, false);
+    assert.strictEqual(homeBody.rooms.meeting.also, "");
+    assert.strictEqual(homeBody.rooms.meeting.avoid, "");
     assert.deepStrictEqual(homeBody.rooms.today.plate, []);
     assert.deepStrictEqual(homeBody.rooms.security.findings, []);
     assert.strictEqual(homeBody.rooms.inbox.preview, "");

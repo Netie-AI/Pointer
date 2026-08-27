@@ -11,7 +11,8 @@ advance), Meeting recaps an
 armed transcript (You/Them lines, weekday tags, They asked chrome, a
 speakable say-this from your answer with Heard dates/amounts/clock times
 woven in, Heard facts from an open workspace file, a Heard strip from
-the ring, a say-this answer card on loopback `/meeting`, and a 300ms cue when they ask), Today
+the ring, a say-this / Also / Don't say stack on loopback `/meeting` and in HUD
+insight (grounded Heard only, never invent, never send), and a 300ms cue when they ask), Today
 is the standing session brief with On your plate from live commitments
 and filed inbox/Word drafts,
 Document reuses the live recap or Today plate on a bare `write in Word`

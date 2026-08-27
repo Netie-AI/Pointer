@@ -129,8 +129,9 @@ a say-this answer card plus the You/Them talk track from the stored ring
 (never a cheater overlay). An open workspace file grounds Heard facts
 only, never talk. HUD insight paints the same talk in fixed chrome
 (never a bubble).
-Say-this reuses your overlapping line or Heard facts, never an unrelated
-last-you dump. Loopback `/teach` paints a walk path from measured
+Say-this / Also / Don't say is a grounded stack: your overlapping line or
+Heard facts, never an unrelated last-you dump, never invent, never send.
+Loopback `/teach` paints a walk path from measured
 BOX/POINT (current hold, later dashed, Got it Ask, never Act). Loopback
 `/` paints that teach path, meeting card, Today plate, and filed
 inbox/Word/security work cards from `/api/home` (never exec).

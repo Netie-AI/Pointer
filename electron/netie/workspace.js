@@ -58,6 +58,8 @@ function createWorkspace(opts = {}) {
       rest: String(spec.rest || "").slice(0, 160),
       heard: String(spec.heard || "").slice(0, 160),
       notes: Boolean(spec.notes),
+      also: String(spec.also || "").slice(0, 160),
+      avoid: String(spec.avoid || "").slice(0, 160),
       preview: String(spec.preview || "").slice(0, 600),
       findings: Array.isArray(spec.findings)
         ? spec.findings

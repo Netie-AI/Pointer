@@ -131,6 +131,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/paintLiveBrief/.test(js));
       assert.ok(/coworker-brief/.test(read("electron/hud.html")), "live brief lives in fixed insight chrome");
       assert.ok(/id="meeting-cue"/.test(read("electron/hud.html")), "say-this cue is fixed chrome, not a bubble");
+      assert.ok(/id="meeting-also"/.test(read("electron/hud.html")), "Also lives in fixed insight chrome");
+      assert.ok(/id="meeting-avoid"/.test(read("electron/hud.html")), "Don't say lives in fixed insight chrome");
       assert.ok(/id="meeting-talk"/.test(read("electron/hud.html")), "You/Them talk lives in fixed insight chrome");
       assert.ok(/id="live-cue-bar"/.test(read("electron/hud.html")), "live cue bar is fixed top chrome, not a bubble");
       assert.ok(/id="btn-live-next"/.test(read("electron/hud.html")), "Got it lives in the top cue bar");

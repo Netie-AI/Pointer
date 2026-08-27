@@ -148,6 +148,8 @@ function paintLiveBrief(event) {
   const brief = $("coworker-brief");
   const meta = $("coworker-brief-meta");
   const cueEl = $("meeting-cue");
+  const alsoEl = $("meeting-also");
+  const avoidEl = $("meeting-avoid");
   const askedEl = $("meeting-asked");
   const copyBtn = $("btn-copy-cue");
   const cueRow = $("cue-row");
@@ -187,6 +189,14 @@ function paintLiveBrief(event) {
       cueEl.hidden = true;
       cueEl.textContent = "";
     }
+    if (alsoEl) {
+      alsoEl.hidden = true;
+      alsoEl.textContent = "";
+    }
+    if (avoidEl) {
+      avoidEl.hidden = true;
+      avoidEl.textContent = "";
+    }
     if (askedEl) {
       askedEl.hidden = true;
       askedEl.textContent = "";
@@ -222,6 +232,16 @@ function paintLiveBrief(event) {
   if (cueEl) {
     cueEl.hidden = !cue;
     cueEl.textContent = cueLine;
+  }
+  const also = String((event && event.also) || "").trim().slice(0, 160);
+  const avoid = String((event && event.avoid) || "").trim().slice(0, 160);
+  if (alsoEl) {
+    alsoEl.hidden = !also || kind === "point" || kind === "warn";
+    alsoEl.textContent = also && kind === "say" ? "Also: " + also : "";
+  }
+  if (avoidEl) {
+    avoidEl.hidden = !avoid || kind === "point" || kind === "warn";
+    avoidEl.textContent = avoid && kind === "say" ? "Don't say: " + avoid : "";
   }
   if (cueRow) cueRow.hidden = !cue;
   if (teachBack) teachBack.hidden = !(kind === "point" && cue);

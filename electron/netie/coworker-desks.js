@@ -516,6 +516,54 @@ function weaveHeard(line, utterances) {
   return s.slice(0, 240);
 }
 
+function distinctFrom(candidate, used) {
+  const line = speakable(candidate);
+  if (!line) return "";
+  const key = line.toLowerCase().replace(/[.!?]+$/g, "");
+  if (key.length < 2) return "";
+  for (const row of used) {
+    const uk = String(row || "")
+      .toLowerCase()
+      .replace(/[.!?]+$/g, "");
+    if (!uk) continue;
+    if (key === uk || uk.includes(key) || key.includes(uk)) return "";
+  }
+  return line;
+}
+
+/**
+ * Second grounded option. Heard facts only. Never a last-you dump.
+ * Never invents. Never Acts.
+ */
+function alsoLine(utterances, lastOther, cue) {
+  const missing = /no answer/i.test(cue || "");
+  if (missing) {
+    return lastOther && looksQuestion(lastOther) ? "I will confirm on this machine." : "";
+  }
+  const used = [cue];
+  for (const h of heardFacts(utterances)) {
+    const line = distinctFrom(h, used);
+    if (line) return line.slice(0, 160);
+  }
+  return "";
+}
+
+/**
+ * Honest refuse line. Cluely-shaped stack, Pointer rules: don't invent,
+ * don't send. Never Acts.
+ */
+function avoidLine(lastOther, cue) {
+  if (!lastOther || !looksQuestion(lastOther)) return "";
+  const missing = /no answer/i.test(cue || "");
+  if (missing) {
+    if (looksWhenAsk(lastOther)) return "Don't invent a date. Don't send.";
+    if (looksMoneyAsk(lastOther)) return "Don't invent a number. Don't send.";
+    if (looksWhoAsk(lastOther)) return "Don't invent a name. Don't send.";
+    return "Don't guess. Don't send.";
+  }
+  return "Don't send. Pointer will not mail this.";
+}
+
 function sayThisLine(utterances, lastOther) {
   if (looksWhoAsk(lastOther)) {
     const named = answerFromHeard(lastOther, utterances);
@@ -748,6 +796,11 @@ function meetingAssist({ transcript, question, notes } = {}) {
   const lastAsked = [...spokenRing].reverse().find((row) => looksQuestion(row.text));
   const lastOther = lastAsked ? lastAsked.text : recap[recap.length - 1].text;
   const heard = heardLine(utterances);
+  const cue = spokenCue(kind, utterances, lastOther);
+  const also =
+    lastAsked && looksQuestion(lastAsked.text) ? alsoLine(utterances, lastOther, cue) : "";
+  const avoid =
+    lastAsked && looksQuestion(lastAsked.text) ? avoidLine(lastOther, cue) : "";
 
   const parts = [
     "# Meeting brief",
@@ -766,6 +819,8 @@ function meetingAssist({ transcript, question, notes } = {}) {
   }
   if (kind === "assist") {
     parts.push("", "## What you can say", "", groundedReply(utterances, lastOther));
+    if (also) parts.push("", "Also:", also);
+    if (avoid) parts.push("", "Don't say:", avoid);
   }
   if (kind === "next") {
     parts.push(
@@ -795,7 +850,9 @@ function meetingAssist({ transcript, question, notes } = {}) {
     kind,
     skipLlm,
     title: `Meeting ${kind}`,
-    cue: spokenCue(kind, utterances, lastOther),
+    cue,
+    also,
+    avoid,
     asked:
       lastAsked && looksQuestion(lastAsked.text)
         ? String(lastAsked.text).slice(0, 160)
@@ -826,7 +883,7 @@ function deskGrounding(deskOrId) {
     lines.push("6. When you mean click here, emit [POINT:x,y:label] percentages. Measured UIA also emits [BOX:left,top,w,h:label]. Crosshair and box only - never a buddy.");
   }
   if (desk.id === "meeting") {
-    lines.push("6. Recap/assist/next from the transcript. Open workspace files ground Heard facts only (not talk). Live cue is They asked plus say-this in the fixed insight panel. Never join the call. Never a stealth overlay. Never Act.");
+    lines.push("6. Recap/assist/next from the transcript. Open workspace files ground Heard facts only (not talk). Live cue is They asked plus say-this / Also / Don't say in the fixed insight panel. Never join the call. Never a stealth overlay. Never Act.");
   }
   if (desk.id === "today") {
     lines.push("6. Standing brief from this session log. On your plate lists live commitments and filed inbox/Word drafts. Never invent work. Never Act.");
@@ -1922,6 +1979,8 @@ function putAssist(workspace, assist) {
     rest: assist.rest || "",
     heard: assist.heard || "",
     notes: Boolean(assist.notes),
+    also: assist.also || "",
+    avoid: assist.avoid || "",
     preview: assist.preview || "",
     findings: Array.isArray(assist.findings) ? assist.findings : [],
     live: assist.live,
@@ -2413,6 +2472,8 @@ function publicEmptyRoom(desk, title, reason) {
     chips: [],
     turns: [],
     notes: false,
+    also: "",
+    avoid: "",
     plate: [],
     findings: [],
     preview: "",

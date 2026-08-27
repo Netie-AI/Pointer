@@ -274,6 +274,10 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.strictEqual(unrelated.act, false);
   assert.match(unrelated.cue, /no answer/);
   assert.doesNotMatch(unrelated.cue, /bananas/);
+  assert.match(unrelated.also, /confirm on this machine/);
+  assert.doesNotMatch(unrelated.also, /bananas/);
+  assert.match(unrelated.avoid, /Don't invent a date/);
+  assert.match(unrelated.avoid, /Don't send/);
   const fromNotes = meetingAssist({
     transcript: "them: What is the launch date?",
     question: "what should I say",
@@ -284,6 +288,11 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.match(fromNotes.cue, /Friday/);
   assert.match(fromNotes.heard, /Friday/);
   assert.match(fromNotes.heard, /\$40k/);
+  assert.match(fromNotes.also, /\$40k/);
+  assert.notStrictEqual(fromNotes.also, fromNotes.cue);
+  assert.match(fromNotes.avoid, /Don't send/);
+  assert.match(fromNotes.deliverable, /Also:/);
+  assert.match(fromNotes.deliverable, /Don't say:/);
   assert.match(fromNotes.deliverable, /open workspace file/);
   assert.ok(!fromNotes.turns.some((row) => /Launch is Friday/.test(row.text)));
   assert.doesNotMatch(fromNotes.deliverable, /Notes \[Friday\]: Launch is Friday/);

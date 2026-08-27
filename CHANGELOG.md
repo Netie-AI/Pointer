@@ -1,3 +1,10 @@
+## 2026-08-27 - Meeting assist is Say this / Also / Don't say
+
+Loopback `/meeting` and HUD insight paint a grounded suggestion stack
+(Say this, Also from Heard, Don't say / don't send). Never invents.
+Never a last-you dump. Never a stealth overlay. Never Acts. Public
+copies stay empty. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Home paints filed inbox, Word, and security cards
 
 Loopback `/` paints unsent follow-up, Word draft, and security review

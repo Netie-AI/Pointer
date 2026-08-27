@@ -492,6 +492,8 @@ function test(name, fn) {
     assert.strictEqual(fromNotes.body.act, false);
     assert.strictEqual(fromNotes.body.desk, "meeting");
     assert.strictEqual(fromNotes.body.notes, true);
+    assert.match(fromNotes.body.also, /\$40k|Sarah|Acme|confirm/);
+    assert.match(fromNotes.body.avoid, /Don't send/);
     const home = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/home" }, (res) => {
         const chunks = [];
@@ -511,6 +513,8 @@ function test(name, fn) {
     assert.ok(Array.isArray(home.body.rooms.meeting.turns));
     assert.ok(home.body.rooms.meeting.turns.some((row) => /Sarah Chen/.test(row.text)));
     assert.strictEqual(home.body.rooms.meeting.notes, true);
+    assert.match(home.body.rooms.meeting.also, /\$40k|Sarah|Acme|confirm/);
+    assert.match(home.body.rooms.meeting.avoid, /Don't send/);
     assert.match(home.body.rooms.today.cue, /send it Friday/);
     assert.match(home.body.rooms.security.cue, /do not approve/);
     assert.match(home.body.rooms.today.deliverable, /# Today/);
