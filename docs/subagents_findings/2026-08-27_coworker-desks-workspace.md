@@ -37,6 +37,9 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - HUD desk chips Ask, never Act. Home paints the standing brief.
 - Standing `/today` brief from the session log. Empty is honest, not invented.
 - `spawnCoworker`: background brief, never claims pointer-act, never Acts.
+- Loopback `/meeting` paints You/Them turns from the stored ring.
+  Say-this reuses your overlapping line or Heard facts, never an
+  unrelated last-you dump. Never a cheater overlay.
 - Loopback This session files link to `/workspace?id=` and chrome shows
   `Open:` the working set. Ask chips review that body. Public `?id=` 404.
 - `workspace.js`: artifact catalog. `exec()` always refuses (P-06). `get` is

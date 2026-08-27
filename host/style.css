@@ -110,6 +110,29 @@ pre {
 .teach-map-box.now {
   border-color: #9ad;
 }
+.meeting-talk {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 1px solid #333;
+  background: #141414;
+}
+.meeting-talk li {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #222;
+  font-size: 13px;
+}
+.meeting-talk li:last-child { border-bottom: 0; }
+.talk-who {
+  flex: 0 0 42px;
+  color: #9ad;
+  font-weight: 650;
+}
+.talk-them .talk-who { color: #c9a; }
+.talk-now { background: #1a222a; }
+.talk-text { min-width: 0; }
 #live-cue-back, #live-cue-next, #live-cue-copy, #teach-back, #teach-next, #cue-copy, #session-copy, #session-download, #brief-copy, #brief-download, #artifact-copy, #artifact-download, #host-ask-go {
   background: #1a1a1a;
   color: #9ad;

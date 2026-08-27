@@ -1,3 +1,10 @@
+## 2026-08-27 - Meeting talk track; say-this stays grounded
+
+Loopback `/meeting` paints You/Them turns from the stored ring (Ask,
+never Act, never a cheater overlay). Say-this reuses your overlapping
+line or Heard facts, never an unrelated last-you dump. Public copies
+stay empty. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Workspace file links are the working set
 
 Loopback This session files open `/workspace?id=` as the working set.

@@ -446,15 +446,22 @@ function answerFromHeard(question, utterances) {
   );
   const money = heard.filter((h) => /\$|%|percent/i.test(h));
   const names = themHeardNames(utterances);
+  const selfNames = youHeardNames(utterances);
   const orgs = themHeardOrgs(utterances);
-  if (looksWhoAsk(question) && (names.length || orgs.length)) {
+  if (looksWhoAsk(question) && (names.length || orgs.length || selfNames.length)) {
+    if (looksSelfNameAsk(question) && selfNames.length) return speakable(selfNames.join(" / "));
     if (names.length && orgs.length) return speakable(`${names[0]} at ${orgs[0]}`);
     if (names.length) return speakable(names.join(" / "));
-    return speakable(orgs.join(" / "));
+    if (orgs.length) return speakable(orgs.join(" / "));
+    return speakable(selfNames.join(" / "));
   }
   if (looksWhenAsk(question) && times.length) return speakable(times.join(" / "));
   if (looksMoneyAsk(question) && money.length) return speakable(money.join(" / "));
   return "";
+}
+
+function looksSelfNameAsk(question) {
+  return /\b(your name|who are you)\b/i.test(question || "");
 }
 
 function weaveHeard(line, utterances) {
@@ -484,10 +491,24 @@ function sayThisLine(utterances, lastOther) {
     const named = answerFromHeard(lastOther, utterances);
     if (named) return named;
   }
-  const facts = cueFacts(utterances);
-  if (facts.length) return weaveHeard(speakable(facts[facts.length - 1]), utterances);
-  const fromHeard = answerFromHeard(lastOther, utterances);
-  if (fromHeard) return fromHeard;
+  if (looksWhenAsk(lastOther)) {
+    const fromYou = yourLineWithHeard(utterances, (h) =>
+      /today|tomorrow|day|am|pm|:\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{4}-\d{2}-\d{2}/i.test(
+        h
+      )
+    );
+    if (fromYou) return fromYou;
+    const fromHeard = answerFromHeard(lastOther, utterances);
+    if (fromHeard) return fromHeard;
+  }
+  if (looksMoneyAsk(lastOther)) {
+    const fromYou = yourLineWithHeard(utterances, (h) => /\$|%|percent/i.test(h));
+    if (fromYou) return fromYou;
+    const fromHeard = answerFromHeard(lastOther, utterances);
+    if (fromHeard) return fromHeard;
+  }
+  const fromYou = answerFromYourLines(lastOther, utterances);
+  if (fromYou) return weaveHeard(fromYou, utterances);
   if (lastOther && looksQuestion(lastOther)) {
     return `Heard "${String(lastOther).slice(0, 100)}" - no answer in the transcript yet.`;
   }
@@ -501,6 +522,126 @@ function spokenCue(kind, utterances, lastOther) {
     return kind === "assist" ? "No question landed yet." : "";
   }
   return sayThisLine(utterances, lastOther);
+}
+
+const TALK_STOP = new Set([
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "to",
+  "of",
+  "in",
+  "on",
+  "for",
+  "is",
+  "it",
+  "we",
+  "you",
+  "i",
+  "me",
+  "my",
+  "our",
+  "your",
+  "this",
+  "that",
+  "with",
+  "at",
+  "be",
+  "do",
+  "did",
+  "does",
+  "can",
+  "will",
+  "just",
+  "have",
+  "has",
+  "was",
+  "are",
+  "not",
+  "what",
+  "why",
+  "how",
+  "who",
+  "when",
+  "where",
+  "which",
+  "should",
+  "would",
+  "could",
+  "about",
+  "from",
+  "they",
+  "them",
+  "their",
+  "been",
+  "into",
+]);
+
+function contentWords(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9$%]+/g, " ")
+    .split(/\s+/)
+    .map((w) => w.trim())
+    .filter((w) => w.length >= 4 && !TALK_STOP.has(w));
+}
+
+function talkTurns(utterances) {
+  return (Array.isArray(utterances) ? utterances : []).slice(-12).map((row) => ({
+    speaker: row && row.speaker === "you" ? "you" : "them",
+    text: String((row && row.text) || "").slice(0, 240),
+    asked: looksQuestion(row && row.text),
+  }));
+}
+
+function liveTalkTurns(artifact) {
+  const live = artifact && artifact.live && artifact.live.transcript;
+  return talkTurns(parseUtterances(live || ""));
+}
+
+function answerFromYourLines(question, utterances) {
+  const qWords = contentWords(question);
+  if (!qWords.length) return "";
+  let best = "";
+  let bestScore = 0;
+  for (const row of Array.isArray(utterances) ? utterances : []) {
+    if (!row || row.speaker !== "you" || looksQuestion(row.text)) continue;
+    const words = contentWords(row.text);
+    if (!words.length) continue;
+    const set = new Set(words);
+    let score = 0;
+    for (const w of qWords) {
+      if (set.has(w)) score += 1;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = row.text;
+    }
+  }
+  if (bestScore >= 2) return speakable(best);
+  if (bestScore === 1) {
+    const set = new Set(contentWords(best));
+    const hit = qWords.find((w) => set.has(w));
+    if (hit && (hit.length >= 5 || /\$|%|\d/.test(hit))) return speakable(best);
+  }
+  return "";
+}
+
+function yourLineWithHeard(utterances, kindTest) {
+  const tokens = heardFacts(utterances).filter((h) => kindTest(h));
+  if (!tokens.length) return "";
+  const yours = (Array.isArray(utterances) ? utterances : []).filter(
+    (row) => row && row.speaker === "you" && !looksQuestion(row.text)
+  );
+  for (let i = yours.length - 1; i >= 0; i--) {
+    const low = String(yours[i].text || "").toLowerCase();
+    if (tokens.some((t) => low.includes(String(t).toLowerCase()))) {
+      return weaveHeard(speakable(yours[i].text), utterances);
+    }
+  }
+  return "";
 }
 
 function speakable(fact) {
@@ -625,6 +766,7 @@ function meetingAssist({ transcript, question } = {}) {
         : "",
     heard,
     deliverable,
+    turns: talkTurns(utterances),
     id: "live-meeting",
     live: { transcript: String(transcript || "").slice(0, 4000) },
   };
@@ -1216,6 +1358,10 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
 
 function themHeardNames(utterances) {
   return collectHeard(utterances, addHeardNames, (row) => row && row.speaker !== "you");
+}
+
+function youHeardNames(utterances) {
+  return collectHeard(utterances, addHeardNames, (row) => row && row.speaker === "you");
 }
 
 function themHeardOrgs(utterances) {
@@ -2177,6 +2323,7 @@ function publicEmptyRoom(desk, title, reason) {
     markers: [],
     advance: false,
     chips: [],
+    turns: [],
     coordinator: "http://127.0.0.1:18010",
     reason,
     desk,
@@ -2262,6 +2409,7 @@ module.exports = {
   askLiveCoworker,
   askHostCoworker,
   chipsForArtifact,
+  liveTalkTurns,
   publicMeetingSnapshot,
   publicTeachSnapshot,
   publicSecuritySnapshot,

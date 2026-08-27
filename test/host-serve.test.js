@@ -212,6 +212,8 @@ function readAsset(file) {
     assert.match(app, /paintMeetingChips/);
     assert.match(app, /postMeeting/);
     assert.match(app, /meeting-filed/);
+    assert.match(app, /paintTalk/);
+    assert.match(app, /meeting-talk/);
     assert.doesNotMatch(app, /innerHTML/);
     const meeting = await fetch(new Request("https://host.netie.ai/meeting"));
     assert.strictEqual(meeting.status, 200);
@@ -231,6 +233,7 @@ function readAsset(file) {
     assert.strictEqual(JSON.parse(meetingApi.body).asked, "");
     assert.strictEqual(JSON.parse(meetingApi.body).heard, "");
     assert.deepStrictEqual(JSON.parse(meetingApi.body).chips, []);
+    assert.deepStrictEqual(JSON.parse(meetingApi.body).turns, []);
     const teach = await fetch(new Request("https://host.netie.ai/teach"));
     assert.strictEqual(teach.status, 200);
     const teachText = await teach.text();

@@ -183,9 +183,12 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.match(recap.cue, /We'll ship Friday/);
   assert.match(recap.cue, /\$40k/);
   assert.doesNotMatch(recap.cue, /decided to/);
-  assert.match(assist.asked, /launch date/);
-  assert.match(recap.asked, /launch date/);
-  assert.match(recap.heard, /Friday/);
+    assert.match(assist.asked, /launch date/);
+    assert.match(recap.asked, /launch date/);
+    assert.ok(Array.isArray(recap.turns));
+    assert.ok(recap.turns.some((row) => row.speaker === "them" && /launch date/.test(row.text) && row.asked));
+    assert.ok(recap.turns.some((row) => row.speaker === "you" && /ship Friday/.test(row.text)));
+    assert.match(recap.heard, /Friday/);
   assert.match(recap.heard, /\$40k/);
   assert.match(recap.deliverable, /## Heard/);
   assert.match(assist.heard, /Friday/);
@@ -254,6 +257,21 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.strictEqual(next.kind, "next");
   assert.match(next.deliverable, /## Next steps/);
   assert.match(next.deliverable, /send it/);
+  const groundedYou = meetingAssist({
+    transcript: "them: Have you shipped the React dashboard?\nyou: I shipped the React dashboard last quarter.",
+    question: "what should I say",
+  });
+  assert.strictEqual(groundedYou.act, false);
+  assert.match(groundedYou.cue, /React dashboard/);
+  assert.doesNotMatch(groundedYou.cue, /no answer/);
+  assert.ok(groundedYou.turns.some((row) => row.speaker === "you" && /React/.test(row.text)));
+  const unrelated = meetingAssist({
+    transcript: "you: bananas are yellow\nthem: What is the launch date?",
+    question: "what should I say",
+  });
+  assert.strictEqual(unrelated.act, false);
+  assert.match(unrelated.cue, /no answer/);
+  assert.doesNotMatch(unrelated.cue, /bananas/);
 });
 
 test("planner grounding names the desk and refuses online exec", () => {

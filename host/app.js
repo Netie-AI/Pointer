@@ -473,6 +473,29 @@ function postAsk(ask) {
     .catch(function () {});
 }
 
+function paintTalk(root, m) {
+  if (!root || !m || m.desk !== "meeting") return;
+  const rows = Array.isArray(m.turns) ? m.turns : [];
+  if (!rows.length || m.localFirst) return;
+  const asked = String(m.asked || "").trim();
+  const ol = el("ol", "meeting-talk");
+  rows.forEach(function (row) {
+    const text = String((row && row.text) || "").trim();
+    if (!text) return;
+    const you = row.speaker === "you";
+    const now = Boolean(row.asked) && asked && text === asked;
+    const li = el("li", "talk-" + (you ? "you" : "them") + (now ? " talk-now" : ""));
+    const who = el("span", "talk-who");
+    who.textContent = you ? "You" : "Them";
+    const body = el("span", "talk-text");
+    body.textContent = text;
+    li.appendChild(who);
+    li.appendChild(body);
+    ol.appendChild(li);
+  });
+  if (ol.childNodes.length) root.appendChild(ol);
+}
+
 function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
   if (m && m.exec) {
     show("policy", refuse || "refused: coworker room must not grow a runtime");
@@ -516,6 +539,7 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
   paintDeskChips(pageId.replace("-brief", "-chips"), (m && m.chips) || []);
   page.replaceChildren();
   paintTeachMap(page, (m && m.markers) || []);
+  paintTalk(page, m);
   const pre = el("pre");
   pre.textContent = (m && m.deliverable) || "";
   page.appendChild(pre);

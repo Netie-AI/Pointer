@@ -184,6 +184,9 @@ function test(name, fn) {
     assert.ok(meeting.body.chips.some((row) => /write this recap in Word/.test(row.q)));
     assert.ok(!meeting.body.live);
     assert.ok(!meeting.body.artifact || !meeting.body.artifact.live);
+    assert.ok(Array.isArray(meeting.body.turns));
+    assert.ok(meeting.body.turns.some((row) => row.speaker === "them" && /launch date/.test(row.text)));
+    assert.ok(meeting.body.turns.some((row) => row.speaker === "you" && /send it Friday/.test(row.text)));
     const meetingPage = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/meeting" }, (res) => {
         const chunks = [];
