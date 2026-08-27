@@ -130,6 +130,25 @@ function test(name, fn) {
     assert.strictEqual(asked.result.desk, "inbox");
     assert.ok(!asked.result.live);
     assert.match(asked.result.deliverable, /Hi Sarah Chen/);
+    coord.workspace.put({
+      id: "leak-1",
+      desk: "document",
+      title: "notes",
+      body: "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\nhello",
+    });
+    const fileAsk = await mcp.handle(
+      {
+        jsonrpc: "2.0",
+        id: 7.6,
+        method: "desks.ask",
+        params: { ask: "Security review this file", id: "leak-1" },
+      },
+      { coordinator: coord }
+    );
+    assert.strictEqual(fileAsk.result.act, false);
+    assert.strictEqual(fileAsk.result.desk, "security");
+    assert.match(fileAsk.result.deliverable, /AKIA\*\*\*\*/);
+    assert.doesNotMatch(fileAsk.result.deliverable, /AKIAIOSFODNN7EXAMPLE/);
     const exec = await mcp.handle(
       { jsonrpc: "2.0", id: 8, method: "workspace.exec", params: { backend: "container" } },
       { coordinator: coord }

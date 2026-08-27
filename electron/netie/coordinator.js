@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
-const { catalog, todayAssist, sessionBundle, advanceLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist } = require("./coworker-desks");
+const { catalog, todayAssist, sessionBundle, advanceLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact } = require("./coworker-desks");
 const { parsePoints } = require("./point-overlay");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
@@ -136,10 +136,10 @@ function createCoordinator(opts = {}) {
         markers,
         advance: desk === "teach" && got.ok && canAdvanceTeach(got.artifact.live),
         chips:
-          desk === "meeting" && got.ok
+          got.ok && desk !== "teach"
             ? suggestsFromAssist({
                 ok: true,
-                desk: "meeting",
+                desk,
                 deliverable: got.artifact.body,
               }).map((c) => ({ q: c.q, label: c.label }))
             : [],
@@ -213,7 +213,8 @@ function createCoordinator(opts = {}) {
           return;
         }
         const ask = String((body && (body.ask || body.text || body.q)) || "").trim();
-        const out = askHostCoworker(workspace, ask);
+        const sourceId = String((body && (body.id || body.sourceId)) || "").trim();
+        const out = askHostCoworker(workspace, ask, sourceId ? { sourceId } : undefined);
         if (out.ok && out.desk === "meeting") {
           sendLiveRoom(res, "meeting", "live-meeting");
           return;
@@ -334,8 +335,18 @@ function createCoordinator(opts = {}) {
       const id = url.searchParams.get("id");
       if (id) {
         const got = workspace.get(id);
+        const artifact = got.ok ? Object.assign({}, got.artifact) : null;
+        if (artifact) delete artifact.live;
         res.writeHead(got.ok ? 200 : 404, { "content-type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ ...got, exec: false, act: false }));
+        res.end(
+          JSON.stringify({
+            ...got,
+            artifact,
+            chips: got.ok ? chipsForArtifact(got.artifact).map((c) => ({ q: c.q, label: c.label })) : [],
+            exec: false,
+            act: false,
+          })
+        );
         return;
       }
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });

@@ -122,4 +122,5 @@ transcript (POST `/api/meeting`, never Act, public copy 404). Teach
 walks stay on `/teach`.
 Loopback sticky chrome has a fixed Ask bar (POST `/api/ask`, never Act).
 `desks.ask` is the MCP form of that Ask. `/today` chips file the same
-way. Public POST `/api/ask` stays 404.
+way. `/workspace` opens a file as the working set (`id` on Ask, `this
+file` scans only that body). Public POST `/api/ask` stays 404.

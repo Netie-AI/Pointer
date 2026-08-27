@@ -30,6 +30,7 @@ const {
   advanceLiveTeach,
   askLiveCoworker,
   askHostCoworker,
+  chipsForArtifact,
 } = require("../electron/netie/coworker-desks");
 const { plannerGrounding } = require("../electron/netie/coworker");
 
@@ -758,6 +759,25 @@ test("askHostCoworker Asks from chrome and advances a stored teach walk", () => 
   const blank = askHostCoworker(ws, "");
   assert.strictEqual(blank.ok, false);
   assert.strictEqual(blank.act, false);
+  ws.put({
+    id: "leak-1",
+    desk: "document",
+    title: "notes",
+    body: "token = AKIAIOSFODNN7EXAMPLE\n",
+  });
+  const fileReview = askLiveCoworker(ws, "Security review this file", { sourceId: "leak-1" });
+  assert.strictEqual(fileReview.ok, true);
+  assert.strictEqual(fileReview.act, false);
+  assert.strictEqual(fileReview.desk, "security");
+  assert.match(fileReview.deliverable, /AKIA\*\*\*\*/);
+  assert.doesNotMatch(fileReview.deliverable, /AKIAIOSFODNN7EXAMPLE/);
+  const fromOpen = askHostCoworker(ws, "write this recap in Word", { sourceId: "leak-1" });
+  assert.strictEqual(fromOpen.desk, "document");
+  assert.match(fromOpen.deliverable, /AKIA\*\*\*\*|token = AKIA/);
+  const chips = chipsForArtifact(ws.get("live-meeting").artifact);
+  assert.ok(chips.some((c) => /this file/.test(c.q)));
+  assert.ok(chips.some((c) => /follow-up email/.test(c.q)));
+  assert.strictEqual(chipsForArtifact({ desk: "teach", body: "x" }).length, 0);
 });
 
 test("today assist ships a standing brief and never invents work", () => {

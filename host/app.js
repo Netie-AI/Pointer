@@ -149,8 +149,15 @@ function openArtifact(id) {
       pre.textContent = text;
       root.appendChild(pre);
       const ok = Boolean(body && body.ok && body.artifact && String(body.artifact.body || "").trim());
+      lastOpenId = ok ? String(body.artifact.id || id) : "";
       lastArtifactText = ok ? String(body.artifact.body) : "";
       lastArtifactFile = briefFileName((body && body.artifact && (body.artifact.desk || body.artifact.id)) || id);
+      paintDeskChips("artifact-chips", (body && body.chips) || []);
+      const filed = document.getElementById("artifact-filed");
+      if (filed) {
+        filed.hidden = true;
+        filed.textContent = "";
+      }
       const copyBtn = document.getElementById("artifact-copy");
       const dlBtn = document.getElementById("artifact-download");
       if (copyBtn) copyBtn.hidden = !ok;
@@ -162,6 +169,8 @@ function openArtifact(id) {
       pre.textContent = String(err);
       root.appendChild(pre);
       lastArtifactText = "";
+      lastOpenId = "";
+      paintDeskChips("artifact-chips", []);
       const copyBtn = document.getElementById("artifact-copy");
       const dlBtn = document.getElementById("artifact-download");
       if (copyBtn) copyBtn.hidden = true;
@@ -290,8 +299,8 @@ function applyToday(t) {
   return !(t && t.localFirst);
 }
 
-function paintTodayChips(chips) {
-  const root = document.getElementById("today-chips");
+function paintDeskChips(rootId, chips) {
+  const root = document.getElementById(rootId);
   if (!root) return;
   root.replaceChildren();
   (chips || []).forEach(function (c) {
@@ -305,6 +314,10 @@ function paintTodayChips(chips) {
   });
 }
 
+function paintTodayChips(chips) {
+  paintDeskChips("today-chips", chips);
+}
+
 function pageDesk() {
   const p = String((typeof location !== "undefined" && location.pathname) || "/").replace(/\/+$/, "") || "/";
   if (p === "/today") return "today";
@@ -316,15 +329,23 @@ function pageDesk() {
   return "";
 }
 
+let lastOpenId = "";
+
 function postAsk(ask) {
+  const payload = { ask: ask, act: false };
+  if (lastOpenId) payload.id = lastOpenId;
   fetch("/api/ask", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ask: ask, act: false }),
+    body: JSON.stringify(payload),
   })
     .then((r) => r.json())
     .then(function (out) {
-      const filed = document.getElementById("host-filed") || document.getElementById("today-filed");
+      const filed =
+        document.getElementById("host-filed") ||
+        document.getElementById("today-filed") ||
+        document.getElementById("artifact-filed") ||
+        document.getElementById("meeting-filed");
       const ok = Boolean(out && out.ok);
       if (filed) {
         let line = "";
@@ -418,7 +439,7 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
     restEl.textContent = rest ? "Then: " + rest : "";
   }
   setTeachButtons(m);
-  paintMeetingChips((m && m.chips) || []);
+  paintDeskChips(pageId.replace("-brief", "-chips"), (m && m.chips) || []);
   page.replaceChildren();
   paintTeachMap(page, (m && m.markers) || []);
   const pre = el("pre");
@@ -448,18 +469,7 @@ let meetingApply = null;
 let teachApply = null;
 
 function paintMeetingChips(chips) {
-  const root = document.getElementById("meeting-chips");
-  if (!root) return;
-  root.replaceChildren();
-  (chips || []).forEach(function (c) {
-    const q = String(c.q || "").trim();
-    if (!q) return;
-    const b = el("button");
-    b.type = "button";
-    b.textContent = String(c.label || q).slice(0, 48);
-    b.addEventListener("click", function () { postMeeting(q); });
-    root.appendChild(b);
-  });
+  paintDeskChips("meeting-chips", chips);
 }
 
 function postMeeting(ask) {

@@ -1,3 +1,11 @@
+## 2026-08-27 - Open workspace file Ask chips
+
+Loopback `/workspace` opens a file as the working set. Review file /
+Draft email / Write in Word Ask against that body (never Act). Desk
+rooms `/security` `/document` `/inbox` get the same chips. `this file`
+scans only the open artifact. Public `?id=` stays 404. P-05 and P-06
+stay parked.
+
 ## 2026-08-27 - Host Ask bar and Today chips
 
 Loopback sticky chrome keeps a fixed Ask bar on every page (never Act,

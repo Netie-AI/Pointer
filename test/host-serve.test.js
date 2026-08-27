@@ -122,6 +122,7 @@ function readAsset(file) {
     const skills = await fetch(new Request("https://host.netie.ai/skills"));
     assert.match(await skills.text(), /id="hits"/);
     assert.match(page, /id="artifact-body"/);
+    assert.match(page, /id="artifact-chips"/);
     assert.match(page, /id="session"/);
     assert.match(page, /id="session-files"/);
     assert.match(page, /id="session-md"/);
@@ -181,6 +182,8 @@ function readAsset(file) {
     assert.match(app, /postAsk/);
     assert.match(app, /\/api\/ask/);
     assert.match(app, /paintTodayChips/);
+    assert.match(app, /paintDeskChips/);
+    assert.match(app, /lastOpenId/);
     const paint = app.slice(app.indexOf("function paintSession"), app.indexOf("const roomsPage"));
     assert.match(paint, /session-md/);
     assert.match(paint, /session-copy/);
@@ -244,6 +247,7 @@ function readAsset(file) {
     assert.strictEqual(security.status, 200);
     const securityText = await security.text();
     assert.match(securityText, /id="security-brief"/);
+    assert.match(securityText, /id="security-chips"/);
     assert.match(securityText, /id="security-cue-web"/);
     const securityApi = handlePublicRequest({ method: "GET", pathname: "/api/security" });
     assert.strictEqual(JSON.parse(securityApi.body).localFirst, true);
@@ -267,11 +271,13 @@ function readAsset(file) {
     assert.strictEqual(documentPage.status, 200);
     const documentHtml = await documentPage.text();
     assert.match(documentHtml, /id="document-brief"/);
+    assert.match(documentHtml, /id="document-chips"/);
     assert.match(documentHtml, /id="brief-copy"/);
     const inboxPage = await fetch(new Request("https://host.netie.ai/inbox"));
     assert.strictEqual(inboxPage.status, 200);
     const inboxHtml = await inboxPage.text();
     assert.match(inboxHtml, /id="inbox-brief"/);
+    assert.match(inboxHtml, /id="inbox-chips"/);
     assert.match(inboxHtml, /id="inbox-heard-web"/);
     assert.match(inboxHtml, /id="brief-copy"/);
     const documentApi = handlePublicRequest({ method: "GET", pathname: "/api/document" });

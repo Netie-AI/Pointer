@@ -266,6 +266,17 @@ function test(name, fn) {
     assert.strictEqual(assisted.body.desk, "meeting");
     assert.ok(Array.isArray(assisted.body.chips));
     assert.ok(!assisted.body.live);
+    const opened = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/workspace?id=live-meeting" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(opened.status, 200);
+    assert.ok(!opened.body.artifact.live);
+    assert.ok(Array.isArray(opened.body.chips));
+    assert.ok(opened.body.chips.some((row) => /this file/.test(row.q)));
     const askedHost = await new Promise((resolve, reject) => {
       const req = http.request(
         { host: "127.0.0.1", port, path: "/api/ask", method: "POST", headers: { "content-type": "application/json" } },
@@ -285,6 +296,28 @@ function test(name, fn) {
     assert.strictEqual(askedHost.body.desk, "inbox");
     assert.ok(!askedHost.body.live);
     assert.match(askedHost.body.deliverable, /Hi Sarah Chen/);
+    c.workspace.put({
+      id: "leak-1",
+      desk: "document",
+      title: "notes",
+      body: "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\nhello",
+    });
+    const reviewedFile = await new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: "127.0.0.1", port, path: "/api/ask", method: "POST", headers: { "content-type": "application/json" } },
+        (res) => {
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+        }
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ ask: "Security review this file", id: "leak-1", act: true }));
+    });
+    assert.strictEqual(reviewedFile.body.act, false);
+    assert.strictEqual(reviewedFile.body.desk, "security");
+    assert.match(reviewedFile.body.deliverable, /AKIA\*\*\*\*/);
+    assert.doesNotMatch(reviewedFile.body.deliverable, /AKIAIOSFODNN7EXAMPLE/);
     c.workspace.put({
       id: "live-teach",
       title: "Live teach",

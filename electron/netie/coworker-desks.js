@@ -1695,40 +1695,67 @@ function putAssist(workspace, assist) {
   });
 }
 
+function liveTranscript(row) {
+  if (!row || !row.ok || !row.artifact) return "";
+  return String((row.artifact.live && row.artifact.live.transcript) || "");
+}
+
+function sessionScanFiles(workspace, extra) {
+  const files = [];
+  const seen = new Set();
+  function add(row) {
+    if (!row || !row.ok || !row.artifact) return;
+    const id = String(row.artifact.id || "").trim() || "file";
+    if (seen.has(id)) return;
+    seen.add(id);
+    files.push({ name: id, body: String(row.artifact.body || "") });
+  }
+  add(extra);
+  add(workspace.get("live-meeting"));
+  add(workspace.get("live-inbox"));
+  add(workspace.get("live-document"));
+  add(workspace.get("live-security"));
+  return files;
+}
+
 /**
  * Loopback Ask from /meeting chips. Never Acts. Inbox is not sent.
  * Document is not a .docx. Teach walks stay on /teach.
+ * opts.sourceId is the open workspace file (Computer working set).
  */
-function askLiveCoworker(workspace, ask) {
+function askLiveCoworker(workspace, ask, opts) {
   if (!workspace || typeof workspace.get !== "function" || typeof workspace.put !== "function") {
     return { ok: false, act: false, exec: false, reason: "workspace missing" };
   }
   const q = String(ask || "").trim();
   if (!q) return { ok: false, act: false, exec: false, reason: "ask required" };
+  const sourceId = String((opts && (opts.sourceId || opts.id)) || "").trim();
+  const source = sourceId ? workspace.get(sourceId) : { ok: false };
   const meeting = workspace.get("live-meeting");
   let desk = pickDesk(q);
   if (desk.id === "teach" && meeting.ok && looksQuestion(q)) desk = DESKS.meeting;
   if (desk.id === "teach") {
     return { ok: false, act: false, exec: false, desk: "teach", reason: "teach walk stays on /teach" };
   }
-  const transcript =
-    meeting.ok && meeting.artifact.live ? String(meeting.artifact.live.transcript || "") : "";
+  const transcript = liveTranscript(source) || liveTranscript(meeting);
   let assist;
   if (desk.id === "inbox") {
     assist = inboxAssist({ text: q, transcript });
   } else if (desk.id === "document") {
     assist = documentAssist({
       text: q,
-      source: meeting.ok ? String(meeting.artifact.body || "") : "",
+      source: source.ok
+        ? String(source.artifact.body || "")
+        : meeting.ok
+          ? String(meeting.artifact.body || "")
+          : "",
       transcript,
     });
   } else if (desk.id === "security") {
-    const files = [];
-    if (meeting.ok) files.push({ name: "live-meeting", body: meeting.artifact.body });
-    const inbox = workspace.get("live-inbox");
-    if (inbox.ok) files.push({ name: "live-inbox", body: inbox.artifact.body });
-    const doc = workspace.get("live-document");
-    if (doc.ok) files.push({ name: "live-document", body: doc.artifact.body });
+    const onlyFile = /\bthis file\b/.test(spoken(q)) && source.ok;
+    const files = onlyFile
+      ? sessionScanFiles(workspace, source).slice(0, 1)
+      : sessionScanFiles(workspace, source);
     assist = securityAssist({ text: q, files });
   } else if (desk.id === "today") {
     assist = todayAssist({
@@ -1760,7 +1787,7 @@ function looksTeachAdvance(ask) {
  * Loopback Ask from sticky host chrome. Never Acts. Teach "got it"/"back"
  * advances a stored walk. Other desks file through askLiveCoworker.
  */
-function askHostCoworker(workspace, ask) {
+function askHostCoworker(workspace, ask, opts) {
   if (!workspace || typeof workspace.get !== "function" || typeof workspace.put !== "function") {
     return { ok: false, act: false, exec: false, reason: "workspace missing" };
   }
@@ -1771,7 +1798,7 @@ function askHostCoworker(workspace, ask) {
     const out = advanceLiveTeach(workspace, q);
     return { ...out, live: undefined, exec: false, act: false, href: sessionHref("teach") };
   }
-  return askLiveCoworker(workspace, q);
+  return askLiveCoworker(workspace, q, opts);
 }
 
 /**
@@ -1814,12 +1841,46 @@ function suggestsFromAssist(assist) {
     add("Security review this session", "Review again", "!");
     add("What's on my plate?", "Today", "*");
   }
+  if (assist.desk === "document") {
+    add("write this recap in Word", "Rewrite", "W");
+    add("draft a follow-up email from this meeting", "Draft email", "@");
+    add("Security review this session", "Security", "!");
+  }
+  if (assist.desk === "inbox") {
+    add("draft a follow-up email from this meeting", "Rewrite", "@");
+    add("write this recap in Word", "Write in Word", "W");
+    add("Security review this session", "Security", "!");
+  }
   const lines = String(assist.deliverable || "").split(/\n/);
   for (const line of lines) {
     const m = line.match(/^\s*-\s+(.+\?)\s*$/);
     if (m) add(m[1], m[1], "?");
     if (items.length >= 6) break;
   }
+  return items.slice(0, 6);
+}
+
+function chipsForArtifact(artifact) {
+  if (!artifact || typeof artifact !== "object") return [];
+  const desk = String(artifact.desk || "");
+  if (desk === "teach") return [];
+  const items = [];
+  const seen = new Set();
+  function add(q, label) {
+    const text = String(q || "").replace(/\s+/g, " ").trim();
+    if (!text || text.length > 160) return;
+    const key = text.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    items.push({ q: text, label: String(label || text).slice(0, 48) });
+  }
+  if (desk && desk !== "security") add("Security review this file", "Review file");
+  const fromDesk = suggestsFromAssist({
+    ok: true,
+    desk: desk || "meeting",
+    deliverable: artifact.body,
+  });
+  fromDesk.forEach((row) => add(row.q, row.label));
   return items.slice(0, 6);
 }
 
@@ -2189,6 +2250,7 @@ module.exports = {
   advanceLiveTeach,
   askLiveCoworker,
   askHostCoworker,
+  chipsForArtifact,
   publicMeetingSnapshot,
   publicTeachSnapshot,
   publicSecuritySnapshot,

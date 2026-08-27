@@ -90,7 +90,8 @@ function createMcpAbi(opts = {}) {
       if (method === "desks.ask") {
         if (!workspace) return rpcError(id, -32000, "workspace missing");
         const ask = String(params.ask || params.text || params.goal || "").trim();
-        const out = askHostCoworker(workspace, ask);
+        const sourceId = String(params.id || params.sourceId || "").trim();
+        const out = askHostCoworker(workspace, ask, sourceId ? { sourceId } : undefined);
         return rpcResult(id, { ...out, live: undefined, act: false, exec: false });
       }
       if (method === "teach.point") {
