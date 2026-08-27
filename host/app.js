@@ -327,6 +327,7 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
     restEl.textContent = rest ? "Then: " + rest : "";
   }
   setTeachButtons(m);
+  paintMeetingChips((m && m.chips) || []);
   page.replaceChildren();
   paintTeachMap(page, (m && m.markers) || []);
   const pre = el("pre");
@@ -348,6 +349,55 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse, askedId) {
       .then(apply);
   });
   if (pageId === "teach-brief") wireTeachAdvance(apply);
+  if (pageId === "meeting-brief") meetingApply = apply;
+}
+
+let meetingApply = null;
+
+function paintMeetingChips(chips) {
+  const root = document.getElementById("meeting-chips");
+  if (!root) return;
+  root.replaceChildren();
+  (chips || []).forEach(function (c) {
+    const q = String(c.q || "").trim();
+    if (!q) return;
+    const b = el("button");
+    b.type = "button";
+    b.textContent = String(c.label || q).slice(0, 48);
+    b.addEventListener("click", function () { postMeeting(q); });
+    root.appendChild(b);
+  });
+}
+
+function postMeeting(ask) {
+  fetch("/api/meeting", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ask: ask, act: false }),
+  })
+    .then((r) => r.json())
+    .then(function (out) {
+      const filed = document.getElementById("meeting-filed");
+      const other = Boolean(out && out.ok && out.desk && out.desk !== "meeting");
+      if (filed) {
+        filed.hidden = !other;
+        filed.textContent = other
+          ? "Filed " + (out.title || out.desk) + " (" + (out.href || "") + ") - " + (out.cue || "") + ". Never sent. Never a .docx."
+          : "";
+      }
+      if (out && out.ok && out.desk === "meeting" && typeof meetingApply === "function") meetingApply(out);
+      else if (typeof meetingApply === "function") {
+        fetch("/api/meeting")
+          .then((r) => r.json())
+          .then(meetingApply)
+          .catch(function () {});
+      }
+      fetch("/api/home")
+        .then((r) => r.json())
+        .then(paintChrome)
+        .catch(function () {});
+    })
+    .catch(function () {});
 }
 
 function postTeach(ask, apply) {

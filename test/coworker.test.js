@@ -28,6 +28,7 @@ const {
   shouldTeachFramedRegion,
   replayTeachWalk,
   advanceLiveTeach,
+  askLiveCoworker,
 } = require("../electron/netie/coworker-desks");
 const { plannerGrounding } = require("../electron/netie/coworker");
 
@@ -632,6 +633,71 @@ test("suggestsFromAssist turns transcript questions into HUD chips", () => {
   assert.match(hud, /paintSuggestItems/);
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
   assert.match(main, /type: "suggests"/);
+});
+
+test("askLiveCoworker files inbox and Word from a stored meeting and never acts", () => {
+  const { createWorkspace } = require("../electron/netie/workspace");
+  const transcript = [
+    "them: I'm Sarah Chen",
+    "them: we're with Acme",
+    "them: Can we ship Friday for $40k?",
+    "you: I will send it Friday.",
+  ].join("\n");
+  const recap = meetingAssist({ transcript, question: "recap this meeting" });
+  const ws = createWorkspace({ clock: () => 3 });
+  ws.put({
+    id: recap.id,
+    desk: recap.desk,
+    title: recap.title,
+    body: recap.deliverable,
+    cue: recap.cue,
+    asked: recap.asked,
+    heard: recap.heard,
+    live: recap.live,
+  });
+  const asked = recap.asked;
+  const cue = recap.cue;
+  const mail = askLiveCoworker(ws, "draft a follow-up email from this meeting");
+  assert.strictEqual(mail.ok, true);
+  assert.strictEqual(mail.act, false);
+  assert.strictEqual(mail.exec, false);
+  assert.strictEqual(mail.desk, "inbox");
+  assert.strictEqual(mail.href, "/inbox");
+  assert.ok(!mail.live);
+  assert.match(mail.cue, /not sent/);
+  assert.match(mail.deliverable, /Hi Sarah Chen/);
+  assert.match(mail.deliverable, /with Acme/);
+  assert.doesNotMatch(mail.deliverable, /Hi Acme/);
+  assert.match(ws.get("live-inbox").artifact.body, /Pointer will not send/);
+  assert.strictEqual(ws.get("live-meeting").artifact.asked, asked);
+  assert.strictEqual(ws.get("live-meeting").artifact.cue, cue);
+  assert.match(ws.get("live-meeting").artifact.live.transcript, /Sarah Chen/);
+  const doc = askLiveCoworker(ws, "write this recap in Word");
+  assert.strictEqual(doc.ok, true);
+  assert.strictEqual(doc.act, false);
+  assert.strictEqual(doc.desk, "document");
+  assert.strictEqual(doc.href, "/document");
+  assert.match(doc.cue, /not a \.docx/);
+  assert.match(doc.title, /Sarah Chen at Acme/);
+  assert.strictEqual(ws.get("live-meeting").artifact.cue, cue);
+  const review = askLiveCoworker(ws, "Security review this session");
+  assert.strictEqual(review.ok, true);
+  assert.strictEqual(review.act, false);
+  assert.strictEqual(review.desk, "security");
+  const assist = askLiveCoworker(ws, "What should I say?");
+  assert.strictEqual(assist.ok, true);
+  assert.strictEqual(assist.act, false);
+  assert.strictEqual(assist.desk, "meeting");
+  assert.ok(!assist.live);
+  assert.match(assist.cue, /Friday/);
+  const teach = askLiveCoworker(ws, "walk me through this on my screen");
+  assert.strictEqual(teach.ok, false);
+  assert.strictEqual(teach.act, false);
+  assert.strictEqual(teach.desk, "teach");
+  assert.match(teach.reason, /\/teach/);
+  const empty = askLiveCoworker(ws, "   ");
+  assert.strictEqual(empty.ok, false);
+  assert.strictEqual(empty.act, false);
 });
 
 test("today assist ships a standing brief and never invents work", () => {

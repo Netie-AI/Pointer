@@ -1,3 +1,10 @@
+## 2026-08-27 - Host meeting chips file inbox and Word
+
+Loopback `/meeting` Ask chips (Assist / Draft email / Write in Word)
+file unsent mail and a Word draft from the stored transcript. Teach
+walks stay on `/teach`. Public POST `/api/meeting` stays 404. Never
+sends. Never a .docx. Never Acts. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Fixed live cue bar on loopback host pages
 
 Loopback host pages paint They asked / Heard / Next in sticky chrome

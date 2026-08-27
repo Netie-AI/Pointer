@@ -53,6 +53,16 @@ test("put lists a brief and never grows a runtime", () => {
   assert.ok(withLive.artifact.live);
   assert.ok(!Object.prototype.hasOwnProperty.call(ws.list().find((r) => r.id === "live-teach"), "live"));
   assert.equal(ws.get("live-teach").artifact.live.controls[0].name, "Save");
+  const meetingLive = ws.put({
+    id: "live-meeting",
+    desk: "meeting",
+    title: "Live meeting",
+    body: "# Meeting brief\n- ship it",
+    cue: "I will send it Friday.",
+    live: { transcript: "them: Can we ship Friday?\nyou: I will send it Friday." },
+  });
+  assert.match(meetingLive.artifact.live.transcript, /send it Friday/);
+  assert.ok(!Object.prototype.hasOwnProperty.call(ws.list().find((r) => r.id === "live-meeting"), "live"));
   const exec = ws.exec({ backend: "container" });
   assert.strictEqual(exec.ok, false);
   assert.strictEqual(exec.exec, false);

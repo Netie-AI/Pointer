@@ -11,10 +11,10 @@
    `/teach` `/security` `/document` `/inbox` `/lanes` `/skills`
    `/workspace`). Public Worker is the same catalog; `/mcp` stays on
    the laptop. P-05 parked.
-2. **Coworker desks (DR-0005).** Fixed live cue bar on loopback host
-   pages (They asked / Heard / Next / Got it). `/teach` Back/Got it Ask
-   the next measured step. Today plate is commitments only. Public
-   catalog empty. P-06 parked.
+2. **Coworker desks (DR-0005).** Loopback `/meeting` Ask chips file
+   inbox/Word/security drafts (never send, never a .docx, never Act).
+   Fixed live cue bar on host pages. `/teach` Back/Got it. Today plate
+   is commitments only. Public catalog empty. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

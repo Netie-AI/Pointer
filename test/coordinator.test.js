@@ -150,10 +150,18 @@ function test(name, fn) {
       id: "live-meeting",
       title: "Live assist",
       desk: "meeting",
-      body: "# Meeting brief\n## Commitments\n- You [Friday]: I will send it Friday.",
+      body: "# Meeting brief\n## Commitments\n- You [Friday]: I will send it Friday.\n## Open questions\n- Them: What is the launch date?",
       cue: "I'll send it Friday.",
       asked: "What is the launch date?",
       heard: "Friday / $40k",
+      live: {
+        transcript: [
+          "them: I'm Sarah Chen",
+          "them: we're with Acme",
+          "them: What is the launch date?",
+          "you: I will send it Friday.",
+        ].join("\n"),
+      },
     });
     const meeting = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/meeting" }, (res) => {
@@ -168,6 +176,11 @@ function test(name, fn) {
     assert.match(meeting.body.cue, /Friday/);
     assert.match(meeting.body.asked, /launch date/);
     assert.match(meeting.body.heard, /Friday/);
+    assert.ok(Array.isArray(meeting.body.chips));
+    assert.ok(meeting.body.chips.some((row) => /follow-up email/.test(row.q)));
+    assert.ok(meeting.body.chips.some((row) => /write this recap in Word/.test(row.q)));
+    assert.ok(!meeting.body.live);
+    assert.ok(!meeting.body.artifact || !meeting.body.artifact.live);
     const meetingPage = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/meeting" }, (res) => {
         const chunks = [];
@@ -179,6 +192,77 @@ function test(name, fn) {
     assert.match(meetingPage.body, /meeting-brief/);
     assert.match(meetingPage.body, /meeting-asked-web/);
     assert.match(meetingPage.body, /meeting-heard-web/);
+    assert.match(meetingPage.body, /meeting-chips/);
+    assert.match(meetingPage.body, /meeting-filed/);
+    const mailed = await new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: "127.0.0.1", port, path: "/api/meeting", method: "POST", headers: { "content-type": "application/json" } },
+        (res) => {
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+        }
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ ask: "draft a follow-up email from this meeting", act: true }));
+    });
+    assert.strictEqual(mailed.status, 200);
+    assert.strictEqual(mailed.body.ok, true);
+    assert.strictEqual(mailed.body.act, false);
+    assert.strictEqual(mailed.body.exec, false);
+    assert.strictEqual(mailed.body.desk, "inbox");
+    assert.strictEqual(mailed.body.href, "/inbox");
+    assert.ok(!mailed.body.live);
+    assert.match(mailed.body.deliverable, /Hi Sarah Chen/);
+    assert.match(mailed.body.cue, /not sent/);
+    assert.match(c.workspace.get("live-meeting").artifact.asked, /launch date/);
+    const worded = await new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: "127.0.0.1", port, path: "/api/meeting", method: "POST", headers: { "content-type": "application/json" } },
+        (res) => {
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+        }
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ ask: "write this recap in Word", act: true }));
+    });
+    assert.strictEqual(worded.body.act, false);
+    assert.strictEqual(worded.body.desk, "document");
+    assert.match(worded.body.cue, /not a \.docx/);
+    const taught = await new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: "127.0.0.1", port, path: "/api/meeting", method: "POST", headers: { "content-type": "application/json" } },
+        (res) => {
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+        }
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ ask: "walk me through this on my screen" }));
+    });
+    assert.strictEqual(taught.body.ok, false);
+    assert.strictEqual(taught.body.act, false);
+    assert.strictEqual(taught.body.desk, "teach");
+    const assisted = await new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: "127.0.0.1", port, path: "/api/meeting", method: "POST", headers: { "content-type": "application/json" } },
+        (res) => {
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+        }
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ ask: "What should I say?", act: true }));
+    });
+    assert.strictEqual(assisted.body.ok, true);
+    assert.strictEqual(assisted.body.act, false);
+    assert.strictEqual(assisted.body.desk, "meeting");
+    assert.ok(Array.isArray(assisted.body.chips));
+    assert.ok(!assisted.body.live);
     c.workspace.put({
       id: "live-teach",
       title: "Live teach",

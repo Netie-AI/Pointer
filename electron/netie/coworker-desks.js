@@ -625,6 +625,8 @@ function meetingAssist({ transcript, question } = {}) {
         : "",
     heard,
     deliverable,
+    id: "live-meeting",
+    live: { transcript: String(transcript || "").slice(0, 4000) },
   };
 }
 
@@ -977,6 +979,17 @@ function freezeTeachLive(spec) {
     step: Math.max(0, Number(spec.step) || 0),
     text: String(spec.text || "walk me through this on my screen").slice(0, 200),
   };
+}
+
+function freezeMeetingLive(spec) {
+  if (!spec || typeof spec !== "object") return undefined;
+  const transcript = String(spec.transcript || "").slice(0, 4000);
+  if (!transcript.trim()) return undefined;
+  return { transcript };
+}
+
+function freezeCoworkerLive(spec) {
+  return freezeTeachLive(spec) || freezeMeetingLive(spec);
 }
 
 function canAdvanceTeach(live) {
@@ -1664,6 +1677,78 @@ function spawnFollowOns(assist, extra = {}) {
   return out;
 }
 
+function putAssist(workspace, assist) {
+  if (!workspace || !assist || !assist.ok || assist.act || !assist.deliverable) return null;
+  return workspace.put({
+    id: assist.id,
+    kind: assist.kind || "brief",
+    title: assist.title || assist.desk || "brief",
+    desk: assist.desk,
+    body: assist.deliverable,
+    cue: assist.cue || "",
+    asked: assist.asked || "",
+    rest: assist.rest || "",
+    heard: assist.heard || "",
+    live: assist.live,
+  });
+}
+
+/**
+ * Loopback Ask from /meeting chips. Never Acts. Inbox is not sent.
+ * Document is not a .docx. Teach walks stay on /teach.
+ */
+function askLiveCoworker(workspace, ask) {
+  if (!workspace || typeof workspace.get !== "function" || typeof workspace.put !== "function") {
+    return { ok: false, act: false, exec: false, reason: "workspace missing" };
+  }
+  const q = String(ask || "").trim();
+  if (!q) return { ok: false, act: false, exec: false, reason: "ask required" };
+  const meeting = workspace.get("live-meeting");
+  let desk = pickDesk(q);
+  if (desk.id === "teach" && meeting.ok && looksQuestion(q)) desk = DESKS.meeting;
+  if (desk.id === "teach") {
+    return { ok: false, act: false, exec: false, desk: "teach", reason: "teach walk stays on /teach" };
+  }
+  const transcript =
+    meeting.ok && meeting.artifact.live ? String(meeting.artifact.live.transcript || "") : "";
+  let assist;
+  if (desk.id === "inbox") {
+    assist = inboxAssist({ text: q, transcript });
+  } else if (desk.id === "document") {
+    assist = documentAssist({
+      text: q,
+      source: meeting.ok ? String(meeting.artifact.body || "") : "",
+      transcript,
+    });
+  } else if (desk.id === "security") {
+    const files = [];
+    if (meeting.ok) files.push({ name: "live-meeting", body: meeting.artifact.body });
+    const inbox = workspace.get("live-inbox");
+    if (inbox.ok) files.push({ name: "live-inbox", body: inbox.artifact.body });
+    const doc = workspace.get("live-document");
+    if (doc.ok) files.push({ name: "live-document", body: doc.artifact.body });
+    assist = securityAssist({ text: q, files });
+  } else if (desk.id === "today") {
+    assist = todayAssist({
+      state: { artifacts: workspace.list(), transcript },
+      question: q,
+    });
+  } else {
+    assist = meetingAssist({ transcript, question: q });
+  }
+  if (!assist || !assist.ok || assist.act) {
+    return { ...(assist || { reason: "ask failed" }), ok: false, act: false, exec: false };
+  }
+  putAssist(workspace, assist);
+  return {
+    ...assist,
+    live: undefined,
+    exec: false,
+    act: false,
+    href: sessionHref(assist.desk),
+  };
+}
+
 /**
  * Follow-up chips for the HUD suggest row. Transcript questions become
  * buttons. Never commands. Caps at 6.
@@ -1992,6 +2077,7 @@ function publicEmptyRoom(desk, title, reason) {
     deliverable: "",
     markers: [],
     advance: false,
+    chips: [],
     coordinator: "http://127.0.0.1:18010",
     reason,
     desk,
@@ -2070,9 +2156,11 @@ module.exports = {
   createLiveTeachPump,
   createBriefClock,
   freezeTeachLive,
+  freezeCoworkerLive,
   canAdvanceTeach,
   replayTeachWalk,
   advanceLiveTeach,
+  askLiveCoworker,
   publicMeetingSnapshot,
   publicTeachSnapshot,
   publicSecuritySnapshot,

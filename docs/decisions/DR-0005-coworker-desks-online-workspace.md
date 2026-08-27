@@ -117,3 +117,6 @@ say-this / Copy plate copy the cue line. Today plate lists your
 commitments, not the meeting say-this dump.
 Loopback host pages keep They asked / Heard / Next in sticky chrome
 from `/api/home` (Back / Got it Ask, never Act). Public copies hide it.
+Loopback `/meeting` Ask chips file inbox/Word drafts from the stored
+transcript (POST `/api/meeting`, never Act, public copy 404). Teach
+walks stay on `/teach`.

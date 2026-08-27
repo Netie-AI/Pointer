@@ -27,7 +27,9 @@ filed inbox and Word links, no runtime). Loopback host pages keep They asked / H
 (Back / Got it Ask, never Act). Loopback
 `/teach` draws a read-only box map from measured markers and Back / Got
 it Ask the next step on loopback (never Act). Copy next / Copy say-this
-copy the cue line. Today plate lists your commitments, not the meeting
+copy the cue line. Loopback `/meeting` Ask chips file an unsent follow-up
+and a Word draft from the stored transcript (never send, never a `.docx`,
+teach walks stay on `/teach`). Today plate lists your commitments, not the meeting
 say-this dump. Inbox never
 sends (P-05). "Spawn a coworker" runs the named job, or the Today plate
 when bare (a meeting/transcribe session recaps instead, and files an

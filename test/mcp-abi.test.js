@@ -178,6 +178,55 @@ function test(name, fn) {
     assert.strictEqual(live.result.act, false);
     assert.strictEqual(live.result.exec, false);
     assert.match(live.result.artifact.cue, /Friday/);
+    coord.workspace.put({
+      id: "live-meeting",
+      title: "Live assist",
+      desk: "meeting",
+      body: "# Meeting brief\nSay the date.",
+      cue: "I will send it Friday.",
+      asked: "What is the launch date?",
+      live: {
+        transcript: [
+          "them: I'm Sarah Chen",
+          "them: we're with Acme",
+          "them: What is the launch date?",
+          "you: I will send it Friday.",
+        ].join("\n"),
+      },
+    });
+    const mailed = await mcp.handle(
+      {
+        jsonrpc: "2.0",
+        id: 15.5,
+        method: "meeting.live",
+        params: { ask: "draft a follow-up email from this meeting" },
+      },
+      { coordinator: coord }
+    );
+    assert.strictEqual(mailed.result.ok, true);
+    assert.strictEqual(mailed.result.act, false);
+    assert.strictEqual(mailed.result.exec, false);
+    assert.strictEqual(mailed.result.desk, "inbox");
+    assert.ok(!mailed.result.live);
+    assert.match(mailed.result.deliverable, /Hi Sarah Chen/);
+    const askedTeach = await mcp.handle(
+      {
+        jsonrpc: "2.0",
+        id: 15.6,
+        method: "meeting.live",
+        params: { ask: "walk me through this on my screen" },
+      },
+      { coordinator: coord }
+    );
+    assert.strictEqual(askedTeach.result.ok, false);
+    assert.strictEqual(askedTeach.result.act, false);
+    assert.strictEqual(askedTeach.result.desk, "teach");
+    const stillMeeting = await mcp.handle(
+      { jsonrpc: "2.0", id: 15.7, method: "meeting.live" },
+      { coordinator: coord }
+    );
+    assert.match(stillMeeting.result.artifact.asked, /launch date/);
+    assert.ok(!stillMeeting.result.artifact.live);
     const reviewed = await mcp.handle(
       {
         jsonrpc: "2.0",

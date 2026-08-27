@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
-const { catalog, todayAssist, sessionBundle, advanceLiveTeach, canAdvanceTeach } = require("./coworker-desks");
+const { catalog, todayAssist, sessionBundle, advanceLiveTeach, canAdvanceTeach, askLiveCoworker, suggestsFromAssist } = require("./coworker-desks");
 const { parsePoints } = require("./point-overlay");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
@@ -135,6 +135,14 @@ function createCoordinator(opts = {}) {
         deliverable: got.ok ? String(got.artifact.body || "") : "",
         markers,
         advance: desk === "teach" && got.ok && canAdvanceTeach(got.artifact.live),
+        chips:
+          desk === "meeting" && got.ok
+            ? suggestsFromAssist({
+                ok: true,
+                desk: "meeting",
+                deliverable: got.artifact.body,
+              }).map((c) => ({ q: c.q, label: c.label }))
+            : [],
         artifact,
         reason: got.ok ? `live ${desk} on loopback; no runtime` : `no live ${desk} yet`,
       })
@@ -189,6 +197,29 @@ function createCoordinator(opts = {}) {
           reason: "live today on loopback; no runtime",
         })
       );
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/meeting") {
+      const chunks = [];
+      req.on("data", (c) => chunks.push(c));
+      req.on("end", () => {
+        let body = {};
+        try {
+          body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+        } catch {
+          res.writeHead(400, { "content-type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, act: false, exec: false, reason: "parse error" }));
+          return;
+        }
+        const ask = String((body && (body.ask || body.text || body.q)) || "").trim();
+        const out = askLiveCoworker(workspace, ask);
+        if (out.ok && out.desk === "meeting") {
+          sendLiveRoom(res, "meeting", "live-meeting");
+          return;
+        }
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ...out, live: undefined, act: false, exec: false, localFirst: false }));
+      });
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/meeting") {
