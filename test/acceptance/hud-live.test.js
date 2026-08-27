@@ -126,7 +126,9 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.strictEqual(modes.detectModeSwitch("general mode"), "general");
       assert.strictEqual(modes.detectModeSwitch("switch to general mode"), "general");
       assert.strictEqual(modes.detectModeSwitch("just listen"), "general");
-      assert.strictEqual(modes.detectModeSwitch("agent mode"), "agent");
+      assert.strictEqual(modes.detectModeSwitch("dictation mode"), "transcribe");
+      assert.strictEqual(modes.detectModeSwitch("switch to dictation"), "transcribe");
+      assert.strictEqual(modes.detectModeSwitch("scribe mode"), "general");
       assert.strictEqual(modes.detectModeSwitch("nothing to see here"), null);
     }),
 

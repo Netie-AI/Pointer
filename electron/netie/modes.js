@@ -52,7 +52,8 @@ const MODES = Object.freeze({
 });
 
 const TRIGGERS = [
-  { re: /\b(transcribe\s*mode|transcription\s*mode|notes?\s*mode|just\s*transcribe|switch\s+to\s+transcribe|change\s+to\s+transcribe)\b/i, mode: "transcribe" },
+  { re: /\b(transcribe\s*mode|transcription\s*mode|notes?\s*mode|dictation\s*mode|just\s*transcribe|just\s*dictate|switch\s+to\s+transcribe|change\s+to\s+transcribe|switch\s+to\s+dictation)\b/i, mode: "transcribe" },
+  { re: /\b(scribe\s*mode|writing\s*mode|switch\s+to\s+scribe|change\s+to\s+scribe)\b/i, mode: "general" },
   { re: /\b(meeting\s*mode|call\s*mode|standup\s*mode|switch\s+to\s+meeting|change\s+to\s+meeting)\b/i, mode: "meeting" },
   // Before agent: "go to general mode" must not fall through to a mode that acts.
   { re: /\b((switch|change|go)\s+to\s+)?general\s*mode\b|\bcompanion\s*mode\b|\bassistant\s*mode\b|\bjust\s*(listen|help)\b|\bstop\s*acting\b|\bdon'?t\s*click\b/i, mode: "general" },

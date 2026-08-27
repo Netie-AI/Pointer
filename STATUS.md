@@ -14,12 +14,12 @@
    wholesale) stays parked. P-05 act verbs stay parked.
 2. **Generative tools (DR-0004).** Search then craft a hint. Coordinator
    at `127.0.0.1:18010`. Public Worker is pages only. P-06 parked.
-3. **EPIC-P04 and EPIC-P07 remain open.**
+3. **EPIC-P04 and EPIC-P07 remain open.** Dictation mode aliases
+   transcribe. Scribe phrases copy the selection (P-04 still no GPLv3 dump).
 
 ## Next
 
 - Windows: `scripts/install_uacc.ps1` then prove UACC sees the HUD.
-- Port OpenWillow dictation/scribe patterns only (P-04).
 - Measure STT: `node scripts/stt_baseline.js`.
 - `wrangler deploy` of `netie-host` when DNS/account is ready.
 

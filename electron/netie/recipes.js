@@ -284,6 +284,18 @@ const RECIPES = Object.freeze({
     actions: Object.freeze([{ type: "observe", value: "uacc_find_element" }]),
   }),
 
+  /** OpenWillow Scribe: copy the selection so a rewrite can use it. */
+  rewrite_selection: Object.freeze({
+    id: "rewrite_selection",
+    label: "Copy selection to rewrite",
+    actions: Object.freeze([
+      { type: "clipboard_baseline" },
+      { type: "press", value: "ctrl+c" },
+      { type: "wait", ms: 120 },
+      { type: "clipboard_verify" },
+    ]),
+  }),
+
   /** Continue prompt stub when context is full — copy then new chat. */
   continue_due_context: Object.freeze({
     id: "continue_due_context",
@@ -480,6 +492,16 @@ function matchRecipe(text) {
     /uacc\s+find/.test(normalized)
   ) {
     return cloneRecipe(RECIPES.uacc_find_element);
+  }
+  if (
+    /^(?:please\s+)?(?:rewrite|rephrase|shorten|lengthen|formalize)\s+(?:this|that|it|the selection|selection)\b/.test(
+      normalized
+    ) ||
+    /^(?:please\s+)?(?:make\s+this\s+(?:shorter|longer|formal|casual)|scribe\s+(?:this|that))\b/.test(
+      normalized
+    )
+  ) {
+    return cloneRecipe(RECIPES.rewrite_selection);
   }
   if (/^(?:please\s+)?(?:copy|select)\s+all(?:\s+(?:of\s+)?(?:this|that|it))?$/.test(normalized)) {
     return cloneRecipe(RECIPES.copy_all);

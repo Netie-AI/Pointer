@@ -14,6 +14,9 @@ Serif + Sans solid panels. Windows install: `scripts/install_uacc.ps1`.
 Does not bundle OpenWillow (P-04). Does not load third-party MCP
 servers. P-05 coworker verbs stay parked.
 
+Dictation mode aliases transcribe. "rewrite this" / "scribe this"
+copies the selection (OpenWillow Scribe pattern, no GPLv3 dump).
+
 ## 2026-08-26 - Public host.netie.ai Worker shell (DR-0004)
 
 Same pages as the loopback coordinator (`/` `/today` `/lanes` `/skills`).
