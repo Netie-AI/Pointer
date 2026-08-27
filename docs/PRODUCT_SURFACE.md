@@ -44,7 +44,10 @@ Word / security the same way. Loopback `/workspace` opens a file as the
 working set and Ask chips review/file from that body (`this file` scans
 only the open artifact). This session links open `/workspace?id=` as
 the working set (never exec). `/workspace` This computer dock Run POSTs
-`/api/workspace/exec` and always fails closed (P-06). Loopback `/document`
+`/api/workspace/exec` and always fails closed (P-06). Opening a live
+document or inbox file on `/workspace?id=` also offers Download generated
+`.docx` / unsent `.eml`. Home theater cards include Open in workspace.
+Loopback `/document`
 downloads a generated `.docx` from the live draft (never Act, never
 Word.app). Public `/api/document.docx` is 404. Loopback `/meeting` paints the You/Them
 talk track from the stored ring. HUD insight paints the same You/Them

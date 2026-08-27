@@ -20,11 +20,13 @@
    current BOX. Loopback `/` paints teach path, meeting card, Today plate,
    and filed work cards. `/teach` stacks drawn BOX steps (current hold,
    later dashed), Back/Got it Ask, never invented coords. Overlay stays
-   click-through with Click/Type in plus Draw. This session links
-   `/workspace?id=` (never send, never Act). Loopback `/document` may
-   download a generated .docx and `/inbox` a generated .eml (never Act,
-   never send). Public those paths stay 404. `/workspace` Run is a named
-   refuse (P-06). Public catalog empty.
+   numbered BOX tokens (`1 Save`). Current BOX paints Click /
+   Type in / Look at. Overlay Draw stores a freehand BOX. Cap 8. Tiny boxes
+   fail closed at 0.4%. Compact HUD `cueDisplay` for `point` strips `N of M`.
+   This session links `/workspace?id=` to the live document or inbox file
+   and shows Download generated .docx / unsent .eml there. Home theater
+   cards include Open in workspace. Public those paths stay 404.
+   `/workspace` Run is a named refuse (P-06). Public catalog empty.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

@@ -116,6 +116,10 @@ function readAsset(file) {
     assert.match(app, /pollWhileLive/);
     assert.match(app, /ws\.exec/);
     assert.match(app, /openArtifact/);
+    assert.match(app, /setFinishedDownloads/);
+    assert.match(app, /Open in workspace/);
+    assert.match(app, /\/workspace\?id=live-document/);
+    assert.match(app, /\/workspace\?id=live-inbox/);
     assert.match(app, /paintLanes/);
     assert.match(app, /artifact-filter/);
     assert.match(page, /id="artifact-filter"/);
@@ -140,6 +144,9 @@ function readAsset(file) {
     assert.match(page, /id="session-download"/);
     assert.match(page, /id="artifact-copy"/);
     assert.match(page, /id="artifact-download"/);
+    assert.match(page, /id="docx-download"/);
+    assert.match(page, /id="eml-download"/);
+    assert.match(page, /generated \.docx/);
   });
 
   await test("public fetch serves /today and style.css from host/", async () => {
@@ -242,6 +249,8 @@ function readAsset(file) {
     assert.match(cssText, /today-plate-kicker/);
     assert.match(cssText, /work-rail/);
     assert.match(cssText, /work-card-kicker/);
+    assert.match(cssText, /work-card-open/);
+    assert.match(app, /work-card-open/);
     assert.match(cssText, /stage \.teach-map/);
     assert.match(cssText, /bottom: 36px/);
     assert.match(app, /They asked/);

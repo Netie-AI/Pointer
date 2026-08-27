@@ -203,6 +203,18 @@ function renderArtifactList() {
   });
 }
 
+function setFinishedDownloads(art, flags) {
+  const localFirst = Boolean(flags && flags.localFirst);
+  const exec = Boolean(flags && flags.exec);
+  const desk = String((art && art.desk) || "").toLowerCase();
+  const id = String((art && art.id) || "").toLowerCase();
+  const hasDraft = Boolean(String((art && art.preview) || "").trim()) && !localFirst && !exec;
+  const docxBtn = document.getElementById("docx-download");
+  const emlBtn = document.getElementById("eml-download");
+  if (docxBtn) docxBtn.hidden = !(hasDraft && (desk === "document" || id === "live-document"));
+  if (emlBtn) emlBtn.hidden = !(hasDraft && (desk === "inbox" || id === "live-inbox"));
+}
+
 function openArtifact(id) {
   const root = document.getElementById("artifact-body");
   if (!root || !id) return;
@@ -235,6 +247,7 @@ function openArtifact(id) {
       const dlBtn = document.getElementById("artifact-download");
       if (copyBtn) copyBtn.hidden = !ok;
       if (dlBtn) dlBtn.hidden = !ok;
+      setFinishedDownloads(ok ? body.artifact : null, body);
     })
     .catch((err) => {
       root.replaceChildren();
@@ -248,6 +261,7 @@ function openArtifact(id) {
       const dlBtn = document.getElementById("artifact-download");
       if (copyBtn) copyBtn.hidden = true;
       if (dlBtn) dlBtn.hidden = true;
+      setFinishedDownloads(null, { localFirst: true });
     });
 }
 
@@ -655,16 +669,7 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
   pre.textContent = (m && m.deliverable) || "";
   page.appendChild(pre);
   setBriefButtons((m && m.deliverable) || "", (m && m.desk) || "brief", Boolean(m && m.localFirst));
-  const docxBtn = document.getElementById("docx-download");
-  if (docxBtn) {
-    const hasDraft = Boolean(String((m && m.preview) || "").trim()) && !(m && m.localFirst) && !(m && m.exec);
-    docxBtn.hidden = !hasDraft;
-  }
-  const emlBtn = document.getElementById("eml-download");
-  if (emlBtn) {
-    const hasDraft = Boolean(String((m && m.preview) || "").trim()) && !(m && m.localFirst) && !(m && m.exec);
-    emlBtn.hidden = !hasDraft;
-  }
+  setFinishedDownloads(m, m);
   return !(m && m.localFirst);
 }
 
@@ -1243,7 +1248,7 @@ function findingItems(m) {
   return sectionAfter(m && m.deliverable, "Findings (redacted)").slice(0, 8);
 }
 
-function paintWorkCard(root, cls, label, body, foot) {
+function paintWorkCard(root, cls, label, body, foot, href) {
   if (!root) return;
   const card = el("article", "work-card " + cls);
   card.setAttribute("role", "region");
@@ -1261,23 +1266,29 @@ function paintWorkCard(root, cls, label, body, foot) {
     f.textContent = foot;
     card.appendChild(f);
   }
+  if (href) {
+    const a = el("a", "work-card-open");
+    a.href = href;
+    a.textContent = "Open in workspace";
+    card.appendChild(a);
+  }
   root.appendChild(card);
 }
 
-function paintInboxCard(root, m) {
+function paintInboxCard(root, m, href) {
   if (!root || !m || m.desk !== "inbox" || m.localFirst) return;
   const preview = draftPreview(m);
   const cue = String((m && m.cue) || "").trim();
   if (!preview && !cue) return;
-  paintWorkCard(root, "work-inbox", "Unsent follow-up", preview || cue, "not sent");
+  paintWorkCard(root, "work-inbox", "Unsent follow-up", preview || cue, "not sent", href);
 }
 
-function paintDocumentCard(root, m) {
+function paintDocumentCard(root, m, href) {
   if (!root || !m || m.desk !== "document" || m.localFirst) return;
   const preview = draftPreview(m);
   const cue = String((m && m.cue) || "").trim();
   if (!preview && !cue) return;
-  paintWorkCard(root, "work-document", "Word draft", preview || cue, "not a .docx");
+  paintWorkCard(root, "work-document", "Word draft", preview || cue, "not a .docx", href);
 }
 
 function paintSecurityCard(root, m) {
@@ -1314,8 +1325,8 @@ function paintSecurityCard(root, m) {
 function paintWorkRail(root, rooms) {
   if (!root) return;
   const rail = el("div", "work-rail");
-  paintInboxCard(rail, (rooms && rooms.inbox) || {});
-  paintDocumentCard(rail, (rooms && rooms.document) || {});
+  paintInboxCard(rail, (rooms && rooms.inbox) || {}, "/workspace?id=live-inbox");
+  paintDocumentCard(rail, (rooms && rooms.document) || {}, "/workspace?id=live-document");
   paintSecurityCard(rail, (rooms && rooms.security) || {});
   if (rail.childNodes.length) root.appendChild(rail);
 }

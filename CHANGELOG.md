@@ -1,3 +1,10 @@
+## 2026-08-27 - Workspace opens finished .docx and .eml files
+
+Loopback `/workspace?id=live-document` downloads the generated .docx.
+`/workspace?id=live-inbox` downloads the unsent .eml. Home work cards
+link Open in workspace. Never Act. Never send. Public catalog stays 404.
+P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Host chrome keeps Live captions and Click/Type in
 
 Loopback host cue bar paints Live captions from the stored meeting ring

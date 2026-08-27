@@ -333,6 +333,12 @@ pre {
   color: #f88;
   font-size: 12px;
 }
+.work-card-open {
+  display: inline-block;
+  margin: 8px 0 0;
+  color: #9ad;
+  font-size: 12px;
+}
 .work-hits {
   margin: 0 0 8px;
   padding: 0 0 0 18px;

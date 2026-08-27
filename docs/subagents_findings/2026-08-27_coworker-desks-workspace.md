@@ -57,6 +57,9 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   refine say-this in 300ms; timeout or ungrounded lines keep the heuristic.
 - Loopback This session files link to `/workspace?id=` and chrome shows
   `Open:` the working set. Ask chips review that body. Public `?id=` 404.
+  Opening `live-document` / `live-inbox` there also offers Download
+  generated .docx / unsent .eml (same loopback bytes as `/document` and
+  `/inbox`). Home theater cards include Open in workspace.
 - Loopback `/` paints the live teach path, meeting say-this, Today
   plate, and filed inbox/Word/security work cards from `/api/home`
   (Ask, never Act, never a runtime, never send). `/today`

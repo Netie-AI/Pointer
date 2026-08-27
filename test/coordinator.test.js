@@ -657,6 +657,18 @@ function test(name, fn) {
       cue: draft.cue,
       preview: draft.preview,
     });
+    const opened = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/workspace?id=live-document" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(opened.status, 200);
+    assert.strictEqual(opened.body.act, false);
+    assert.strictEqual(opened.body.exec, false);
+    assert.strictEqual(opened.body.artifact.desk, "document");
+    assert.match(opened.body.artifact.preview, /hello in Word/i);
     const hit = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/document.docx" }, (res) => {
         const chunks = [];
@@ -705,6 +717,17 @@ function test(name, fn) {
       cue: draft.cue,
       preview: draft.preview,
     });
+    const opened = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/workspace?id=live-inbox" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(opened.status, 200);
+    assert.strictEqual(opened.body.act, false);
+    assert.strictEqual(opened.body.exec, false);
+    assert.strictEqual(opened.body.artifact.desk, "inbox");
     const hit = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/inbox.eml" }, (res) => {
         const chunks = [];
