@@ -54,6 +54,8 @@ async function run() {
       const captureIdx = hudAskBody.indexOf("captureNowForAsk");
       assert.ok(retryIdx >= 0 && captureIdx > retryIdx, "retry/dictate must not recapture");
       assert.ok(/captureNowForAsk\(/.test(hudAskBody), "hud:ask must grab a fresh screenshot");
+      assert.ok(/globalShortcut\.register\("Control\+Enter"/.test(main), "Cluely Assist must be a global Ctrl+Enter");
+      assert.ok(/showHud\(\{\s*assist:\s*true\s*\}\)/.test(main), "Ctrl+Enter must open Ask as Assist");
     }),
 
     T("hud:act recipe branch calls secureBeforeAct before maybeRunPlan", () => {

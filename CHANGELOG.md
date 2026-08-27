@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Ctrl+Enter Assist asks about this screen or the live notes
+
+Cluely Assist: global Ctrl+Enter shows the HUD and asks. Meeting mode
+runs Suggest. An empty general Ask becomes "what am I looking at" with
+a fresh crop. Shift+Enter stays a newline in the box. No GPLv3 dump.
+No third-party MCP servers.
+
 ## 2026-08-27 - Chain local act verbs and capture the live screen on Ask
 
 `computer.act` plans `focus: notepad then type: hello` as two local steps

@@ -22,7 +22,8 @@
    is a setting. MCP `tools.list` and `GET /api/tools` return schemas.
    `wait` / `scroll` / `doubleclick` / `rightclick` / `hover` / `replace:`
    plan locally. `focus: notepad then type: hello` chains local verbs.
-   Ask captures a fresh screen (Clicky sees-what-you-see). Meeting live
+   Ask captures a fresh screen (Clicky sees-what-you-see). Ctrl+Enter is
+   Cluely Assist (meeting say, or "what am I looking at"). Meeting live
    Say line refreshes as notes grow (fail-closed). IBM Plex HUD. P-04
    stays parked.
 2. **Generative tools (DR-0004).** Search then craft a hint. Coordinator

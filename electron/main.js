@@ -789,7 +789,7 @@ function showHud(opts = {}) {
   win.focus();
   sendHud({ type: "reset-timer" });
   sendHud({ type: "ui", chatOpen: expandChat, compact: !expandChat });
-  if (expandChat) sendHud({ type: "open-ask" });
+  if (expandChat) sendHud({ type: "open-ask", assist: opts.assist === true });
 }
 
 function hideHud() {
@@ -2612,6 +2612,15 @@ function registerHotkey() {
       const next = nextScribeLanguage(settings.get("scribeLanguage"));
       settings.set({ scribeLanguage: next });
       sendHudQuiet({ type: "insight", text: `Scribe language: ${next}` });
+    });
+  } catch {
+    /* ok */
+  }
+  // Cluely Assist: Ctrl+Enter asks about this screen / the live notes even
+  // when another app is focused. Shift+Enter stays newline in the Ask box.
+  try {
+    globalShortcut.register("Control+Enter", () => {
+      showHud({ assist: true });
     });
   } catch {
     /* ok */

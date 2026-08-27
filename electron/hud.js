@@ -866,12 +866,25 @@ if (btnShowTranscript) {
 
 async function doAsk(opts = {}) {
   const kind = String(opts.kind || "").trim();
+  const assist = opts.assist === true;
   const message = askInput.value.trim() || finalBits.slice(-1)[0] || "";
-  if (!message && appMode !== "meeting") return;
+  if (!message && appMode !== "meeting" && !assist) return;
   const label =
     message ||
-    (kind === "recap" ? "Recap" : kind === "followups" ? "Follow-ups" : "what should I say");
-  const asked = kind === "recap" || kind === "followups" ? message : message || label;
+    (kind === "recap"
+      ? "Recap"
+      : kind === "followups"
+        ? "Follow-ups"
+        : appMode === "meeting"
+          ? "what should I say"
+          : "what am I looking at");
+  const asked =
+    kind === "recap" || kind === "followups"
+      ? message
+      : message ||
+        (appMode === "meeting"
+          ? label
+          : "What am I looking at? Short answer I can use now.");
   autoSend.cancel("sent");
   dismissCleanToast();
   setChatOpen(true);
@@ -1331,12 +1344,17 @@ clickyOrb && clickyOrb.addEventListener("dblclick", async () => {
 
 askInput.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
-  if (event.ctrlKey || event.metaKey) {
+  if (event.shiftKey) {
     event.preventDefault();
     const start = askInput.selectionStart;
     const end = askInput.selectionEnd;
     askInput.value = `${askInput.value.slice(0, start)}\n${askInput.value.slice(end)}`;
     askInput.selectionStart = askInput.selectionEnd = start + 1;
+    return;
+  }
+  if (event.ctrlKey || event.metaKey) {
+    event.preventDefault();
+    void doAsk({ assist: true, kind: appMode === "meeting" ? "say" : "" });
     return;
   }
   event.preventDefault();
@@ -1484,6 +1502,12 @@ function onHudEvent(event) {
     if (event.text) askInput.value = event.text;
     askInput.focus();
     syncClickThrough(true);
+    if (event.assist) {
+      void doAsk({
+        assist: true,
+        kind: appMode === "meeting" ? "say" : "",
+      });
+    }
   }
   if (event.type === "ui") {
     setMorphHidden(false);

@@ -427,6 +427,17 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/visibilitychange/.test(js), "visibilitychange is not a hard stop");
     }),
 
+    T("Cluely Assist: Ctrl+Enter asks; Shift+Enter stays a newline", () => {
+      const js = read("electron/hud.js");
+      assert.ok(/event\.assist/.test(js), "open-ask assist never reaches doAsk");
+      assert.ok(/opts\.assist === true/.test(js), "empty general Ask must not fire without Assist");
+      assert.ok(/event\.shiftKey/.test(js), "Shift+Enter must stay a newline");
+      assert.ok(
+        /doAsk\(\{\s*assist:\s*true/.test(js),
+        "Ctrl+Enter in the Ask box must Assist, not insert a newline"
+      );
+    }),
+
     // ── #23 · attachments reach the payload ─────────────────────────────────
     T("#23 the renderer sends attachment content, not just a chip", () => {
       const js = read("electron/hud.js");
