@@ -10,6 +10,8 @@ const {
   securityAssist,
   teachAssist,
   inboxAssist,
+  inboxDraftText,
+  buildEml,
   todayAssist,
   documentAssist,
   documentDraftText,
@@ -848,6 +850,25 @@ test("inbox assist drafts and never sends", () => {
   assert.match(named.heard, /Sarah Chen/);
   assert.match(named.cue, /not sent/);
   assert.match(named.preview, /Hi Sarah Chen/);
+  assert.match(named.deliverable, /generated \.eml/);
+  assert.match(inboxDraftText({ body: named.deliverable }), /Hi Sarah Chen/);
+  assert.strictEqual(
+    inboxDraftText({
+      preview: "short",
+      body: "# Draft (not sent)\n\n## Draft\n\nfull follow-up\n\n---\nPointer will not send this.\n",
+    }),
+    "full follow-up"
+  );
+  assert.strictEqual(inboxDraftText({}), "");
+  const eml = buildEml("Thanks - Friday.\nLine 2", { subject: "Hi\r\nBcc: evil@x" });
+  assert.ok(eml.ok);
+  const raw = eml.buffer.toString("utf8");
+  assert.match(raw, /X-Pointer-Send: never/);
+  assert.match(raw, /Subject: Hi Bcc: evil@x/);
+  assert.doesNotMatch(raw, /\nBcc:/);
+  assert.match(raw, /Thanks - Friday\./);
+  const blank = buildEml(" \n\t ");
+  assert.strictEqual(blank.ok, false);
   const ownName = inboxAssist({
     text: "draft a follow-up email from this meeting",
     transcript: "mic: I'm Alex.\nsystem: Can you send the deck Friday?",

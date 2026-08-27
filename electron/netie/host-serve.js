@@ -168,6 +168,20 @@ function handlePublicRequest({ method, pathname, search } = {}) {
       }),
     };
   }
+  if (verb === "GET" && (clean === "/api/inbox.eml" || clean === "/inbox.eml")) {
+    return {
+      status: 404,
+      headers: jsonHeaders(),
+      body: JSON.stringify({
+        ok: false,
+        localFirst: true,
+        exec: false,
+        act: false,
+        send: false,
+        reason: "generated .eml stays on the laptop",
+      }),
+    };
+  }
   if (verb === "GET" && clean === "/api/document") {
     return {
       status: 200,

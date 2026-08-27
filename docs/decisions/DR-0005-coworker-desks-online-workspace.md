@@ -151,6 +151,8 @@ floating LIVE bar). Loopback `/workspace` This computer dock Run POSTs `/api/wor
 and always fails closed (P-06). Public catalog shows the same refuse.
 Loopback GET `/api/document.docx` returns a generated Word package from
 the live draft (never Act, never Word.app). Public `/api/document.docx`
-stays 404. Cue still says not a .docx.
+stays 404. Cue still says not a .docx. Loopback GET `/api/inbox.eml`
+returns an unsent RFC822 draft (never send). Public `/api/inbox.eml`
+stays 404. Cue still says not sent.
 Public POST
 `/api/ask` stays 404.

@@ -53,7 +53,8 @@ or Heard facts, never an unrelated last-you dump. Loopback `/teach`
 paints a large walk stage from measured BOX/POINT (Next/Then on the
 stage, Got it Ask, never Act). Today plate lists your commitments, not the meeting
 say-this dump. Inbox never
-sends (P-05). "Spawn a coworker" runs the named job, or the Today plate
+sends (P-05); loopback `/inbox` may download a generated `.eml` (never send).
+Public `/api/inbox.eml` is 404. "Spawn a coworker" runs the named job, or the Today plate
 when bare (a meeting/transcribe session recaps instead, and files an
 unsent follow-up, a Word draft, and a security review of those injected
 bodies). Loopback MCP `session.live` reads the This session catalog.

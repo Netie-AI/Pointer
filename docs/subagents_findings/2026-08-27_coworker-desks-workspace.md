@@ -1,6 +1,6 @@
 # coworker desks + online workspace
 
-keywords: desks, meeting assist, meeting llm enrich, teach stack boxes, teach overlay click-through, workspace.exec, document.docx download, DR-0005, Clicky, Cluely, OpenWorker, Computer
+keywords: desks, meeting assist, meeting llm enrich, teach stack boxes, teach overlay click-through, workspace.exec, document.docx download, inbox.eml download, DR-0005, Clicky, Cluely, OpenWorker, Computer
 main_idea: Pointer beats those products with original desks and a public artifact catalog. Do not vendor their source or unlock P-06.
 
 ## What we studied
@@ -64,6 +64,9 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - Loopback GET `/api/document.docx` builds a Word-openable package in
   memory from the live document draft (never Act, never Word.app).
   Public `/api/document.docx` stays 404. Cue still says not a .docx.
+- Loopback GET `/api/inbox.eml` builds an unsent RFC822 draft in memory
+  (never send, never Act). Public `/api/inbox.eml` stays 404. Cue still
+  says not sent. P-05 stays parked.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
 ## Traps

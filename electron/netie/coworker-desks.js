@@ -1958,6 +1958,7 @@ function inboxAssist({ text, transcript } = {}) {
     "",
     "> send is parked (P-05 / P-02)",
     "> act: never",
+    "> loopback may download a generated .eml (never send)",
     "",
     "## Request",
     "",
@@ -1984,6 +1985,50 @@ function inboxAssist({ text, transcript } = {}) {
     preview: String(draft || "").slice(0, 400),
     deliverable,
   };
+}
+
+function inboxDraftText(artifact) {
+  if (!artifact || typeof artifact !== "object") return "";
+  const body = String(artifact.body || artifact.deliverable || "");
+  const parts = body.split(/^## /m);
+  for (const part of parts) {
+    if (!/^Draft\b/.test(part) || /^Draft to write\b/.test(part)) continue;
+    const rest = part.replace(/^Draft[^\n]*\n?/, "");
+    const cut = rest.search(/\n---/);
+    const text = (cut >= 0 ? rest.slice(0, cut) : rest).trim().slice(0, 1500);
+    if (text) return text;
+  }
+  return String(artifact.preview || "").trim().slice(0, 1500);
+}
+
+function headerToken(s, fallback) {
+  const t = String(s || "")
+    .replace(/[\r\n]+/g, " ")
+    .trim()
+    .slice(0, 180);
+  return t || fallback;
+}
+
+/**
+ * Build an .eml package in memory. Never sends. Never Acts. P-05 stays parked.
+ * Loopback /inbox can download this; public catalog stays 404.
+ */
+function buildEml(text, opts = {}) {
+  const body = String(text || "").replace(/\r\n/g, "\n").trim();
+  if (!body) return { ok: false, reason: "no inbox draft" };
+  const subject = headerToken(opts.subject, "Draft follow-up (not sent)");
+  const to = headerToken(opts.to, "undisclosed-recipients:;");
+  const raw = [
+    "MIME-Version: 1.0",
+    "Content-Type: text/plain; charset=UTF-8",
+    "X-Pointer-Send: never",
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    "",
+    body.replace(/\n/g, "\r\n"),
+  ].join("\r\n");
+  const buffer = Buffer.from(raw, "utf8");
+  return { ok: true, buffer, bytes: buffer.length };
 }
 
 function laneLine(id, held) {
@@ -2967,6 +3012,8 @@ module.exports = {
   securityAssist,
   teachAssist,
   inboxAssist,
+  inboxDraftText,
+  buildEml,
   todayAssist,
   publicTodaySnapshot,
   documentAssist,

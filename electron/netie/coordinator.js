@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
-const { catalog, todayAssist, sessionBundle, advanceLiveTeach, frameLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, teachWalkPath, documentDraftText } = require("./coworker-desks");
+const { catalog, todayAssist, sessionBundle, advanceLiveTeach, frameLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, teachWalkPath, documentDraftText, inboxDraftText, buildEml } = require("./coworker-desks");
 const { parsePoints } = require("./point-overlay");
 const { buildDocx } = require("./word-coworker");
 
@@ -346,6 +346,22 @@ function createCoordinator(opts = {}) {
     }
     if (req.method === "GET" && url.pathname === "/api/inbox") {
       sendLiveRoom(res, "inbox", "live-inbox");
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/inbox.eml") {
+      const got = workspace.get("live-inbox");
+      const text = inboxDraftText(got.ok ? got.artifact : null);
+      const built = buildEml(text);
+      if (!built.ok) {
+        res.writeHead(404, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, act: false, exec: false, send: false, reason: built.reason || "no inbox draft" }));
+        return;
+      }
+      res.writeHead(200, {
+        "content-type": "message/rfc822",
+        "content-disposition": 'attachment; filename="pointer-draft.eml"',
+      });
+      res.end(built.buffer);
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/home") {

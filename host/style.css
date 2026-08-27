@@ -351,7 +351,7 @@ pre {
 .talk-them .talk-who { color: #c9a; }
 .talk-now { background: #1a222a; }
 .talk-text { min-width: 0; }
-#live-cue-back, #live-cue-next, #live-cue-copy, #teach-back, #teach-next, #cue-copy, #session-copy, #session-download, #brief-copy, #brief-download, #docx-download, #artifact-copy, #artifact-download, #host-ask-go, #computer-run {
+#live-cue-back, #live-cue-next, #live-cue-copy, #teach-back, #teach-next, #cue-copy, #session-copy, #session-download, #brief-copy, #brief-download, #docx-download, #eml-download, #artifact-copy, #artifact-download, #host-ask-go, #computer-run {
   background: #1a1a1a;
   color: #9ad;
   border: 1px solid #345;

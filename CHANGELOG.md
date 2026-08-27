@@ -1,3 +1,9 @@
+## 2026-08-27 - Loopback /inbox downloads a generated .eml
+
+Loopback GET `/api/inbox.eml` returns an unsent RFC822 draft from the
+live inbox (never send, never Act). Empty draft is 404. Public catalog
+stays 404. Cue still says not sent. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Loopback /document downloads a generated .docx
 
 Loopback GET `/api/document.docx` returns a Word-openable package from

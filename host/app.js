@@ -660,6 +660,11 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
     const hasDraft = Boolean(String((m && m.preview) || "").trim()) && !(m && m.localFirst) && !(m && m.exec);
     docxBtn.hidden = !hasDraft;
   }
+  const emlBtn = document.getElementById("eml-download");
+  if (emlBtn) {
+    const hasDraft = Boolean(String((m && m.preview) || "").trim()) && !(m && m.localFirst) && !(m && m.exec);
+    emlBtn.hidden = !hasDraft;
+  }
   return !(m && m.localFirst);
 }
 
@@ -1549,6 +1554,26 @@ if (docxDownload) {
         const a = el("a");
         a.href = url;
         a.download = "pointer-draft.docx";
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(function () {});
+  });
+}
+
+const emlDownload = document.getElementById("eml-download");
+if (emlDownload) {
+  emlDownload.addEventListener("click", function () {
+    fetch("/api/inbox.eml")
+      .then(function (r) {
+        if (!r.ok) throw new Error("no draft");
+        return r.blob();
+      })
+      .then(function (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = el("a");
+        a.href = url;
+        a.download = "pointer-draft.eml";
         a.click();
         URL.revokeObjectURL(url);
       })

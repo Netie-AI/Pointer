@@ -677,6 +677,51 @@ function test(name, fn) {
     await c.close();
   });
 
+  await test("loopback inbox.eml is a generated draft and never sends", async () => {
+    const { inboxAssist } = require("../electron/netie/coworker-desks");
+    const c = createCoordinator({ clock: () => 11 });
+    const on = await c.listen({ host: "127.0.0.1", port: 0 });
+    const port = on.address.port;
+    const miss = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/inbox.eml" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(miss.status, 404);
+    const missJson = JSON.parse(miss.body.toString("utf8"));
+    assert.strictEqual(missJson.act, false);
+    assert.strictEqual(missJson.send, false);
+    const draft = inboxAssist({ text: "draft a follow-up email" });
+    c.workspace.put({
+      id: "live-inbox",
+      desk: "inbox",
+      title: draft.title,
+      body: draft.deliverable,
+      cue: draft.cue,
+      preview: draft.preview,
+    });
+    const hit = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/inbox.eml" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () =>
+          resolve({
+            status: res.statusCode,
+            type: String(res.headers["content-type"] || ""),
+            body: Buffer.concat(chunks).toString("utf8"),
+          })
+        );
+      }).on("error", reject);
+    });
+    assert.strictEqual(hit.status, 200);
+    assert.match(hit.type, /rfc822/);
+    assert.match(hit.body, /X-Pointer-Send: never/);
+    assert.match(hit.body, /not sent/i);
+    await c.close();
+  });
+
   console.log(`\n${pass} passed, ${fails.length} failed`);
   process.exit(fails.length ? 1 : 0);
 })();

@@ -108,6 +108,8 @@ function readAsset(file) {
     assert.match(app, /\/api\/workspace\/exec/);
     assert.match(app, /docx-download/);
     assert.match(app, /\/api\/document\.docx/);
+    assert.match(app, /eml-download/);
+    assert.match(app, /\/api\/inbox\.eml/);
     assert.match(app, /act: false/);
     assert.match(app, /textContent/);
     assert.doesNotMatch(app, /innerHTML/);
@@ -357,6 +359,8 @@ function readAsset(file) {
     assert.match(inboxHtml, /id="inbox-chips"/);
     assert.match(inboxHtml, /id="inbox-heard-web"/);
     assert.match(inboxHtml, /id="brief-copy"/);
+    assert.match(inboxHtml, /id="eml-download"/);
+    assert.match(inboxHtml, /generated \.eml/);
     const documentApi = handlePublicRequest({ method: "GET", pathname: "/api/document" });
     assert.strictEqual(JSON.parse(documentApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(documentApi.body).exec, false);
@@ -369,6 +373,12 @@ function readAsset(file) {
     assert.strictEqual(JSON.parse(docxBare.body).act, false);
     const inboxApi = handlePublicRequest({ method: "GET", pathname: "/api/inbox" });
     assert.strictEqual(JSON.parse(inboxApi.body).cue, "");
+    const emlPublic = handlePublicRequest({ method: "GET", pathname: "/api/inbox.eml" });
+    assert.strictEqual(emlPublic.status, 404);
+    assert.strictEqual(JSON.parse(emlPublic.body).send, false);
+    assert.strictEqual(JSON.parse(emlPublic.body).act, false);
+    const emlBare = handlePublicRequest({ method: "GET", pathname: "/inbox.eml" });
+    assert.strictEqual(emlBare.status, 404);
     const css = await fetch(new Request("https://host.netie.ai/style.css"));
     assert.strictEqual(css.status, 200);
     assert.match(css.headers.get("content-type"), /text\/css/);
