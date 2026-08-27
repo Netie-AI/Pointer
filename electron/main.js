@@ -43,6 +43,7 @@ const { expandSkillsToActions, skillPreamble, describeExpansion } = require("./n
 const { createCoordinator } = require("./netie/coordinator");
 const { createMcpAbi } = require("./netie/mcp-abi");
 const { searchThenCraft, craftHint } = require("./netie/skill-search");
+const { detectUacc, computerStatus, computerObserve } = require("./netie/uacc");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
 const { shouldAcceptFrame, detectCaptureCommand } = require("./netie/capture-gate");
@@ -159,6 +160,13 @@ const HOTKEY = process.env.NETIE_CLICK_HOTKEY || "Control+`";
 const TEMP_DIR = path.join(os.tmpdir(), "netie-clicks");
 const hot = new HotMemory();
 const eco = new NetieEcosystem({ deviceId: `netie-clicks:${hot.deviceId}` });
+function liveComputerStatus() {
+  return computerStatus({
+    captureVisible: captureVisible(),
+    uacc: detectUacc(),
+  });
+}
+
 const liveMcp = createMcpAbi({
   search: (goal, params) =>
     searchThenCraft(goal, {
@@ -167,8 +175,17 @@ const liveMcp = createMcpAbi({
       limit: params && params.limit,
     }),
   craft: craftHint,
+  status: () => liveComputerStatus(),
+  observe: () =>
+    computerObserve({
+      captureVisible: captureVisible(),
+      uacc: detectUacc(),
+    }),
 });
-const liveCoordinator = createCoordinator({ mcp: liveMcp });
+const liveCoordinator = createCoordinator({
+  mcp: liveMcp,
+  computerStatus: () => liveComputerStatus(),
+});
 const brain = new PersonalBrain({
   deviceId: `netie-clicks:${hot.deviceId}`,
   cortexUrl: process.env.NETIE_CORTEX_URL || `http://${API_HOST}:${CORTEX_PORT}`,
@@ -671,19 +688,11 @@ function startCursorTracking() {
 }
 
 /**
- * Show or hide Netie's windows from screen capture.
- *
- * `setContentProtection(true)` is the default and is why the HUD does not appear
- * in its own screenshots, in Teams shares, or to an automation tool. Passing
- * `visible` flips all three windows at once so none of them can be left behind
- * in the wrong state.
- */
-/**
  * Is Netie allowed to appear in screen capture?
  *
- * `NETIE_CAPTURE_VISIBLE=1` wins over the stored setting so a demo, a bug
- * report, or a tool driving the app can turn this on without clicking through
- * a HUD that is — by definition — invisible to the thing trying to click it.
+ * Visible is the default (DR-0005) so UACC and other agents can detect the HUD.
+ * `NETIE_CAPTURE_VISIBLE=1` wins over the stored setting. Passing the result
+ * into applyContentProtection flips all windows at once.
  */
 function captureVisible() {
   if (process.env.NETIE_CAPTURE_VISIBLE === "1") return true;
@@ -860,6 +869,7 @@ function setupCsp() {
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
+      "font-src 'self'",
       // AudioWorklet module + captured mic/loopback streams.
       "worker-src 'self' blob:",
       "media-src 'self' blob: mediastream:",
@@ -3268,9 +3278,7 @@ ipcMain.handle("hud:setSettings", async (_e, payload) => {
   const next = settings.set((payload && payload.settings) || payload || {});
   agentPointer.enabled = next.cursorBubble !== false;
   demoDebug.setEnabled(next.demoDebug === true);
-  // Content protection keeps Netie out of screen shares AND out of screenshots,
-  // which also makes it invisible to any tool driving the app. Toggling it is a
-  // testing affordance, applied live so a demo does not need a restart.
+  // Capture-visible is on by default (DR-0005). This toggle still applies live.
   applyContentProtection(captureVisible());
   if (next.followCursor === false) stopCursorTracking();
   else startCursorTracking();

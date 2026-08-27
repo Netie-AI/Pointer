@@ -98,15 +98,13 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       );
     }),
 
-    // ── glass HUD ──────────────────────────────────────────────────────────
-    T("glass degrades to something readable where backdrop-filter is missing", async () => {
+    // ── solid HUD (no liquid glass) ────────────────────────────────────────
+    T("core HUD panels are solid type, not backdrop-filter glass", async () => {
       const css = read("electron/hud.css");
-      assert.ok(/backdrop-filter/.test(css), "the liquid-glass look needs backdrop-filter");
-      assert.ok(
-        /@supports not \(\(backdrop-filter/.test(css),
-        "…and a fallback, or the HUD is unreadable text on a transparent window"
-      );
-      assert.ok(/-webkit-backdrop-filter/.test(css), "Chromium in Electron still wants the prefix");
+      assert.ok(!/backdrop-filter/.test(css), "PRODUCT_SURFACE forbids backdrop-filter on core HUD");
+      assert.ok(/Pointer Display/.test(css), "classy display face must be declared");
+      assert.ok(/IBMPlexSerif/.test(css), "IBM Plex Serif files must be referenced");
+      assert.ok(/background:\s*var\(--panel\)/.test(css), "panels use a solid fill");
     }),
 
     T("the HUD stays tight: CSP unweakened, no floating companion", async () => {

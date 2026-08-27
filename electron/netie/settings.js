@@ -41,13 +41,12 @@ const DEFAULTS = Object.freeze({
   /**
    * Let screenshots and screen-capture see Netie's windows.
    *
-   * Off by default: setContentProtection(true) keeps the HUD out of screen
-   * shares and out of its own screenshots. Turn on to record a demo or to drive
-   * the app from an automation tool — it is a testing affordance, not a mode.
+   * On by default (DR-0005): agents, UACC, and demos must be able to see
+   * Pointer before they can drive it. Turn off to hide the HUD from shares.
    */
-  captureVisible: false,
+  captureVisible: true,
   /** Schema version for one-time stored-value corrections. See migrate(). */
-  settingsVersion: 2,
+  settingsVersion: 3,
   /** Wait for nod / "yes" / Y before irreversible or when autoRun is off. */
   nodConfirm: true,
   /** Future: webcam nod detection (off until calibrated). */
@@ -109,7 +108,7 @@ function defaultPath() {
  * only way to change behaviour for an existing install is to rewrite the stored
  * value once, which is what this does.
  */
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 3;
 
 /**
  * One-time corrections to stored settings.
@@ -132,6 +131,12 @@ function migrate(data, storedVersion) {
     // available in the settings menu; it is just no longer the default, and
     // that has to reach installs that already stored `true`.
     out.autoRunSensible = false;
+  }
+
+  if (from < 3) {
+    // v3: Pointer must be screenshotable so UACC and other agents can detect
+    // it (DR-0005). Older installs stored the previous default of false.
+    out.captureVisible = true;
   }
 
   out.settingsVersion = SETTINGS_VERSION;

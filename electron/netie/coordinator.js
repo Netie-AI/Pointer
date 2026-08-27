@@ -113,6 +113,23 @@ function createCoordinator(opts = {}) {
       res.end(JSON.stringify(snapshot()));
       return;
     }
+    if (req.method === "GET" && url.pathname === "/api/computer") {
+      const statusFn = opts.computerStatus;
+      const snap = statusFn
+        ? statusFn()
+        : { ok: true, detectable: false, reason: "computer status not wired" };
+      const body = snap && typeof snap.then === "function" ? null : snap;
+      if (body) {
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(body));
+        return;
+      }
+      Promise.resolve(snap).then((out) => {
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(out));
+      });
+      return;
+    }
     if (req.method === "POST" && url.pathname === "/mcp") {
       const chunks = [];
       req.on("data", (c) => chunks.push(c));
@@ -126,13 +143,15 @@ function createCoordinator(opts = {}) {
           return;
         }
         const mcp = opts.mcp;
-        const out = mcp ? mcp.handle(body, { coordinator: api }) : {
+        const raw = mcp ? mcp.handle(body, { coordinator: api }) : {
           jsonrpc: "2.0",
           id: body.id ?? null,
           error: { code: -32601, message: "mcp not wired" },
         };
-        res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify(out));
+        Promise.resolve(raw).then((out) => {
+          res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify(out));
+        });
       });
       return;
     }

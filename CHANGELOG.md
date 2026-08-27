@@ -2,6 +2,18 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - UACC skills, screenshotable HUD, classy type (DR-0005)
+
+Founder amendment. `captureVisible` defaults on and migrates existing
+installs (settings v3) so UACC and other agents can see Pointer.
+First-party UACC READ skill catalog + observe recipes. Loopback MCP
+tools `computer.status` / `computer.observe` and `GET /api/computer`.
+`computer.act` is on the allowlist and refuses without Cortex
+`/dms/secure`. HUD drops `backdrop-filter` liquid glass for IBM Plex
+Serif + Sans solid panels. Windows install: `scripts/install_uacc.ps1`.
+Does not bundle OpenWillow (P-04). Does not load third-party MCP
+servers. P-05 coworker verbs stay parked.
+
 ## 2026-08-26 - Public host.netie.ai Worker shell (DR-0004)
 
 Same pages as the loopback coordinator (`/` `/today` `/lanes` `/skills`).

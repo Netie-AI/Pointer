@@ -28,6 +28,7 @@ the issue wins.
 | Recipes / coworker SOPs | `electron/netie/recipes.js`, `coworker.js` |
 | Skill search / craft hints | `electron/netie/skill-search.js`, `skills-exec.js` |
 | Coordinator + first-party MCP ABI | `electron/netie/coordinator.js`, `mcp-abi.js`, `host-serve.js`; pages in `host/`; public Worker `workers/netie-host.js` |
+| UACC skills + loopback detect | `electron/netie/uacc.js`; MCP `computer.status` / `computer.observe`; `GET /api/computer` on `127.0.0.1:18010` |
 | Word safe API | `electron/netie/word-coworker.js` |
 | Driver (SendInput) | `electron/netie/driver.js` |
 | Safety / plan-guard | `electron/netie/safety.js`, `plan-guard.js` |

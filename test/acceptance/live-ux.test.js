@@ -141,6 +141,26 @@ const UPSTREAM_NOISE =
       fsx.rmSync(dir, { recursive: true, force: true });
     }),
 
+    T("stored captureVisible:false is migrated on for existing installs", async () => {
+      const os = require("os");
+      const fsx = require("fs");
+      const pathx = require("path");
+      const { SettingsStore } = require("../../electron/netie/settings");
+      const dir = fsx.mkdtempSync(pathx.join(os.tmpdir(), "netie-settings-"));
+      const file = pathx.join(dir, "settings.json");
+      fsx.writeFileSync(
+        file,
+        JSON.stringify({ settingsVersion: 2, captureVisible: false, autoRunSensible: false }),
+        "utf8"
+      );
+      const s1 = new SettingsStore({ path: file });
+      assert.strictEqual(s1.get("captureVisible"), true, "v3 must un-hide the HUD");
+      s1.set({ captureVisible: false });
+      const s2 = new SettingsStore({ path: file });
+      assert.strictEqual(s2.get("captureVisible"), false, "the user's later hide must stick");
+      fsx.rmSync(dir, { recursive: true, force: true });
+    }),
+
     T("the LIVE bar carries system audio only", async () => {
       // It is what the SCREEN is saying. Your own voice belongs in the Ask box,
       // not mixed into the thing you are reading to follow a video.
@@ -267,8 +287,8 @@ const UPSTREAM_NOISE =
     }),
 
     // ── capture visibility ─────────────────────────────────────────────────
-    T("content protection is off by default and toggleable live", async () => {
-      assert.strictEqual(DEFAULTS.captureVisible, false, "hidden from screen shares by default");
+    T("content protection is off unless captureVisible is on, and it is toggleable live", async () => {
+      assert.strictEqual(DEFAULTS.captureVisible, true, "visible to screen capture so agents can detect Pointer");
       const main = read("electron/main.js");
       assert.ok(main.includes("function applyContentProtection"), "one place flips all windows");
       const fn = main.slice(main.indexOf("function applyContentProtection"));

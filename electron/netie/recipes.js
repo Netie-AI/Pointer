@@ -272,6 +272,18 @@ const RECIPES = Object.freeze({
     actions: Object.freeze([{ type: "press", value: "ctrl+h" }]),
   }),
 
+  uacc_screen_info: Object.freeze({
+    id: "uacc_screen_info",
+    label: "UACC screen info",
+    actions: Object.freeze([{ type: "observe", value: "uacc_screen_info" }]),
+  }),
+
+  uacc_find_element: Object.freeze({
+    id: "uacc_find_element",
+    label: "UACC find element",
+    actions: Object.freeze([{ type: "observe", value: "uacc_find_element" }]),
+  }),
+
   /** Continue prompt stub when context is full — copy then new chat. */
   continue_due_context: Object.freeze({
     id: "continue_due_context",
@@ -456,6 +468,19 @@ function matchRecipe(text) {
     return cloneRecipe(RECIPES.cursor_new_chat);
   }
 
+  if (
+    /(?:uacc|accessibility tree|text map)/.test(normalized) ||
+    /(?:what(?:'s| is)|show|get)\s+(?:on\s+)?(?:the\s+|my\s+)?screen(?:\s+info)?/.test(normalized) ||
+    /^(?:please\s+)?(?:screen\s+info|screenshot\s+map)$/.test(normalized)
+  ) {
+    return cloneRecipe(RECIPES.uacc_screen_info);
+  }
+  if (
+    /^(?:please\s+)?(?:find\s+(?:the\s+)?element|where\s+is)\b/.test(normalized) ||
+    /uacc\s+find/.test(normalized)
+  ) {
+    return cloneRecipe(RECIPES.uacc_find_element);
+  }
   if (/^(?:please\s+)?(?:copy|select)\s+all(?:\s+(?:of\s+)?(?:this|that|it))?$/.test(normalized)) {
     return cloneRecipe(RECIPES.copy_all);
   }

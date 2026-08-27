@@ -49,7 +49,10 @@ function test(name, fn) {
 
   await test("loopback HTTP serves /today and refuses 0.0.0.0", async () => {
     const mcp = createMcpAbi();
-    const c = createCoordinator({ mcp });
+    const c = createCoordinator({
+      mcp,
+      computerStatus: () => ({ ok: true, detectable: true, captureVisible: true }),
+    });
     const bad = await Promise.resolve(c.listen({ host: "0.0.0.0", port: 0 }));
     assert.strictEqual(bad.ok, false);
     const on = await c.listen({ host: "127.0.0.1", port: 0 });
@@ -72,6 +75,15 @@ function test(name, fn) {
       }).on("error", reject);
     });
     assert.ok(st.pages["/today"]);
+    const comp = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/computer" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      }).on("error", reject);
+    });
+    assert.strictEqual(comp.ok, true);
+    assert.strictEqual(comp.detectable, true);
     await c.close();
   });
 
