@@ -102,3 +102,6 @@ dates and amounts from the ring (`Friday / $40k`) plus clock times
 Meeting spawn files inbox + Word follow-ons via `publishBrief` (never
 Act, never jumps the HUD cue off They asked / Heard). Bare spawn during
 Meeting/Transcribe recaps the call instead of the Today plate.
+Say-this weaves Heard times and amounts into the speakable line; a date
+or budget question with no answer still uses Heard facts (never invents).
+Today plate lists filed inbox/Word drafts from that spawn.

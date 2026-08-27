@@ -101,8 +101,10 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.match(assist.deliverable, /Suggested reply/);
   assert.ok(assist.cue);
   assert.match(assist.cue, /We'll ship Friday/);
+  assert.match(assist.cue, /\$40k/);
   assert.doesNotMatch(assist.cue, /decided to/);
   assert.match(recap.cue, /We'll ship Friday/);
+  assert.match(recap.cue, /\$40k/);
   assert.doesNotMatch(recap.cue, /decided to/);
   assert.match(assist.asked, /launch date/);
   assert.match(recap.asked, /launch date/);
@@ -126,6 +128,21 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.strictEqual(unanswered.act, false);
   assert.match(unanswered.cue, /no answer/);
   assert.match(unanswered.asked, /launch date/);
+  const fromHeard = meetingAssist({
+    transcript: "system: Friday at 3pm for $40k?\nsystem: What is the launch date?",
+    question: "what should I say",
+  });
+  assert.strictEqual(fromHeard.act, false);
+  assert.match(fromHeard.cue, /Friday/);
+  assert.match(fromHeard.cue, /3pm/i);
+  assert.doesNotMatch(fromHeard.cue, /no answer/);
+  const budgetAsk = meetingAssist({
+    transcript: "system: Is the budget $40k?\nsystem: How much is it?",
+    question: "what should I say",
+  });
+  assert.strictEqual(budgetAsk.act, false);
+  assert.match(budgetAsk.cue, /\$40k/);
+  assert.doesNotMatch(budgetAsk.cue, /no answer/);
   const next = meetingAssist({ transcript, question: "list next steps" });
   assert.strictEqual(next.kind, "next");
   assert.match(next.deliverable, /## Next steps/);
@@ -508,6 +525,26 @@ test("today assist ships a standing brief and never invents work", () => {
   assert.strictEqual(publicPlate.act, false);
   assert.strictEqual(publicPlate.cue || "", "");
   assert.doesNotMatch(publicPlate.deliverable, /send it Friday/);
+  const filed = todayAssist({
+    state: {
+      artifacts: [
+        { id: "live-inbox", desk: "inbox", title: "Draft reply" },
+        { id: "live-document", desk: "document", title: "Document draft" },
+      ],
+    },
+  });
+  assert.strictEqual(filed.act, false);
+  assert.match(filed.deliverable, /Unsent follow-up draft/);
+  assert.match(filed.deliverable, /not sent/);
+  assert.match(filed.deliverable, /Word draft waiting/);
+  assert.match(filed.deliverable, /not a \.docx/);
+  assert.match(filed.cue, /not a \.docx/);
+  const hiddenFiled = todayAssist({
+    state: { artifacts: [{ id: "live-inbox", desk: "inbox", title: "Draft reply" }] },
+    localFirst: true,
+  });
+  assert.strictEqual(hiddenFiled.cue || "", "");
+  assert.doesNotMatch(hiddenFiled.deliverable, /Unsent follow-up/);
 });
 
 test("document assist drafts and never writes Word", () => {

@@ -240,17 +240,71 @@ function heardLine(utterances) {
   return heardFacts(utterances).join(" / ").slice(0, 160);
 }
 
+function looksWhenAsk(question) {
+  return /\b(when|date|day|time|schedule|launch|meet|deadline)\b/i.test(question || "");
+}
+
+function looksMoneyAsk(question) {
+  return /\b(how much|price|cost|budget|amount|percent|%)\b/i.test(question || "");
+}
+
+/**
+ * Cluely-shaped talk-track from the ring only. Never invents. Never Acts.
+ */
+function answerFromHeard(question, utterances) {
+  const heard = heardFacts(utterances);
+  if (!heard.length) return "";
+  const times = heard.filter((h) =>
+    /today|tomorrow|day|am|pm|:\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{4}-\d{2}-\d{2}/i.test(
+      h
+    )
+  );
+  const money = heard.filter((h) => /\$|%|percent/i.test(h));
+  if (looksWhenAsk(question) && times.length) return speakable(times.join(" / "));
+  if (looksMoneyAsk(question) && money.length) return speakable(money.join(" / "));
+  return "";
+}
+
+function weaveHeard(line, utterances) {
+  let s = String(line || "").trim();
+  if (!s) return s;
+  const heard = heardFacts(utterances);
+  const low = s.toLowerCase();
+  const times = [];
+  const money = [];
+  for (const h of heard) {
+    const token = String(h || "").trim();
+    if (!token) continue;
+    if (low.includes(token.toLowerCase())) continue;
+    if (/\$|%|percent/i.test(token)) money.push(token);
+    else if (/(?:am|pm|:\d{2})/i.test(token)) times.push(token);
+  }
+  s = s.replace(/[.!?]$/, "");
+  const hasClock = /(?:am|pm|\d:\d{2})/i.test(s);
+  if (times.length && !hasClock) s += ` at ${times.slice(0, 2).join(" / ")}`;
+  if (money.length) s += ` for ${money.slice(0, 2).join(" / ")}`;
+  if (!/[.!?]$/.test(s)) s += ".";
+  return s.slice(0, 240);
+}
+
+function sayThisLine(utterances, lastOther) {
+  const facts = cueFacts(utterances);
+  if (facts.length) return weaveHeard(speakable(facts[facts.length - 1]), utterances);
+  const fromHeard = answerFromHeard(lastOther, utterances);
+  if (fromHeard) return fromHeard;
+  if (lastOther && looksQuestion(lastOther)) {
+    return `Heard "${String(lastOther).slice(0, 100)}" - no answer in the transcript yet.`;
+  }
+  return "";
+}
+
 /** One line the HUD can put in the fixed insight panel. Never sent. Never Act. */
 function spokenCue(kind, utterances, lastOther) {
   if (kind === "next") return "";
   if (!lastOther || !looksQuestion(lastOther)) {
     return kind === "assist" ? "No question landed yet." : "";
   }
-  const facts = cueFacts(utterances);
-  if (!facts.length) {
-    return `Heard "${String(lastOther).slice(0, 100)}" - no answer in the transcript yet.`;
-  }
-  return speakable(facts[facts.length - 1]);
+  return sayThisLine(utterances, lastOther);
 }
 
 function speakable(fact) {
@@ -266,10 +320,14 @@ function speakable(fact) {
 }
 function groundedReply(utterances, lastOther) {
   if (!lastOther) return "No question landed yet. Keep listening.";
-  const facts = cueFacts(utterances);
-  const reply = facts.length
-    ? `On that: ${speakable(facts[facts.length - 1])} I can confirm that from this transcript. I will not send or click anything.`
+  const line = sayThisLine(utterances, lastOther);
+  const missing = /no answer in the transcript yet/i.test(line);
+  const reply = !missing && line
+    ? `${line} I will not send or click anything.`
     : `I heard "${lastOther}" on this machine. I do not have an answer in the transcript yet.`;
+  const facts = cueFacts(utterances);
+  const heard = heardFacts(utterances);
+  const ground = facts.length ? facts : heard.length ? heard : ["(none yet)"];
   return [
     `They asked: "${lastOther}"`,
     "",
@@ -279,7 +337,7 @@ function groundedReply(utterances, lastOther) {
     "",
     "Grounding (from this session only):",
     "",
-    (facts.length ? facts : ["(none yet)"]).map((line) => `- ${line}`).join("\n"),
+    ground.map((row) => `- ${row}`).join("\n"),
   ].join("\n");
 }
 
@@ -391,10 +449,10 @@ function deskGrounding(deskOrId) {
     lines.push("6. When you mean click here, emit [POINT:x,y:label] percentages. Measured UIA also emits [BOX:left,top,w,h:label]. Crosshair and box only - never a buddy.");
   }
   if (desk.id === "meeting") {
-    lines.push("6. Recap/assist/next from the transcript. Live cue is They asked plus say-this in the fixed insight panel. Never join the call. Never Act.");
+    lines.push("6. Recap/assist/next from the transcript. Live cue is They asked plus say-this (Heard dates/amounts/times woven in) in the fixed insight panel. Never join the call. Never Act.");
   }
   if (desk.id === "today") {
-    lines.push("6. Standing brief from this session log. On your plate lists live commitments. Never invent work. Never Act.");
+    lines.push("6. Standing brief from this session log. On your plate lists live commitments and filed inbox/Word drafts. Never invent work. Never Act.");
   }
   if (desk.id === "document") {
     lines.push("6. word_docx_write / word_from_clipboard. Do not click the Word UI.");
@@ -899,6 +957,27 @@ function plateFacts(state) {
   return bullets.slice(-6);
 }
 
+function filedPlate(state) {
+  const arts = Array.isArray(state && state.artifacts) ? state.artifacts : [];
+  const out = [];
+  const seen = new Set();
+  for (const a of arts) {
+    if (!a) continue;
+    const id = String(a.id || "");
+    const desk = String(a.desk || "");
+    const key = id || `${desk}:${a.title || ""}`;
+    if (seen.has(key)) continue;
+    if (id === "live-inbox" || desk === "inbox") {
+      seen.add(key);
+      out.push({ text: "Unsent follow-up draft (not sent)", speaker: "you" });
+    } else if (id === "live-document" || desk === "document") {
+      seen.add(key);
+      out.push({ text: "Word draft waiting (not a .docx)", speaker: "you" });
+    }
+  }
+  return out;
+}
+
 function todayAssist({ state, question, localFirst } = {}) {
   const s = state || {};
   const events = Array.isArray(s.today) ? s.today : [];
@@ -919,7 +998,7 @@ function todayAssist({ state, question, localFirst } = {}) {
     const desk = row.desk ? ` (${row.desk})` : "";
     return `- ${title}${desk}`;
   });
-  const plate = localFirst ? [] : plateFacts(s);
+  const plate = localFirst ? [] : plateFacts(s).concat(filedPlate(s));
   const plateLines = plate.map((row) => `- ${speakable(row.text)}`);
   const plateCue = plate.length ? speakable(plate[plate.length - 1].text) : "";
   const jobLines = jobs.slice(-8).map((row) => `- ${row.title || row.id}: ${row.status || "unknown"}`);

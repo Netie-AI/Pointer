@@ -1,3 +1,11 @@
+## 2026-08-27 - Say-this weaves Heard; Today lists filed drafts
+
+Meeting say-this folds Heard clock times and amounts into the speakable
+line (`We'll ship Friday for $40k`). A date or budget question with no
+answer still uses Heard facts from the ring, never invents. Today plate
+lists filed inbox/Word drafts from a meeting spawn. Never Acts. P-05
+and P-06 stay parked.
+
 ## 2026-08-27 - Heard clock times and meeting spawn recap
 
 Live meeting Heard strip also lists clock times (`3pm` / `15:00`) from
