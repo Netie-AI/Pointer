@@ -538,7 +538,7 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
   setTeachButtons(m);
   paintDeskChips(pageId.replace("-brief", "-chips"), (m && m.chips) || []);
   page.replaceChildren();
-  paintTeachMap(page, (m && m.markers) || []);
+  paintTeachMap(page, m);
   paintTalk(page, m);
   const pre = el("pre");
   pre.textContent = (m && m.deliverable) || "";
@@ -765,12 +765,27 @@ paintLiveRoom("security-brief", "/api/security", "security-cue-web", "refused: s
 paintLiveRoom("document-brief", "/api/document", "document-cue-web", "refused: document must not grow a runtime");
 paintLiveRoom("inbox-brief", "/api/inbox", "inbox-cue-web", "refused: inbox must not grow a runtime");
 
-function paintTeachMap(root, markers) {
-  if (!root) return;
-  const boxes = (markers || []).filter((p) => Number(p.wPct) > 0 && Number(p.hPct) > 0);
-  if (!boxes.length) return;
+function paintTeachMap(root, m) {
+  if (!root || !m || m.desk !== "teach" || m.localFirst) return;
+  const markers = Array.isArray(m.markers) ? m.markers : [];
+  const boxes = markers.filter((p) => Number(p.wPct) > 0 && Number(p.hPct) > 0);
+  const dots = markers.filter((p) => Number.isFinite(Number(p.xPct)) && Number.isFinite(Number(p.yPct)));
+  if (!boxes.length && !dots.length) return;
   const map = el("div", "teach-map");
-  map.setAttribute("aria-hidden", "true");
+  map.setAttribute("role", "img");
+  const cue = String(m.cue || "").trim();
+  const rest = String(m.rest || "").trim();
+  map.setAttribute("aria-label", cue ? "Next: " + cue : "Teach walk");
+  if (cue) {
+    const next = el("p", "teach-map-cue");
+    next.textContent = "Next: " + cue;
+    map.appendChild(next);
+  }
+  if (rest) {
+    const then = el("p", "teach-map-then");
+    then.textContent = "Then: " + rest;
+    map.appendChild(then);
+  }
   boxes.forEach((p) => {
     const box = el("div", "teach-map-box now");
     box.style.left = Number(p.leftPct) + "%";
@@ -781,6 +796,12 @@ function paintTeachMap(root, markers) {
     lab.textContent = String(p.label || "").slice(0, 40);
     box.appendChild(lab);
     map.appendChild(box);
+  });
+  dots.forEach((p) => {
+    const mark = el("div", "teach-map-mark");
+    mark.style.left = Number(p.xPct) + "%";
+    mark.style.top = Number(p.yPct) + "%";
+    map.appendChild(mark);
   });
   root.appendChild(map);
 }

@@ -14,9 +14,10 @@
 2. **Coworker desks (DR-0005).** Loopback Ask bar plus `/meeting` `/today`
    `/workspace` chips file inbox/Word/security from the open file.
    `/meeting` paints You/Them turns; HUD insight does the same.
-   Say-this stays grounded. This session links open `/workspace?id=` (never send, never a .docx,
-   never Act). `/teach` Back/Got it. Today plate is commitments only.
-   Public catalog empty. P-06 parked.
+   `/teach` is a walk stage from measured BOX (Back/Got it Ask).
+   This session links open `/workspace?id=` (never send, never a .docx,
+   never Act). Today plate is commitments only. Public catalog empty.
+   P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

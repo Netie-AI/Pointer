@@ -1,3 +1,9 @@
+## 2026-08-27 - Teach walk stage on loopback /teach
+
+Loopback `/teach` paints a large walk stage from measured BOX/POINT
+(Ask, never Act, never invented coords). Next/Then sit on the stage.
+Public copies stay empty. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - HUD paints You/Them talk in insight chrome
 
 HUD insight panel paints the stored You/Them talk track (Ask, never Act,

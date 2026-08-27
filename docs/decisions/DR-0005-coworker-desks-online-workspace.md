@@ -128,4 +128,6 @@ file` scans only that body). This session file links are
 the You/Them talk track from the stored ring (never a cheater overlay).
 HUD insight paints the same talk in fixed chrome (never a bubble).
 Say-this reuses your overlapping line or Heard facts, never an unrelated
-last-you dump. Public POST `/api/ask` stays 404.
+last-you dump. Loopback `/teach` paints a large walk stage from measured
+BOX/POINT (Next/Then on the stage, Got it Ask, never Act). Public POST
+`/api/ask` stays 404.
