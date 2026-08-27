@@ -49,6 +49,7 @@ function createWorkspace(opts = {}) {
       body,
       cue: String(spec.cue || "").slice(0, 240),
       asked: String(spec.asked || "").slice(0, 160),
+      rest: String(spec.rest || "").slice(0, 160),
       t: nowMs(clock),
     };
     const existing = items.findIndex((item) => item.id === row.id);

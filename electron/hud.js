@@ -723,7 +723,7 @@ $("command-bar-tools")?.addEventListener("click", (event) => {
   else if (cmd === "apps") {
     askInput.value = "List active apps and suggest what I can do next";
     doAsk();
-  } else if (cmd === "shots") invoke("hud:frameRegion");
+  } else if (cmd === "walk" || cmd === "shots") invoke("hud:frameRegion");
   else if (cmd === "clipboard") {
     askInput.value = "Summarize my clipboard and offer paste targets";
     doAsk();

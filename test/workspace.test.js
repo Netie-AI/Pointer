@@ -27,9 +27,11 @@ test("put lists a brief and never grows a runtime", () => {
     title: "Standup recap",
     body: "# Meeting brief\n- ship the deck",
     cue: "I will send it Friday.",
+    rest: "Click Cancel",
   });
   assert.strictEqual(put.ok, true);
   assert.strictEqual(ws.get("brief-1").artifact.cue, "I will send it Friday.");
+  assert.strictEqual(ws.get("brief-1").artifact.rest, "Click Cancel");
   assert.strictEqual(ws.list().length, 1);
   assert.strictEqual(ws.get("brief-1").artifact.body.includes("ship the deck"), true);
   const pub = ws.publicList();

@@ -288,6 +288,12 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse, askedId) {
           askedEl.hidden = !asked;
           askedEl.textContent = asked ? "They asked: " + asked : "";
         }
+        const restEl = document.getElementById(pageId.replace("-brief", "-rest-web"));
+        const rest = String((m && m.rest) || "").trim();
+        if (restEl) {
+          restEl.hidden = !rest;
+          restEl.textContent = rest ? "Then: " + rest : "";
+        }
         page.replaceChildren();
         paintTeachMap(page, (m && m.markers) || []);
         const pre = el("pre");
@@ -344,10 +350,16 @@ function paintRooms(rooms, localFirst) {
     } else {
       cue.textContent = localFirst ? "Live " + id + " stays on the laptop." : "No live " + id + " yet.";
     }
+    const restText = String(r.rest || "").trim();
     const pre = el("pre");
     pre.textContent = String(r.deliverable || "").slice(0, 400);
     card.appendChild(h);
     card.appendChild(cue);
+    if (id === "teach" && restText) {
+      const then = el("p", "muted");
+      then.textContent = "Then: " + restText;
+      card.appendChild(then);
+    }
     card.appendChild(pre);
     root.appendChild(card);
   });

@@ -198,6 +198,7 @@ function test(name, fn) {
       title: "Live teach",
       desk: "teach",
       body: "# Teach walkthrough\n[POINT:25,42:1 Save]",
+      rest: "Click Cancel",
     });
     const teachLive = await mcp.handle(
       { jsonrpc: "2.0", id: 17, method: "teach.live" },
@@ -207,6 +208,7 @@ function test(name, fn) {
     assert.strictEqual(teachLive.result.act, false);
     assert.strictEqual(teachLive.result.exec, false);
     assert.match(teachLive.result.artifact.body, /1 Save/);
+    assert.match(teachLive.result.artifact.rest, /Click Cancel/);
     coord.workspace.put({
       id: "live-security",
       title: "Security review",

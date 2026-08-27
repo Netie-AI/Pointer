@@ -1,3 +1,9 @@
+## 2026-08-27 - HUD Walk frames a region then teaches it
+
+HUD Walk/Frame captures a region and starts a teach walk (Ask, never
+Act). Tray Frame stays capture for Act. Remaining steps persist as
+`rest` and `/teach` shows `Then:`. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Word drafts from live recap and They asked insight
 
 Bare `write in Word` reuses the live meeting recap or Today plate as a

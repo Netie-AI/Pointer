@@ -20,6 +20,8 @@ const {
   createLiveTeachPump,
   createBriefClock,
   DESK_CHIPS,
+  FRAME_TEACH_TEXT,
+  shouldTeachFramedRegion,
 } = require("../electron/netie/coworker-desks");
 const { plannerGrounding } = require("../electron/netie/coworker");
 
@@ -353,6 +355,34 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(ask, /toOverlayEvent/);
   assert.doesNotMatch(ask, /driver\./);
   assert.doesNotMatch(ask, /hud:act/);
+  assert.strictEqual(FRAME_TEACH_TEXT, "walk me through this on my screen");
+  assert.strictEqual(shouldTeachFramedRegion({ frameForTeach: true, captured: true, act: false }), true);
+  assert.strictEqual(shouldTeachFramedRegion({ frameForTeach: true, captured: true, act: true }), false);
+  assert.strictEqual(shouldTeachFramedRegion({ frameForTeach: false, captured: true, act: false }), false);
+  assert.strictEqual(shouldTeachFramedRegion({ frameForTeach: true, captured: false, act: false }), false);
+  assert.match(main, /openOverlay\(\{ teach: true \}\)/);
+  assert.match(main, /armTeachWalk\(FRAME_TEACH_TEXT\)/);
+  assert.match(main, /shouldTeachFramedRegion/);
+  const frameHud = main.slice(main.indexOf('ipcMain.handle("hud:frameRegion"'), main.indexOf('ipcMain.handle("hud:toggleListen"'));
+  assert.match(frameHud, /openOverlay\(\{ teach: true \}\)/);
+  assert.match(frameHud, /act: false/);
+  assert.doesNotMatch(frameHud, /driver\./);
+  const commit = main.slice(main.indexOf('ipcMain.handle("clicks:commitRegion"'), main.indexOf('ipcMain.handle("clicks:cancelRegion"'));
+  assert.match(commit, /armTeachWalk\(FRAME_TEACH_TEXT\)/);
+  assert.doesNotMatch(commit, /hud:act/);
+  assert.doesNotMatch(commit, /driver\./);
+  const cancel = main.slice(main.indexOf('ipcMain.handle("clicks:cancelRegion"'), main.indexOf('ipcMain.handle("click:askBuddy"'));
+  assert.match(cancel, /frameForTeach = false/);
+  const tray = main.slice(main.indexOf("function createTray"), main.indexOf("function registerHotkey"));
+  assert.match(tray, /openOverlay\(\)/);
+  assert.doesNotMatch(tray, /teach: true/);
+  const overlay = fs.readFileSync(path.join(__dirname, "..", "electron", "overlay.html"), "utf8");
+  assert.match(overlay, /teach=1/);
+  assert.match(overlay, /walkthrough/);
+  const hudHtml = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");
+  assert.match(hudHtml, /data-cmd="walk"/);
+  const hudJs = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
+  assert.match(hudJs, /cmd === "walk"/);
 });
 
 test("inbox assist drafts and never sends", () => {

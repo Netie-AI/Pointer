@@ -555,6 +555,13 @@ function wantedControl(text) {
   return theBtn ? theBtn[1].trim() : "";
 }
 
+/** HUD Frame walks this region. Tray Frame stays capture for Act. */
+const FRAME_TEACH_TEXT = "walk me through this on my screen";
+
+function shouldTeachFramedRegion(opts = {}) {
+  return Boolean(opts.frameForTeach) && Boolean(opts.captured) && opts.act !== true;
+}
+
 /** 1 to advance, -1 to go back, "reset", or 0. Never Acts. */
 function teachAdvance(text) {
   const q = spoken(text);
@@ -1251,6 +1258,7 @@ function publicEmptyRoom(desk, title, reason) {
     exec: false,
     cue: "",
     asked: "",
+    rest: "",
     deliverable: "",
     markers: [],
     coordinator: "http://127.0.0.1:18010",
@@ -1335,6 +1343,8 @@ module.exports = {
   publicInboxSnapshot,
   publicHomeSnapshot,
   scanInjectedSecrets,
+  FRAME_TEACH_TEXT,
+  shouldTeachFramedRegion,
   teachAdvance,
   nextTeachStep,
   deskGrounding,

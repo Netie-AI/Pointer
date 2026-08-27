@@ -148,7 +148,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
-const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock, nextTeachStep, teachAdvance } = require("./netie/coworker-desks");
+const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock, nextTeachStep, teachAdvance, FRAME_TEACH_TEXT, shouldTeachFramedRegion } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -293,6 +293,7 @@ function publishBrief(assist) {
       body: assist.deliverable,
       cue: assist.cue || "",
       asked: assist.asked || "",
+      rest: assist.rest || "",
     });
   } catch {
     return null;
@@ -1123,8 +1124,12 @@ function closeOverlay() {
   overlayWindow = null;
 }
 
-function openOverlay() {
+/** HUD Frame arms a teach walk after commit. Tray Frame stays capture for Act. */
+let frameForTeach = false;
+
+function openOverlay(opts = {}) {
   closeOverlay();
+  frameForTeach = Boolean(opts.teach);
   // Hide chrome while framing; restore only if the user had HUD open.
   hudVisibleBeforeOverlay = isHudVisible() || hudUserOpened;
   if (isHudVisible()) {
@@ -1157,10 +1162,13 @@ function openOverlay() {
   });
   overlayWindow.setAlwaysOnTop(true, "screen-saver");
   overlayWindow.setIgnoreMouseEvents(false);
-  overlayWindow.loadFile(path.join(__dirname, "overlay.html"));
+  overlayWindow.loadFile(path.join(__dirname, "overlay.html"), {
+    query: { teach: frameForTeach ? "1" : "0" },
+  });
   overlayWindow.focus(); // so the overlay's own Esc handler works immediately
   overlayWindow.on("closed", () => {
     overlayWindow = null;
+    frameForTeach = false;
     if (state === "SELECTING") state = "ARMED";
     if (hudVisibleBeforeOverlay) showHud({ expandChat: false });
     hudVisibleBeforeOverlay = false;
@@ -2215,6 +2223,9 @@ ipcMain.handle("click:captureNow", async () => {
 });
 
 ipcMain.handle("clicks:commitRegion", async (_e, region) => {
+  // Snapshot before closeOverlay: the closed handler clears frameForTeach.
+  const teachFromFrame = frameForTeach;
+  frameForTeach = false;
   // Overlay coords are local to its display — offset into global DIP space so
   // capture + driver agree on multi-monitor setups.
   const bounds = overlayDisplayBounds || screen.getPrimaryDisplay().bounds;
@@ -2229,7 +2240,17 @@ ipcMain.handle("clicks:commitRegion", async (_e, region) => {
       type: "insight",
       text: `Region ${Math.round(screenRegion.width)}×${Math.round(screenRegion.height)} captured.`,
     });
-    return { ok: true };
+    if (
+      shouldTeachFramedRegion({
+        frameForTeach: teachFromFrame,
+        captured: Boolean(lastCapture && lastCapture.region),
+        act: false,
+      })
+    ) {
+      armTeachWalk(FRAME_TEACH_TEXT);
+      sendHudQuiet({ type: "insight", text: "Walking this region. Ask, never Act." });
+    }
+    return { ok: true, teach: Boolean(teachFromFrame) };
   } catch (err) {
     if (hudVisibleBeforeOverlay || hudUserOpened) showHud({ expandChat: false });
     sendHudQuiet({ type: "insight", text: `Frame failed: ${err.message || err}` });
@@ -2239,6 +2260,7 @@ ipcMain.handle("clicks:commitRegion", async (_e, region) => {
 });
 
 ipcMain.handle("clicks:cancelRegion", async () => {
+  frameForTeach = false;
   closeOverlay();
   state = "ARMED";
   sendToPanel("clicks:state", { state, hotkey: HOTKEY });
@@ -3381,9 +3403,9 @@ ipcMain.handle("hud:openPanel", async () => {
 });
 
 ipcMain.handle("hud:frameRegion", async () => {
-  // Optional region refine while HUD is up.
-  openOverlay();
-  return { ok: true };
+  // HUD Frame is Ask: walk the framed region. Tray Frame stays capture for Act.
+  openOverlay({ teach: true });
+  return { ok: true, desk: "teach", act: false };
 });
 
 ipcMain.handle("hud:toggleListen", async (_e, payload) => {

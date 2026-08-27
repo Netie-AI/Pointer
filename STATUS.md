@@ -11,10 +11,11 @@
    `/teach` `/security` `/document` `/inbox` `/lanes` `/skills`
    `/workspace`). Public Worker is the same catalog; `/mcp` stays on
    the laptop. P-05 parked.
-2. **Coworker desks (DR-0005).** Teach shows Then: remaining. Bare spawn
-   plates Today. Meeting insight prefers They asked. Doc reuses the live
-   recap on `write in Word`. Public catalog empty. P-06 parked. GitHub
-   Actions blocked on org billing.
+2. **Coworker desks (DR-0005).** HUD Walk/Frame walks the framed region
+   (Ask, never Act). Tray Frame stays capture. `/teach` shows Then:
+   remaining. Bare spawn plates Today. Doc reuses the live recap.
+   Public catalog empty. P-06 parked. GitHub Actions blocked on org
+   billing.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next
