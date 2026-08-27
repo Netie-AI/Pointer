@@ -28,7 +28,8 @@
    captures a fresh screen unless `screenshot: false` (live suggest opts
    out). Meeting live Say line refreshes as notes grow (fail-closed).
    Scribe/observe read focused selection via UIA and skip password boxes.
-   IBM Plex HUD. P-04 stays parked.
+   Tray switches Agent/General/Transcribe/Scribe/Meeting without opening
+   the HUD. IBM Plex HUD. P-04 stays parked.
 2. **Generative tools (DR-0004).** Search then craft a hint. Coordinator
    at `127.0.0.1:18010`. Public Worker is pages only. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** No GPLv3 dump.

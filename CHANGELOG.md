@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Tray switches Transcribe, Scribe, and Meeting
+
+OpenWillow-class tray: radio items for Agent / General / Transcribe /
+Scribe / Meeting call applyAppMode without opening the HUD. Mode
+changes refresh the menu. GitHub CI on this account is still a
+spending-limit cutoff (0 steps), not a product fail. No GPLv3 dump.
+No third-party MCP.
+
 ## 2026-08-27 - Read selected text without copying a password
 
 Scribe and `GET /api/observe?selection=1` read the focused selection

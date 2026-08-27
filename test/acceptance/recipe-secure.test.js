@@ -56,6 +56,11 @@ async function run() {
       assert.ok(/createPendingScribe/.test(main), "failed Scribe must keep a pending transcript");
       assert.ok(/retryPendingScribe/.test(main), "OpenWillow retry must re-run the pending take");
       assert.ok(/usePendingDictation/.test(main), "pending dictation must paste the raw transcript");
+      assert.ok(/function trayTemplate/.test(main), "OpenWillow tray must list modes");
+      assert.ok(/reason: "tray"/.test(main), "tray mode switch must call applyAppMode");
+      assert.ok(/modeItem\("transcribe", "Transcribe"\)/.test(main), "tray must offer Transcribe");
+      assert.ok(/modeItem\("scribe", "Scribe"\)/.test(main), "tray must offer Scribe");
+      assert.ok(/modeItem\("meeting", "Meeting"\)/.test(main), "tray must offer Meeting");
       assert.ok(/async function captureNowForAsk/.test(main), "Ask must capture the live screen");
       const hudAsk = main.slice(main.indexOf('ipcMain.handle("hud:ask"'));
       const hudAskBody = hudAsk.slice(0, hudAsk.indexOf('ipcMain.handle("hud:bgList"'));

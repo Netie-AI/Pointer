@@ -723,6 +723,7 @@ function applyAppMode(modeId, { reason = "" } = {}) {
     dictateHold.stop();
   }
   syncDictateCancelHotkey();
+  refreshTrayMenu();
   return {
     ok: true,
     mode: appMode,
@@ -2507,57 +2508,92 @@ function trayIcon() {
   return nativeImage.createFromBitmap(buf, { width: size, height: size });
 }
 
+function trayTemplate() {
+  const modeItem = (id, label) => ({
+    label,
+    type: "radio",
+    checked: appMode === id,
+    click: () => applyAppMode(id, { reason: "tray" }),
+  });
+  return [
+    {
+      label: `Toggle session (${HOTKEY})`,
+      click: () => armSession(),
+    },
+    {
+      label: "Show chat",
+      click: () => showHud(),
+    },
+    {
+      label: "Frame region (drag box)",
+      click: () => openOverlay(),
+    },
+    {
+      label: "Review canvas",
+      click: () => createCanvas(),
+    },
+    { type: "separator" },
+    { label: "Mode", enabled: false },
+    modeItem("agent", "Agent"),
+    modeItem("general", "General"),
+    modeItem("transcribe", "Transcribe"),
+    modeItem("scribe", "Scribe"),
+    modeItem("meeting", "Meeting"),
+    { type: "separator" },
+    {
+      label: "Open conversations folder",
+      click: () => chats.reveal(),
+    },
+    {
+      label: "Auto-run sensible",
+      type: "checkbox",
+      checked: Boolean(settings.get("autoRunSensible")),
+      click: () => {
+        settings.set({ autoRunSensible: !settings.get("autoRunSensible") });
+        refreshTrayMenu();
+      },
+    },
+    {
+      label: "Nod confirm",
+      type: "checkbox",
+      checked: Boolean(settings.get("nodConfirm")),
+      click: () => {
+        settings.set({ nodConfirm: !settings.get("nodConfirm") });
+        refreshTrayMenu();
+      },
+    },
+    { type: "separator" },
+    {
+      label: "Quit",
+      click: () => {
+        app.isQuitting = true;
+        disarmSession();
+        app.quit();
+      },
+    },
+  ];
+}
+
+function refreshTrayMenu() {
+  if (!tray || tray.isDestroyed()) return;
+  try {
+    tray.setContextMenu(Menu.buildFromTemplate(trayTemplate()));
+  } catch {
+    /* ok */
+  }
+}
+
 function createTray() {
+  if (tray && !tray.isDestroyed()) {
+    try {
+      tray.destroy();
+    } catch {
+      /* ok */
+    }
+  }
   tray = new Tray(trayIcon());
   tray.setToolTip("Netie Pointer");
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      {
-        label: `Toggle session (${HOTKEY})`,
-        click: () => armSession(),
-      },
-      {
-        label: "Show chat",
-        click: () => showHud(),
-      },
-      {
-        label: "Frame region (drag box)",
-        click: () => openOverlay(),
-      },
-      {
-        label: "Review canvas",
-        click: () => createCanvas(),
-      },
-      { type: "separator" },
-      {
-        label: "Open conversations folder",
-        click: () => chats.reveal(),
-      },
-      {
-        label: settings.get("autoRunSensible") ? "✓ Auto-run sensible" : "Auto-run sensible",
-        click: () => {
-          settings.set({ autoRunSensible: !settings.get("autoRunSensible") });
-          createTray();
-        },
-      },
-      {
-        label: settings.get("nodConfirm") ? "✓ Nod confirm" : "Nod confirm",
-        click: () => {
-          settings.set({ nodConfirm: !settings.get("nodConfirm") });
-          createTray();
-        },
-      },
-      { type: "separator" },
-      {
-        label: "Quit",
-        click: () => {
-          app.isQuitting = true;
-          disarmSession();
-          app.quit();
-        },
-      },
-    ]),
-  );
+  tray.setContextMenu(Menu.buildFromTemplate(trayTemplate()));
   tray.on("double-click", () => showHud());
 }
 
