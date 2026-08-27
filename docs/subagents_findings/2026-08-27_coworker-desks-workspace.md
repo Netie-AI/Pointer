@@ -1,6 +1,6 @@
 # coworker desks + online workspace
 
-keywords: desks, meeting assist, meeting llm enrich, workspace.exec, DR-0005, Clicky, Cluely, OpenWorker, Computer
+keywords: desks, meeting assist, meeting llm enrich, teach stack boxes, workspace.exec, DR-0005, Clicky, Cluely, OpenWorker, Computer
 main_idea: Pointer beats those products with original desks and a public artifact catalog. Do not vendor their source or unlock P-06.
 
 ## What we studied
@@ -38,8 +38,9 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - Standing `/today` brief from the session log. Empty is honest, not invented.
 - `spawnCoworker`: background brief, never claims pointer-act, never Acts.
 - Loopback `/teach` paints a large walk stage from measured BOX/POINT
-  (Next/Then on the stage, never invented coords, never Act). Drag a
-  box on that stage to frame a region in display percents.
+  (Next/Then on the stage, never invented coords, never Act). Drag
+  boxes on that stage to stack numbered regions in display percents
+  (current hold, later dashed, cap 8).
 - HUD insight paints the same You/Them talk in fixed chrome (never a
   bubble, never a cheater overlay).
 - Loopback `/meeting` paints You/Them turns from the stored ring.

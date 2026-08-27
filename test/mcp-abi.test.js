@@ -342,7 +342,9 @@ function test(name, fn) {
     assert.strictEqual(drawn.result.ok, true);
     assert.strictEqual(drawn.result.act, false);
     assert.strictEqual(drawn.result.exec, false);
-    assert.match(drawn.result.cue, /this region/);
+    assert.match(drawn.result.cue, /Click Save/);
+    assert.ok(drawn.result.path.some((p) => /Save/.test(p.label)));
+    assert.ok(drawn.result.path.some((p) => /region/.test(p.label)));
     assert.ok(!drawn.result.live);
     coord.workspace.put({
       id: "live-security",

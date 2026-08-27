@@ -214,6 +214,7 @@ function readAsset(file) {
     assert.match(app, /teach-map-rail/);
     assert.match(app, /teach-map-key/);
     assert.match(app, /teach-map-box then/);
+    assert.match(app, /Drag another box to add a step/);
     const cssText = fs.readFileSync(path.join(HOST, "style.css"), "utf8");
     assert.match(cssText, /56vh/);
     assert.match(cssText, /teach-map-cue/);
@@ -221,6 +222,7 @@ function readAsset(file) {
     assert.match(cssText, /teach-map-rail/);
     assert.match(cssText, /\.teach-map\.draw/);
     assert.match(cssText, /teach-map-key/);
+    assert.match(cssText, /teach-map-hint\.add/);
     assert.match(cssText, /meeting-card-say/);
     assert.match(cssText, /meeting-card-also/);
     assert.match(cssText, /meeting-card-avoid/);

@@ -421,9 +421,10 @@ function test(name, fn) {
     assert.strictEqual(framed.body.act, false);
     assert.strictEqual(framed.body.exec, false);
     assert.ok(!framed.body.live);
-    assert.match(framed.body.cue, /this region/);
+    assert.match(framed.body.cue, /Click Save/);
     assert.ok(Array.isArray(framed.body.path));
-    assert.ok(framed.body.path.some((p) => p.now && Number(p.wPct) === 10));
+    assert.ok(framed.body.path.some((p) => p.now && /Save/.test(p.label)));
+    assert.ok(framed.body.path.some((p) => /region/.test(p.label)));
     const tiny = await new Promise((resolve, reject) => {
       const req = http.request(
         { host: "127.0.0.1", port, path: "/api/teach", method: "POST", headers: { "content-type": "application/json" } },

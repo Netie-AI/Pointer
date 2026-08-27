@@ -1,3 +1,11 @@
+## 2026-08-27 - Teach stacks drawn BOX steps
+
+Loopback `/teach` stacks each drag as the next numbered BOX
+(current hold, later dashed, Got it Ask). Cap 8. Tiny drags
+fail closed. HUD Frame empty tree stays this region. Public
+POST stays 404. Overlay stays on the laptop HUD. P-05 and
+P-06 stay parked.
+
 ## 2026-08-27 - Teach stage is a drawable BOX walk
 
 Loopback `/teach` lets you drag a box on the stage. That region becomes

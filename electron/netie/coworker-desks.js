@@ -1381,6 +1381,58 @@ function pctToRegion(box, screen) {
   };
 }
 
+/**
+ * Walk order as stored, not UIA rank. Drawn Pane boxes stay in draw
+ * order so a second drag is later-dashed, not a replace. Never Acts.
+ */
+function markFromControl(control, screen, index) {
+  const box = rectToBoxPct(control && control.rect, screen);
+  const pct = rectToPct(control && control.rect, screen);
+  if (!box || !pct) return null;
+  const name = String((control && control.name) || `region ${index + 1}`).slice(0, 40) || `region ${index + 1}`;
+  const via = String((control && control.via) || "");
+  return {
+    xPct: pct.xPct,
+    yPct: pct.yPct,
+    name,
+    controlType: String((control && control.controlType) || "Pane"),
+    token: formatPointToken(pct, name, index),
+    boxToken: formatBoxToken(box, name, index),
+    leftPct: box.leftPct,
+    topPct: box.topPct,
+    wPct: box.wPct,
+    hPct: box.hPct,
+    via: via || (String((control && control.controlType) || "") === "Pane" ? "frame" : "uia"),
+  };
+}
+
+function marksFromStoredWalk(controls, screen) {
+  const out = [];
+  for (const row of Array.isArray(controls) ? controls : []) {
+    if (out.length >= 8) break;
+    const mark = markFromControl(row, screen, out.length);
+    if (mark) out.push(mark);
+  }
+  return out;
+}
+
+function measureTeachWalk(controls, screen, opts = {}) {
+  const want = String((opts && opts.want) || "").trim();
+  if (want) return pointControls(controls, screen, { want });
+  const framed = Boolean(opts && opts.framed);
+  const list = Array.isArray(controls) ? controls : [];
+  if (framed && list.length) {
+    const stored = marksFromStoredWalk(list, screen);
+    if (stored.length) return stored;
+  }
+  let measured = pointControls(controls, screen);
+  if (!measured.length && framed) {
+    const mark = framedRegionPoint((opts && opts.region) || screen, screen);
+    if (mark) measured = [mark];
+  }
+  return measured;
+}
+
 /** 1 to advance, -1 to go back, "reset", or 0. Never Acts. */
 function teachAdvance(text) {
   const q = spoken(text);
@@ -1452,6 +1504,7 @@ function freezeTeachLive(spec) {
         name: String((c && c.name) || "").slice(0, 40),
         controlType: String((c && c.controlType) || "Pane").slice(0, 40),
         rect: freezeBox(c && c.rect) || { x: 0, y: 0, width: 0, height: 0 },
+        via: String((c && c.via) || "").slice(0, 16),
       }))
     : [];
   const framed = Boolean(spec.framed);
@@ -1532,8 +1585,9 @@ function advanceLiveTeach(workspace, ask) {
 }
 
 /**
- * Loopback /teach drag. The human drew the BOX. Never invents.
- * Never Acts. Empty/tiny drags fail closed.
+ * Loopback /teach drag. The human drew the BOX. Stacks onto the live
+ * walk (current hold, later dashed). Never invents. Never Acts.
+ * Empty/tiny drags fail closed. Cap 8.
  */
 function frameLiveTeach(workspace, spec) {
   if (!workspace || typeof workspace.put !== "function") {
@@ -1550,17 +1604,32 @@ function frameLiveTeach(workspace, spec) {
     };
   }
   const got = typeof workspace.get === "function" ? workspace.get("live-teach") : { ok: false };
-  const screen =
-    got.ok && got.artifact && got.artifact.live && got.artifact.live.screen
-      ? got.artifact.live.screen
-      : { x: 0, y: 0, width: 1000, height: 1000 };
+  const live = got.ok && got.artifact && got.artifact.live ? freezeTeachLive(got.artifact.live) : null;
+  const screen = (live && live.screen) || { x: 0, y: 0, width: 1000, height: 1000 };
+  const existing = live && Array.isArray(live.controls) ? live.controls.slice(0, 8) : [];
+  if (existing.length >= 8) {
+    return {
+      ok: false,
+      act: false,
+      exec: false,
+      desk: "teach",
+      reason: "walk is full - 8 boxes",
+    };
+  }
   const region = pctToRegion(box, screen);
+  const next = {
+    name: `region ${existing.length + 1}`,
+    controlType: "Pane",
+    rect: region,
+    via: "frame",
+  };
   const assist = teachAssist({
     text: FRAME_TEACH_TEXT,
-    controls: [],
+    controls: existing.concat([next]),
     screen,
     region,
     framed: true,
+    step: live && Number.isInteger(live.step) ? live.step : 0,
     live: true,
   });
   if (!assist || !assist.ok || assist.act) {
@@ -1664,11 +1733,10 @@ function teachPathMarks(measured, idx) {
 function teachWalkPath(live) {
   const shot = freezeTeachLive(live);
   if (!shot) return [];
-  let measured = pointControls(shot.controls, shot.screen);
-  if (!measured.length && shot.framed) {
-    const mark = framedRegionPoint(shot.region || shot.screen, shot.screen);
-    if (mark) measured = [mark];
-  }
+  const measured = measureTeachWalk(shot.controls, shot.screen, {
+    framed: shot.framed,
+    region: shot.region,
+  });
   return teachPathMarks(measured, shot.step);
 }
 
@@ -1687,11 +1755,7 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
     /\b(walk me through|teach me|what should i click|click next|point at|on (my )?screen)\b/.test(q);
   if (!explicit && !live) return { ok: false, act: false, desk: "teach", reason: "not a teach request" };
   const want = wantedControl(t);
-  let measured = pointControls(controls, screen, { want });
-  if (!measured.length && framed) {
-    const mark = framedRegionPoint(region || screen, screen);
-    if (mark) measured = [mark];
-  }
+  let measured = measureTeachWalk(controls, screen, { want, framed, region });
   const last = Math.max(0, measured.length - 1);
   const raw = Number(step);
   const idx = want
@@ -1776,6 +1840,7 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
         name: p.name,
         controlType: p.controlType || "Pane",
         rect: rectFromPct(p, screen),
+        via: p.via || "",
       })),
       screen,
       region,

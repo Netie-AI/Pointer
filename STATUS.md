@@ -16,7 +16,8 @@
    timeout or ungrounded lines keep the heuristic (never invent, never
    send, never a stealth overlay). Loopback `/` paints teach path,
    meeting card, Today plate, and filed work cards. `/teach` is a
-   measured walk: drag a box, Back/Got it Ask, never invented coords.
+   measured walk: drag boxes to stack steps (current hold, later
+   dashed), Back/Got it Ask, never invented coords.
    This session links `/workspace?id=` (never send, never a .docx, never
    Act). Public catalog empty. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.

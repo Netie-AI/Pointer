@@ -134,8 +134,9 @@ Heard facts, never an unrelated last-you dump, never invent, never send.
 OpenVault may refine say-this in 300ms; ungrounded or timed-out lines
 keep the local heuristic. Never Act.
 Loopback `/teach` paints a walk path from measured
-BOX/POINT (current hold, later dashed, Got it Ask, never Act). Drag a
-box on that stage to frame a region in display percents (never invented). Loopback
+BOX/POINT (current hold, later dashed, Got it Ask, never Act). Drag
+boxes on that stage to stack numbered regions in display percents
+(never invented, cap 8). Loopback
 `/` paints that teach path, meeting card, Today plate, and filed
 inbox/Word/security work cards from `/api/home` (never exec).
 Public POST

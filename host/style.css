@@ -167,6 +167,10 @@ pre {
   pointer-events: none;
   z-index: 1;
 }
+.teach-map-hint.add {
+  top: 10px;
+  transform: translate(-50%, 0);
+}
 .teach-map-box.then {
   border-style: dashed;
   border-color: #456;

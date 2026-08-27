@@ -620,9 +620,11 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(drawn.act, false);
   assert.strictEqual(drawn.exec, false);
   assert.strictEqual(drawn.via, "frame");
-  assert.match(drawn.deliverable, /\[BOX:20,40,10,4:1 this region\]/);
-  assert.match(drawn.cue, /Look at this region/);
+  assert.match(drawn.deliverable, /\[BOX:20,40,10,4:1 region 1\]/);
+  assert.match(drawn.cue, /Look at region 1/);
   assert.ok(!drawn.live);
+  assert.strictEqual(drawn.path.length, 1);
+  assert.strictEqual(drawn.path[0].now, true);
   const corners = frameLiveTeach(createWorkspace({ clock: () => 10 }), {
     x0: 30,
     y0: 50,
@@ -631,7 +633,67 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   });
   assert.strictEqual(corners.ok, true);
   assert.strictEqual(corners.act, false);
-  assert.match(corners.deliverable, /\[BOX:20,40,10,10:1 this region\]/);
+  assert.match(corners.deliverable, /\[BOX:20,40,10,10:1 region 1\]/);
+  const stackWs = createWorkspace({ clock: () => 11 });
+  const firstBox = frameLiveTeach(stackWs, {
+    leftPct: 20,
+    topPct: 40,
+    wPct: 10,
+    hPct: 4,
+  });
+  assert.match(firstBox.cue, /Look at region 1/);
+  assert.match(firstBox.deliverable, /\[BOX:20,40,10,4:1 region 1\]/);
+  const secondBox = frameLiveTeach(stackWs, {
+    leftPct: 50,
+    topPct: 20,
+    wPct: 12,
+    hPct: 8,
+  });
+  assert.strictEqual(secondBox.ok, true);
+  assert.strictEqual(secondBox.act, false);
+  assert.strictEqual(secondBox.path.length, 2);
+  assert.strictEqual(secondBox.path[0].now, true);
+  assert.strictEqual(secondBox.path[1].later, true);
+  assert.match(secondBox.path[0].label, /region 1/);
+  assert.match(secondBox.path[1].label, /region 2/);
+  assert.match(secondBox.cue, /Look at region 1/);
+  assert.match(secondBox.rest, /Look at region 2/);
+  const stackedNext = advanceLiveTeach(stackWs, "got it");
+  assert.strictEqual(stackedNext.act, false);
+  assert.match(stackedNext.cue, /Look at region 2/);
+  assert.strictEqual(stackedNext.path[1].now, true);
+  assert.strictEqual(stackedNext.path[0].now, false);
+  const uiaWs = createWorkspace({ clock: () => 12 });
+  uiaWs.put({
+    id: "live-teach",
+    desk: "teach",
+    title: "Live teach",
+    body: form.deliverable,
+    cue: form.cue,
+    rest: form.rest,
+    live: form.live,
+  });
+  const uiaDrag = frameLiveTeach(uiaWs, { leftPct: 70, topPct: 70, wPct: 10, hPct: 8 });
+  assert.strictEqual(uiaDrag.ok, true);
+  assert.strictEqual(uiaDrag.act, false);
+  assert.ok(uiaDrag.path.some((p) => /Save/.test(p.label)));
+  assert.ok(uiaDrag.path.some((p) => /region/.test(p.label)));
+  assert.strictEqual(uiaDrag.path.length, 4);
+  assert.match(uiaDrag.cue, /Type in Email/);
+  const capWs = createWorkspace({ clock: () => 13 });
+  for (let i = 0; i < 8; i++) {
+    const row = frameLiveTeach(capWs, {
+      leftPct: 2 + i * 8,
+      topPct: 10,
+      wPct: 6,
+      hPct: 10,
+    });
+    assert.strictEqual(row.ok, true);
+  }
+  const ninth = frameLiveTeach(capWs, { leftPct: 80, topPct: 80, wPct: 10, hPct: 10 });
+  assert.strictEqual(ninth.ok, false);
+  assert.strictEqual(ninth.act, false);
+  assert.match(ninth.reason, /walk is full/);
   const fs = require("fs");
   const path = require("path");
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
@@ -1217,6 +1279,7 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /wireTeachAdvance/);
   assert.match(hostApp, /wireTeachFrame/);
   assert.match(hostApp, /postTeachFrame/);
+  assert.match(hostApp, /Drag another box to add a step/);
   assert.match(hostApp, /paintChrome/);
   assert.match(hostApp, /live-cue-next/);
   assert.doesNotMatch(hostApp, /innerHTML/);

@@ -933,9 +933,11 @@ function paintTeachMap(root, m, opts) {
   const cue = String((m && m.cue) || "").trim();
   const rest = String((m && m.rest) || "").trim();
   map.setAttribute("aria-label", cue ? "Next: " + cue : draw ? "Drag a box on this stage. Never Act." : "Teach walk");
-  if (draw && !boxes.length) {
-    const hint = el("p", "teach-map-hint");
-    hint.textContent = "Drag a box on this stage. Pointer will not click.";
+  if (draw) {
+    const hint = el("p", boxes.length ? "teach-map-hint add" : "teach-map-hint");
+    hint.textContent = boxes.length
+      ? "Drag another box to add a step."
+      : "Drag a box on this stage. Pointer will not click.";
     map.appendChild(hint);
   }
   if (cue) {
