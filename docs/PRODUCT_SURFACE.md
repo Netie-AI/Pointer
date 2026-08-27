@@ -21,7 +21,7 @@ reviews injected files and never self-approves.
 Teach overlay holds the current control until `got it`. Fixed HUD chrome
 has Back / Got it (Ask, never Act) in the top cue bar even when chat is
 closed, plus in the insight panel when chat is open. That cue bar
-keeps They asked / Say this / Also / Don't say when the rest of HUD
+keeps They asked / last You/Them / Say this / Also / Don't say when the rest of HUD
 hides. Teach cue is
 `N of M Click Save`. Recap tags a weekday when heard. Teach Next cue, meeting say-this, and
 security Review live in the fixed insight panel. HUD desk chips Ask,

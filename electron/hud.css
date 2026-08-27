@@ -133,6 +133,11 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   margin: 0; max-width: 28vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: 11px; color: var(--muted);
 }
+.live-cue-them, .live-cue-you {
+  margin: 0; max-width: 28vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11px; color: var(--muted);
+}
+.live-cue-you { color: var(--text); }
 .live-cue-text {
   margin: 0; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: 12px; font-weight: 650; color: var(--text);

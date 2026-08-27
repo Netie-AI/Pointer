@@ -15,7 +15,7 @@
    Say this / Also / Don't say. OpenVault may refine say-this in 300ms;
    timeout or ungrounded lines keep the heuristic (never invent, never
    send, never a stealth overlay). The HUD live cue bar keeps that
-   stack when the rest of chrome hides. Loopback `/` paints teach path,
+   stack plus last You/Them when the rest of chrome hides. Loopback `/` paints teach path,
    meeting card, Today plate, and filed work cards. `/teach` is a
    measured walk: draw around a control to stack BOX steps (current
    hold, later dashed), Back/Got it Ask, never invented coords.

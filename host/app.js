@@ -705,6 +705,18 @@ function chromeBtn(id, label) {
   return b;
 }
 
+function lastTalkLine(turns, speaker) {
+  const want = speaker === "you" ? "you" : "them";
+  const rows = Array.isArray(turns) ? turns : [];
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i];
+    if (!row || (row.speaker === "you" ? "you" : "them") !== want) continue;
+    const text = String((row && row.text) || "").trim();
+    if (text) return text.slice(0, 160);
+  }
+  return "";
+}
+
 function ensureLiveCueBar() {
   let bar = document.getElementById("live-cue-bar");
   if (bar) return bar;
@@ -728,6 +740,14 @@ function ensureLiveCueBar() {
   actions.appendChild(copy);
   bar.appendChild(asked);
   bar.appendChild(heard);
+  const them = el("p", "live-cue-heard");
+  them.id = "live-cue-them";
+  them.hidden = true;
+  const you = el("p", "live-cue-heard");
+  you.id = "live-cue-you";
+  you.hidden = true;
+  bar.appendChild(them);
+  bar.appendChild(you);
   const also = el("p", "live-cue-heard");
   also.id = "live-cue-also";
   also.hidden = true;
@@ -808,6 +828,20 @@ function paintChrome(home) {
   if (heardEl) {
     heardEl.hidden = !heard;
     heardEl.textContent = heard ? "Heard: " + heard : "";
+  }
+  const themEl = document.getElementById("live-cue-them");
+  const youEl = document.getElementById("live-cue-you");
+  const themLine = lastTalkLine(meeting.turns, "them");
+  const youLine = lastTalkLine(meeting.turns, "you");
+  const themShow = Boolean(themLine && themLine !== asked);
+  const youShow = Boolean(youLine);
+  if (themEl) {
+    themEl.hidden = !themShow;
+    themEl.textContent = themShow ? "Them: " + themLine : "";
+  }
+  if (youEl) {
+    youEl.hidden = !youShow;
+    youEl.textContent = youShow ? "You: " + youLine : "";
   }
   const alsoEl = document.getElementById("live-cue-also");
   const avoidEl = document.getElementById("live-cue-avoid");

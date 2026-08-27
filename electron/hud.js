@@ -115,6 +115,17 @@ function cueDisplay(kind, cue) {
   if (kind === "warn") return `Review: ${cue}`;
   return `Say this: ${cue}`;
 }
+function lastTalkLine(turns, speaker) {
+  const want = speaker === "you" ? "you" : "them";
+  const rows = Array.isArray(turns) ? turns : [];
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i];
+    if (!row || (row.speaker === "you" ? "you" : "them") !== want) continue;
+    const text = String(row.text || "").trim();
+    if (text) return text.slice(0, 160);
+  }
+  return "";
+}
 function paintMeetingTalk(event, asked) {
   const root = $("meeting-talk");
   if (!root) return;
@@ -157,6 +168,8 @@ function paintLiveBrief(event) {
   const teachNext = $("btn-teach-next");
   const bar = $("live-cue-bar");
   const barAsked = $("live-cue-asked");
+  const barThem = $("live-cue-them");
+  const barYou = $("live-cue-you");
   const barText = $("live-cue-text");
   const barAlso = $("live-cue-also");
   const barAvoid = $("live-cue-avoid");
@@ -184,6 +197,11 @@ function paintLiveBrief(event) {
           .join(" / ")
           .slice(0, 220);
   const cueLine = cueDisplay(kind, cue);
+  const meetingDesk = String((event && event.desk) || "") === "meeting" && kind === "say";
+  const themLine = meetingDesk ? lastTalkLine(event.turns, "them") : "";
+  const youLine = meetingDesk ? lastTalkLine(event.turns, "you") : "";
+  const themShow = Boolean(themLine && themLine !== asked);
+  const youShow = Boolean(youLine);
   if (!text || (event && event.act)) {
     brief.hidden = true;
     if (meta) meta.hidden = true;
@@ -211,6 +229,14 @@ function paintLiveBrief(event) {
     if (barAsked) {
       barAsked.hidden = true;
       barAsked.textContent = "";
+    }
+    if (barThem) {
+      barThem.hidden = true;
+      barThem.textContent = "";
+    }
+    if (barYou) {
+      barYou.hidden = true;
+      barYou.textContent = "";
     }
     if (barText) barText.textContent = "";
     if (barAlso) {
@@ -260,10 +286,18 @@ function paintLiveBrief(event) {
     copyBtn.hidden = !cue;
     copyBtn.textContent = cueCopyLabel(kind);
   }
-  if (bar) bar.hidden = !cue && !askedLine;
+  if (bar) bar.hidden = !cue && !askedLine && !themShow && !youShow;
   if (barAsked) {
     barAsked.hidden = !askedLine;
     barAsked.textContent = askedLine;
+  }
+  if (barThem) {
+    barThem.hidden = !themShow;
+    barThem.textContent = themShow ? "Them: " + themLine : "";
+  }
+  if (barYou) {
+    barYou.hidden = !youShow;
+    barYou.textContent = youShow ? "You: " + youLine : "";
   }
   if (barText) barText.textContent = cueLine;
   if (barAlso) {

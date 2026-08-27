@@ -258,6 +258,8 @@ function readAsset(file) {
     assert.match(app, /Don't say:/);
     assert.match(app, /meeting-card-also/);
     assert.match(app, /live-cue-also/);
+    assert.match(app, /live-cue-them/);
+    assert.match(app, /live-cue-you/);
     assert.match(app, /meeting-talk/);
     assert.doesNotMatch(app, /innerHTML/);
     const meeting = await fetch(new Request("https://host.netie.ai/meeting"));

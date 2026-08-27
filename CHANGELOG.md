@@ -1,3 +1,10 @@
+## 2026-08-27 - Meeting cue keeps last You/Them when HUD hides
+
+HUD live cue bar keeps last You/Them with They asked / Say this /
+Also / Don't say as fixed top chrome when the rest of HUD hides.
+Not a bubble, not a peek orb, not a stealth overlay. P-05 and P-06
+stay parked.
+
 ## 2026-08-27 - Teach Draw is a freehand stroke that stores a BOX
 
 Click-through teach overlay Draw traces a stroke; Pointer stores the

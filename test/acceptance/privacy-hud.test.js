@@ -137,6 +137,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/id="live-cue-bar"/.test(read("electron/hud.html")), "live cue bar is fixed top chrome, not a bubble");
       assert.ok(/id="live-cue-also"/.test(read("electron/hud.html")), "Also lives on the live cue bar");
       assert.ok(/id="live-cue-avoid"/.test(read("electron/hud.html")), "Don't say lives on the live cue bar");
+      assert.ok(/id="live-cue-them"/.test(read("electron/hud.html")), "Them lives on the live cue bar");
+      assert.ok(/id="live-cue-you"/.test(read("electron/hud.html")), "You lives on the live cue bar");
       assert.ok(/id="btn-live-next"/.test(read("electron/hud.html")), "Got it lives in the top cue bar");
       const css = read("electron/hud.css");
       assert.ok(/\.live-cue-bar/.test(css), "live cue bar has chrome");
