@@ -110,6 +110,9 @@ function test(name, fn) {
     assert.strictEqual(shown.scribe.api, "/api/scribe");
     assert.strictEqual(shown.meeting.available, true);
     assert.strictEqual(shown.meeting.api, "/api/meeting");
+    assert.ok(shown.drive.instructions.includes("focus: notepad"));
+    assert.ok(shown.drive.instructions.includes("click: Save"));
+    assert.match(shown.drive.gated, /dms\/secure/);
   });
 
   await test("computer.observe reports visibility without leaking clicks", () => {

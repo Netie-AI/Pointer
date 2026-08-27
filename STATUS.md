@@ -14,7 +14,7 @@
    Scribe rewrites then pastes. Optional screen context. Esc cancels
    listening. Ctrl+Alt+Space/M/L. Meeting Suggest pill. Teach LINE marks.
    `focus:` matches a window title; `click: Save` aims by name. Autostart
-   is a setting. IBM Plex HUD. P-04 stays parked.
+   is a setting. MCP `tools.list` returns schemas. IBM Plex HUD. P-04 stays parked.
 2. **Generative tools (DR-0004).** Search then craft a hint. Coordinator
    at `127.0.0.1:18010`. Public Worker is pages only. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** No GPLv3 dump.

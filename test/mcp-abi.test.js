@@ -42,6 +42,12 @@ function test(name, fn) {
     const r = await mcp.handle({ jsonrpc: "2.0", id: 2, method: "tools.list" });
     assert.deepStrictEqual(r.result.tools, TOOLS.slice());
     assert.ok(!r.result.tools.includes("shell.exec"));
+    assert.ok(Array.isArray(r.result.catalog));
+    assert.deepStrictEqual(
+      r.result.catalog.map((t) => t.name),
+      TOOLS.slice()
+    );
+    assert.ok(r.result.catalog.every((t) => t.name && t.description && t.inputSchema));
   });
 
   await test("lanes.claim goes through MCP and conflicts", async () => {

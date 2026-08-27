@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Tool catalog so other agents know how to drive Pointer
+
+`tools.list` still returns the name allowlist and now also a `catalog`
+of descriptions plus JSON schemas. `computer.status.drive` lists the
+loopback URLs and instruction verbs (`focus: notepad`, `click: Save`).
+No third-party MCP servers.
+
 ## 2026-08-27 - Focus by title, named clicks, autostart
 
 `focus: notepad` restores a matching window from the observe list.

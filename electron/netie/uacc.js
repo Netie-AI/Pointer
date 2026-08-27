@@ -161,6 +161,26 @@ function computerStatus(opts = {}) {
       gated: true,
       api: "/api/meeting",
     },
+    drive: {
+      loopback: "http://127.0.0.1:18010",
+      mcp: "POST /mcp",
+      observe: "GET /api/observe",
+      act: "POST /api/computer",
+      scribe: "POST /api/scribe",
+      meeting: "POST /api/meeting",
+      instructions: [
+        "observe",
+        "type: hello",
+        "click 40 50",
+        "click: Save",
+        "focus: notepad",
+        "focus hwnd: 12345",
+        "open: notepad",
+        "deliver: hello",
+        "press ctrl+s",
+      ],
+      gated: "Cortex /dms/secure. Clicks and launches need approved:true.",
+    },
   };
 }
 
