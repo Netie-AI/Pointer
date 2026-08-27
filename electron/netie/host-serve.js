@@ -182,6 +182,20 @@ function handlePublicRequest({ method, pathname, search } = {}) {
       }),
     };
   }
+  if (verb === "GET" && (clean === "/api/security.md" || clean === "/security.md")) {
+    return {
+      status: 404,
+      headers: jsonHeaders(),
+      body: JSON.stringify({
+        ok: false,
+        localFirst: true,
+        exec: false,
+        act: false,
+        approve: false,
+        reason: "generated security review stays on the laptop",
+      }),
+    };
+  }
   if (verb === "GET" && clean === "/api/document") {
     return {
       status: 200,

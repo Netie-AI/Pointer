@@ -48,7 +48,8 @@ the working set (never exec). `/workspace` This computer dock Run POSTs
 `/api/workspace/exec` and always fails closed (P-06). Opening a live
 document or inbox file on `/workspace?id=` also offers Download generated
 `.docx` / unsent `.eml` and hoists that file above desks and Run, with
-This session files as tabs. Home theater cards include Open in workspace.
+This session files as tabs. Opening `live-security` offers Download review
+(never approval). Home theater cards include Open in workspace.
 Loopback `/document`
 downloads a generated `.docx` from the live draft (never Act, never
 Word.app). Public `/api/document.docx` is 404. Loopback `/meeting` paints the You/Them
@@ -59,7 +60,8 @@ paints a large walk stage from measured BOX/POINT (Next/Then on the
 stage, Got it Ask, never Act). Today plate lists your commitments, not the meeting
 say-this dump. Inbox never
 sends (P-05); loopback `/inbox` may download a generated `.eml` (never send).
-Public `/api/inbox.eml` is 404. "Spawn a coworker" runs the named job, or the Today plate
+Public `/api/inbox.eml` is 404. Security never self-approves; loopback
+`/security` may download a generated review. Public `/api/security.md` is 404. "Spawn a coworker" runs the named job, or the Today plate
 when bare (a meeting/transcribe session recaps instead, and files an
 unsent follow-up, a Word draft, and a security review of those injected
 bodies). Loopback MCP `session.live` reads the This session catalog.

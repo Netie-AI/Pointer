@@ -1,6 +1,6 @@
 # coworker desks + online workspace
 
-keywords: desks, meeting assist, meeting llm enrich, teach stack boxes, teach click box got it, teach overlay click-through, workspace.exec, document.docx download, inbox.eml download, meeting cue live captions host, teach action chrome, DR-0005, Clicky, Cluely, OpenWorker, Computer
+keywords: desks, meeting assist, meeting llm enrich, teach stack boxes, teach click box got it, teach overlay click-through, workspace.exec, document.docx download, inbox.eml download, security.md download, meeting cue live captions host, teach action chrome, DR-0005, Clicky, Cluely, OpenWorker, Computer
 main_idea: Pointer beats those products with original desks and a public artifact catalog. Do not vendor their source or unlock P-06.
 
 ## What we studied
@@ -57,9 +57,10 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   refine say-this in 300ms; timeout or ungrounded lines keep the heuristic.
 - Loopback This session files link to `/workspace?id=` and chrome shows
   `Open:` the working set. Ask chips review that body. Public `?id=` 404.
-  Opening `live-document` / `live-inbox` there also offers Download
-  generated .docx / unsent .eml (same loopback bytes as `/document` and
-  `/inbox`). The open file leads the page with This session files as tabs.
+  Opening `live-document` / `live-inbox` / `live-security` there also offers
+  Download generated .docx / unsent .eml / review.md (same loopback bytes
+  as `/document`, `/inbox`, `/security`; never Act, never send, never
+  approval). The open file leads the page with This session files as tabs.
   Home theater cards include Open in workspace.
 - Loopback `/` paints the live teach path, meeting say-this, Today
   plate, and filed inbox/Word/security work cards from `/api/home`
@@ -74,6 +75,9 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - Loopback GET `/api/inbox.eml` builds an unsent RFC822 draft in memory
   (never send, never Act). Public `/api/inbox.eml` stays 404. Cue still
   says not sent. P-05 stays parked.
+- Loopback GET `/api/security.md` builds a redacted review in memory
+  (never approval, never Act, no disk walk). Public `/api/security.md`
+  stays 404. Cue still says not approval.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
 ## Traps

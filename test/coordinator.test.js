@@ -748,6 +748,70 @@ function test(name, fn) {
     await c.close();
   });
 
+  await test("loopback security.md is a generated review and never approval", async () => {
+    const { securityAssist } = require("../electron/netie/coworker-desks");
+    const c = createCoordinator({ clock: () => 13 });
+    const on = await c.listen({ host: "127.0.0.1", port: 0 });
+    const port = on.address.port;
+    const miss = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/security.md" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(miss.status, 404);
+    const missJson = JSON.parse(miss.body.toString("utf8"));
+    assert.strictEqual(missJson.act, false);
+    assert.strictEqual(missJson.exec, false);
+    assert.strictEqual(missJson.approve, false);
+    const review = securityAssist({
+      text: "security review this session",
+      files: [{ name: ".env", body: "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n" }],
+    });
+    c.workspace.put({
+      id: "live-security",
+      desk: "security",
+      title: review.title,
+      body: review.deliverable,
+      cue: review.cue,
+      preview: review.preview,
+      findings: review.findings,
+    });
+    const opened = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/workspace?id=live-security" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(opened.status, 200);
+    assert.strictEqual(opened.body.act, false);
+    assert.strictEqual(opened.body.exec, false);
+    assert.strictEqual(opened.body.artifact.desk, "security");
+    const hit = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/security.md" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () =>
+          resolve({
+            status: res.statusCode,
+            type: String(res.headers["content-type"] || ""),
+            disp: String(res.headers["content-disposition"] || ""),
+            body: Buffer.concat(chunks).toString("utf8"),
+          })
+        );
+      }).on("error", reject);
+    });
+    assert.strictEqual(hit.status, 200);
+    assert.match(hit.type, /markdown/);
+    assert.match(hit.disp, /pointer-review\.md/);
+    assert.match(hit.body, /> approve: never/);
+    assert.match(hit.body, /aws-access-key/);
+    assert.doesNotMatch(hit.body, /AKIAIOSFODNN7EXAMPLE/);
+    await c.close();
+  });
+
   console.log(`\n${pass} passed, ${fails.length} failed`);
   process.exit(fails.length ? 1 : 0);
 })();

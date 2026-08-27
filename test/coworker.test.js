@@ -8,6 +8,8 @@ const {
   deskGrounding,
   canActOnline,
   securityAssist,
+  securityReportText,
+  buildSecurityReport,
   teachAssist,
   inboxAssist,
   inboxDraftText,
@@ -414,7 +416,10 @@ test("security assist ships a review, scans injected files, and never self-appro
   assert.strictEqual(review.id, "live-security");
   assert.strictEqual(review.cueKind, "warn");
   assert.match(review.cue, /not approval/);
+  assert.match(review.preview, /no injected secrets/);
+  assert.match(review.preview, /still not approval/);
   assert.match(review.deliverable, /fixer is not the only checker/);
+  assert.match(review.deliverable, /> approve: never/);
   assert.match(review.deliverable, /will not execute/);
   assert.match(review.deliverable, /does not scan disk/i);
   assert.doesNotMatch(review.deliverable, /_approved/);
@@ -432,6 +437,7 @@ test("security assist ships a review, scans injected files, and never self-appro
   assert.ok(leak.findings.length >= 1);
   assert.match(leak.cue, /do not approve/);
   assert.strictEqual(leak.cueKind, "warn");
+  assert.match(leak.preview, /\.env:/);
   assert.match(leak.deliverable, /aws-access-key/);
   assert.match(leak.deliverable, /AKIA\*\*\*\*/);
   assert.doesNotMatch(leak.deliverable, /AKIAIOSFODNN7EXAMPLE/);
@@ -455,6 +461,22 @@ test("security assist ships a review, scans injected files, and never self-appro
   assert.match(main, /securityAssist/);
   assert.match(main, /sessionScanFiles/);
   assert.doesNotMatch(main.slice(main.indexOf("function sessionScanFiles"), main.indexOf("async function runDeskAssist")), /readdir|readFileSync/);
+});
+
+test("security report is a generated review and never approval", () => {
+  assert.strictEqual(securityReportText({ body: "from body", deliverable: "from deliv" }), "from body");
+  assert.strictEqual(securityReportText(null), "");
+  assert.strictEqual(buildSecurityReport("").ok, false);
+  const built = buildSecurityReport("findings only");
+  assert.ok(built.ok);
+  assert.match(built.buffer.toString("utf8"), /> approve: never/);
+  assert.match(built.buffer.toString("utf8"), /findings only/);
+  const stamped = buildSecurityReport("# Security review\n\n> act: never\n\nhits");
+  const stampedText = stamped.buffer.toString("utf8");
+  assert.match(stampedText, /> approve: never/);
+  assert.match(stampedText, /> act: never/);
+  const keep = buildSecurityReport("# Security review\n\n> approve: never\n\nalready");
+  assert.strictEqual((keep.buffer.toString("utf8").match(/> approve: never/gi) || []).length, 1);
 });
 
 test("teach assist never invents POINT coordinates and never acts", () => {
@@ -1409,6 +1431,10 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /stroke:/);
   assert.match(hostApp, /paintChrome/);
   assert.match(hostApp, /setFinishedDownloads/);
+  assert.match(hostApp, /report-download/);
+  assert.match(hostApp, /\/api\/security\.md/);
+  assert.match(hostApp, /\/workspace\?id=live-security/);
+  assert.match(hostApp, /Not approval/);
   assert.match(hostApp, /Open in workspace/);
   assert.match(hostApp, /hitTeachBox/);
   assert.match(hostApp, /i clicked/);
@@ -1416,6 +1442,9 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /Finished file/);
   assert.match(hostApp, /paintOpenFileTabs/);
   assert.match(hostApp, /open-file-tab/);
+  const hostWorkspace = fs.readFileSync(path.join(__dirname, "..", "host", "workspace.html"), "utf8");
+  assert.match(hostWorkspace, /id="report-download"/);
+  assert.match(fs.readFileSync(path.join(__dirname, "..", "host", "security.html"), "utf8"), /id="report-download"/);
   assert.match(hostApp, /live-cue-next/);
   assert.match(hostApp, /live-cue-captions/);
   assert.match(hostApp, /Live:/);

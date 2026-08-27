@@ -1290,6 +1290,7 @@ function securityAssist({ text, files } = {}) {
     "# Security review",
     "",
     "> act: never",
+    "> approve: never",
     "> fixer is not the only checker",
     "> no Cortex gate => no OS actions",
     "> scan: injected files only (no disk walk)",
@@ -1330,6 +1331,13 @@ function securityAssist({ text, files } = {}) {
       : "no injected secrets - still not approval",
     cueKind: "warn",
     findings,
+    preview: findings.length
+      ? findings
+          .slice(0, 3)
+          .map((row) => `${row.file}: ${row.kind}`)
+          .join("; ")
+          .slice(0, 400)
+      : "no injected secrets - still not approval",
     deliverable,
   };
 }
@@ -2057,6 +2065,28 @@ function inboxAssist({ text, transcript } = {}) {
     preview: String(draft || "").slice(0, 400),
     deliverable,
   };
+}
+
+function securityReportText(artifact) {
+  if (!artifact || typeof artifact !== "object") return "";
+  return String(artifact.body || artifact.deliverable || "").trim().slice(0, 8000);
+}
+
+/**
+ * Build a redacted security review in memory. Never approves. Never Acts.
+ * Loopback /security can download this; public catalog stays 404.
+ */
+function buildSecurityReport(text) {
+  const body = String(text || "").replace(/\r\n/g, "\n").trim();
+  if (!body) return { ok: false, reason: "no security review" };
+  let report = body;
+  if (!/> approve: never/i.test(report)) {
+    report = /^# Security review\b/i.test(report)
+      ? report.replace(/^# Security review[^\n]*\n?/, "# Security review\n\n> approve: never\n")
+      : "# Security review\n\n> approve: never\n\n" + report;
+  }
+  const buffer = Buffer.from(report, "utf8");
+  return { ok: true, buffer, bytes: buffer.length };
 }
 
 function inboxDraftText(artifact) {
@@ -3084,6 +3114,8 @@ module.exports = {
   groundMeetingLine,
   MEETING_LLM_MS,
   securityAssist,
+  securityReportText,
+  buildSecurityReport,
   teachAssist,
   inboxAssist,
   inboxDraftText,

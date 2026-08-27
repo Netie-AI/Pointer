@@ -153,7 +153,8 @@ floating LIVE bar). Compact HUD falls back to the stored meeting ring
 when STT is quiet. Loopback host chrome paints the same Live captions
 and shows Click/Type in on `/teach` (not `Next: 1 of 3`). Loopback
 `/workspace?id=` opens the file: live-document downloads the generated
-.docx, live-inbox the unsent .eml. The open file leads that page with This session files as tabs.
+.docx, live-inbox the unsent .eml, live-security the generated review
+(never approval). The open file leads that page with This session files as tabs.
 Home work cards link Open in
 workspace. Loopback `/workspace` This computer dock Run POSTs `/api/workspace/exec`
 and always fails closed (P-06). Public catalog shows the same refuse.
@@ -161,6 +162,8 @@ Loopback GET `/api/document.docx` returns a generated Word package from
 the live draft (never Act, never Word.app). Public `/api/document.docx`
 stays 404. Cue still says not a .docx. Loopback GET `/api/inbox.eml`
 returns an unsent RFC822 draft (never send). Public `/api/inbox.eml`
-stays 404. Cue still says not sent.
+stays 404. Cue still says not sent. Loopback GET `/api/security.md`
+returns a redacted review (never approval). Public `/api/security.md`
+stays 404. Cue still says not approval.
 Public POST
 `/api/ask` stays 404.

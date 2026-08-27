@@ -1,3 +1,10 @@
+## 2026-08-27 - Loopback /security downloads a generated review
+
+Loopback GET `/api/security.md` returns a redacted markdown review from
+the live security desk (never approval, never Act, no disk walk). Empty
+review is 404. Public catalog stays 404. Cue still says not approval.
+P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Workspace open file keeps This session as tabs
 
 Loopback `/workspace?id=` paints This session files as tabs on the open

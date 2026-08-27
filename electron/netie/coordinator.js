@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
-const { catalog, todayAssist, sessionBundle, advanceLiveTeach, frameLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, meetingCaptions, teachWalkPath, teachActionCue, documentDraftText, inboxDraftText, buildEml } = require("./coworker-desks");
+const { catalog, todayAssist, sessionBundle, advanceLiveTeach, frameLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, meetingCaptions, teachWalkPath, teachActionCue, documentDraftText, inboxDraftText, securityReportText, buildEml, buildSecurityReport } = require("./coworker-desks");
 const { parsePoints } = require("./point-overlay");
 const { buildDocx } = require("./word-coworker");
 
@@ -148,7 +148,7 @@ function createCoordinator(opts = {}) {
         avoid: desk === "meeting" && got.ok ? String(got.artifact.avoid || "") : "",
         findings: desk === "security" && got.ok && Array.isArray(got.artifact.findings) ? got.artifact.findings.slice(0, 12) : [],
         preview:
-          got.ok && (desk === "inbox" || desk === "document")
+          got.ok && (desk === "inbox" || desk === "document" || desk === "security")
             ? String(got.artifact.preview || "").slice(0, 600)
             : "",
         advance: desk === "teach" && got.ok && canAdvanceTeach(got.artifact.live),
@@ -188,7 +188,7 @@ function createCoordinator(opts = {}) {
       avoid: desk === "meeting" && got.ok ? String(got.artifact.avoid || "") : "",
       findings: desk === "security" && got.ok && Array.isArray(got.artifact.findings) ? got.artifact.findings.slice(0, 12) : [],
       preview:
-        got.ok && (desk === "inbox" || desk === "document")
+        got.ok && (desk === "inbox" || desk === "document" || desk === "security")
           ? String(got.artifact.preview || "").slice(0, 600)
           : "",
     };
@@ -367,6 +367,22 @@ function createCoordinator(opts = {}) {
       res.writeHead(200, {
         "content-type": "message/rfc822",
         "content-disposition": 'attachment; filename="pointer-draft.eml"',
+      });
+      res.end(built.buffer);
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/security.md") {
+      const got = workspace.get("live-security");
+      const text = securityReportText(got.ok ? got.artifact : null);
+      const built = buildSecurityReport(text);
+      if (!built.ok) {
+        res.writeHead(404, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, act: false, exec: false, approve: false, reason: built.reason || "no security review" }));
+        return;
+      }
+      res.writeHead(200, {
+        "content-type": "text/markdown; charset=utf-8",
+        "content-disposition": 'attachment; filename="pointer-review.md"',
       });
       res.end(built.buffer);
       return;

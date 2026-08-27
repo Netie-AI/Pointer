@@ -24,10 +24,11 @@
    Type in / Look at. A tap on the current BOX is Got it (Ask, never Act).
    Overlay Draw stores a freehand BOX. Cap 8. Tiny boxes fail closed at 0.4%.
    Compact HUD `cueDisplay` for `point` strips `N of M`.
-   This session links `/workspace?id=` to the live document or inbox file
-   and shows Download generated .docx / unsent .eml there. The open file
-   leads the `/workspace` page with This session files as tabs. Home theater
-   cards include Open in workspace. Public those paths stay 404.
+   This session links `/workspace?id=` to the live document, inbox, or
+   security file and shows Download generated .docx / unsent .eml /
+   review.md there (never approval). The open file leads `/workspace`
+   with This session files as tabs. Home theater cards include Open in
+   workspace. Public those paths stay 404.
    `/workspace` Run is a named refuse (P-06). Public catalog empty.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 

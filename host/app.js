@@ -241,16 +241,21 @@ function setFinishedDownloads(art, flags) {
   const desk = String((art && art.desk) || "").toLowerCase();
   const id = String((art && art.id) || "").toLowerCase();
   const hasDraft = Boolean(String((art && art.preview) || "").trim()) && !localFirst && !exec;
+  const hasReview =
+    Boolean(String((art && (art.body || art.deliverable || art.preview)) || "").trim()) && !localFirst && !exec;
   const showDocx = hasDraft && (desk === "document" || id === "live-document");
   const showEml = hasDraft && (desk === "inbox" || id === "live-inbox");
+  const showReport = hasReview && (desk === "security" || id === "live-security");
   const docxBtn = document.getElementById("docx-download");
   const emlBtn = document.getElementById("eml-download");
+  const reportBtn = document.getElementById("report-download");
   if (docxBtn) docxBtn.hidden = !showDocx;
   if (emlBtn) emlBtn.hidden = !showEml;
+  if (reportBtn) reportBtn.hidden = !showReport;
   const kick = document.getElementById("open-file-kicker");
   if (kick) {
-    kick.hidden = !(showDocx || showEml);
-    kick.textContent = showDocx ? "Finished file" : showEml ? "Unsent file" : "";
+    kick.hidden = !(showDocx || showEml || showReport);
+    kick.textContent = showDocx ? "Finished file" : showEml ? "Unsent file" : showReport ? "Not approval" : "";
   }
 }
 
@@ -1352,7 +1357,7 @@ function paintDocumentCard(root, m, href) {
   paintWorkCard(root, "work-document", "Word draft", preview || cue, "not a .docx", href);
 }
 
-function paintSecurityCard(root, m) {
+function paintSecurityCard(root, m, href) {
   if (!root || !m || m.desk !== "security" || m.localFirst) return;
   const hits = findingItems(m);
   const cue = String((m && m.cue) || "").trim();
@@ -1380,6 +1385,12 @@ function paintSecurityCard(root, m) {
   const foot = el("p", "work-card-foot");
   foot.textContent = "do not approve";
   card.appendChild(foot);
+  if (href) {
+    const a = el("a", "work-card-open");
+    a.href = href;
+    a.textContent = "Open in workspace";
+    card.appendChild(a);
+  }
   root.appendChild(card);
 }
 
@@ -1388,7 +1399,7 @@ function paintWorkRail(root, rooms) {
   const rail = el("div", "work-rail");
   paintInboxCard(rail, (rooms && rooms.inbox) || {}, "/workspace?id=live-inbox");
   paintDocumentCard(rail, (rooms && rooms.document) || {}, "/workspace?id=live-document");
-  paintSecurityCard(rail, (rooms && rooms.security) || {});
+  paintSecurityCard(rail, (rooms && rooms.security) || {}, "/workspace?id=live-security");
   if (rail.childNodes.length) root.appendChild(rail);
 }
 
@@ -1670,6 +1681,26 @@ if (emlDownload) {
         const a = el("a");
         a.href = url;
         a.download = "pointer-draft.eml";
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(function () {});
+  });
+}
+
+const reportDownload = document.getElementById("report-download");
+if (reportDownload) {
+  reportDownload.addEventListener("click", function () {
+    fetch("/api/security.md")
+      .then(function (r) {
+        if (!r.ok) throw new Error("no review");
+        return r.blob();
+      })
+      .then(function (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = el("a");
+        a.href = url;
+        a.download = "pointer-review.md";
         a.click();
         URL.revokeObjectURL(url);
       })
