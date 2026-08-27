@@ -98,3 +98,5 @@ never Act); tray Frame stays capture for Act. Loopback `/teach` shows
 display percents (never invented control coords). Live Next / Then /
 Got it stay in the top cue bar when chat is compact. Meeting Heard lists
 dates and amounts from the ring (`Friday / $40k`) in HUD and `/meeting`.
+Meeting spawn files inbox + Word follow-ons via `publishBrief` (never
+Act, never jumps the HUD cue off They asked / Heard).

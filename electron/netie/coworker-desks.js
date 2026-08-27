@@ -1111,11 +1111,37 @@ function spawnCoworker({ text, mode } = {}) {
     note: [
       `${desk.label} coworker spawned.`,
       `Job: ${job.slice(0, 80)}.`,
-      "It will ship a brief behind the LIVE bar.",
+      desk.id === "meeting"
+        ? "It will ship a recap plus an unsent follow-up and a Word draft behind the LIVE bar."
+        : "It will ship a brief behind the LIVE bar.",
       "Will not Act. No Cortex gate => no OS actions.",
       "workspace.exec stays refused (P-06).",
     ].join(" "),
   };
+}
+
+/**
+ * Meeting spawn bundle. Recap stays the live cue; follow-ons persist as
+ * workspace artifacts only. Inbox is never sent (P-05). Document is not
+ * a .docx without Cortex. Today/Teach/Security spawn does not invent
+ * mail or Word. Never Acts.
+ */
+function spawnFollowOns(assist, extra = {}) {
+  if (!assist || !assist.ok || assist.act) return [];
+  if (assist.desk !== "meeting") return [];
+  const transcript = extra.transcript || extra.lines || "";
+  const out = [];
+  const inbox = inboxAssist({
+    text: "draft a follow-up email from this meeting",
+    transcript,
+  });
+  if (inbox.ok && !inbox.act) out.push(inbox);
+  const doc = documentAssist({
+    text: "write this recap in Word",
+    source: assist.deliverable,
+  });
+  if (doc.ok && !doc.act) out.push(doc);
+  return out;
 }
 
 /**
@@ -1405,6 +1431,7 @@ module.exports = {
   documentAssist,
   wantsSpawn,
   spawnCoworker,
+  spawnFollowOns,
   suggestsFromAssist,
   liveMeetingUpdate,
   createLiveMeetingPump,

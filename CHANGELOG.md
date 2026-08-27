@@ -1,3 +1,10 @@
+## 2026-08-27 - Meeting spawn files mail and Word drafts
+
+Spawn of a meeting recap also ships an unsent follow-up and a Word
+draft as workspace artifacts. HUD cue stays on They asked / Heard.
+Never sends (P-05). Never a .docx without Cortex. Never Acts. P-06
+stays parked.
+
 ## 2026-08-27 - Meeting Heard strip from the ring
 
 Live meeting extracts dates and amounts from the transcript into a Heard

@@ -14,6 +14,7 @@ const {
   documentAssist,
   wantsSpawn,
   spawnCoworker,
+  spawnFollowOns,
   suggestsFromAssist,
   liveMeetingUpdate,
   createLiveMeetingPump,
@@ -553,12 +554,14 @@ test("spawn coworker never acts and never claims the pointer-act lane", () => {
   const recap = spawnCoworker({ text: "spawn a coworker to recap this meeting" });
   assert.strictEqual(recap.desk, "meeting");
   assert.match(recap.job, /recap this meeting/);
+  assert.match(recap.note, /unsent follow-up/);
   assert.strictEqual(recap.act, false);
   const plate = spawnCoworker({ text: "spawn a coworker" });
   assert.ok(plate.ok);
   assert.strictEqual(plate.desk, "today");
   assert.match(plate.job, /on my plate/);
   assert.strictEqual(plate.act, false);
+  assert.doesNotMatch(plate.note, /unsent follow-up/);
   const fs = require("fs");
   const path = require("path");
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
@@ -570,6 +573,46 @@ test("spawn coworker never acts and never claims the pointer-act lane", () => {
   assert.doesNotMatch(spawnAsk, /claim\("pointer-act"/);
   const job = main.slice(main.indexOf("function enqueueCoworkerJob"), main.indexOf("ipcMain.handle(\"hud:bgList\""));
   assert.match(job, /spawn\.job/);
+  assert.doesNotMatch(job, /claim\("pointer-act"/);
+  assert.doesNotMatch(job, /driver\./);
+});
+
+test("meeting spawn follow-ons ship inbox and Word drafts without acting", () => {
+  const transcript =
+    "system: Can you send the deck Friday for $40k?\nmic: I will send it Friday.\nmic: We decided to ship Friday.";
+  const recap = meetingAssist({ transcript, question: "recap this meeting" });
+  assert.strictEqual(recap.ok, true);
+  assert.strictEqual(recap.desk, "meeting");
+  assert.strictEqual(recap.act, false);
+  const follows = spawnFollowOns(recap, { transcript });
+  assert.strictEqual(follows.length, 2);
+  assert.ok(follows.every((row) => row.ok && row.act === false));
+  const desks = follows.map((row) => row.desk);
+  assert.ok(desks.includes("inbox"));
+  assert.ok(desks.includes("document"));
+  const mail = follows.find((row) => row.desk === "inbox");
+  assert.strictEqual(mail.id, "live-inbox");
+  assert.match(mail.deliverable, /not sent/i);
+  assert.match(mail.deliverable, /will not send/);
+  assert.match(mail.deliverable, /send it Friday/);
+  const doc = follows.find((row) => row.desk === "document");
+  assert.strictEqual(doc.id, "live-document");
+  assert.strictEqual(doc.skipLlm, true);
+  assert.match(doc.deliverable, /not a \.docx/);
+  assert.match(doc.deliverable, /send it Friday/);
+  assert.strictEqual(spawnFollowOns(todayAssist({ question: "what's on my plate" })).length, 0);
+  const walk = teachAssist({ text: "walk me through this on my screen" });
+  assert.strictEqual(spawnFollowOns(walk).length, 0);
+  const scan = securityAssist({ text: "security review this session" });
+  assert.strictEqual(spawnFollowOns(scan).length, 0);
+  const fs = require("fs");
+  const path = require("path");
+  const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
+  assert.match(main, /spawnFollowOns/);
+  const job = main.slice(main.indexOf("function enqueueCoworkerJob"), main.indexOf('ipcMain.handle("hud:bgList"'));
+  assert.match(job, /spawnFollowOns/);
+  assert.match(job, /publishBrief\(follow\)/);
+  assert.doesNotMatch(job, /publishLiveCoworker\(follow\)/);
   assert.doesNotMatch(job, /claim\("pointer-act"/);
   assert.doesNotMatch(job, /driver\./);
 });

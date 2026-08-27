@@ -162,7 +162,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
-const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock, nextTeachStep, teachAdvance, FRAME_TEACH_TEXT, shouldTeachFramedRegion } = require("./netie/coworker-desks");
+const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, spawnFollowOns, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock, nextTeachStep, teachAdvance, FRAME_TEACH_TEXT, shouldTeachFramedRegion } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -2973,6 +2973,11 @@ function enqueueCoworkerJob(message, extraTranscript, spawn) {
       const assist = await runDeskAssist(job, extraTranscript);
       if (assist && assist.ok) {
         publishLiveCoworker(assist);
+        for (const follow of spawnFollowOns(assist, {
+          transcript: heardTranscript(extraTranscript),
+        })) {
+          publishBrief(follow);
+        }
         const pointed = parsePoints(assist.deliverable);
         sendHud({
           type: "answer",
