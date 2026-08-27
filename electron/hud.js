@@ -15,6 +15,7 @@ const btnSystem = $("btn-system");
 const btnPause = $("btn-pause");
 const recLabel = $("rec-label");
 const notesChip = $("notes-chip");
+const privacyChip = $("privacy-chip");
 const settingsMenu = $("settings-menu");
 const nodToast = $("nod-toast");
 const roulettePanel = $("roulette-panel");
@@ -311,6 +312,17 @@ function applyModeUi(mode, notesPath) {
     notesChip.title = notesPath;
   }
   if (appMode !== "meeting") applySuggest("");
+}
+
+function applyPrivacy(privacy) {
+  if (!privacyChip) return;
+  const local = !privacy || privacy.local !== false;
+  const text = privacy && privacy.text ? String(privacy.text) : "On device";
+  privacyChip.textContent = text;
+  privacyChip.classList.toggle("off-device", !local);
+  privacyChip.title = local
+    ? "STT and LLM stay on this machine"
+    : "Audio or chat is leaving this machine";
 }
 
 function applySuggest(text, opts = {}) {
@@ -1451,6 +1463,7 @@ function offerCleanup(start, end, raw, cleaned) {
 function onHudEvent(event) {
   if (!event?.type) return;
   if (event.type === "mode") applyModeUi(event.mode, event.notesPath);
+  if (event.type === "privacy") applyPrivacy(event);
   if (event.type === "nod-wait") nodToast.classList.toggle("show", event.on !== false);
   if (event.type === "plan-running") setAgentBusy(event.on !== false);
   if (event.type === "transcript") {
@@ -1618,6 +1631,7 @@ window.__netieOnEvent = onHudEvent;
 
 invoke("hud:ready").then(async (info) => {
   if (info?.mode) applyModeUi(info.mode, info.notesPath);
+  if (info?.privacy) applyPrivacy(info.privacy);
   await loadSettings();
   if (info?.listen) {
     listening = true;

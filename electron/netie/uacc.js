@@ -126,6 +126,15 @@ function detectUacc(opts = {}) {
   return last;
 }
 
+function privacyLabel(opts = {}) {
+  const sttLocal = opts.sttLocal !== false;
+  const llmLocal = opts.llmLocal !== false;
+  if (sttLocal && llmLocal) return { local: true, text: "On device" };
+  if (!sttLocal && !llmLocal) return { local: false, text: "STT+LLM leave device" };
+  if (!sttLocal) return { local: false, text: "STT leaves device" };
+  return { local: false, text: "LLM leaves device" };
+}
+
 function computerStatus(opts = {}) {
   const captureVisible = opts.captureVisible === true;
   const uacc = opts.uacc || detectUacc(opts);
@@ -167,6 +176,10 @@ function computerStatus(opts = {}) {
       local: !opts.llm || opts.llm.local !== false,
       model: String((opts.llm && opts.llm.model) || "gemini-2.0-flash").slice(0, 80),
     },
+    privacy: privacyLabel({
+      sttLocal: !opts.stt || opts.stt.local !== false,
+      llmLocal: !opts.llm || opts.llm.local !== false,
+    }),
     scribe: {
       available: opts.scribeAvailable === true || opts.actAvailable === true,
       gated: true,
@@ -329,6 +342,7 @@ module.exports = {
   detectUacc,
   parseProbe,
   computerStatus,
+  privacyLabel,
   computerObserve,
   publicWindow,
   publicScreenshot,

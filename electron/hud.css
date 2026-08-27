@@ -423,6 +423,16 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .timer, .answer-meta { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .notes-chip { display: none; color: var(--good); font-size: 10px; font-weight: 700; background: transparent; border: 0; padding: 0; cursor: pointer; }
 .mode-transcribe .notes-chip, .mode-meeting .notes-chip { display: inline; }
+.privacy-chip {
+  display: inline;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.privacy-chip.off-device { color: var(--accent); }
 
 .wave {
   display: flex; width: 44px; height: 22px; align-items: flex-end; justify-content: center; gap: 2.5px;

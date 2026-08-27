@@ -6,6 +6,7 @@ const {
   detectUacc,
   parseProbe,
   computerStatus,
+  privacyLabel,
   computerObserve,
 } = require("../electron/netie/uacc");
 const { RECIPES, matchRecipe } = require("../electron/netie/recipes");
@@ -111,6 +112,8 @@ function test(name, fn) {
     assert.strictEqual(shown.stt.local, true);
     assert.strictEqual(shown.llm.local, true);
     assert.strictEqual(shown.llm.model, "gemini-2.0-flash");
+    assert.strictEqual(shown.privacy.local, true);
+    assert.strictEqual(shown.privacy.text, "On device");
     assert.strictEqual(shown.scribe.language, "English");
     assert.ok(shown.drive.instructions.includes("POST /api/computer {\"mode\":\"scribe\"}"));
     assert.strictEqual(shown.scribe.available, true);
@@ -157,6 +160,38 @@ function test(name, fn) {
     assert.strictEqual(live.llm.local, false);
     assert.strictEqual(live.llm.url, "https://llm.example.com/v1");
     assert.strictEqual(live.llm.model, "openai/gpt-4o");
+    assert.strictEqual(live.privacy.local, false);
+    assert.strictEqual(live.privacy.text, "STT+LLM leave device");
+  });
+
+  await test("privacyLabel names which hop leaves the device", () => {
+    assert.deepStrictEqual(privacyLabel({}), { local: true, text: "On device" });
+    assert.deepStrictEqual(privacyLabel({ sttLocal: true, llmLocal: true }), {
+      local: true,
+      text: "On device",
+    });
+    assert.deepStrictEqual(privacyLabel({ sttLocal: false, llmLocal: true }), {
+      local: false,
+      text: "STT leaves device",
+    });
+    assert.deepStrictEqual(privacyLabel({ sttLocal: true, llmLocal: false }), {
+      local: false,
+      text: "LLM leaves device",
+    });
+    assert.deepStrictEqual(privacyLabel({ sttLocal: false, llmLocal: false }), {
+      local: false,
+      text: "STT+LLM leave device",
+    });
+    const sttOnly = computerStatus({
+      stt: { url: "https://stt.example.com", local: false },
+      llm: { url: "http://127.0.0.1:5000", local: true },
+    });
+    assert.strictEqual(sttOnly.privacy.text, "STT leaves device");
+    const llmOnly = computerStatus({
+      stt: { url: "http://127.0.0.1:8766", local: true },
+      llm: { url: "https://llm.example.com/v1", local: false },
+    });
+    assert.strictEqual(llmOnly.privacy.text, "LLM leaves device");
   });
 
   await test("computer.observe reports visibility without leaking clicks", () => {

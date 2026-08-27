@@ -1,6 +1,6 @@
 ---
-keywords: UACC, captureVisible, computer.observe, screenshot, clipboard, PATH overlay, computer.act, chain, captureNowForAsk, Scribe, delivery, IBM Plex, DR-0005
-main_idea: Founder DR-0005 makes Pointer screenshotable, ships UACC READ skills, loopback computer.status/observe/act (PNG + clipboard on observe), chained local verbs, Ask live crop, remembered-window dictation, Scribe, and PATH teach strokes. OpenWillow wholesale remains P-04.
+keywords: UACC, captureVisible, computer.observe, screenshot, clipboard, PATH overlay, meeting recap, followups, pending scribe, retry, computer.act, chain, captureNowForAsk, Scribe, delivery, IBM Plex, DR-0005, privacy chip
+main_idea: Screenshotable HUD, loopback act+observe, chained local verbs, Ask live crop, Scribe retry/pending dictation, PATH strokes, Cluely recap/follow-ups plus live notes API, honest on-device vs off-device privacy chip
 ---
 
 # UACC detectable HUD (DR-0005)
@@ -11,7 +11,9 @@ Shipped: settings v3 captureVisible=true; uacc.js skill catalog; GET/POST /api/c
 
 Observe PNG/clipboard: live `computer.observe` captures `captureDisplayCrop` when `screenshot:true` and `driver.clipboardGet` when `clipboard:true`. Loopback `GET /api/observe?screenshot=1&clipboard=1` forwards those flags. Clipboard is tagged untrusted data. PATH tokens draw click-through polylines. Overlay now fires for LINE/PATH-only answers, not just POINT.
 
-Meeting: Recap and Follow-ups pills in fixed top chrome. `computer.meeting_assist` `kind` say/recap/followups. `GET /api/meeting?notes=1` returns live notes as untrusted data (no Cortex hop).
+Meeting: Recap and Follow-ups pills in fixed top chrome. `computer.meeting_assist` `kind` say/recap/followups. `GET /api/meeting?notes=1` returns live notes as untrusted data (no Cortex hop). Copy recap and `GET /api/meeting?recap=1` share the last Recap from main.
+
+Privacy chip: `#privacy-chip` in fixed top chrome names On device / STT leaves / LLM leaves / STT+LLM leave. Empty STT/LLM URLs resolve to loopback before labeling. `computer.status.privacy` matches. Not an orb.
 
 Scribe pending: failed rewrite keeps transcript+hwnd. Retry re-runs; Paste as-is delivers raw dictation. `GET /api/scribe?pending=1`.
 

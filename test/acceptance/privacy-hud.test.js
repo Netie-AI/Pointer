@@ -119,6 +119,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(html.includes('id="btn-recap"'), "meeting Recap stays in fixed top chrome");
       assert.ok(html.includes('id="btn-copy-notes"'), "Copy notes stays in fixed top chrome");
       assert.ok(html.includes('id="btn-copy-recap"'), "Copy recap stays in fixed top chrome");
+      assert.ok(html.includes('id="privacy-chip"'), "privacy chip stays in fixed top chrome");
       assert.ok(html.includes('id="btn-scribe-retry"'), "Scribe Retry stays in fixed top chrome");
       assert.ok(html.includes('id="btn-scribe-paste"'), "Scribe Paste as-is stays in fixed top chrome");
       const css = read("electron/hud.css");
@@ -126,6 +127,15 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/\.hud\.mode-meeting #btn-followups/.test(css), "Follow-ups is meeting-only");
       assert.ok(/\.hud\.mode-meeting #btn-copy-recap/.test(css), "Copy recap is meeting-only");
       assert.ok(/\.hud\.mode-scribe\.has-pending #btn-scribe-retry/.test(css), "Retry is pending-Scribe only");
+      assert.ok(/\.privacy-chip/.test(css), "privacy chip is fixed top chrome, not an orb");
+      assert.ok(/\.privacy-chip\.off-device/.test(css), "off-device privacy uses the accent color");
+      const js = read("electron/hud.js");
+      assert.ok(/function applyPrivacy/.test(js), "privacy events must paint the chip");
+      assert.ok(/privacyChip\.textContent = text/.test(js), "privacy label must be text, not HTML");
+      assert.ok(!/privacyChip\.innerHTML/.test(js), "privacy chip must never take HTML");
+      const main = read("electron/main.js");
+      assert.ok(/type:\s*"privacy"/.test(main), "main must push privacy to the HUD");
+      assert.ok(/privacy:\s*livePrivacy\(\)/.test(main), "hud:ready must return live privacy");
     }),
 
     T("every enquire input is labelled and reachable", async () => {

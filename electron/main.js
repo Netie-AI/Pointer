@@ -44,7 +44,7 @@ const { expandSkillsToActions, skillPreamble, describeExpansion } = require("./n
 const { createCoordinator } = require("./netie/coordinator");
 const { createMcpAbi } = require("./netie/mcp-abi");
 const { searchThenCraft, craftHint } = require("./netie/skill-search");
-const { detectUacc, computerStatus, computerObserve } = require("./netie/uacc");
+const { detectUacc, computerStatus, computerObserve, privacyLabel } = require("./netie/uacc");
 const { runComputerAct, planFromInstruction } = require("./netie/computer-act");
 const { shouldDictateIntoFocus, dictateSecureGoal } = require("./netie/dictate");
 const {
@@ -224,14 +224,7 @@ function rememberMeetingRecap(kind, text) {
   if (body) lastMeetingRecap = body;
 }
 function liveComputerStatus() {
-  const sttUrl =
-    sanitizeSttUrl(settings.get("sttUrl")) ||
-    sanitizeSttUrl(process.env.NETIE_STT_URL) ||
-    DEFAULT_SIDECAR;
-  const llmUrl =
-    sanitizeLlmUrl(settings.get("llmUrl")) ||
-    sanitizeLlmUrl(process.env.NETIE_OPENVAULT_URL) ||
-    "http://127.0.0.1:5000";
+  const loc = liveLocality();
   const llmModel =
     sanitizeLlmModel(settings.get("llmModel")) ||
     process.env.NETIE_CLICK_MODEL ||
@@ -247,8 +240,8 @@ function liveComputerStatus() {
     modeHotkey: settings.get("modeHotkey") || "Control+Alt+M",
     languageHotkey: settings.get("languageHotkey") || "Control+Alt+L",
     scribeLanguage: settings.get("scribeLanguage") || "English",
-    stt: { url: sttUrl, local: isLoopbackSttUrl(sttUrl) },
-    llm: { url: llmUrl, local: isLoopbackLlmUrl(llmUrl), model: llmModel },
+    stt: { url: loc.sttUrl, local: loc.sttLocal },
+    llm: { url: loc.llmUrl, local: loc.llmLocal, model: llmModel },
   });
 }
 
@@ -456,6 +449,33 @@ const transcriber = new Transcriber({
 });
 const notes = new NotesSession();
 const settings = new SettingsStore();
+
+function liveLocality() {
+  const described = transcriber.describe();
+  const sttUrl =
+    sanitizeSttUrl(settings.get("sttUrl")) ||
+    sanitizeSttUrl(process.env.NETIE_STT_URL) ||
+    DEFAULT_SIDECAR;
+  const llmUrl =
+    sanitizeLlmUrl(settings.get("llmUrl")) ||
+    sanitizeLlmUrl(process.env.NETIE_OPENVAULT_URL) ||
+    "http://127.0.0.1:5000";
+  const sttLocal =
+    described.engine && described.engine !== "unknown"
+      ? described.local !== false
+      : isLoopbackSttUrl(sttUrl);
+  const llmLocal = isLoopbackLlmUrl(llmUrl);
+  return { sttUrl, llmUrl, sttLocal, llmLocal };
+}
+
+function livePrivacy() {
+  return privacyLabel(liveLocality());
+}
+
+function pushPrivacy() {
+  const privacy = livePrivacy();
+  sendHudQuiet({ type: "privacy", local: privacy.local !== false, text: privacy.text });
+}
 const demoDebug = new DemoDebugTrail({ enabled: settings.get("demoDebug") === true });
 const features = new FeatureFlags({
   env: process.env,
@@ -3342,6 +3362,7 @@ ipcMain.handle("hud:ready", async () => ({
   listen: listenMic && !hudPaused,
   systemAudio: listenSystem,
   sidecar: stt.sidecarOnline,
+  privacy: livePrivacy(),
 }));
 
 ipcMain.handle("hud:ask", async (_e, payload) => {
@@ -3900,6 +3921,7 @@ ipcMain.on("hud:audioFrame", (_e, payload) => {
 
 ipcMain.handle("hud:sttStatus", async (_e, payload) => {
   await transcriber.probe(Boolean(payload && payload.force));
+  pushPrivacy();
   return transcriber.describe();
 });
 
@@ -4188,7 +4210,8 @@ ipcMain.handle("hud:setSettings", async (_e, payload) => {
   applyAutostart();
   stt.sidecarUrl =
     sanitizeSttUrl(next.sttUrl) || sanitizeSttUrl(process.env.NETIE_STT_URL) || DEFAULT_SIDECAR;
-  void transcriber.probe(true);
+  pushPrivacy();
+  void transcriber.probe(true).then(() => pushPrivacy(), () => pushPrivacy());
   registerHotkey();
   if (next.followCursor === false) stopCursorTracking();
   else startCursorTracking();

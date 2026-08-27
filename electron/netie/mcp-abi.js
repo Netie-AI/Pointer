@@ -62,7 +62,7 @@ const CATALOG = Object.freeze([
   },
   {
     name: "computer.status",
-    description: "Detectability, live mode, hotkeys, STT/LLM URL, UACC probe, delivery target, and instruction verbs.",
+    description: "Detectability, live mode, hotkeys, STT/LLM URL, on-device vs off-device, UACC probe, delivery target, and instruction verbs.",
     inputSchema: { type: "object", properties: {} },
   },
   {
