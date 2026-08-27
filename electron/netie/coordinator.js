@@ -113,24 +113,36 @@ function createCoordinator(opts = {}) {
       res.end(JSON.stringify(snapshot()));
       return;
     }
-    if (req.method === "GET" && url.pathname === "/api/computer") {
+    if (
+      req.method === "GET" &&
+      (url.pathname === "/api/computer" || url.pathname === "/api/scribe" || url.pathname === "/api/meeting")
+    ) {
       const statusFn = opts.computerStatus;
       const snap = statusFn
         ? statusFn()
         : { ok: true, detectable: false, reason: "computer status not wired" };
+      const pick = (out) => {
+        if (url.pathname === "/api/scribe") {
+          return { ok: true, detectable: Boolean(out && out.detectable), ...(out && out.scribe) };
+        }
+        if (url.pathname === "/api/meeting") {
+          return { ok: true, detectable: Boolean(out && out.detectable), ...(out && out.meeting) };
+        }
+        return out;
+      };
       const body = snap && typeof snap.then === "function" ? null : snap;
       if (body) {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify(body));
+        res.end(JSON.stringify(pick(body)));
         return;
       }
       Promise.resolve(snap).then((out) => {
         res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify(out));
+        res.end(JSON.stringify(pick(out)));
       });
       return;
     }
-    if (req.method === "POST" && (url.pathname === "/mcp" || url.pathname === "/api/computer")) {
+    if (req.method === "POST" && (url.pathname === "/mcp" || url.pathname === "/api/computer" || url.pathname === "/api/scribe" || url.pathname === "/api/meeting")) {
       const chunks = [];
       req.on("data", (c) => chunks.push(c));
       req.on("end", () => {
@@ -147,6 +159,20 @@ function createCoordinator(opts = {}) {
             jsonrpc: "2.0",
             id: body.id ?? 1,
             method: "computer.act",
+            params: body.params || body,
+          };
+        } else if (url.pathname === "/api/scribe") {
+          body = {
+            jsonrpc: "2.0",
+            id: body.id ?? 1,
+            method: "computer.scribe",
+            params: body.params || body,
+          };
+        } else if (url.pathname === "/api/meeting") {
+          body = {
+            jsonrpc: "2.0",
+            id: body.id ?? 1,
+            method: "computer.meeting_assist",
             params: body.params || body,
           };
         }

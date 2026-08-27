@@ -67,6 +67,9 @@ function readAsset(file) {
     assert.match(a.body, /127\.0\.0\.1/);
     const b = handlePublicRequest({ method: "GET", pathname: "/mcp/tools" });
     assert.strictEqual(b.status, 404);
+    assert.strictEqual(handlePublicRequest({ method: "POST", pathname: "/api/scribe" }).status, 404);
+    assert.strictEqual(handlePublicRequest({ method: "POST", pathname: "/api/meeting" }).status, 404);
+    assert.strictEqual(handlePublicRequest({ method: "GET", pathname: "/api/computer" }).status, 404);
   });
 
   await test("public fetch serves /today and style.css from host/", async () => {
@@ -86,6 +89,10 @@ function readAsset(file) {
     assert.strictEqual(res.status, 404);
     const mcp = await fetch(new Request("https://host.netie.ai/mcp", { method: "POST", body: "{}" }));
     assert.strictEqual(mcp.status, 404);
+    const scribe = await fetch(new Request("https://host.netie.ai/api/scribe", { method: "POST", body: "{}" }));
+    assert.strictEqual(scribe.status, 404);
+    const meeting = await fetch(new Request("https://host.netie.ai/api/meeting", { method: "POST", body: "{}" }));
+    assert.strictEqual(meeting.status, 404);
     const body = JSON.parse(await (await fetch(new Request("https://host.netie.ai/api/state"))).text());
     assert.strictEqual(body.localFirst, true);
   });

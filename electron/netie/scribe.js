@@ -7,8 +7,22 @@
  * never commands.
  */
 
+const SCRIBE_LANGUAGES = Object.freeze(["English", "Traditional Chinese"]);
+
+function normalizeScribeLanguage(value) {
+  const raw = String(value || "").trim();
+  if (/zh|chinese|trad/i.test(raw)) return "Traditional Chinese";
+  return "English";
+}
+
+function nextScribeLanguage(current) {
+  const now = normalizeScribeLanguage(current);
+  const i = SCRIBE_LANGUAGES.indexOf(now);
+  return SCRIBE_LANGUAGES[(i + 1) % SCRIBE_LANGUAGES.length];
+}
+
 function buildScribeRequest(input = {}) {
-  const language = String(input.language || "English").trim() || "English";
+  const language = normalizeScribeLanguage(input.language);
   const instruction = String(input.instruction || input.transcript || "").trim();
   const selected = String(input.selectedText || "").trim();
   const style = String(input.writingStyle || "").trim();
@@ -118,7 +132,59 @@ async function completeScribe(input, deps = {}) {
   return { ok: true, text, hasSelection: req.hasSelection };
 }
 
+async function runComputerScribe(params, deps = {}) {
+  const src = params && typeof params === "object" ? params : {};
+  const instruction = cleanTranscript(src.instruction || src.message || src.text || src.goal || "");
+  if (!instruction) return { ok: false, reason: "computer.scribe needs an instruction" };
+  if (typeof deps.secure !== "function") {
+    return { ok: false, blocked: true, reason: "no Cortex /dms/secure gate" };
+  }
+  const gate = await deps.secure({ text: `${scribeSecureGoal()}: ${instruction}`.slice(0, 400) });
+  if (!gate || gate.ok !== true) {
+    return {
+      ok: false,
+      blocked: true,
+      reason: (gate && (gate.reason || gate.text)) || "no Cortex /dms/secure gate",
+    };
+  }
+  let selectedText = String(src.selectedText || "").trim();
+  if (!selectedText && typeof deps.copySelection === "function") {
+    try {
+      selectedText = String((await deps.copySelection()) || "").trim();
+    } catch {
+      selectedText = "";
+    }
+  }
+  const completed = await completeScribe(
+    {
+      instruction,
+      selectedText,
+      language: typeof deps.language === "function" ? deps.language() : deps.language || src.language,
+      writingStyle: typeof deps.writingStyle === "function" ? deps.writingStyle() : deps.writingStyle || "",
+      personalContext:
+        typeof deps.personalContext === "function" ? deps.personalContext() : deps.personalContext || "",
+      hasScreenshot: Boolean(src.hasScreenshot || deps.hasScreenshot),
+    },
+    { complete: deps.complete }
+  );
+  if (!completed.ok) return completed;
+  if (typeof deps.deliver !== "function") {
+    return { ok: true, gated: true, text: completed.text, delivered: false, hasSelection: completed.hasSelection };
+  }
+  const delivered = await deps.deliver(completed.text, { replace: completed.hasSelection });
+  return {
+    ok: Boolean(delivered && delivered.ok !== false),
+    gated: true,
+    text: completed.text,
+    delivered,
+    hasSelection: completed.hasSelection,
+  };
+}
+
 module.exports = {
+  SCRIBE_LANGUAGES,
+  normalizeScribeLanguage,
+  nextScribeLanguage,
   buildScribeRequest,
   isScribeInstruction,
   scribeSecureGoal,
@@ -126,4 +192,5 @@ module.exports = {
   cleanTranscript,
   cleanScribeOutput,
   completeScribe,
+  runComputerScribe,
 };

@@ -7,7 +7,7 @@ main_idea: Founder DR-0005 makes Pointer screenshotable, ships UACC READ skills,
 
 Pointer HUD was content-protected by default, so UACC and other agents could not see it. Liquid-glass CSS also violated PRODUCT_SURFACE (no backdrop-filter on Windows Electron).
 
-Shipped: settings v3 captureVisible=true; uacc.js skill catalog; GET/POST /api/computer; MCP computer.status/observe/act; IBM Plex solid HUD; focus_hwnd delivery; Scribe mode. computer.act refuses without Cortex /dms/secure. Instruction text maps to recipes then type/click.
+Shipped: settings v3 captureVisible=true; uacc.js skill catalog; GET/POST /api/computer /api/scribe /api/meeting; MCP computer.status/observe/act/scribe/meeting_assist; IBM Plex solid HUD; focus_hwnd delivery; Scribe mode; Ctrl+Alt+Space/M/L. computer.act/scribe/meeting refuse without Cortex /dms/secure. Instruction text maps to recipes then type/click/deliver.
 
 # UACC detectable HUD (DR-0005)
 

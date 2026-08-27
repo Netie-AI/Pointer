@@ -105,6 +105,11 @@ function test(name, fn) {
     assert.strictEqual(shown.act.available, true);
     assert.strictEqual(shown.act.gated, true);
     assert.strictEqual(shown.delivery.present, false);
+    assert.strictEqual(shown.scribe.available, true);
+    assert.strictEqual(shown.scribe.gated, true);
+    assert.strictEqual(shown.scribe.api, "/api/scribe");
+    assert.strictEqual(shown.meeting.available, true);
+    assert.strictEqual(shown.meeting.api, "/api/meeting");
   });
 
   await test("computer.observe reports visibility without leaking clicks", () => {
@@ -122,6 +127,8 @@ function test(name, fn) {
     assert.ok(TOOLS.includes("computer.status"));
     assert.ok(TOOLS.includes("computer.observe"));
     assert.ok(TOOLS.includes("computer.act"));
+    assert.ok(TOOLS.includes("computer.scribe"));
+    assert.ok(TOOLS.includes("computer.meeting_assist"));
     const st = await mcp.handle({ jsonrpc: "2.0", id: 1, method: "computer.status" });
     assert.strictEqual(st.result.detectable, true);
     const act = await mcp.handle({

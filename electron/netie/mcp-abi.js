@@ -14,6 +14,8 @@ const TOOLS = Object.freeze([
   "computer.status",
   "computer.observe",
   "computer.act",
+  "computer.scribe",
+  "computer.meeting_assist",
 ]);
 
 function rpcResult(id, result) {
@@ -30,6 +32,19 @@ function createMcpAbi(opts = {}) {
   const status = opts.status;
   const observe = opts.observe;
   const act = opts.act;
+  const scribe = opts.scribe;
+  const meetingAssist = opts.meetingAssist;
+
+  async function gated(id, fn, missing, params, ctx) {
+    if (typeof fn !== "function") {
+      return rpcError(id, -32003, missing);
+    }
+    const out = await fn(params, ctx);
+    if (out && out.blocked) {
+      return rpcError(id, -32003, out.reason || "no Cortex /dms/secure gate");
+    }
+    return rpcResult(id, out);
+  }
 
   async function handle(body, ctx = {}) {
     const id = body && Object.prototype.hasOwnProperty.call(body, "id") ? body.id : null;
@@ -77,14 +92,19 @@ function createMcpAbi(opts = {}) {
         return rpcResult(id, snap);
       }
       if (method === "computer.act") {
-        if (typeof act !== "function") {
-          return rpcError(id, -32003, "computer.act needs a Cortex /dms/secure gate");
-        }
-        const out = await act(params, ctx);
-        if (out && out.blocked) {
-          return rpcError(id, -32003, out.reason || "no Cortex /dms/secure gate");
-        }
-        return rpcResult(id, out);
+        return gated(id, act, "computer.act needs a Cortex /dms/secure gate", params, ctx);
+      }
+      if (method === "computer.scribe") {
+        return gated(id, scribe, "computer.scribe needs a Cortex /dms/secure gate", params, ctx);
+      }
+      if (method === "computer.meeting_assist") {
+        return gated(
+          id,
+          meetingAssist,
+          "computer.meeting_assist needs a Cortex /dms/secure gate",
+          params,
+          ctx
+        );
       }
       return rpcError(id, -32601, `unknown tool: ${method}`);
     } catch (err) {

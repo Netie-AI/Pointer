@@ -50,15 +50,17 @@ const {
   buildScribeRequest,
   shouldScribeIntoFocus,
   scribeSecureGoal,
-  completeScribe,
   cleanTranscript,
+  runComputerScribe,
+  nextScribeLanguage,
+  normalizeScribeLanguage,
 } = require("./netie/scribe");
 const {
   snapshotTarget,
   deliverTextActions,
   publicTarget,
 } = require("./netie/delivery");
-const { buildMeetingAssist } = require("./netie/meeting");
+const { buildMeetingAssist, runMeetingAssist } = require("./netie/meeting");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
 const { shouldAcceptFrame, detectCaptureCommand } = require("./netie/capture-gate");
@@ -186,6 +188,19 @@ function liveComputerStatus() {
   });
 }
 
+async function cortexGate({ text }) {
+  const gate = await eco.secure(String(text || ""), { failClosed: true });
+  if (gate.blocked) {
+    return {
+      ok: false,
+      reason: gate.degraded
+        ? "Cortex security gate unavailable"
+        : "blocked by Cortex /dms/secure",
+    };
+  }
+  return { ok: true, safeText: gate.safeText || text };
+}
+
 const liveMcp = createMcpAbi({
   search: (goal, params) =>
     searchThenCraft(goal, {
@@ -202,22 +217,14 @@ const liveMcp = createMcpAbi({
     }),
   act: (params) =>
     runComputerAct(params, {
-      secure: async ({ text }) => {
-        const gate = await eco.secure(String(text || ""), { failClosed: true });
-        if (gate.blocked) {
-          return {
-            ok: false,
-            reason: gate.degraded
-              ? "Cortex security gate unavailable"
-              : "blocked by Cortex /dms/secure",
-          };
-        }
-        return { ok: true, safeText: gate.safeText || text };
-      },
+      secure: cortexGate,
       policy: () => settings.safetyPolicy(),
       matchRecipe,
       plan: async (instruction) => {
-        const local = planFromInstruction(instruction, { matchRecipe });
+        const local = planFromInstruction(instruction, {
+          matchRecipe,
+          target: deliveryTarget,
+        });
         if (local.ok) return local;
         const planned = await eco.planActions({
           instruction,
@@ -230,6 +237,43 @@ const liveMcp = createMcpAbi({
         return { ok: true, actions: planned.actions || [] };
       },
       execute: (actions) => executeApproved(actions, { ignoreHudMode: true }),
+    }),
+  scribe: (params) =>
+    runComputerScribe(params, {
+      secure: cortexGate,
+      language: () => normalizeScribeLanguage(settings.get("scribeLanguage")),
+      writingStyle: () => settings.get("writingStyle") || "",
+      personalContext: () => settings.get("personalContext") || "",
+      copySelection: async () => {
+        try {
+          await driver.perform({ type: "clipboard_baseline" });
+          await driver.perform({ type: "press", value: "ctrl+c" });
+          await driver.perform({ type: "wait", ms: 120 });
+          const clip = await driver.clipboardGet();
+          return String((clip && clip.text) || "").trim();
+        } catch {
+          return "";
+        }
+      },
+      complete: async (req) =>
+        eco.visionChat({
+          message: `${req.system}\n\n${req.user}`,
+          dataUrl: lastCapture && lastCapture.dataUrl,
+          hotContext: plannerContext(String((req && req.user) || "")),
+        }),
+      deliver: (text, extra) =>
+        deliverIntoTarget(text, { via: "paste", replace: Boolean(extra && extra.replace) }),
+    }),
+  meetingAssist: (params) =>
+    runMeetingAssist(params, {
+      secure: cortexGate,
+      notes: () => notes.tail(4000),
+      complete: async (assist) =>
+        eco.visionChat({
+          message: `${assist.system}\n\n${assist.user}`,
+          dataUrl: lastCapture && lastCapture.dataUrl,
+          hotContext: plannerContext(String((assist && assist.asked) || "")),
+        }),
     }),
 });
 const liveCoordinator = createCoordinator({
@@ -1343,62 +1387,69 @@ async function deliverIntoTarget(text, opts = {}) {
 async function runScribeTurn({ instruction, source = "ask" } = {}) {
   const text = cleanTranscript(instruction);
   if (!text) return { ok: false, reason: "empty scribe instruction" };
-  if (scribeSession.gated !== true) {
-    await armScribeSession();
-  }
-  if (scribeSession.gated !== true) {
-    sendHud({
-      type: "answer",
-      meta: "Scribe",
-      text: "Scribe paste is off until Cortex /dms/secure is up.",
-    });
-    return { ok: false, blocked: true, reason: "no Cortex /dms/secure gate" };
-  }
   sendHud({ type: "answer", meta: "Scribe", text: "Copying the selection, then rewriting..." });
-  try {
-    await driver.perform({ type: "clipboard_baseline" });
-    await driver.perform({ type: "press", value: "ctrl+c" });
-    await driver.perform({ type: "wait", ms: 120 });
-  } catch {
-    /* copy is best-effort; compose still works with no selection */
-  }
-  let selectedText = "";
-  try {
-    const clip = await driver.clipboardGet();
-    selectedText = String((clip && clip.text) || "").trim();
-  } catch {
-    selectedText = "";
-  }
-  const completed = await completeScribe(
+  const r = await runComputerScribe(
     {
       instruction: text,
-      selectedText,
-      writingStyle: settings.get("writingStyle") || "",
-      personalContext: settings.get("personalContext") || "",
       hasScreenshot: Boolean(lastCapture && lastCapture.dataUrl),
     },
     {
+      secure: cortexGate,
+      language: () => normalizeScribeLanguage(settings.get("scribeLanguage")),
+      writingStyle: () => settings.get("writingStyle") || "",
+      personalContext: () => settings.get("personalContext") || "",
+      copySelection: async () => {
+        try {
+          await driver.perform({ type: "clipboard_baseline" });
+          await driver.perform({ type: "press", value: "ctrl+c" });
+          await driver.perform({ type: "wait", ms: 120 });
+          const clip = await driver.clipboardGet();
+          return String((clip && clip.text) || "").trim();
+        } catch {
+          return "";
+        }
+      },
       complete: async (req) =>
         eco.visionChat({
           message: `${req.system}\n\n${req.user}`,
           dataUrl: lastCapture && lastCapture.dataUrl,
           hotContext: plannerContext(text),
         }),
+      deliver: (out, extra) =>
+        deliverIntoTarget(out, { via: "paste", replace: Boolean(extra && extra.replace) }),
     }
   );
-  if (!completed.ok) {
-    sendHud({ type: "answer", meta: "Scribe", text: completed.reason || "Scribe failed" });
-    return completed;
+  if (r.blocked) {
+    sendHud({
+      type: "answer",
+      meta: "Scribe",
+      text: "Scribe paste is off until Cortex /dms/secure is up.",
+    });
+    return r;
   }
-  const delivered = await deliverIntoTarget(completed.text, { via: "paste" });
+  if (!r.ok) {
+    sendHud({ type: "answer", meta: "Scribe", text: r.reason || "Scribe failed" });
+    return r;
+  }
+  const delivered = r.delivered;
   sendHud({
     type: "answer",
     meta: "Scribe",
-    text: delivered.ok
-      ? completed.text.slice(0, 400)
-      : `Wrote the draft but could not paste (${(delivered.results || []).map((r) => r.error).filter(Boolean).join("; ") || "no target"}).`,
+    text:
+      delivered && delivered.ok
+        ? String(r.text || "").slice(0, 400)
+        : `Wrote the draft but could not paste (${((delivered && delivered.results) || [])
+            .map((row) => row.error)
+            .filter(Boolean)
+            .join("; ") || "no target"}).`,
   });
-  return { ok: delivered.ok, text: completed.text, delivered, source };
+  return {
+    ok: Boolean(delivered && delivered.ok),
+    text: r.text,
+    delivered,
+    source,
+    blocked: r.blocked,
+  };
 }
 
 async function askBuddy({ message, dataUrl }) {
@@ -2222,6 +2273,26 @@ function registerHotkey() {
   try {
     globalShortcut.register("Control+Alt+Space", () => {
       void toggleDictateHotkey();
+    });
+  } catch {
+    /* ok */
+  }
+  // OpenWillow: Ctrl+Alt+M flips Dictation / Scribe. Snapshot the app first
+  // so the HUD pill click does not steal the paste target.
+  try {
+    globalShortcut.register("Control+Alt+M", () => {
+      const next = appMode === "scribe" ? "transcribe" : "scribe";
+      void snapshotDeliveryNow();
+      applyAppMode(next, { reason: "hotkey" });
+    });
+  } catch {
+    /* ok */
+  }
+  try {
+    globalShortcut.register("Control+Alt+L", () => {
+      const next = nextScribeLanguage(settings.get("scribeLanguage"));
+      settings.set({ scribeLanguage: next });
+      sendHudQuiet({ type: "insight", text: `Scribe language: ${next}` });
     });
   } catch {
     /* ok */

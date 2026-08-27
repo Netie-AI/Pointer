@@ -208,7 +208,8 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 /* General/Scribe are companions, not agents — no act affordance at all. */
 .hud.mode-general .act-button,
 .hud.mode-scribe .act-button { display: none; }
-.menu label input[type="text"] {
+.menu label input[type="text"],
+.menu label select {
   display: block; width: 100%; margin-top: 4px; padding: 6px 8px;
   border: 1px solid var(--line-soft); border-radius: 8px;
   background: var(--field); color: var(--text); font: inherit;

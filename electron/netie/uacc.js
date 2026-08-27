@@ -151,6 +151,16 @@ function computerStatus(opts = {}) {
           : "no Cortex /dms/secure gate",
     },
     delivery: opts.delivery || { present: false, title: "", hwnd: false },
+    scribe: {
+      available: opts.scribeAvailable === true || opts.actAvailable === true,
+      gated: true,
+      api: "/api/scribe",
+    },
+    meeting: {
+      available: opts.meetingAvailable === true || opts.actAvailable === true,
+      gated: true,
+      api: "/api/meeting",
+    },
   };
 }
 

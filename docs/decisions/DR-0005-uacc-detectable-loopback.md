@@ -33,8 +33,10 @@ arbitrary third-party MCP servers.
 3. **Loopback detectability API.** First-party MCP tools `computer.status`
    and `computer.observe` plus `GET /api/computer` on `127.0.0.1:18010`.
    `computer.act` (also `POST /api/computer`) runs Cortex `/dms/secure`
-   then reviewPlan. Consequential verbs still need `approved:true`. Public
-   `host.netie.ai` `/mcp` stays 404. Third-party MCP marketplace stays P-05.
+   then reviewPlan. Consequential verbs still need `approved:true`.
+   `computer.scribe` and `computer.meeting_assist` (`POST /api/scribe`
+   `/api/meeting`) use the same gate. Public `host.netie.ai` `/mcp` stays
+   404. Third-party MCP marketplace stays P-05.
 4. **HUD identity.** Kill `backdrop-filter` liquid glass on core HUD
    (already required by `docs/PRODUCT_SURFACE.md`). IBM Plex Serif + Sans,
    solid panels, fixed top chrome. Clicky ring / stage orb stay banned
@@ -46,5 +48,6 @@ arbitrary third-party MCP servers.
 ## Confirmation
 
 `test/uacc.test.js`, `test/mcp-abi.test.js`, `test/computer-act.test.js`,
-`test/acceptance/live-ux.test.js`, `test/acceptance/privacy-hud.test.js`,
-`test/coordinator.test.js`.
+`test/meeting.test.js`, `test/acceptance/live-ux.test.js`,
+`test/acceptance/privacy-hud.test.js`, `test/coordinator.test.js`,
+`test/host-serve.test.js`.

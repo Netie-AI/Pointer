@@ -29,7 +29,7 @@ const cleanToast = $("clean-toast");
 const cleanToastText = $("clean-toast-text");
 const clickyOrb = null; // floating Clicky hold removed — Ctrl+Shift+Space arms real OS pointer
 const peekDrop = null;
-const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify"), $("set-autosend"), $("set-cloud-stt"), $("set-follow"), $("set-capture-visible"), $("set-dictate"), $("set-scribe"), $("set-writing-style"), $("set-personal-context")];
+const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify"), $("set-autosend"), $("set-cloud-stt"), $("set-follow"), $("set-capture-visible"), $("set-dictate"), $("set-scribe"), $("set-writing-style"), $("set-personal-context"), $("set-scribe-language")];
 
 let listening = false;
 let systemAudio = false;
@@ -330,6 +330,7 @@ async function loadSettings() {
   if ($("set-scribe")) $("set-scribe").checked = settings.scribeIntoFocus !== false;
   if ($("set-writing-style")) $("set-writing-style").value = settings.writingStyle || "";
   if ($("set-personal-context")) $("set-personal-context").value = settings.personalContext || "";
+  if ($("set-scribe-language")) $("set-scribe-language").value = settings.scribeLanguage === "Traditional Chinese" ? "Traditional Chinese" : "English";
   hudSettings.autoSend = settings.autoSend === true;
   hudSettings.followCursor = settings.followCursor !== false;
   hudSettings.liveLines = Number(settings.liveLines) > 0 ? Number(settings.liveLines) : 5;
@@ -361,6 +362,7 @@ async function saveSettingsFromUi() {
       scribeIntoFocus: $("set-scribe") ? $("set-scribe").checked : true,
       writingStyle: $("set-writing-style") ? $("set-writing-style").value.trim() : "",
       personalContext: $("set-personal-context") ? $("set-personal-context").value.trim() : "",
+      scribeLanguage: $("set-scribe-language") ? $("set-scribe-language").value : "English",
     },
   });
   await loadSettings();

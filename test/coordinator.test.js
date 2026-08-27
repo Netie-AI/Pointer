@@ -102,6 +102,40 @@ function test(name, fn) {
     });
     assert.strictEqual(post.status, 200);
     assert.ok(post.body.error || post.body.result);
+
+    function postJson(pathname, payload) {
+      return new Promise((resolve, reject) => {
+        const req = http.request(
+          { host: "127.0.0.1", port, path: pathname, method: "POST" },
+          (res) => {
+            const chunks = [];
+            res.on("data", (d) => chunks.push(d));
+            res.on("end", () => resolve({
+              status: res.statusCode,
+              body: JSON.parse(Buffer.concat(chunks).toString("utf8")),
+            }));
+          }
+        );
+        req.on("error", reject);
+        req.end(JSON.stringify(payload));
+      });
+    }
+    const scribePost = await postJson("/api/scribe", { instruction: "rewrite this" });
+    assert.strictEqual(scribePost.status, 200);
+    assert.ok(scribePost.body.error);
+    const meetingPost = await postJson("/api/meeting", { notes: "ship Friday" });
+    assert.strictEqual(meetingPost.status, 200);
+    assert.ok(meetingPost.body.error);
+
+    const scribeGet = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/scribe" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      }).on("error", reject);
+    });
+    assert.strictEqual(scribeGet.ok, true);
+
     await c.close();
   });
 

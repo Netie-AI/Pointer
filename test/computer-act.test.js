@@ -222,6 +222,89 @@ function test(name, fn) {
     assert.strictEqual(publicTarget(snap).hwnd, true);
   });
 
+  await test("deliver: instruction restores the remembered hwnd then pastes", () => {
+    const { planFromInstruction } = require("../electron/netie/computer-act");
+    const plan = planFromInstruction("deliver: hello agent", {
+      target: { hwnd: "99", title: "Notepad" },
+    });
+    assert.strictEqual(plan.ok, true);
+    assert.strictEqual(plan.source, "deliver");
+    assert.strictEqual(plan.actions[0].type, "focus_hwnd");
+    assert.strictEqual(plan.actions[0].hwnd, "99");
+    assert.strictEqual(plan.actions[1].type, "clipboard_paste");
+    assert.strictEqual(plan.actions[1].value, "hello agent");
+  });
+
+  await test("computer.scribe refuses without a Cortex gate", async () => {
+    const { runComputerScribe } = require("../electron/netie/scribe");
+    const r = await runComputerScribe({ instruction: "make this formal" }, {});
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.blocked, true);
+  });
+
+  await test("computer.scribe rewrites after a green gate and can skip deliver", async () => {
+    const { runComputerScribe, nextScribeLanguage, normalizeScribeLanguage } = require("../electron/netie/scribe");
+    assert.strictEqual(normalizeScribeLanguage("zh-TW"), "Traditional Chinese");
+    assert.strictEqual(nextScribeLanguage("English"), "Traditional Chinese");
+    assert.strictEqual(nextScribeLanguage("Traditional Chinese"), "English");
+    const r = await runComputerScribe(
+      { instruction: "make this formal", selectedText: "hey" },
+      {
+        secure: async () => ({ ok: true }),
+        language: "Traditional Chinese",
+        complete: async (req) => {
+          assert.match(req.user, /Traditional Chinese/);
+          assert.match(req.user, /hey/);
+          return { text: "Hello" };
+        },
+      }
+    );
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.gated, true);
+    assert.strictEqual(r.text, "Hello");
+    assert.strictEqual(r.delivered, false);
+  });
+
+  await test("MCP computer.scribe and meeting_assist refuse without runners", async () => {
+    const mcp = createMcpAbi();
+    const scribe = await mcp.handle({
+      jsonrpc: "2.0",
+      id: 21,
+      method: "computer.scribe",
+      params: { instruction: "rewrite this" },
+    });
+    assert.ok(scribe.error);
+    assert.match(scribe.error.message, /dms\/secure|gate/i);
+    const meeting = await mcp.handle({
+      jsonrpc: "2.0",
+      id: 22,
+      method: "computer.meeting_assist",
+      params: { notes: "ship Friday" },
+    });
+    assert.ok(meeting.error);
+    assert.match(meeting.error.message, /dms\/secure|gate/i);
+  });
+
+  await test("MCP computer.scribe runs when gated", async () => {
+    const { runComputerScribe } = require("../electron/netie/scribe");
+    const mcp = createMcpAbi({
+      scribe: (params) =>
+        runComputerScribe(params, {
+          secure: async () => ({ ok: true }),
+          complete: async () => ({ text: "Drafted note" }),
+        }),
+    });
+    const r = await mcp.handle({
+      jsonrpc: "2.0",
+      id: 23,
+      method: "computer.scribe",
+      params: { instruction: "compose a note" },
+    });
+    assert.ok(r.result);
+    assert.strictEqual(r.result.ok, true);
+    assert.strictEqual(r.result.text, "Drafted note");
+  });
+
   console.log(`\n${pass} passed, ${fails.length} failed`);
   process.exit(fails.length ? 1 : 0);
 })();

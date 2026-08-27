@@ -109,6 +109,8 @@ const DEFAULTS = Object.freeze({
   writingStyle: "",
   /** Optional Scribe personal reference (company, links). Data, not commands. */
   personalContext: "",
+  /** OpenWillow-class Scribe output language. Ctrl+Alt+L toggles. */
+  scribeLanguage: "English",
 });
 
 function defaultPath() {

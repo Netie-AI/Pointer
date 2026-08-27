@@ -26,6 +26,10 @@ async function run() {
       assert.ok(/runScribeTurn/.test(main), "Scribe must complete then paste");
       assert.ok(/deliverIntoTarget/.test(main), "dictation/scribe must restore the remembered window");
       assert.ok(/Control\+Alt\+Space/.test(main), "global dictation hotkey must snapshot the current app");
+      assert.ok(/Control\+Alt\+M/.test(main), "Ctrl+Alt+M must flip transcribe and scribe");
+      assert.ok(/Control\+Alt\+L/.test(main), "Ctrl+Alt+L must toggle Scribe language");
+      assert.ok(/runComputerScribe/.test(main), "loopback computer.scribe must use the gated runner");
+      assert.ok(/runMeetingAssist/.test(main), "loopback computer.meeting_assist must use the gated runner");
       assert.ok(/buildMeetingAssist/.test(main), "meeting mode must offer Cluely-class assist");
     }),
 

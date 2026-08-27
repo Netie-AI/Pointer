@@ -2,6 +2,15 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Loopback scribe and meeting APIs for other agents
+
+MCP `computer.scribe` and `computer.meeting_assist` plus
+`POST /api/scribe` `/api/meeting` on `127.0.0.1:18010`. Same Cortex
+`/dms/secure` fail-closed gate as `computer.act`. Public Worker still
+404s those paths. Ctrl+Alt+M flips Transcribe/Scribe; Ctrl+Alt+L
+flips English / Traditional Chinese. `deliver:` restores the
+remembered hwnd then pastes. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - Global dictation hotkey and meeting assist
 
 Ctrl+Alt+Space snapshots the current app then toggles Transcribe

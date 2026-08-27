@@ -8,6 +8,7 @@
 
 const { guardPlan } = require("./plan-guard");
 const { reviewPlan } = require("./safety");
+const { deliverTextActions } = require("./delivery");
 
 function parseActRequest(params) {
   const src = params && typeof params === "object" ? params : {};
@@ -74,6 +75,15 @@ function planFromInstruction(instruction, opts = {}) {
   const press = text.match(/^(?:please\s+)?press\s+([a-z0-9+]+)$/i);
   if (press) {
     return { ok: true, source: "press", actions: [{ type: "press", value: press[1] }] };
+  }
+  const delivered = text.match(/^(?:please\s+)?deliver\s*:\s*([\s\S]+)$/i);
+  if (delivered && delivered[1].trim()) {
+    const plan = deliverTextActions(delivered[1].trim(), {
+      target: opts.target,
+      via: "paste",
+    });
+    if (plan.ok) return { ok: true, source: "deliver", actions: plan.actions };
+    return plan;
   }
   return { ok: false, reason: "no local plan for instruction" };
 }
