@@ -242,6 +242,18 @@ function canActOnline() {
   return false;
 }
 
+/**
+ * Listening modes finish with a recap, not a click. Empty transcript fails
+ * closed. Agent/general sessions are not auto-recapped.
+ */
+function finishListeningSession({ mode, transcript } = {}) {
+  const m = String(mode || "").toLowerCase();
+  if (m !== "meeting" && m !== "transcribe") {
+    return { ok: false, act: false, reason: "not a listening session" };
+  }
+  return meetingAssist({ transcript, question: "recap this meeting" });
+}
+
 module.exports = {
   DESKS,
   DESK_IDS,
@@ -251,4 +263,5 @@ module.exports = {
   meetingAssist,
   deskGrounding,
   canActOnline,
+  finishListeningSession,
 };

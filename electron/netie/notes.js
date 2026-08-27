@@ -52,7 +52,7 @@ class NotesSession {
     const t = String(text || "").trim();
     if (!t) return null;
     const ts = new Date().toISOString().slice(11, 19);
-    const who = source === "system" ? "System" : "You";
+    const who = source === "system" ? "System" : source === "netie" ? "Netie" : "You";
     const lang = langHint ? ` · ${langHint}` : "";
     const block = `### ${ts} · ${who}${lang}\n\n${t}\n\n`;
     fs.appendFileSync(this.file, block, "utf8");

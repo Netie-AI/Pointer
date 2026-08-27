@@ -113,7 +113,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
-const { pickDesk, meetingAssist } = require("./netie/coworker-desks");
+const { pickDesk, meetingAssist, finishListeningSession } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -3145,20 +3145,37 @@ function applyCaptureCommand(command, heard = "") {
     hudPaused = false;
     flushSource("mic");
     flushSource("system");
+    const recap = finishListeningSession({
+      mode: appMode,
+      transcript: heardTranscript(),
+    });
+    if (recap.ok) {
+      publishBrief(recap);
+      try {
+        notes.append({ text: recap.deliverable, source: "netie" });
+      } catch {
+        /* notes optional */
+      }
+    }
     const saved = notes.stop();
     sendHud({ type: "capture", state: "stopped", notesPath: saved && saved.path });
     if (saved && saved.path) {
+      const text = recap.ok
+        ? `${recap.deliverable}\n\nSaved to ${saved.path}`
+        : `Transcript saved to ${saved.path}`;
       sendHud({
         type: "answer",
-        meta: `Saved · ${saved.lines} line(s)`,
-        text: `Transcript saved to ${saved.path}`,
+        meta: recap.ok ? `Saved · recap` : `Saved · ${saved.lines} line(s)`,
+        text,
       });
       sendHud({ type: "insight", text: `Transcript: ${saved.path}` });
       void eco.audit("clicks.transcript.saved", { lines: saved.lines, heard: heard.slice(0, 40) });
+    } else if (recap.ok) {
+      sendHud({ type: "answer", meta: `Meeting · ${recap.kind}`, text: recap.deliverable });
     } else {
       sendHud({ type: "answer", meta: "Stopped", text: "Recording stopped — nothing to save." });
     }
-    return { ok: true, state: "stopped", path: saved && saved.path };
+    return { ok: true, state: "stopped", path: saved && saved.path, recap: recap.ok ? recap.kind : null, act: false };
   }
 
   return { ok: false, state: "unknown" };

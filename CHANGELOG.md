@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Meeting stop writes a recap into notes and workspace
+
+Stopping Meeting or Transcribe now runs `finishListeningSession`: a local
+recap from the transcript ring, published to the loopback workspace and
+appended as a Netie block in the markdown notes. Empty transcript fails
+closed. Agent mode is not auto-recapped. Still never Acts.
+
 ## 2026-08-27 - Coworker desks and online workspace catalog (DR-0005)
 
 Founder goal: Pointer as the coworker that replaces Clicky and Cluely,

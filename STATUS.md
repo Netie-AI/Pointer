@@ -14,9 +14,9 @@
    live lanes stay on the laptop. P-05 stays parked.
 2. **Coworker desks + online catalog (DR-0005).** Original `teach`
    `meeting` `document` `security` desks. Meeting Recap/Assist/Next
-   from the armed transcript, never Act. Public `/workspace` lists
-   desks and refuses exec. Not OpenWorker/Computer source. P-06
-   stays parked.
+   from the armed transcript, never Act. Stop on Meeting writes a
+   recap into notes + workspace. Public `/workspace` lists desks and
+   refuses exec. Not OpenWorker/Computer source. P-06 stays parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

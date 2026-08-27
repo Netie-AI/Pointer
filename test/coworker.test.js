@@ -88,5 +88,44 @@ test("Ask vision chat is grounded by the desk, not only the Act planner", () => 
   assert.match(ask, /deskCtx/);
 });
 
+test("stop on a listening session recaps and never acts", () => {
+  const { finishListeningSession } = require("../electron/netie/coworker-desks");
+  const skip = finishListeningSession({ mode: "agent", transcript: "system: hi" });
+  assert.strictEqual(skip.ok, false);
+  assert.strictEqual(skip.act, false);
+  const empty = finishListeningSession({ mode: "meeting", transcript: "" });
+  assert.strictEqual(empty.ok, false);
+  const recap = finishListeningSession({
+    mode: "meeting",
+    transcript: "system: Can you send the deck?\nmic: I will send it Friday.",
+  });
+  assert.strictEqual(recap.ok, true);
+  assert.strictEqual(recap.act, false);
+  assert.match(recap.deliverable, /send the deck/);
+  const fs = require("fs");
+  const path = require("path");
+  const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
+  const stop = main.slice(main.indexOf('if (command === "stop")'), main.indexOf("function segmenterFor"));
+  assert.match(stop, /finishListeningSession/);
+  assert.match(stop, /source: "netie"/);
+  assert.match(stop, /act: false/);
+  assert.doesNotMatch(stop, /claim\("pointer-act"/);
+});
+
+test("notes labels Netie recap separately from You/System", () => {
+  const fs = require("fs");
+  const os = require("os");
+  const path = require("path");
+  const { NotesSession } = require("../electron/netie/notes");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pointer-notes-"));
+  const n = new NotesSession({ root });
+  n.start("meeting");
+  n.append({ text: "# Meeting brief\n- ship it", source: "netie" });
+  const body = fs.readFileSync(n.file, "utf8");
+  assert.match(body, /Netie/);
+  assert.match(body, /Meeting brief/);
+  n.stop();
+});
+
 console.log(`\n${pass} passed, ${fails.length} failed`);
 process.exit(fails.length ? 1 : 0);
