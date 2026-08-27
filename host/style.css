@@ -60,7 +60,10 @@ pre {
   font-size: 13px;
   max-height: 240px;
 }
-#session-copy, #session-download, #brief-copy, #brief-download, #artifact-copy, #artifact-download {
+.teach-map-box.now {
+  border-color: #9ad;
+}
+#teach-back, #teach-next, #cue-copy, #session-copy, #session-download, #brief-copy, #brief-download, #artifact-copy, #artifact-download {
   background: #1a1a1a;
   color: #9ad;
   border: 1px solid #345;

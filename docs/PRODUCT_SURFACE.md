@@ -24,7 +24,10 @@ security Review live in the fixed insight panel. HUD desk chips Ask,
 never Act. Home `/api/home` lists live rooms for every desk. Loopback
 `/` and `/workspace` show a This session catalog (They asked / Heard /
 filed inbox and Word links, no runtime). Loopback
-`/teach` draws a read-only box map from measured markers. Inbox never
+`/teach` draws a read-only box map from measured markers and Back / Got
+it Ask the next step on loopback (never Act). Copy next / Copy say-this
+copy the cue line. Today plate lists your commitments, not the meeting
+say-this dump. Inbox never
 sends (P-05). "Spawn a coworker" runs the named job, or the Today plate
 when bare (a meeting/transcribe session recaps instead, and files an
 unsent follow-up, a Word draft, and a security review of those injected

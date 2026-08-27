@@ -15,6 +15,10 @@ function el(tag, className) {
  */
 function pollWhileLive(load) {
   let timer = null;
+  function tick() {
+    if (typeof document !== "undefined" && document.hidden) return;
+    load();
+  }
   function arm(keep) {
     if (keep === false) {
       if (timer) {
@@ -23,7 +27,18 @@ function pollWhileLive(load) {
       }
       return;
     }
-    if (!timer) timer = setInterval(function () { load(); }, 2500);
+    if (!timer) timer = setInterval(tick, 2500);
+  }
+  if (typeof document !== "undefined" && document.addEventListener) {
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) arm(false);
+      else {
+        Promise.resolve()
+          .then(load)
+          .then(arm)
+          .catch(function () { arm(false); });
+      }
+    });
   }
   Promise.resolve()
     .then(load)
@@ -264,6 +279,7 @@ if (todayPage) {
           plate.hidden = !plateText;
           plate.textContent = plateText ? "Plate: " + plateText : "";
         }
+        setCueButton(plateText, Boolean(t && t.localFirst));
         paintBrief((t && (t.deliverable || t.brief)) || "", "today", Boolean(t && t.localFirst));
         paintEvents((t && (t.events || t.today)) || []);
         return !(t && t.localFirst);
@@ -271,59 +287,98 @@ if (todayPage) {
   });
 }
 
+function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
+  if (m && m.exec) {
+    show("policy", refuse || "refused: coworker room must not grow a runtime");
+    return false;
+  }
+  show("policy", (m && m.reason) || "live coworker; Act stays on the laptop");
+  const cue = cueId ? document.getElementById(cueId) : null;
+  const text = String((m && m.cue) || "").trim();
+  if (cue) {
+    cue.hidden = !text;
+    const prefix =
+      (m && m.desk) === "teach"
+        ? "Next: "
+        : (m && m.desk) === "meeting"
+          ? "Say this: "
+          : (m && m.desk) === "today"
+            ? "Plate: "
+            : "Review: ";
+    cue.textContent = text ? prefix + text : "";
+  }
+  setCueButton(text, Boolean(m && m.localFirst));
+  const askedEl = askedId ? document.getElementById(askedId) : null;
+  const asked = String((m && m.asked) || "").trim();
+  if (askedEl) {
+    askedEl.hidden = !asked;
+    askedEl.textContent = asked ? "They asked: " + asked : "";
+  }
+  const heardEl = document.getElementById(pageId.replace("-brief", "-heard-web"));
+  const heard = String((m && m.heard) || "").trim();
+  if (heardEl) {
+    heardEl.hidden = !heard;
+    heardEl.textContent = heard ? "Heard: " + heard : "";
+  }
+  const restEl = document.getElementById(pageId.replace("-brief", "-rest-web"));
+  const rest = String((m && m.rest) || "").trim();
+  if (restEl) {
+    restEl.hidden = !rest;
+    restEl.textContent = rest ? "Then: " + rest : "";
+  }
+  setTeachButtons(m);
+  page.replaceChildren();
+  paintTeachMap(page, (m && m.markers) || []);
+  const pre = el("pre");
+  pre.textContent = (m && m.deliverable) || "";
+  page.appendChild(pre);
+  setBriefButtons((m && m.deliverable) || "", (m && m.desk) || "brief", Boolean(m && m.localFirst));
+  return !(m && m.localFirst);
+}
+
 function paintLiveRoom(pageId, apiPath, cueId, refuse, askedId) {
   const page = document.getElementById(pageId);
   if (!page) return;
+  function apply(m) {
+    return applyLiveRoom(page, pageId, cueId, askedId, refuse, m);
+  }
   pollWhileLive(function () {
     return fetch(apiPath)
       .then((r) => r.json())
-      .then((m) => {
-        if (m && m.exec) {
-          show("policy", refuse || "refused: coworker room must not grow a runtime");
-          return false;
-        }
-        show("policy", (m && m.reason) || "live coworker; Act stays on the laptop");
-        const cue = cueId ? document.getElementById(cueId) : null;
-        const text = String((m && m.cue) || "").trim();
-        if (cue) {
-          cue.hidden = !text;
-          const prefix =
-            (m && m.desk) === "teach"
-              ? "Next: "
-              : (m && m.desk) === "meeting"
-                ? "Say this: "
-                : (m && m.desk) === "today"
-                  ? "Plate: "
-                  : "Review: ";
-          cue.textContent = text ? prefix + text : "";
-        }
-        const askedEl = askedId ? document.getElementById(askedId) : null;
-        const asked = String((m && m.asked) || "").trim();
-        if (askedEl) {
-          askedEl.hidden = !asked;
-          askedEl.textContent = asked ? "They asked: " + asked : "";
-        }
-        const heardEl = document.getElementById(pageId.replace("-brief", "-heard-web"));
-        const heard = String((m && m.heard) || "").trim();
-        if (heardEl) {
-          heardEl.hidden = !heard;
-          heardEl.textContent = heard ? "Heard: " + heard : "";
-        }
-        const restEl = document.getElementById(pageId.replace("-brief", "-rest-web"));
-        const rest = String((m && m.rest) || "").trim();
-        if (restEl) {
-          restEl.hidden = !rest;
-          restEl.textContent = rest ? "Then: " + rest : "";
-        }
-        page.replaceChildren();
-        paintTeachMap(page, (m && m.markers) || []);
-        const pre = el("pre");
-        pre.textContent = (m && m.deliverable) || "";
-        page.appendChild(pre);
-        setBriefButtons((m && m.deliverable) || "", (m && m.desk) || "brief", Boolean(m && m.localFirst));
-        return !(m && m.localFirst);
-      });
+      .then(apply);
   });
+  if (pageId === "teach-brief") wireTeachAdvance(apply);
+}
+
+function setTeachButtons(m) {
+  const on = Boolean(m && m.advance && !m.localFirst && !m.exec && m.ok !== false);
+  const back = document.getElementById("teach-back");
+  const next = document.getElementById("teach-next");
+  if (back) back.hidden = !on;
+  if (next) next.hidden = !on;
+}
+
+function wireTeachAdvance(apply) {
+  function post(ask) {
+    fetch("/api/teach", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ask: ask, act: false }),
+    })
+      .then((r) => r.json())
+      .then(apply)
+      .catch(function () {});
+  }
+  const next = document.getElementById("teach-next");
+  const back = document.getElementById("teach-back");
+  if (next && !next.dataset.wired) {
+    next.dataset.wired = "1";
+    next.addEventListener("click", function () { post("got it, next"); });
+  }
+  if (back && !back.dataset.wired) {
+    back.dataset.wired = "1";
+    back.addEventListener("click", function () { post("back"); });
+  }
 }
 
 paintLiveRoom("meeting-brief", "/api/meeting", "meeting-cue-web", "refused: meeting must not grow a runtime", "meeting-asked-web");
@@ -339,7 +394,7 @@ function paintTeachMap(root, markers) {
   const map = el("div", "teach-map");
   map.setAttribute("aria-hidden", "true");
   boxes.forEach((p) => {
-    const box = el("div", "teach-map-box");
+    const box = el("div", "teach-map-box now");
     box.style.left = Number(p.leftPct) + "%";
     box.style.top = Number(p.topPct) + "%";
     box.style.width = Number(p.wPct) + "%";
@@ -525,6 +580,7 @@ let lastBriefText = "";
 let lastBriefFile = "pointer-brief.md";
 let lastArtifactText = "";
 let lastArtifactFile = "pointer-artifact.md";
+let lastCueText = "";
 
 function setBriefButtons(text, desk, localFirst) {
   const has = Boolean(String(text || "").trim()) && !localFirst;
@@ -534,6 +590,13 @@ function setBriefButtons(text, desk, localFirst) {
   const dlBtn = document.getElementById("brief-download");
   if (copyBtn) copyBtn.hidden = !has;
   if (dlBtn) dlBtn.hidden = !has;
+}
+
+function setCueButton(text, localFirst) {
+  const has = Boolean(String(text || "").trim()) && !localFirst;
+  lastCueText = has ? String(text) : "";
+  const btn = document.getElementById("cue-copy");
+  if (btn) btn.hidden = !has;
 }
 
 function copyPlain(text) {
@@ -563,6 +626,13 @@ const briefCopy = document.getElementById("brief-copy");
 if (briefCopy) {
   briefCopy.addEventListener("click", function () {
     copyPlain(lastBriefText);
+  });
+}
+
+const cueCopy = document.getElementById("cue-copy");
+if (cueCopy) {
+  cueCopy.addEventListener("click", function () {
+    copyPlain(lastCueText);
   });
 }
 

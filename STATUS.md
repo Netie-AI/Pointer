@@ -11,10 +11,10 @@
    `/teach` `/security` `/document` `/inbox` `/lanes` `/skills`
    `/workspace`). Public Worker is the same catalog; `/mcp` stays on
    the laptop. P-05 parked.
-2. **Coworker desks (DR-0005).** HUD Walk/Frame walks the framed region
-   (Ask, never Act). Teach names Tab/Enter. Desk briefs and workspace
-   artifacts download as files. Meeting Heard names Word notes. Public
-   catalog empty. P-06 parked.
+2. **Coworker desks (DR-0005).** Loopback `/teach` Back/Got it Ask the
+   next measured step (never Act). Today plate is commitments only.
+   Teach names Tab/Enter. Briefs download as files. Public catalog
+   empty. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

@@ -38,6 +38,21 @@ test("put lists a brief and never grows a runtime", () => {
   assert.strictEqual(ws.get("brief-1").artifact.body.includes("ship the deck"), true);
   const pub = ws.publicList();
   assert.ok(!Object.prototype.hasOwnProperty.call(pub[0], "body"));
+  const withLive = ws.put({
+    id: "live-teach",
+    desk: "teach",
+    title: "Live teach",
+    body: "# Teach walkthrough\n[BOX:20,40,10,4:1 Save]",
+    live: {
+      controls: [{ name: "Save", controlType: "Button", rect: { x: 200, y: 400, width: 100, height: 40 } }],
+      screen: { x: 0, y: 0, width: 1000, height: 1000 },
+      step: 0,
+      text: "walk me through this on my screen",
+    },
+  });
+  assert.ok(withLive.artifact.live);
+  assert.ok(!Object.prototype.hasOwnProperty.call(ws.list().find((r) => r.id === "live-teach"), "live"));
+  assert.equal(ws.get("live-teach").artifact.live.controls[0].name, "Save");
   const exec = ws.exec({ backend: "container" });
   assert.strictEqual(exec.ok, false);
   assert.strictEqual(exec.exec, false);

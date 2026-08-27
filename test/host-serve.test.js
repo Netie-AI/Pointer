@@ -87,6 +87,8 @@ function readAsset(file) {
     assert.strictEqual(exec.status, 404);
     const write = handlePublicRequest({ method: "POST", pathname: "/api/workspace" });
     assert.strictEqual(write.status, 404);
+    const teachPost = handlePublicRequest({ method: "POST", pathname: "/api/teach" });
+    assert.strictEqual(teachPost.status, 404);
     const fetch = createPublicFetch(readAsset);
     const html = await fetch(new Request("https://host.netie.ai/workspace"));
     assert.strictEqual(html.status, 200);
@@ -195,6 +197,7 @@ function readAsset(file) {
     assert.match(meetingText, /id="meeting-asked-web"/);
     assert.match(meetingText, /id="meeting-heard-web"/);
     assert.match(meetingText, /id="brief-copy"/);
+    assert.match(meetingText, /id="cue-copy"/);
     assert.match(meetingText, /id="brief-download"/);
     const meetingApi = handlePublicRequest({ method: "GET", pathname: "/api/meeting" });
     assert.strictEqual(JSON.parse(meetingApi.body).localFirst, true);
@@ -210,6 +213,9 @@ function readAsset(file) {
     assert.match(teachText, /id="teach-rest-web"/);
     assert.match(teachText, /id="brief-copy"/);
     assert.match(teachText, /id="brief-download"/);
+    assert.match(teachText, /id="teach-next"/);
+    assert.match(teachText, /id="teach-back"/);
+    assert.match(teachText, /id="cue-copy"/);
     const teachApi = handlePublicRequest({ method: "GET", pathname: "/api/teach" });
     assert.strictEqual(JSON.parse(teachApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(teachApi.body).exec, false);

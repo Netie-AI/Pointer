@@ -26,6 +26,8 @@ const {
   DESK_CHIPS,
   FRAME_TEACH_TEXT,
   shouldTeachFramedRegion,
+  replayTeachWalk,
+  advanceLiveTeach,
 } = require("../electron/netie/coworker-desks");
 const { plannerGrounding } = require("../electron/netie/coworker");
 
@@ -487,6 +489,30 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(unframed.skipLlm, false);
   assert.strictEqual(unframed.via, "none");
   assert.doesNotMatch(unframed.deliverable, /\[BOX:\s*\d/);
+  const replayed = replayTeachWalk({ live: form.live, ask: "got it" });
+  assert.strictEqual(replayed.act, false);
+  assert.match(replayed.cue, /^2 of 3 Click Save or press Enter$/);
+  const { createWorkspace } = require("../electron/netie/workspace");
+  const ws = createWorkspace({ clock: () => 1 });
+  ws.put({
+    id: "live-teach",
+    desk: "teach",
+    title: "Live teach",
+    body: form.deliverable,
+    cue: form.cue,
+    rest: form.rest,
+    live: form.live,
+  });
+  assert.ok(!Object.prototype.hasOwnProperty.call(ws.list()[0], "live"));
+  const stepped = advanceLiveTeach(ws, "got it, next");
+  assert.strictEqual(stepped.act, false);
+  assert.strictEqual(stepped.exec, false);
+  assert.match(stepped.cue, /Click Save or press Enter/);
+  assert.ok(!stepped.live);
+  assert.match(ws.get("live-teach").artifact.cue, /Click Save/);
+  const noLive = advanceLiveTeach(createWorkspace({ clock: () => 2 }), "got it");
+  assert.strictEqual(noLive.ok, false);
+  assert.strictEqual(noLive.act, false);
   const fs = require("fs");
   const path = require("path");
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
@@ -497,6 +523,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(main, /noteTeachStep/);
   assert.match(main, /armTeachWalk/);
   assert.match(main, /hold: true/);
+  assert.match(main, /live: assist.live/);
   assert.match(main, /resetTeachWalk/);
   const deskRun = main.slice(main.indexOf("async function runDeskAssist"), main.indexOf("function enqueueCoworkerJob"));
   assert.match(deskRun, /measured.region/);
@@ -672,6 +699,23 @@ test("today assist ships a standing brief and never invents work", () => {
   assert.match(both.cue, /send it Friday/);
   assert.match(both.deliverable, /Unsent follow-up draft/);
   assert.match(both.deliverable, /Word draft waiting/);
+  const dumped = todayAssist({
+    state: {
+      artifacts: [
+        {
+          id: "live-meeting",
+          desk: "meeting",
+          body:
+            "# Meeting brief\n\n## What you can say\n\nSuggested reply (say it yourself; Pointer will not send this):\n\nSarah Chen at Acme. I will not send or click anything.\n\n## Commitments\n\n- Them [Friday]: Can you send the deck by Friday for $40k?\n- You [Friday]: I will send it Friday.\n",
+        },
+      ],
+    },
+  });
+  assert.match(dumped.cue, /send it Friday/);
+  assert.match(dumped.deliverable, /On your plate/);
+  assert.doesNotMatch(dumped.deliverable, /Suggested reply/);
+  assert.doesNotMatch(dumped.deliverable, /Sarah Chen at Acme/);
+  assert.doesNotMatch(dumped.deliverable, /I'll not send/);
   const hiddenFiled = todayAssist({
     state: { artifacts: [{ id: "live-inbox", desk: "inbox", title: "Draft reply" }] },
     localFirst: true,
@@ -870,6 +914,14 @@ test("desk chips ask, never act", () => {
   assert.match(html, /id="btn-teach-next"/);
   assert.match(html, /id="btn-teach-back"/);
   assert.doesNotMatch(html, /clicky-orb|stage-orb/);
+  const hostTeach = fs.readFileSync(path.join(__dirname, "..", "host", "teach.html"), "utf8");
+  assert.match(hostTeach, /id="teach-next"/);
+  assert.match(hostTeach, /id="teach-back"/);
+  assert.match(hostTeach, /id="cue-copy"/);
+  const hostApp = fs.readFileSync(path.join(__dirname, "..", "host", "app.js"), "utf8");
+  assert.match(hostApp, /got it, next/);
+  assert.match(hostApp, /wireTeachAdvance/);
+  assert.doesNotMatch(hostApp, /innerHTML/);
   const hud = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
   const desk = hud.slice(hud.indexOf('$("desk-pill")'), hud.indexOf('$("mode-pill")'));
   assert.match(desk, /doAsk\(\)/);

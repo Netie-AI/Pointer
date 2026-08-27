@@ -924,6 +924,115 @@ function nextTeachStep(text, current, live) {
   return Number.isInteger(n) && n > 0 ? n : 0;
 }
 
+function rectFromPct(point, screen) {
+  const w = Number(screen && screen.width) > 0 ? Number(screen.width) : 1000;
+  const h = Number(screen && screen.height) > 0 ? Number(screen.height) : 1000;
+  const x0 = Number(screen && screen.x) || 0;
+  const y0 = Number(screen && screen.y) || 0;
+  const wp = Number(point && point.wPct);
+  const hp = Number(point && point.hPct);
+  if (!(wp > 0) || !(hp > 0)) {
+    return {
+      x: x0 + ((Number(point && point.xPct) || 0) / 100) * w - 10,
+      y: y0 + ((Number(point && point.yPct) || 0) / 100) * h - 10,
+      width: 20,
+      height: 20,
+    };
+  }
+  return {
+    x: x0 + (Number(point.leftPct) / 100) * w,
+    y: y0 + (Number(point.topPct) / 100) * h,
+    width: (wp / 100) * w,
+    height: (hp / 100) * h,
+  };
+}
+
+function freezeBox(box) {
+  if (!box || typeof box !== "object") return null;
+  return {
+    x: Number(box.x) || 0,
+    y: Number(box.y) || 0,
+    width: Number(box.width) || 0,
+    height: Number(box.height) || 0,
+  };
+}
+
+/** Loopback-only snapshot so /teach can Got it without inventing coords. */
+function freezeTeachLive(spec) {
+  if (!spec || typeof spec !== "object") return undefined;
+  const controls = Array.isArray(spec.controls)
+    ? spec.controls.slice(0, 8).map((c) => ({
+        name: String((c && c.name) || "").slice(0, 40),
+        controlType: String((c && c.controlType) || "Pane").slice(0, 40),
+        rect: freezeBox(c && c.rect) || { x: 0, y: 0, width: 0, height: 0 },
+      }))
+    : [];
+  const framed = Boolean(spec.framed);
+  if (!controls.length && !framed) return undefined;
+  return {
+    controls,
+    screen: freezeBox(spec.screen),
+    region: freezeBox(spec.region),
+    framed,
+    step: Math.max(0, Number(spec.step) || 0),
+    text: String(spec.text || "walk me through this on my screen").slice(0, 200),
+  };
+}
+
+function canAdvanceTeach(live) {
+  return Boolean(live && (live.framed || (Array.isArray(live.controls) && live.controls.length)));
+}
+
+function replayTeachWalk({ live, ask } = {}) {
+  const shot = freezeTeachLive(live);
+  if (!shot) {
+    return { ok: false, act: false, desk: "teach", reason: "no measured walk to advance" };
+  }
+  const text = String(ask || "").trim() || "got it";
+  const step = nextTeachStep(text, shot.step, true);
+  const assist = teachAssist({
+    text: shot.text,
+    controls: shot.controls,
+    screen: shot.screen,
+    region: shot.region,
+    framed: shot.framed,
+    step,
+    live: true,
+  });
+  if (!assist.ok) return { ...assist, act: false };
+  return {
+    ...assist,
+    act: false,
+    live: freezeTeachLive({
+      ...shot,
+      step: Number.isInteger(assist.step) ? assist.step : step,
+    }),
+  };
+}
+
+function advanceLiveTeach(workspace, ask) {
+  if (!workspace || typeof workspace.get !== "function" || typeof workspace.put !== "function") {
+    return { ok: false, act: false, exec: false, reason: "workspace missing" };
+  }
+  const got = workspace.get("live-teach");
+  if (!got.ok) {
+    return { ok: false, act: false, exec: false, desk: "teach", reason: "no live teach yet" };
+  }
+  const assist = replayTeachWalk({ live: got.artifact.live, ask });
+  if (!assist.ok) return { ...assist, exec: false };
+  workspace.put({
+    id: assist.id,
+    kind: assist.kind,
+    title: assist.title,
+    desk: assist.desk,
+    body: assist.deliverable,
+    cue: assist.cue,
+    rest: assist.rest,
+    live: assist.live,
+  });
+  return { ...assist, live: undefined, exec: false, act: false };
+}
+
 function teachVerb(controlType) {
   const t = String(controlType || "");
   if (t === "Edit" || t === "Document" || t === "ComboBox") return "Type in";
@@ -1076,6 +1185,18 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
           },
         ]
       : [],
+    live: freezeTeachLive({
+      controls: measured.map((p) => ({
+        name: p.name,
+        controlType: p.controlType || "Pane",
+        rect: rectFromPct(p, screen),
+      })),
+      screen,
+      region,
+      framed,
+      step: current ? idx : 0,
+      text: t.slice(0, 200),
+    }),
     deliverable,
   };
 }
@@ -1182,33 +1303,57 @@ function laneLine(id, held) {
   return `- ${id}: ${owner}${goal}`;
 }
 
+function plateNoise(line) {
+  return /\b(suggested reply|pointer will not|they asked|grounding|what you can say|i will not send|i'll not send|say it yourself|not a command)\b/i.test(
+    String(line || "")
+  );
+}
+
+function commitmentsFromBrief(body) {
+  const parts = String(body || "").split(/^## /m);
+  const wanted = [];
+  for (const part of parts) {
+    if (/^(Commitments|Decisions)\b/i.test(part)) wanted.push(part);
+  }
+  return wanted.join("\n");
+}
+
+function yoursFromUtterances(text) {
+  return parseUtterances(text).filter(
+    (row) => row.speaker === "you" && (looksAction(row.text) || looksDecision(row.text))
+  );
+}
+
 /**
  * Standing Today brief. Empty session is honest, not invented work.
  * Never Acts. Does not dump artifact bodies.
  */
 function plateFacts(state) {
   const s = state || {};
+  const fromTranscript = yoursFromUtterances(s.transcript);
+  if (fromTranscript.length) return fromTranscript.slice(-6);
   const chunks = [];
-  if (s.transcript) chunks.push(String(s.transcript));
   const arts = Array.isArray(s.artifacts) ? s.artifacts : [];
   for (const a of arts) {
     if (a && (a.id === "live-meeting" || a.desk === "meeting") && a.body) {
-      chunks.push(String(a.body));
+      chunks.push(commitmentsFromBrief(a.body));
     }
   }
   const text = chunks.join("\n");
-  const fromRing = parseUtterances(text).filter(
-    (row) => looksAction(row.text) || looksDecision(row.text)
-  );
+  const fromRing = yoursFromUtterances(text);
   if (fromRing.length) return fromRing.slice(-6);
   const bullets = [];
   for (const line of String(text).split(/\n/)) {
     const m = String(line || "").match(/^\s*-\s+(.+)/);
     if (!m) continue;
-    const raw = String(m[1] || "")
+    const who = String(m[1] || "");
+    if (/^Them(\s+\[[^\]]+\])?:/i.test(who)) continue;
+    const raw = who
       .replace(/^(You|Them)(\s+\[[^\]]+\])?:\s+/i, "")
+      .replace(/^-\s+/, "")
       .trim();
-    if (raw && (looksAction(raw) || looksDecision(raw))) bullets.push({ text: raw, speaker: "you" });
+    if (!raw || plateNoise(raw)) continue;
+    if (looksAction(raw) || looksDecision(raw)) bullets.push({ text: raw, speaker: "you" });
   }
   return bullets.slice(-6);
 }
@@ -1257,7 +1402,7 @@ function todayAssist({ state, question, localFirst } = {}) {
   const commitments = localFirst ? [] : plateFacts(s);
   const filed = localFirst ? [] : filedPlate(s);
   const plate = commitments.concat(filed);
-  const plateLines = plate.map((row) => `- ${speakable(row.text)}`);
+  const plateLines = plate.map((row) => `- ${speakable(String(row.text || "").replace(/^-\s+/, ""))}`);
   const plateCue = commitments.length
     ? speakable(commitments[commitments.length - 1].text)
     : filed.length
@@ -1923,6 +2068,10 @@ module.exports = {
   createLiveMeetingPump,
   createLiveTeachPump,
   createBriefClock,
+  freezeTeachLive,
+  canAdvanceTeach,
+  replayTeachWalk,
+  advanceLiveTeach,
   publicMeetingSnapshot,
   publicTeachSnapshot,
   publicSecuritySnapshot,

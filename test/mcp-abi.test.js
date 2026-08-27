@@ -211,6 +211,30 @@ function test(name, fn) {
     assert.match(teachLive.result.artifact.body, /1 Save/);
     assert.match(teachLive.result.artifact.rest, /Click Cancel/);
     coord.workspace.put({
+      id: "live-teach",
+      title: "Live teach",
+      desk: "teach",
+      body: "# Teach walkthrough",
+      cue: "1 of 3 Type in Email then Tab",
+      live: require("../electron/netie/coworker-desks").teachAssist({
+        text: "walk me through this on my screen",
+        controls: [
+          { name: "Cancel", controlType: "Button", rect: { x: 0, y: 0, width: 100, height: 40 } },
+          { name: "Save", controlType: "Button", rect: { x: 200, y: 400, width: 100, height: 40 } },
+          { name: "Email", controlType: "Edit", rect: { x: 50, y: 80, width: 200, height: 32 } },
+        ],
+        screen: { x: 0, y: 0, width: 1000, height: 1000 },
+      }).live,
+    });
+    const taught = await mcp.handle(
+      { jsonrpc: "2.0", id: 17.5, method: "teach.live", params: { ask: "got it" } },
+      { coordinator: coord }
+    );
+    assert.strictEqual(taught.result.act, false);
+    assert.strictEqual(taught.result.exec, false);
+    assert.match(taught.result.cue, /Click Save or press Enter/);
+    assert.ok(!taught.result.live);
+    coord.workspace.put({
       id: "live-security",
       title: "Security review",
       desk: "security",

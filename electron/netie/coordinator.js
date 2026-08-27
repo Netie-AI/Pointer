@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
-const { catalog, todayAssist, sessionBundle } = require("./coworker-desks");
+const { catalog, todayAssist, sessionBundle, advanceLiveTeach, canAdvanceTeach } = require("./coworker-desks");
 const { parsePoints } = require("./point-overlay");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
@@ -116,6 +116,10 @@ function createCoordinator(opts = {}) {
   function sendLiveRoom(res, desk, id) {
     const got = workspace.get(id);
     const markers = got.ok ? parsePoints(String(got.artifact.body || "")).points : [];
+    const artifact = got.ok
+      ? Object.assign({}, got.artifact, { live: undefined })
+      : null;
+    if (artifact) delete artifact.live;
     res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
     res.end(
       JSON.stringify({
@@ -130,7 +134,8 @@ function createCoordinator(opts = {}) {
         heard: got.ok ? String(got.artifact.heard || "") : "",
         deliverable: got.ok ? String(got.artifact.body || "") : "",
         markers,
-        artifact: got.ok ? got.artifact : null,
+        advance: desk === "teach" && got.ok && canAdvanceTeach(got.artifact.live),
+        artifact,
         reason: got.ok ? `live ${desk} on loopback; no runtime` : `no live ${desk} yet`,
       })
     );
@@ -187,6 +192,29 @@ function createCoordinator(opts = {}) {
     }
     if (req.method === "GET" && url.pathname === "/api/meeting") {
       sendLiveRoom(res, "meeting", "live-meeting");
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/api/teach") {
+      const chunks = [];
+      req.on("data", (c) => chunks.push(c));
+      req.on("end", () => {
+        let body = {};
+        try {
+          body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+        } catch {
+          res.writeHead(400, { "content-type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, act: false, exec: false, reason: "parse error" }));
+          return;
+        }
+        const ask = String((body && (body.ask || body.text || body.q)) || "").trim();
+        const out = advanceLiveTeach(workspace, ask);
+        if (!out.ok) {
+          res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ...out, act: false, exec: false, localFirst: false, desk: "teach" }));
+          return;
+        }
+        sendLiveRoom(res, "teach", "live-teach");
+      });
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/teach") {

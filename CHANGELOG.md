@@ -1,3 +1,11 @@
+## 2026-08-27 - Host teach Got it; Today plate is commitments
+
+Loopback `/teach` Back/Got it Ask the next measured control from a
+stored walk (never Act, never invents coords). Public POST `/api/teach`
+stays 404. Copy next / Copy say-this / Copy plate copy the cue line.
+Today plate reads your commitments, not the meeting say-this dump.
+Never Acts. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Teach keys, downloadable briefs, named Word notes
 
 Teach cues name the key (`Type in Email then Tab`, `Click Save or press

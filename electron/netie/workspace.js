@@ -8,7 +8,7 @@
  * refusal so a Computer-shaped caller cannot smuggle a runtime through us.
  */
 
-const { publicSessionSnapshot } = require("./coworker-desks");
+const { publicSessionSnapshot, freezeTeachLive } = require("./coworker-desks");
 
 function nowMs(clock) {
   return typeof clock === "function" ? clock() : Date.now();
@@ -20,7 +20,11 @@ function createWorkspace(opts = {}) {
   const max = Number.isFinite(Number(opts.max)) ? Number(opts.max) : 40;
 
   function list() {
-    return items.map((row) => ({ ...row }));
+    return items.map((row) => {
+      const copy = { ...row };
+      delete copy.live;
+      return copy;
+    });
   }
 
   function publicList() {
@@ -55,6 +59,8 @@ function createWorkspace(opts = {}) {
       heard: String(spec.heard || "").slice(0, 160),
       t: nowMs(clock),
     };
+    const live = freezeTeachLive(spec.live);
+    if (live) row.live = live;
     const existing = items.findIndex((item) => item.id === row.id);
     if (existing >= 0) items[existing] = row;
     else items.push(row);

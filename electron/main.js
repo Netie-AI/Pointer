@@ -309,6 +309,7 @@ function publishBrief(assist) {
       asked: assist.asked || "",
       rest: assist.rest || "",
       heard: assist.heard || "",
+      live: assist.live,
     });
   } catch {
     return null;

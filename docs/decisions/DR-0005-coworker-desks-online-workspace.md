@@ -111,3 +111,7 @@ copies stay empty. `workspace.exec` still always errors.
 `session.live` is the loopback MCP read of that catalog (never exec).
 Meeting spawn also files a security review of those injected bodies
 (redacted, no disk, never self-approve).
+Loopback `/teach` Back / Got it Ask the next measured step from a stored
+walk (POST `/api/teach`, never Act, public copy 404). Copy next / Copy
+say-this / Copy plate copy the cue line. Today plate lists your
+commitments, not the meeting say-this dump.

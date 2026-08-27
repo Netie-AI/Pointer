@@ -212,6 +212,45 @@ function test(name, fn) {
     assert.strictEqual(teachPage.status, 200);
     assert.match(teachPage.body, /teach-brief/);
     assert.match(teachPage.body, /teach-rest-web/);
+    assert.match(teachPage.body, /id="teach-next"/);
+    assert.match(teachPage.body, /id="teach-back"/);
+    const form = require("../electron/netie/coworker-desks").teachAssist({
+      text: "walk me through this on my screen",
+      controls: [
+        { name: "Cancel", controlType: "Button", rect: { x: 0, y: 0, width: 100, height: 40 } },
+        { name: "Save", controlType: "Button", rect: { x: 200, y: 400, width: 100, height: 40 } },
+        { name: "Email", controlType: "Edit", rect: { x: 50, y: 80, width: 200, height: 32 } },
+      ],
+      screen: { x: 0, y: 0, width: 1000, height: 1000 },
+    });
+    c.workspace.put({
+      id: "live-teach",
+      title: "Live teach",
+      desk: "teach",
+      body: form.deliverable,
+      cue: form.cue,
+      rest: form.rest,
+      live: form.live,
+    });
+    const advanced = await new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: "127.0.0.1", port, path: "/api/teach", method: "POST", headers: { "content-type": "application/json" } },
+        (res) => {
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+        }
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ ask: "got it, next", act: true }));
+    });
+    assert.strictEqual(advanced.status, 200);
+    assert.strictEqual(advanced.body.act, false);
+    assert.strictEqual(advanced.body.exec, false);
+    assert.ok(!advanced.body.live);
+    assert.ok(!advanced.body.artifact || !advanced.body.artifact.live);
+    assert.match(advanced.body.cue, /Click Save or press Enter/);
+    assert.strictEqual(advanced.body.advance, true);
     c.workspace.put({
       id: "live-security",
       title: "Security review",
