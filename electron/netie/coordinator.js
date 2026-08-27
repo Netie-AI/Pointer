@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
-const { catalog, todayAssist, sessionBundle, advanceLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns } = require("./coworker-desks");
+const { catalog, todayAssist, sessionBundle, advanceLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, teachWalkPath } = require("./coworker-desks");
 const { parsePoints } = require("./point-overlay");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
@@ -116,6 +116,7 @@ function createCoordinator(opts = {}) {
   function sendLiveRoom(res, desk, id) {
     const got = workspace.get(id);
     const markers = got.ok ? parsePoints(String(got.artifact.body || "")).points : [];
+    const path = desk === "teach" && got.ok ? teachWalkPath(got.artifact.live) : [];
     const turns = desk === "meeting" && got.ok ? liveTalkTurns(got.artifact) : [];
     const artifact = got.ok
       ? Object.assign({}, got.artifact, { live: undefined })
@@ -135,6 +136,7 @@ function createCoordinator(opts = {}) {
         heard: got.ok ? String(got.artifact.heard || "") : "",
         deliverable: got.ok ? String(got.artifact.body || "") : "",
         markers,
+        path,
         turns,
         advance: desk === "teach" && got.ok && canAdvanceTeach(got.artifact.live),
         chips:

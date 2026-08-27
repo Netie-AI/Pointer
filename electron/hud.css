@@ -271,6 +271,18 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   pointer-events: none;
 }
 .point-mark.point-box .point-label { top: -22px; }
+.point-mark.later::before, .point-mark.later::after,
+.point-mark.done::before, .point-mark.done::after { display: none; }
+.point-mark.point-box.later {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--accent), transparent 40%);
+  background: transparent;
+}
+.point-mark.point-box.done {
+  border-color: color-mix(in srgb, var(--text), transparent 72%);
+  background: transparent;
+  opacity: 0.4;
+}
 @keyframes point-box-in { from { opacity: 0; } }
 
 /* P4-BG-AGENTS — background work is a status line, not a stage orb. */

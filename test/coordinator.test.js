@@ -344,6 +344,7 @@ function test(name, fn) {
     assert.match(teach.body.rest, /Click Cancel/);
     assert.ok(Array.isArray(teach.body.markers));
     assert.ok(teach.body.markers.some((m) => m.kind === "box" && /Save/.test(m.label)));
+    assert.deepStrictEqual(teach.body.path, []);
     const teachPage = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/teach" }, (res) => {
         const chunks = [];
@@ -356,7 +357,7 @@ function test(name, fn) {
     assert.match(teachPage.body, /teach-rest-web/);
     assert.match(teachPage.body, /id="teach-next"/);
     assert.match(teachPage.body, /id="teach-back"/);
-    assert.match(teachPage.body, /Walk stage/);
+    assert.match(teachPage.body, /Walk path/);
     const form = require("../electron/netie/coworker-desks").teachAssist({
       text: "walk me through this on my screen",
       controls: [
@@ -394,6 +395,9 @@ function test(name, fn) {
     assert.ok(!advanced.body.artifact || !advanced.body.artifact.live);
     assert.match(advanced.body.cue, /Click Save or press Enter/);
     assert.strictEqual(advanced.body.advance, true);
+    assert.ok(Array.isArray(advanced.body.path));
+    assert.ok(advanced.body.path.some((p) => p.now && /Save/.test(p.label)));
+    assert.ok(advanced.body.path.some((p) => !p.now && !p.later && /Email/.test(p.label)));
     c.workspace.put({
       id: "live-security",
       title: "Security review",

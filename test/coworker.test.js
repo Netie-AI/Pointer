@@ -31,6 +31,8 @@ const {
   askLiveCoworker,
   askHostCoworker,
   chipsForArtifact,
+  teachWalkPath,
+  publicTeachSnapshot,
 } = require("../electron/netie/coworker-desks");
 const { plannerGrounding } = require("../electron/netie/coworker");
 
@@ -421,7 +423,12 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(walk.cueKind, "point");
   assert.match(walk.cue, /^1 of 2 Click Save/);
   assert.match(walk.rest, /Click Cancel/);
-  assert.match(walk.deliverable, /current step only/i);
+  assert.match(walk.deliverable, /current control hold/i);
+  assert.strictEqual(walk.path.length, 2);
+  assert.strictEqual(walk.path[0].now, true);
+  assert.strictEqual(walk.path[1].later, true);
+  assert.match(walk.path[0].label, /Save/);
+  assert.match(walk.path[1].label, /Cancel/);
   assert.match(walk.deliverable, /\[POINT:25,42:\d+ Save\]/);
   assert.match(walk.deliverable, /\[BOX:20,40,10,4:\d+ Save\]/);
   assert.match(walk.deliverable, /<- now/);
@@ -465,6 +472,14 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(form.act, false);
   assert.match(form.cue, /^1 of 3 Type in Email then Tab$/);
   assert.match(form.rest, /Click Save or press Enter \/ Click Cancel/);
+  assert.strictEqual(form.path.length, 3);
+  assert.strictEqual(form.path[0].now, true);
+  assert.match(form.path[0].label, /Email/);
+  assert.strictEqual(form.path[1].later, true);
+  assert.match(form.path[1].label, /Save/);
+  assert.strictEqual(form.path[2].later, true);
+  assert.deepStrictEqual(teachWalkPath(form.live).map((p) => p.label), form.path.map((p) => p.label));
+  assert.deepStrictEqual(publicTeachSnapshot().path, []);
   const submit = teachAssist({
     text: "next",
     controls: [
@@ -519,6 +534,9 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   const replayed = replayTeachWalk({ live: form.live, ask: "got it" });
   assert.strictEqual(replayed.act, false);
   assert.match(replayed.cue, /^2 of 3 Click Save or press Enter$/);
+  assert.strictEqual(replayed.path[1].now, true);
+  assert.strictEqual(replayed.path[0].later, false);
+  assert.strictEqual(replayed.path[0].now, false);
   const { createWorkspace } = require("../electron/netie/workspace");
   const ws = createWorkspace({ clock: () => 1 });
   ws.put({
@@ -550,6 +568,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(main, /noteTeachStep/);
   assert.match(main, /armTeachWalk/);
   assert.match(main, /hold: true/);
+  assert.match(main, /path: assist.path/);
   assert.match(main, /live: assist.live/);
   assert.match(main, /resetTeachWalk/);
   const deskRun = main.slice(main.indexOf("async function runDeskAssist"), main.indexOf("function enqueueCoworkerJob"));
@@ -1147,6 +1166,7 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /Then:/);
   assert.match(hud, /event\.rest/);
   assert.match(hud, /point-box/);
+  assert.match(hud, /later/);
   assert.match(hud, /event\.hold/);
   assert.match(hud, /renderPoints\(event\.points, event\.ttlMs, event\.hold\)/);
   const html = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");

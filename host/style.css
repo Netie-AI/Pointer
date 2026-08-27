@@ -135,7 +135,36 @@ pre {
 }
 .teach-map-box.now {
   border-color: #9ad;
+  z-index: 1;
 }
+.teach-map-box.then {
+  border-style: dashed;
+  border-color: #456;
+}
+.teach-map-box.done {
+  border-color: #333;
+  opacity: 0.4;
+}
+.teach-map-rail {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  bottom: 8px;
+  width: min(36%, 220px);
+  margin: 0;
+  padding: 6px 10px;
+  list-style: none;
+  background: rgba(17, 17, 17, 0.88);
+  border: 1px solid #345;
+  z-index: 2;
+  overflow: hidden;
+  font-size: 12px;
+  pointer-events: none;
+}
+.teach-map-rail li { padding: 4px 0; color: #777; }
+.teach-map-rail li.now { color: #eee; font-weight: 650; }
+.teach-map-rail li.then { color: #9ad; }
+.teach-map-rail li.done { color: #555; }
 .meeting-talk {
   list-style: none;
   margin: 0 0 12px;

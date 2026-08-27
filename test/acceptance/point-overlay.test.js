@@ -63,6 +63,15 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.strictEqual(held.hold, true);
       assert.strictEqual(held.ttlMs, 0);
       assert.strictEqual(held.points[0].kind, "box");
+      const path = [
+        { now: true, later: false, leftPct: 5, topPct: 8, wPct: 20, hPct: 3, label: "1 Email" },
+        { now: false, later: true, leftPct: 20, topPct: 40, wPct: 10, hPct: 4, label: "2 Save" },
+      ];
+      const walked = po.toOverlayEvent("[BOX:5,8,20,3:1 Email]", { hold: true, path });
+      assert.strictEqual(walked.hold, true);
+      assert.ok(walked.points.some((p) => p.later && /Save/.test(p.label)));
+      assert.ok(walked.points.some((p) => !p.later && !p.done && /Email/.test(p.label)));
+      assert.ok(!walked.points.some((p) => p.later && /Email/.test(p.label)));
     }),
 
     T("raw tokens never reach the user's chat", async () => {

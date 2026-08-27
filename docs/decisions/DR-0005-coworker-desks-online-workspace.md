@@ -80,7 +80,7 @@ coworker rooms; public `/api/meeting` and `/api/teach` are localFirst empty.
 Security scans injected files only (redacted). Teach labels are numbered.
 Teach Next cue and meeting say-this live in fixed HUD chrome. Recap chips
 hand off to inbox/Word drafts (never send, never write without Cortex).
-Teach overlay shows the current measured control only; `got it` advances.
+Teach overlay holds the current control; later measured boxes stay dashed; `got it` advances.
 Loopback `/security` `/document` `/inbox` and `/api/home` are coworker
 rooms; public copies are localFirst empty. Recap lists `## Decisions`.
 Teach walks fields then the primary CTA (`Type in` before `Click Save`).
@@ -91,7 +91,7 @@ is a speakable line from your answer. Meeting questions cue in 300ms. HUD
 and loopback `/meeting` show `They asked` above say-this. Today plates
 live commitments on loopback and stays empty on the public catalog.
 Bare `write in Word` reuses the live recap or Today plate as a draft.
-Loopback `/teach` maps measured BOX markers read-only. Public copies stay
+Loopback `/teach` paints a walk path (current BOX, later dashed). Public copies stay
 empty. HUD Frame / Walk arms a teach walk of the framed region (Ask,
 never Act); tray Frame stays capture for Act. Loopback `/teach` shows
 `Then:` remaining steps. Empty UIA still boxes the framed region in

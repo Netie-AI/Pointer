@@ -767,9 +767,14 @@ paintLiveRoom("inbox-brief", "/api/inbox", "inbox-cue-web", "refused: inbox must
 
 function paintTeachMap(root, m) {
   if (!root || !m || m.desk !== "teach" || m.localFirst) return;
+  const path = Array.isArray(m.path) && m.path.length ? m.path : [];
   const markers = Array.isArray(m.markers) ? m.markers : [];
-  const boxes = markers.filter((p) => Number(p.wPct) > 0 && Number(p.hPct) > 0);
-  const dots = markers.filter((p) => Number.isFinite(Number(p.xPct)) && Number.isFinite(Number(p.yPct)));
+  const boxes = path.length
+    ? path.filter((p) => Number(p.wPct) > 0 && Number(p.hPct) > 0)
+    : markers.filter((p) => Number(p.wPct) > 0 && Number(p.hPct) > 0);
+  const dots = path.length
+    ? path.filter((p) => p.now && Number.isFinite(Number(p.xPct)) && Number.isFinite(Number(p.yPct)))
+    : markers.filter((p) => Number.isFinite(Number(p.xPct)) && Number.isFinite(Number(p.yPct)));
   if (!boxes.length && !dots.length) return;
   const map = el("div", "teach-map");
   map.setAttribute("role", "img");
@@ -787,7 +792,8 @@ function paintTeachMap(root, m) {
     map.appendChild(then);
   }
   boxes.forEach((p) => {
-    const box = el("div", "teach-map-box now");
+    const cls = p.now ? "teach-map-box now" : p.later ? "teach-map-box then" : path.length ? "teach-map-box done" : "teach-map-box now";
+    const box = el("div", cls);
     box.style.left = Number(p.leftPct) + "%";
     box.style.top = Number(p.topPct) + "%";
     box.style.width = Number(p.wPct) + "%";
@@ -803,6 +809,15 @@ function paintTeachMap(root, m) {
     mark.style.top = Number(p.yPct) + "%";
     map.appendChild(mark);
   });
+  if (path.length) {
+    const rail = el("ol", "teach-map-rail");
+    path.forEach((p) => {
+      const li = el("li", p.now ? "now" : p.later ? "then" : "done");
+      li.textContent = String(p.cue || p.label || "").slice(0, 80);
+      rail.appendChild(li);
+    });
+    map.appendChild(rail);
+  }
   root.appendChild(map);
 }
 

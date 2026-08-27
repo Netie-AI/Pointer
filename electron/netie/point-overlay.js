@@ -93,19 +93,49 @@ function hasPoints(raw) {
   return parsePoints(raw).points.length > 0;
 }
 
+function laterOverlayPoints(path) {
+  const list = Array.isArray(path) ? path : [];
+  const out = [];
+  for (const p of list) {
+    if (p && p.now) continue;
+    const box = clipBox(Number(p && p.leftPct), Number(p && p.topPct), Number(p && p.wPct), Number(p && p.hPct));
+    if (!box || out.length >= MAX_POINTS) continue;
+    out.push({
+      xPct: box.leftPct + box.wPct / 2,
+      yPct: box.topPct + box.hPct / 2,
+      leftPct: box.leftPct,
+      topPct: box.topPct,
+      wPct: box.wPct,
+      hPct: box.hPct,
+      label: String((p && p.label) || "").trim(),
+      kind: "box",
+      later: Boolean(p && p.later),
+      done: !Boolean(p && p.later),
+    });
+  }
+  return out;
+}
+
 /**
  * The event the HUD renders. `ttlMs` is carried with the payload so the overlay
  * never has to own a policy about how long a hint lives.
+ * `path` later/done boxes are dashed catalog marks. Current tokens stay on top.
  */
 function toOverlayEvent(raw, opts = {}) {
   const parsed = parsePoints(raw);
-  const hold = Boolean(opts.hold);
+  const later = laterOverlayPoints(opts.path);
   return {
     type: "point",
-    points: parsed.points,
-    hold,
-    ttlMs: hold ? 0 : Number(opts.ttlMs) > 0 ? Number(opts.ttlMs) : DEFAULT_TTL_MS,
+    points: later.concat(parsed.points),
+    hold: Boolean(opts.hold),
+    ttlMs: holdTtl(opts),
   };
+}
+
+function holdTtl(opts) {
+  const hold = Boolean(opts && opts.hold);
+  if (hold) return 0;
+  return Number(opts && opts.ttlMs) > 0 ? Number(opts.ttlMs) : DEFAULT_TTL_MS;
 }
 
 module.exports = {
@@ -116,4 +146,5 @@ module.exports = {
   parsePoints,
   hasPoints,
   toOverlayEvent,
+  laterOverlayPoints,
 };

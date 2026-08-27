@@ -5,7 +5,7 @@
  * workspace.exec is a named refusal - it is not a runtime.
  */
 
-const { catalog, pickDesk, teachAssist, securityAssist, sessionBundle, advanceLiveTeach, askLiveCoworker, askHostCoworker } = require("./coworker-desks");
+const { catalog, pickDesk, teachAssist, securityAssist, sessionBundle, advanceLiveTeach, askLiveCoworker, askHostCoworker, teachWalkPath } = require("./coworker-desks");
 
 const TOOLS = Object.freeze([
   "tools.list",
@@ -128,8 +128,9 @@ function createMcpAbi(opts = {}) {
         }
         const got = workspace.get("live-teach");
         const artifact = got.ok ? Object.assign({}, got.artifact) : null;
+        const path = got.ok ? teachWalkPath(got.artifact.live) : [];
         if (artifact) delete artifact.live;
-        return rpcResult(id, { ...got, artifact, act: false, exec: false });
+        return rpcResult(id, { ...got, artifact, path, act: false, exec: false });
       }
       if (method === "security.review") {
         const assist = securityAssist({

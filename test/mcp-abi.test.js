@@ -303,6 +303,7 @@ function test(name, fn) {
     assert.strictEqual(teachLive.result.exec, false);
     assert.match(teachLive.result.artifact.body, /1 Save/);
     assert.match(teachLive.result.artifact.rest, /Click Cancel/);
+    assert.deepStrictEqual(teachLive.result.path, []);
     coord.workspace.put({
       id: "live-teach",
       title: "Live teach",
@@ -327,6 +328,8 @@ function test(name, fn) {
     assert.strictEqual(taught.result.exec, false);
     assert.match(taught.result.cue, /Click Save or press Enter/);
     assert.ok(!taught.result.live);
+    assert.ok(Array.isArray(taught.result.path));
+    assert.ok(taught.result.path.some((p) => p.now && /Save/.test(p.label)));
     coord.workspace.put({
       id: "live-security",
       title: "Security review",

@@ -1243,6 +1243,39 @@ function teachRest(measured, idx) {
 }
 
 /**
+ * Host / HUD walk path from measured controls. Overlay tokens stay current
+ * only; later rects are dashed catalog marks, never clicks.
+ */
+function teachPathMarks(measured, idx) {
+  const list = Array.isArray(measured) ? measured : [];
+  const now = Number.isInteger(idx) && idx >= 0 ? idx : 0;
+  return list.map((p, i) => ({
+    step: i,
+    now: i === now,
+    later: i > now,
+    label: `${i + 1} ${String((p && p.name) || "control").slice(0, 40)}`.trim(),
+    cue: teachStepPhrase(p),
+    xPct: p && p.xPct,
+    yPct: p && p.yPct,
+    leftPct: p && p.leftPct,
+    topPct: p && p.topPct,
+    wPct: p && p.wPct,
+    hPct: p && p.hPct,
+  }));
+}
+
+function teachWalkPath(live) {
+  const shot = freezeTeachLive(live);
+  if (!shot) return [];
+  let measured = pointControls(shot.controls, shot.screen);
+  if (!measured.length && shot.framed) {
+    const mark = framedRegionPoint(shot.region || shot.screen, shot.screen);
+    if (mark) measured = [mark];
+  }
+  return teachPathMarks(measured, shot.step);
+}
+
+/**
  * Teach walkthrough. POINT tokens come from a measured control tree only.
  * Overlay shows the current step, not every control at once.
  * No tree => no coordinates, and vision still has to see the screen.
@@ -1296,7 +1329,7 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
     "",
     "> identity: POINT crosshair, not a floating buddy",
     origin,
-    "> overlay: current step only",
+    "> overlay: current control hold; later measured boxes dashed",
     "> Act only after Cortex gate + human approval",
     "> will not click these points",
     "",
@@ -1305,7 +1338,7 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
     t.slice(0, 800),
     "",
     "## How to point",
-    "The overlay shows one measured control. Say `got it` or `next` to advance. `back` goes back.",
+    "The overlay holds the current control. Later measured boxes stay dashed. Say `got it` or `next` to advance. `back` goes back.",
     "Emit `[POINT:x,y:label]` with x,y as 0-100 percentages of the screen. Max 8 measured.",
     "Measured controls also emit `[BOX:left,top,w,h:label]` so the overlay can draw around the real rect.",
     "Off-screen points are dropped. The overlay is a crosshair, an optional box, and a label.",
@@ -1340,6 +1373,7 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
           },
         ]
       : [],
+    path: current ? teachPathMarks(measured, idx) : [],
     live: freezeTeachLive({
       controls: measured.map((p) => ({
         name: p.name,
@@ -2321,6 +2355,7 @@ function publicEmptyRoom(desk, title, reason) {
     heard: "",
     deliverable: "",
     markers: [],
+    path: [],
     advance: false,
     chips: [],
     turns: [],
@@ -2406,6 +2441,7 @@ module.exports = {
   canAdvanceTeach,
   replayTeachWalk,
   advanceLiveTeach,
+  teachWalkPath,
   askLiveCoworker,
   askHostCoworker,
   chipsForArtifact,

@@ -4,7 +4,8 @@ One UI: center HUD chat with retrieve roulette and a draggable audio dock.
 
 Coworker desks (DR-0005): Teach points at measured on-screen controls
 (UIA rects -> numbered `[POINT:x,y:n label]` and `[BOX:left,top,w,h:n label]`,
-never invented; overlay shows the current step only; fields then primary
+never invented; overlay holds the current control and dashes later
+measured boxes; fields then primary
 CTA; `Type in` / `Click` cue; `Then:` remaining steps; say `got it` to
 advance), Meeting recaps an
 armed transcript (You/Them lines, weekday tags, They asked chrome, a

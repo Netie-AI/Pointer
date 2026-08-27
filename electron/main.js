@@ -385,7 +385,7 @@ function publishTeachOverlay(assist) {
   if (!assist || !assist.ok || assist.act) return;
   publishLiveCoworker(assist);
   const pointed = parsePoints(assist.deliverable);
-  if (pointed.points.length) sendHud(toOverlayEvent(assist.deliverable, { hold: true }));
+  if (pointed.points.length) sendHud(toOverlayEvent(assist.deliverable, { hold: true, path: assist.path }));
 }
 function publishLiveMeeting(assist) {
   publishLiveCoworker(assist);
@@ -2821,7 +2821,7 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
       meta: `${local.desk} · ${local.kind}`,
       text: pointed.text || local.deliverable,
     });
-    if (pointed.points.length) sendHud(toOverlayEvent(local.deliverable, { hold: true }));
+    if (pointed.points.length) sendHud(toOverlayEvent(local.deliverable, { hold: true, path: local.path }));
     if (local.desk === "teach") {
       armTeachWalk(asked);
     }
@@ -2987,7 +2987,7 @@ function enqueueCoworkerJob(message, extraTranscript, spawn) {
           text: pointed.text || assist.deliverable,
         });
         if (pointed.points.length) {
-          sendHud(toOverlayEvent(assist.deliverable, assist.desk === "teach" ? { hold: true } : {}));
+          sendHud(toOverlayEvent(assist.deliverable, assist.desk === "teach" ? { hold: true, path: assist.path } : {}));
         }
         if (assist.desk === "teach") {
           armTeachWalk(job);

@@ -2,7 +2,7 @@
 
 | Date | Topic | Keywords | Main idea | Path |
 |------|-------|----------|-----------|------|
-| 2026-08-27 | coworker-desks-workspace | desks, today brief, host Ask bar, workspace open file, workspace?id=, meeting chips, workspace.exec, DR-0005, Clicky, Cluely, OpenWorker, Computer | Original desks + Ask bar; This session links open `/workspace?id=` as the working set for Review/mail/Word; no vendored source; exec refused; P-06 parked | `2026-08-27_coworker-desks-workspace.md` |
+| 2026-08-27 | coworker-desks-workspace | desks, today brief, host Ask bar, workspace open file, workspace?id=, meeting chips, teach walk path, workspace.exec, DR-0005, Clicky, Cluely, OpenWorker, Computer | Original desks + Ask bar; `/teach` walk path from measured BOX (current hold, later dashed); This session links open `/workspace?id=` as the working set for Review/mail/Word; no vendored source; exec refused; P-06 parked | `2026-08-27_coworker-desks-workspace.md` |
 | 2026-08-26 | host-netie-worker | host.netie.ai, Worker, localFirst, MCP loopback, DR-0004 | Public Worker serves the same pages; /mcp and live lanes stay on 127.0.0.1; P-06 still parked | `2026-08-26_host-netie-worker.md` |
 | 2026-08-25 | generative-coordinator | coordinator, MCP, skill-search, host.netie.ai, DR-0004 | Search then craft a hint; first-party MCP ABI; loopback coordinator; compute box is P-06 | `2026-08-25_generative-coordinator.md` |
 | 2026-08-25 | word-comma-please | spoken-strip, comma-please, word_docx_write, classifyIntent | ee59600 missed trailing comma before please; Go skipped spoken-strip on word:; how/why Word questions stay ask | `2026-08-25_word-comma-please.md` |

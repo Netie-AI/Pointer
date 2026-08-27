@@ -1806,7 +1806,11 @@ function renderPoints(points, ttlMs, hold) {
   for (const point of points || []) {
     const mark = document.createElement("div");
     const boxed = Number(point.wPct) > 0 && Number(point.hPct) > 0;
+    const later = Boolean(point.later);
+    const done = Boolean(point.done);
     mark.className = boxed ? "point-mark point-box" : "point-mark";
+    if (later) mark.classList.add("later");
+    if (done) mark.classList.add("done");
     if (boxed) {
       mark.style.left = `${point.leftPct}%`;
       mark.style.top = `${point.topPct}%`;
@@ -1816,9 +1820,11 @@ function renderPoints(points, ttlMs, hold) {
       mark.style.left = `${point.xPct}%`;
       mark.style.top = `${point.yPct}%`;
     }
-    const ring = document.createElement("div");
-    ring.className = "point-ring";
-    mark.appendChild(ring);
+    if (!later && !done) {
+      const ring = document.createElement("div");
+      ring.className = "point-ring";
+      mark.appendChild(ring);
+    }
     if (point.label) {
       const label = document.createElement("span");
       label.className = "point-label";
