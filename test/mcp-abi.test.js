@@ -46,6 +46,7 @@ function test(name, fn) {
     assert.ok(r.result.tools.includes("desks.list"));
     assert.ok(r.result.tools.includes("teach.point"));
     assert.ok(r.result.tools.includes("today.brief"));
+    assert.ok(r.result.tools.includes("meeting.live"));
     assert.ok(r.result.tools.includes("workspace.get"));
   });
 
@@ -157,6 +158,21 @@ function test(name, fn) {
     assert.strictEqual(pointed.result.exec, false);
     assert.match(pointed.result.deliverable, /\[POINT:25,42:Save\]/);
     assert.match(pointed.result.deliverable, /\[BOX:20,40,10,4:Save\]/);
+    coord.workspace.put({
+      id: "live-meeting",
+      title: "Live assist",
+      desk: "meeting",
+      body: "# Meeting brief\nSay the date.",
+      cue: "I will send it Friday.",
+    });
+    const live = await mcp.handle(
+      { jsonrpc: "2.0", id: 15, method: "meeting.live" },
+      { coordinator: coord }
+    );
+    assert.strictEqual(live.result.ok, true);
+    assert.strictEqual(live.result.act, false);
+    assert.strictEqual(live.result.exec, false);
+    assert.match(live.result.artifact.cue, /Friday/);
     const unknown = await mcp.handle({ jsonrpc: "2.0", id: 14, method: "browser.run" });
     assert.ok(unknown.error);
     assert.match(unknown.error.message, /unknown tool/);

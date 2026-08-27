@@ -12,11 +12,11 @@
    coordinator at `127.0.0.1:18010` (`/` `/today` `/lanes` `/skills`
    `/workspace`). Public Worker serves the same pages; `/mcp` and
    live lanes stay on the laptop. P-05 stays parked.
-2. **Coworker desks + online catalog (DR-0005).** Teach draws measured
-   BOX overlays from UIA rects (never invented). Meeting assist paints a
-   say-this cue in fixed HUD chrome. Loopback host pages poll live;
-   public catalog stays empty. Spawn never claims pointer-act. P-06
-   parked. GitHub Actions blocked on org billing.
+2. **Coworker desks + online catalog (DR-0005).** Live teach pump redraws
+   measured BOX overlays. Meeting cue copies from fixed HUD chrome.
+   Standing Today clock republishes the brief. Loopback `/meeting` is a
+   coworker room; public catalog stays empty. P-06 parked. GitHub Actions
+   blocked on org billing.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

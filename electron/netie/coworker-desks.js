@@ -760,6 +760,114 @@ function createLiveMeetingPump(opts = {}) {
   return { push, reset };
 }
 
+/**
+ * Keep highlighting measured controls while Teach is live.
+ * No tree => no overlay. Never Acts. Injected interval so tests do not sleep.
+ */
+function createLiveTeachPump(opts = {}) {
+  const delayMs = Number.isFinite(Number(opts.delayMs)) ? Math.max(0, Number(opts.delayMs)) : 1500;
+  const setI = typeof opts.setIntervalImpl === "function" ? opts.setIntervalImpl : setInterval;
+  const clearI = typeof opts.clearIntervalImpl === "function" ? opts.clearIntervalImpl : clearInterval;
+  let interval = null;
+  let lastKey = "";
+  let spec = null;
+  let pending = false;
+
+  function reset() {
+    if (interval) clearI(interval);
+    interval = null;
+    lastKey = "";
+    spec = null;
+    pending = false;
+  }
+
+  async function tick() {
+    if (!spec || pending) return;
+    pending = true;
+    try {
+      const measured = spec.measure ? await spec.measure() : { controls: [], screen: null };
+      const assist = teachAssist({
+        text: spec.text || "walk me through this on my screen",
+        controls: measured && measured.controls,
+        screen: measured && measured.screen,
+      });
+      if (!assist.ok || assist.act || !assist.skipLlm) return;
+      const key = String(assist.deliverable || "");
+      if (!key || key === lastKey) return;
+      lastKey = key;
+      if (typeof spec.onAssist === "function") spec.onAssist(assist);
+    } finally {
+      pending = false;
+    }
+  }
+
+  function start(next = {}) {
+    spec = next;
+    lastKey = "";
+    if (interval) clearI(interval);
+    void tick();
+    interval = setI(() => {
+      void tick();
+    }, delayMs);
+  }
+
+  return { start, reset };
+}
+
+/**
+ * Standing Today brief on a clock. OpenWorker-shaped schedule, Pointer rules:
+ * never Acts, never execs, empty session stays honest. Injected interval.
+ */
+function createBriefClock(opts = {}) {
+  const delayMs = Number.isFinite(Number(opts.delayMs)) ? Math.max(0, Number(opts.delayMs)) : 30000;
+  const setI = typeof opts.setIntervalImpl === "function" ? opts.setIntervalImpl : setInterval;
+  const clearI = typeof opts.clearIntervalImpl === "function" ? opts.clearIntervalImpl : clearInterval;
+  let interval = null;
+  let lastKey = "";
+  let spec = null;
+
+  function reset() {
+    if (interval) clearI(interval);
+    interval = null;
+    lastKey = "";
+    spec = null;
+  }
+
+  function tick() {
+    if (!spec || typeof spec.brief !== "function") return;
+    const assist = spec.brief();
+    if (!assist || !assist.ok || assist.act) return;
+    const key = String(assist.deliverable || "");
+    if (!key || key === lastKey) return;
+    lastKey = key;
+    if (typeof spec.onBrief === "function") spec.onBrief({ ...assist, id: "standing-today" });
+  }
+
+  function start(next = {}) {
+    spec = next;
+    lastKey = "";
+    if (interval) clearI(interval);
+    tick();
+    interval = setI(tick, delayMs);
+  }
+
+  return { start, reset };
+}
+
+function publicMeetingSnapshot() {
+  return {
+    localFirst: true,
+    act: false,
+    exec: false,
+    cue: "",
+    deliverable: "",
+    coordinator: "http://127.0.0.1:18010",
+    reason: "live meeting stays on the laptop",
+    desk: "meeting",
+    ok: true,
+  };
+}
+
 const DESK_CHIPS = Object.freeze([
   { id: "teach", label: "Teach", q: "walk me through this on my screen", autoAsk: false },
   { id: "meeting", label: "Meeting", q: "recap this meeting", autoAsk: true },
@@ -786,6 +894,9 @@ module.exports = {
   suggestsFromAssist,
   liveMeetingUpdate,
   createLiveMeetingPump,
+  createLiveTeachPump,
+  createBriefClock,
+  publicMeetingSnapshot,
   deskGrounding,
   canActOnline,
   finishListeningSession,

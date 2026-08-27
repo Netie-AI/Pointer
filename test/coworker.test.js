@@ -17,6 +17,8 @@ const {
   suggestsFromAssist,
   liveMeetingUpdate,
   createLiveMeetingPump,
+  createLiveTeachPump,
+  createBriefClock,
   DESK_CHIPS,
 } = require("../electron/netie/coworker-desks");
 const { plannerGrounding } = require("../electron/netie/coworker");
@@ -409,5 +411,99 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /event\.act/);
 });
 
-console.log(`\n${pass} passed, ${fails.length} failed`);
-process.exit(fails.length ? 1 : 0);
+async function asyncTest(name, fn) {
+  try {
+    await fn();
+    pass += 1;
+    console.log("PASS " + name);
+  } catch (err) {
+    fails.push(name);
+    console.log("FAIL " + name + " -- " + err.message);
+  }
+}
+
+(async () => {
+  await asyncTest("live teach pump overlays measured boxes and never invents", async () => {
+    const hits = [];
+    let tick = null;
+    const pump = createLiveTeachPump({
+      delayMs: 0,
+      setIntervalImpl: (fn) => {
+        tick = fn;
+        return 1;
+      },
+      clearIntervalImpl: () => {
+        tick = null;
+      },
+    });
+    const screen = { x: 0, y: 0, width: 1000, height: 1000 };
+    const tree = [
+      { name: "Save", controlType: "Button", rect: { x: 200, y: 400, width: 100, height: 40 } },
+    ];
+    pump.start({
+      text: "walk me through this on my screen",
+      measure: () => ({ controls: tree, screen }),
+      onAssist: (a) => hits.push(a),
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.strictEqual(hits.length, 1);
+    assert.strictEqual(hits[0].act, false);
+    assert.match(hits[0].deliverable, /\[BOX:20,40,10,4:Save\]/);
+    if (tick) await tick();
+    await Promise.resolve();
+    assert.strictEqual(hits.length, 1);
+    pump.reset();
+    pump.start({
+      text: "walk me through this on my screen",
+      measure: () => ({ controls: [], screen }),
+      onAssist: (a) => hits.push(a),
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.strictEqual(hits.length, 1);
+    const fs = require("fs");
+    const path = require("path");
+    const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
+    assert.match(main, /createLiveTeachPump/);
+    assert.match(main, /liveTeachPump\.start/);
+    assert.doesNotMatch(main.slice(main.indexOf("function publishTeachOverlay"), main.indexOf("function publishLiveMeeting") + 40), /driver\./);
+  });
+
+  await asyncTest("standing brief clock ships today and never acts", async () => {
+    const hits = [];
+    let tick = null;
+    const clock = createBriefClock({
+      delayMs: 0,
+      setIntervalImpl: (fn) => {
+        tick = fn;
+        return 1;
+      },
+      clearIntervalImpl: () => {
+        tick = null;
+      },
+    });
+    clock.start({
+      brief: () => todayAssist({ state: {} }),
+      onBrief: (a) => hits.push(a),
+    });
+    assert.strictEqual(hits.length, 1);
+    assert.strictEqual(hits[0].act, false);
+    assert.strictEqual(hits[0].id, "standing-today");
+    assert.match(hits[0].deliverable, /# Today/);
+    if (tick) tick();
+    assert.strictEqual(hits.length, 1);
+    clock.reset();
+    const fs = require("fs");
+    const path = require("path");
+    const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
+    assert.match(main, /standingClock\.start/);
+    assert.match(main, /hud:copyText/);
+    const hud = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
+    assert.match(hud, /hud:copyText/);
+    assert.doesNotMatch(hud.slice(hud.indexOf("const btnCopyCue"), hud.indexOf("$(\"mode-pill\")")), /hud:act/);
+  });
+
+  console.log(`\n${pass} passed, ${fails.length} failed`);
+  process.exit(fails.length ? 1 : 0);
+})();

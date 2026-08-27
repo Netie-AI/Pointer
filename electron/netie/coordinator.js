@@ -147,6 +147,24 @@ function createCoordinator(opts = {}) {
       );
       return;
     }
+    if (req.method === "GET" && url.pathname === "/api/meeting") {
+      const got = workspace.get("live-meeting");
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(
+        JSON.stringify({
+          ok: got.ok,
+          act: false,
+          exec: false,
+          localFirst: false,
+          desk: "meeting",
+          cue: got.ok ? String(got.artifact.cue || "") : "",
+          deliverable: got.ok ? String(got.artifact.body || "") : "",
+          artifact: got.ok ? got.artifact : null,
+          reason: got.ok ? "live meeting on loopback; no runtime" : "no live meeting yet",
+        })
+      );
+      return;
+    }
     if (req.method === "GET" && url.pathname === "/api/workspace") {
       const id = url.searchParams.get("id");
       if (id) {

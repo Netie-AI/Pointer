@@ -1,6 +1,10 @@
-# CHANGELOG
+## 2026-08-27 - Live teach pump, copy say-this, standing Today clock, /meeting room
 
-Append-only. Never edited, only added to. Newest first.
+Teach keeps redrawing measured BOX overlays while the desk is live.
+Meeting cue copies to the clipboard from fixed HUD chrome (never Acts).
+A standing Today clock republishes the session brief. Loopback `/meeting`
+shows the live brief; public `/api/meeting` stays empty. P-05 and P-06
+stay parked.
 
 ## 2026-08-27 - Measured BOX overlay, live say-this cue, loopback catalog poll
 

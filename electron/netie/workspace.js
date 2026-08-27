@@ -47,6 +47,7 @@ function createWorkspace(opts = {}) {
       title,
       desk: String(spec.desk || "teach").slice(0, 40),
       body,
+      cue: String(spec.cue || "").slice(0, 240),
       t: nowMs(clock),
     };
     const existing = items.findIndex((item) => item.id === row.id);

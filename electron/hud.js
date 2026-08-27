@@ -102,13 +102,16 @@ function paintSuggests(mode) {
   paintSuggestItems(rows);
 }
 
+let lastCueText = "";
 function paintLiveBrief(event) {
   const brief = $("coworker-brief");
   const meta = $("coworker-brief-meta");
   const cueEl = $("meeting-cue");
+  const copyBtn = $("btn-copy-cue");
   if (!brief) return;
   const text = String((event && event.text) || "").slice(0, 4000);
   const cue = String((event && event.cue) || "").trim().slice(0, 240);
+  lastCueText = cue;
   if (!text || (event && event.act)) {
     brief.hidden = true;
     if (meta) meta.hidden = true;
@@ -116,6 +119,8 @@ function paintLiveBrief(event) {
       cueEl.hidden = true;
       cueEl.textContent = "";
     }
+    if (copyBtn) copyBtn.hidden = true;
+    lastCueText = "";
     return;
   }
   brief.hidden = false;
@@ -128,6 +133,7 @@ function paintLiveBrief(event) {
     cueEl.hidden = !cue;
     cueEl.textContent = cue ? `Say this: ${cue}` : "";
   }
+  if (copyBtn) copyBtn.hidden = !cue;
 }
 
 /** Mirrors the main-process settings the renderer needs each frame. */
@@ -1204,6 +1210,18 @@ $("desk-pill").addEventListener("click", (event) => {
   if (button.dataset.autoask === "1") doAsk();
   else askInput.focus();
 });
+const btnCopyCue = $("btn-copy-cue");
+if (btnCopyCue) {
+  btnCopyCue.addEventListener("click", async () => {
+    const text = String(lastCueText || "").trim();
+    if (!text) return;
+    const res = await invoke("hud:copyText", { text });
+    btnCopyCue.textContent = res && res.ok ? "Copied" : "Copy failed";
+    setTimeout(() => {
+      btnCopyCue.textContent = "Copy say-this";
+    }, 1200);
+  });
+}
 $("mode-pill").addEventListener("click", async (event) => {
   if (agentBusy) {
     answerMeta.textContent = "Agent busy — mode locked";

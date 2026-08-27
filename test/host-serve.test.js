@@ -42,6 +42,7 @@ function readAsset(file) {
     const c = createCoordinator();
     assert.deepStrictEqual(c.PAGES, PAGES);
     assert.strictEqual(pageFor("/today/"), "today");
+    assert.strictEqual(pageFor("/meeting"), "meeting");
     assert.strictEqual(pageFor("/secret"), null);
   });
 
@@ -140,7 +141,16 @@ function readAsset(file) {
     const app = fs.readFileSync(path.join(HOST, "app.js"), "utf8");
     assert.match(app, /paintBrief/);
     assert.match(app, /\/api\/today/);
+    assert.match(app, /\/api\/meeting/);
     assert.doesNotMatch(app, /innerHTML/);
+    const meeting = await fetch(new Request("https://host.netie.ai/meeting"));
+    assert.strictEqual(meeting.status, 200);
+    const meetingText = await meeting.text();
+    assert.match(meetingText, /id="meeting-brief"/);
+    const meetingApi = handlePublicRequest({ method: "GET", pathname: "/api/meeting" });
+    assert.strictEqual(JSON.parse(meetingApi.body).localFirst, true);
+    assert.strictEqual(JSON.parse(meetingApi.body).exec, false);
+    assert.strictEqual(JSON.parse(meetingApi.body).cue, "");
     const css = await fetch(new Request("https://host.netie.ai/style.css"));
     assert.strictEqual(css.status, 200);
     assert.match(css.headers.get("content-type"), /text\/css/);

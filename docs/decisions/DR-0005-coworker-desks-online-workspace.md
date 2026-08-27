@@ -70,5 +70,7 @@ stay 404/refused. Meeting local assist returns `act: false`. Today brief
 and coworker spawn return `act: false` and never claim `pointer-act`.
 Live meeting pump is meeting/transcribe only. Public `?id=` is 404.
 Measured teach emits `[BOX:]` from UIA rects. Meeting assist `cue` paints
-in the fixed insight panel. Loopback host pages poll; public localFirst
-does not.
+in the fixed insight panel and copies via `hud:copyText` (never Act).
+Live teach pump redraws measured overlays. Standing Today clock
+republishes `standing-today`. Loopback `/meeting` is a coworker room;
+public `/api/meeting` is localFirst empty.

@@ -17,6 +17,7 @@ const {
   ipcMain,
   shell,
   dialog,
+  clipboard,
 } = require("electron");
 const fs = require("fs");
 const os = require("os");
@@ -147,7 +148,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
-const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, suggestsFromAssist, createLiveMeetingPump } = require("./netie/coworker-desks");
+const { pickDesk, meetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -290,6 +291,7 @@ function publishBrief(assist) {
       title: assist.title || assist.desk || "brief",
       desk: assist.desk || "teach",
       body: assist.deliverable,
+      cue: assist.cue || "",
     });
   } catch {
     return null;
@@ -301,6 +303,15 @@ function publishSuggests(assist) {
   sendHud({ type: "suggests", items });
 }
 const liveMeetingPump = createLiveMeetingPump({ delayMs: 900 });
+const liveTeachPump = createLiveTeachPump({ delayMs: 1500 });
+const standingClock = createBriefClock({ delayMs: 30000 });
+function publishTeachOverlay(assist) {
+  if (!assist || !assist.ok || assist.act) return;
+  publishBrief(assist);
+  publishSuggests(assist);
+  const pointed = parsePoints(assist.deliverable);
+  if (pointed.points.length) sendHud(toOverlayEvent(assist.deliverable));
+}
 function publishLiveMeeting(assist) {
   if (!assist || !assist.ok || assist.act) return;
   publishBrief(assist);
@@ -574,6 +585,7 @@ function applyAppMode(modeId, { reason = "" } = {}) {
   if (appMode !== "meeting" && appMode !== "transcribe") {
     liveMeetingPump.reset();
   }
+  liveTeachPump.reset();
   if (spec.autoNotes && (!notes.file || prev !== appMode)) {
     const started = notes.start(appMode);
     try {
@@ -2716,6 +2728,13 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
       text: pointed.text || local.deliverable,
     });
     if (pointed.points.length) sendHud(toOverlayEvent(local.deliverable));
+    if (local.desk === "teach") {
+      liveTeachPump.start({
+        text: asked,
+        measure: measureTeachControls,
+        onAssist: publishTeachOverlay,
+      });
+    }
     return {
       ok: true,
       reply: pointed.text || local.deliverable,
@@ -2749,6 +2768,17 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
   return r.ok
     ? { ok: true, reply: pointed.text, points: pointed.points, degraded: r.degraded }
     : { ok: false, error: failure.text, hint: failure.hint, kind: failure.kind, degraded: r.degraded, blocked: r.blocked };
+});
+
+ipcMain.handle("hud:copyText", async (_e, payload) => {
+  const text = String((payload && payload.text) || "").trim();
+  if (!text) return { ok: false, act: false, reason: "nothing to copy" };
+  try {
+    clipboard.writeText(text.slice(0, 2000));
+    return { ok: true, act: false, copied: true };
+  } catch (err) {
+    return { ok: false, act: false, reason: String(err && err.message ? err.message : err) };
+  }
 });
 
 /**
@@ -2818,6 +2848,13 @@ function enqueueCoworkerJob(message, extraTranscript, spawn) {
           text: pointed.text || assist.deliverable,
         });
         if (pointed.points.length) sendHud(toOverlayEvent(assist.deliverable));
+        if (assist.desk === "teach") {
+          liveTeachPump.start({
+            text: message,
+            measure: measureTeachControls,
+            onAssist: publishTeachOverlay,
+          });
+        }
         liveCoordinator.note("brief", assist.title || assist.desk);
       } else if (assist) {
         sendHud({
@@ -4017,8 +4054,12 @@ app.whenReady().then(() => {
       .then((r) => {
         const addr = r && r.address;
         console.log(
-          `Coordinator on http://127.0.0.1:${addr && addr.port ? addr.port : 18010} (/ /today /lanes /skills /workspace)`
+          `Coordinator on http://127.0.0.1:${addr && addr.port ? addr.port : 18010} (/ /today /meeting /lanes /skills /workspace)`
         );
+        standingClock.start({
+          brief: () => todayAssist({ state: sessionCoworkerState() }),
+          onBrief: (assist) => publishBrief(assist),
+        });
       })
       .catch((err) => console.error("coordinator listen:", err.message || err));
   }
@@ -4028,6 +4069,9 @@ app.whenReady().then(() => {
 });
 
 app.on("will-quit", () => {
+  liveMeetingPump.reset();
+  liveTeachPump.reset();
+  standingClock.reset();
   liveCoordinator.close().catch(() => {});
   globalShortcut.unregisterAll();
   stopTicks();

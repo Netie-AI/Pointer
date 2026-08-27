@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>skills - Netie coordinator</title>
+  <title>meeting - Netie coordinator</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
-    <p class="kicker">host.netie.ai /skills</p>
-    <h1>Skills</h1>
+    <p class="kicker">host.netie.ai /meeting</p>
+    <h1>Meeting</h1>
     <nav>
       <a href="/">home</a>
       <a href="/today">today</a>
@@ -19,12 +19,10 @@
     </nav>
   </header>
   <main>
-    <p>Search hits first. A miss is a hint draft, never an executable action list.</p>
+    <p>Live meeting brief from this laptop. Not a cheater overlay. Act stays on the laptop.</p>
     <p id="policy" class="muted">loading...</p>
-    <h2>Hits</h2>
-    <ul id="hits"></ul>
-    <h2>Hint drafts</h2>
-    <ul id="drafts"></ul>
+    <p id="meeting-cue-web" class="meeting-cue" hidden></p>
+    <article id="meeting-brief"></article>
   </main>
   <script src="app.js"></script>
 </body>

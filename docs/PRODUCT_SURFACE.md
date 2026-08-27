@@ -7,7 +7,8 @@ Coworker desks (DR-0005): Teach points at measured on-screen controls
 invented), Meeting recaps an armed transcript (live say-this cue when they
 ask a question), Today is the standing session brief, Document writes Word,
 Security never self-approves. HUD desk chips Ask, never Act. `/today` and
-home paint the brief. Loopback host pages poll while live. Online `/workspace`
+home paint the brief. Loopback `/meeting` is a live meeting room.
+Loopback host pages poll while live. Online `/workspace`
 is a read-only artifact catalog with a filter. "Spawn a coworker" queues a
 background brief and never Acts. Act stays on the laptop.
 

@@ -21,7 +21,9 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   (no invented coords; vision still runs). Measured rects also emit BOX
   highlights. Never Acts.
 - Meeting live assist paints a say-this cue in the fixed insight panel.
-- Loopback host pages poll while live; public localFirst does not.
+- Live teach pump redraws measured BOX overlays. Copy say-this is clipboard
+  only. Standing Today clock republishes `standing-today`. `/meeting` is a
+  loopback room; public `/api/meeting` is empty.
 - Local meeting Recap/Assist/Next from the transcript ring. `act: false`.
 - Live meeting pump: debounce utterances into the fixed insight panel.
   A question on the ring switches the brief to assist.

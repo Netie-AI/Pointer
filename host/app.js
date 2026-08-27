@@ -250,6 +250,32 @@ if (todayPage) {
   });
 }
 
+const meetingPage = document.getElementById("meeting-brief");
+if (meetingPage) {
+  pollWhileLive(function () {
+    return fetch("/api/meeting")
+      .then((r) => r.json())
+      .then((m) => {
+        if (m && m.exec) {
+          show("policy", "refused: meeting must not grow a runtime");
+          return false;
+        }
+        show("policy", (m && m.reason) || "live meeting; Act stays on the laptop");
+        const cue = document.getElementById("meeting-cue-web");
+        const text = String((m && m.cue) || "").trim();
+        if (cue) {
+          cue.hidden = !text;
+          cue.textContent = text ? "Say this: " + text : "";
+        }
+        meetingPage.replaceChildren();
+        const pre = el("pre");
+        pre.textContent = (m && m.deliverable) || "";
+        meetingPage.appendChild(pre);
+        return !(m && m.localFirst);
+      });
+  });
+}
+
 const lanesPage = document.getElementById("lanes");
 if (lanesPage) {
   pollWhileLive(function () {

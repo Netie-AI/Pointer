@@ -18,6 +18,7 @@ const TOOLS = Object.freeze([
   "desks.pick",
   "teach.point",
   "today.brief",
+  "meeting.live",
   "workspace.list",
   "workspace.get",
   "workspace.put",
@@ -91,6 +92,11 @@ function createMcpAbi(opts = {}) {
         if (!coord) return rpcError(id, -32000, "coordinator missing");
         const assist = coord.brief();
         return rpcResult(id, { ...assist, act: false, exec: false });
+      }
+      if (method === "meeting.live") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        const got = workspace.get("live-meeting");
+        return rpcResult(id, { ...got, act: false, exec: false });
       }
       if (method === "workspace.list") {
         if (!workspace) return rpcError(id, -32000, "workspace missing");
