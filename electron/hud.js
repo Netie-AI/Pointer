@@ -871,6 +871,7 @@ async function doAsk(opts = {}) {
   const label =
     message ||
     (kind === "recap" ? "Recap" : kind === "followups" ? "Follow-ups" : "what should I say");
+  const asked = kind === "recap" || kind === "followups" ? message : message || label;
   autoSend.cancel("sent");
   dismissCleanToast();
   setChatOpen(true);
@@ -881,11 +882,7 @@ async function doAsk(opts = {}) {
   answerBody.textContent = "…";
   if (window.NetieSound) NetieSound.think();
   const sent = attachmentPayload();
-  const result = await invoke("hud:ask", {
-    message: kind === "recap" || kind === "followups" ? message : message || label,
-    kind,
-    attachments: sent,
-  });
+  const result = await invoke("hud:ask", { message: asked, attachments: sent, kind });
   if (sent.length) clearAttachments();
   answerMeta.textContent = result.degraded ? "Answered (degraded)" : "AI response";
   appendMessage("assistant", result.ok ? result.reply || "" : result.error || "Failed");
