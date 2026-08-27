@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - HUD session chip Ready/Recording/Scribing
+
+OpenWillow-class session: fixed top chrome names Ready, Recording,
+Transcribing, Scribing, Paused, or Error. computer.status.session
+matches so other agents can wait. Not an orb. GitHub CI on this
+account is still a spending-limit cutoff (0 steps), not a product
+fail. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - HUD privacy chip for STT and LLM
 
 R-0011: fixed top chrome names on-device vs off-device STT and LLM.

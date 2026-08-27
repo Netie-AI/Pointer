@@ -433,6 +433,19 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   pointer-events: none;
 }
 .privacy-chip.off-device { color: var(--accent); }
+.session-chip {
+  display: inline;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.session-chip.is-recording { color: var(--good); }
+.session-chip.is-transcribing,
+.session-chip.is-scribing { color: var(--accent); }
+.session-chip.is-error { color: var(--rec); }
 
 .wave {
   display: flex; width: 44px; height: 22px; align-items: flex-end; justify-content: center; gap: 2.5px;

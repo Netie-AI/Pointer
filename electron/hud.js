@@ -16,6 +16,7 @@ const btnPause = $("btn-pause");
 const recLabel = $("rec-label");
 const notesChip = $("notes-chip");
 const privacyChip = $("privacy-chip");
+const sessionChip = $("session-chip");
 const settingsMenu = $("settings-menu");
 const nodToast = $("nod-toast");
 const roulettePanel = $("roulette-panel");
@@ -323,6 +324,15 @@ function applyPrivacy(privacy) {
   privacyChip.title = local
     ? "STT and LLM stay on this machine"
     : "Audio or chat is leaving this machine";
+}
+
+function applySession(session) {
+  if (!sessionChip) return;
+  const state = session && session.state ? String(session.state) : "ready";
+  const text = session && session.text ? String(session.text) : "Ready";
+  sessionChip.textContent = text;
+  sessionChip.className = `session-chip is-${state.replace(/[^a-z]/g, "")}`;
+  sessionChip.title = text;
 }
 
 function applySuggest(text, opts = {}) {
@@ -1464,6 +1474,7 @@ function onHudEvent(event) {
   if (!event?.type) return;
   if (event.type === "mode") applyModeUi(event.mode, event.notesPath);
   if (event.type === "privacy") applyPrivacy(event);
+  if (event.type === "session") applySession(event);
   if (event.type === "nod-wait") nodToast.classList.toggle("show", event.on !== false);
   if (event.type === "plan-running") setAgentBusy(event.on !== false);
   if (event.type === "transcript") {
@@ -1632,6 +1643,7 @@ window.__netieOnEvent = onHudEvent;
 invoke("hud:ready").then(async (info) => {
   if (info?.mode) applyModeUi(info.mode, info.notesPath);
   if (info?.privacy) applyPrivacy(info.privacy);
+  if (info?.session) applySession(info.session);
   await loadSettings();
   if (info?.listen) {
     listening = true;

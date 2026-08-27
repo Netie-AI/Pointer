@@ -7,6 +7,7 @@ const {
   parseProbe,
   computerStatus,
   privacyLabel,
+  sessionLabel,
   computerObserve,
 } = require("../electron/netie/uacc");
 const { RECIPES, matchRecipe } = require("../electron/netie/recipes");
@@ -114,6 +115,8 @@ function test(name, fn) {
     assert.strictEqual(shown.llm.model, "gemini-2.0-flash");
     assert.strictEqual(shown.privacy.local, true);
     assert.strictEqual(shown.privacy.text, "On device");
+    assert.strictEqual(shown.session.state, "ready");
+    assert.strictEqual(shown.session.text, "Ready");
     assert.strictEqual(shown.scribe.language, "English");
     assert.ok(shown.drive.instructions.includes("POST /api/computer {\"mode\":\"scribe\"}"));
     assert.strictEqual(shown.scribe.available, true);
@@ -192,6 +195,30 @@ function test(name, fn) {
       llm: { url: "https://llm.example.com/v1", local: false },
     });
     assert.strictEqual(llmOnly.privacy.text, "LLM leaves device");
+  });
+
+  await test("sessionLabel names recording vs transcribing vs scribing", () => {
+    assert.deepStrictEqual(sessionLabel({}), { state: "ready", text: "Ready" });
+    assert.deepStrictEqual(sessionLabel({ recording: true }), {
+      state: "recording",
+      text: "Recording",
+    });
+    assert.deepStrictEqual(sessionLabel({ recording: true, transcribing: true }), {
+      state: "transcribing",
+      text: "Transcribing",
+    });
+    assert.deepStrictEqual(sessionLabel({ scribing: true, transcribing: true }), {
+      state: "scribing",
+      text: "Scribing",
+    });
+    assert.deepStrictEqual(sessionLabel({ error: "stt", scribing: true }), {
+      state: "error",
+      text: "Error",
+    });
+    assert.deepStrictEqual(sessionLabel({ paused: true }), { state: "paused", text: "Paused" });
+    const live = computerStatus({ session: { state: "scribing", text: "Scribing" } });
+    assert.strictEqual(live.session.state, "scribing");
+    assert.strictEqual(live.session.text, "Scribing");
   });
 
   await test("computer.observe reports visibility without leaking clicks", () => {

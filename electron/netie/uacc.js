@@ -135,6 +135,16 @@ function privacyLabel(opts = {}) {
   return { local: false, text: "LLM leaves device" };
 }
 
+/** OpenWillow-class HUD/API session. Error wins, then Scribe, STT, mic, pause. */
+function sessionLabel(opts = {}) {
+  if (String(opts.error || "").trim()) return { state: "error", text: "Error" };
+  if (opts.scribing === true) return { state: "scribing", text: "Scribing" };
+  if (opts.transcribing === true) return { state: "transcribing", text: "Transcribing" };
+  if (opts.recording === true) return { state: "recording", text: "Recording" };
+  if (opts.paused === true) return { state: "paused", text: "Paused" };
+  return { state: "ready", text: "Ready" };
+}
+
 function computerStatus(opts = {}) {
   const captureVisible = opts.captureVisible === true;
   const uacc = opts.uacc || detectUacc(opts);
@@ -180,6 +190,13 @@ function computerStatus(opts = {}) {
       sttLocal: !opts.stt || opts.stt.local !== false,
       llmLocal: !opts.llm || opts.llm.local !== false,
     }),
+    session:
+      opts.session && opts.session.state
+        ? {
+            state: String(opts.session.state).slice(0, 24),
+            text: String(opts.session.text || opts.session.state).slice(0, 24),
+          }
+        : sessionLabel({}),
     scribe: {
       available: opts.scribeAvailable === true || opts.actAvailable === true,
       gated: true,
@@ -343,6 +360,7 @@ module.exports = {
   parseProbe,
   computerStatus,
   privacyLabel,
+  sessionLabel,
   computerObserve,
   publicWindow,
   publicScreenshot,

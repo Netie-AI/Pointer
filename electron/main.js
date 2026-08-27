@@ -44,7 +44,7 @@ const { expandSkillsToActions, skillPreamble, describeExpansion } = require("./n
 const { createCoordinator } = require("./netie/coordinator");
 const { createMcpAbi } = require("./netie/mcp-abi");
 const { searchThenCraft, craftHint } = require("./netie/skill-search");
-const { detectUacc, computerStatus, computerObserve, privacyLabel } = require("./netie/uacc");
+const { detectUacc, computerStatus, computerObserve, privacyLabel, sessionLabel } = require("./netie/uacc");
 const { runComputerAct, planFromInstruction } = require("./netie/computer-act");
 const { shouldDictateIntoFocus, dictateSecureGoal } = require("./netie/dictate");
 const {
@@ -242,6 +242,7 @@ function liveComputerStatus() {
     scribeLanguage: settings.get("scribeLanguage") || "English",
     stt: { url: loc.sttUrl, local: loc.sttLocal },
     llm: { url: loc.llmUrl, local: loc.llmLocal, model: llmModel },
+    session: liveSession(),
   });
 }
 
@@ -476,6 +477,21 @@ function pushPrivacy() {
   const privacy = livePrivacy();
   sendHudQuiet({ type: "privacy", local: privacy.local !== false, text: privacy.text });
 }
+
+function liveSession() {
+  return sessionLabel({
+    error: lastSessionError,
+    scribing: scribeInFlight,
+    transcribing: sttBusy > 0,
+    recording: (listenMic || listenSystem) && !hudPaused,
+    paused: hudPaused,
+  });
+}
+
+function pushSession() {
+  const session = liveSession();
+  sendHudQuiet({ type: "session", state: session.state, text: session.text });
+}
 const demoDebug = new DemoDebugTrail({ enabled: settings.get("demoDebug") === true });
 const features = new FeatureFlags({
   env: process.env,
@@ -494,6 +510,8 @@ const nodGate = createNodGate({ timeoutMs: 25000 });
 /** One segmenter per audio source so mic and system speech never interleave. */
 const segmenters = new Map();
 let sttBusy = 0;
+let scribeInFlight = false;
+let lastSessionError = "";
 /** @type {Array<{role:string,text:string,ts:number}>} */
 let sessionTurns = [];
 let listenMic = false;
@@ -634,6 +652,16 @@ function sendStage(event) {
 function sendHud(event) {
   if (hudWindow && !hudWindow.isDestroyed()) {
     hudWindow.webContents.send("hud:event", event);
+  }
+  if (event && (event.type === "auto-listen" || event.type === "stt-busy" || event.type === "capture")) {
+    const session = liveSession();
+    if (hudWindow && !hudWindow.isDestroyed()) {
+      hudWindow.webContents.send("hud:event", {
+        type: "session",
+        state: session.state,
+        text: session.text,
+      });
+    }
   }
 }
 
@@ -1787,75 +1815,87 @@ async function runScribeApi(params) {
 async function runScribeTurn({ instruction, source = "ask" } = {}) {
   const text = cleanTranscript(instruction);
   if (!text) return { ok: false, reason: "empty scribe instruction" };
-  if (settings.get("scribeScreenContext") === true) {
-    try {
-      await captureRememberedWindow();
-    } catch {
-      /* screen is optional reference data */
+  scribeInFlight = true;
+  lastSessionError = "";
+  pushSession();
+  try {
+    if (settings.get("scribeScreenContext") === true) {
+      try {
+        await captureRememberedWindow();
+      } catch {
+        /* screen is optional reference data */
+      }
     }
-  }
-  sendHud({ type: "answer", meta: "Scribe", text: "Copying the selection, then rewriting..." });
-  const r = await runComputerScribe(
-    {
-      instruction: text,
-      hasScreenshot: Boolean(lastCapture && lastCapture.dataUrl),
-    },
-    {
-      secure: cortexGate,
-      language: () => normalizeScribeLanguage(settings.get("scribeLanguage")),
-      writingStyle: () => settings.get("writingStyle") || "",
-      personalContext: () => settings.get("personalContext") || "",
-      scribeInstruction: () => settings.get("scribeInstruction") || "",
-      copySelection: () => copySelectionText(),
-      complete: async (req) =>
-        eco.visionChat({
-          message: `${req.system}\n\n${req.user}`,
-          dataUrl: lastCapture && lastCapture.dataUrl,
-          hotContext: plannerContext(text),
-        }),
-      deliver: (out, extra) =>
-        deliverIntoTarget(out, { via: "paste", replace: Boolean(extra && extra.replace) }),
+    sendHud({ type: "answer", meta: "Scribe", text: "Copying the selection, then rewriting..." });
+    const r = await runComputerScribe(
+      {
+        instruction: text,
+        hasScreenshot: Boolean(lastCapture && lastCapture.dataUrl),
+      },
+      {
+        secure: cortexGate,
+        language: () => normalizeScribeLanguage(settings.get("scribeLanguage")),
+        writingStyle: () => settings.get("writingStyle") || "",
+        personalContext: () => settings.get("personalContext") || "",
+        scribeInstruction: () => settings.get("scribeInstruction") || "",
+        copySelection: () => copySelectionText(),
+        complete: async (req) =>
+          eco.visionChat({
+            message: `${req.system}\n\n${req.user}`,
+            dataUrl: lastCapture && lastCapture.dataUrl,
+            hotContext: plannerContext(text),
+          }),
+        deliver: (out, extra) =>
+          deliverIntoTarget(out, { via: "paste", replace: Boolean(extra && extra.replace) }),
+      }
+    );
+    if (r.blocked) {
+      rememberFailedScribe(text, r.reason);
+      lastSessionError = "scribe";
+      sendHud({
+        type: "answer",
+        meta: "Scribe",
+        text: "Scribe paste is off until Cortex /dms/secure is up. Retry or paste as-is.",
+      });
+      return r;
     }
-  );
-  if (r.blocked) {
-    rememberFailedScribe(text, r.reason);
+    if (!r.ok) {
+      rememberFailedScribe(text, r.reason);
+      lastSessionError = "scribe";
+      sendHud({ type: "answer", meta: "Scribe", text: (r.reason || "Scribe failed") + " Retry or paste as-is." });
+      return r;
+    }
+    const delivered = r.delivered;
+    if (!delivered || !delivered.ok) {
+      rememberFailedScribe(text, "paste failed");
+      lastSessionError = "scribe";
+    } else {
+      pendingScribe.clear();
+      publishScribePending();
+      lastSessionError = "";
+    }
     sendHud({
       type: "answer",
       meta: "Scribe",
-      text: "Scribe paste is off until Cortex /dms/secure is up. Retry or paste as-is.",
+      text:
+        delivered && delivered.ok
+          ? String(r.text || "").slice(0, 400)
+          : `Wrote the draft but could not paste (${((delivered && delivered.results) || [])
+              .map((row) => row.error)
+              .filter(Boolean)
+              .join("; ") || "no target"}). Retry or paste as-is.`,
     });
-    return r;
+    return {
+      ok: Boolean(delivered && delivered.ok),
+      text: r.text,
+      delivered,
+      source,
+      blocked: r.blocked,
+    };
+  } finally {
+    scribeInFlight = false;
+    pushSession();
   }
-  if (!r.ok) {
-    rememberFailedScribe(text, r.reason);
-    sendHud({ type: "answer", meta: "Scribe", text: (r.reason || "Scribe failed") + " Retry or paste as-is." });
-    return r;
-  }
-  const delivered = r.delivered;
-  if (!delivered || !delivered.ok) {
-    rememberFailedScribe(text, "paste failed");
-  } else {
-    pendingScribe.clear();
-    publishScribePending();
-  }
-  sendHud({
-    type: "answer",
-    meta: "Scribe",
-    text:
-      delivered && delivered.ok
-        ? String(r.text || "").slice(0, 400)
-        : `Wrote the draft but could not paste (${((delivered && delivered.results) || [])
-            .map((row) => row.error)
-            .filter(Boolean)
-            .join("; ") || "no target"}). Retry or paste as-is.`,
-  });
-  return {
-    ok: Boolean(delivered && delivered.ok),
-    text: r.text,
-    delivered,
-    source,
-    blocked: r.blocked,
-  };
 }
 
 async function askBuddy({ message, dataUrl }) {
@@ -3363,6 +3403,7 @@ ipcMain.handle("hud:ready", async () => ({
   systemAudio: listenSystem,
   sidecar: stt.sidecarOnline,
   privacy: livePrivacy(),
+  session: liveSession(),
 }));
 
 ipcMain.handle("hud:ask", async (_e, payload) => {
@@ -3881,9 +3922,13 @@ ipcMain.handle("hud:frameRegion", async () => {
 
 ipcMain.handle("hud:toggleListen", async (_e, payload) => {
   listenMic = Boolean(payload && payload.on);
-  if (listenMic) ensureSttSidecar();
+  if (listenMic) {
+    lastSessionError = "";
+    ensureSttSidecar();
+  }
   if (!listenMic) flushSource("mic");
   syncDictateCancelHotkey();
+  pushSession();
   const d = transcriber.describe();
   return {
     ok: true,
@@ -3894,13 +3939,18 @@ ipcMain.handle("hud:toggleListen", async (_e, payload) => {
 
 ipcMain.handle("hud:toggleSystemAudio", async (_e, payload) => {
   listenSystem = Boolean(payload && payload.on);
-  if (listenSystem) ensureSttSidecar();
+  if (listenSystem) {
+    lastSessionError = "";
+    ensureSttSidecar();
+  }
   if (!listenSystem) {
     flushSource("system");
+    pushSession();
     return { ok: true, message: "System audio off" };
   }
   // Capture itself is native Electron loopback; only the engine can be missing.
   const d = transcriber.describe();
+  pushSession();
   return { ok: true, engine: d.engine, message: `System audio on — ${d.label}` };
 });
 
@@ -3929,6 +3979,8 @@ ipcMain.handle("hud:captureFailed", async (_e, payload) => {
   const src = (payload && payload.source) || "mic";
   if (src === "mic") listenMic = false;
   else listenSystem = false;
+  lastSessionError = "stt";
+  pushSession();
   return { ok: true };
 });
 
@@ -4008,6 +4060,7 @@ function handleUtterance(source, utt) {
     .transcribe(utt.pcm)
     .then((res) => {
       if (res.ok && res.text) {
+        lastSessionError = "";
         if (nodGate.pending && isAffirmation(res.text)) {
           nodGate.signal(res.text);
         }
@@ -4091,6 +4144,7 @@ function handleUtterance(source, utt) {
           }
         }
       } else if (!res.ok) {
+        lastSessionError = "stt";
         sendHud({
           type: "stt-error",
           source,
@@ -4162,6 +4216,7 @@ ipcMain.handle("hud:enquireCancel", async () => {
 
 ipcMain.handle("hud:setPaused", async (_e, payload) => {
   hudPaused = Boolean(payload && payload.paused);
+  pushSession();
   return { ok: true, paused: hudPaused };
 });
 

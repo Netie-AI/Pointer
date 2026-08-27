@@ -447,6 +447,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/id="btn-copy-notes"/.test(html), "Copy notes pill missing from HUD");
       assert.ok(/id="btn-copy-recap"/.test(html), "Copy recap pill missing from HUD");
       assert.ok(/id="privacy-chip"/.test(html), "privacy chip missing from HUD");
+      assert.ok(/id="session-chip"/.test(html), "session chip missing from HUD");
       assert.ok(/action:\s*"recap"/.test(js), "Copy recap must not send renderer text");
     }),
 

@@ -1,6 +1,6 @@
 ---
-keywords: UACC, captureVisible, computer.observe, screenshot, clipboard, PATH overlay, meeting recap, followups, pending scribe, retry, computer.act, chain, captureNowForAsk, Scribe, delivery, IBM Plex, DR-0005, privacy chip
-main_idea: Screenshotable HUD, loopback act+observe, chained local verbs, Ask live crop, Scribe retry/pending dictation, PATH strokes, Cluely recap/follow-ups plus live notes API, honest on-device vs off-device privacy chip
+keywords: UACC, captureVisible, computer.observe, screenshot, clipboard, PATH overlay, meeting recap, followups, pending scribe, retry, computer.act, chain, captureNowForAsk, Scribe, delivery, IBM Plex, DR-0005, privacy chip, session chip
+main_idea: Screenshotable HUD, loopback act+observe, chained local verbs, Ask live crop, Scribe retry/pending dictation, PATH strokes, Cluely recap/follow-ups plus live notes API, honest on-device vs off-device privacy chip, OpenWillow session chip
 ---
 
 # UACC detectable HUD (DR-0005)
@@ -14,6 +14,8 @@ Observe PNG/clipboard: live `computer.observe` captures `captureDisplayCrop` whe
 Meeting: Recap and Follow-ups pills in fixed top chrome. `computer.meeting_assist` `kind` say/recap/followups. `GET /api/meeting?notes=1` returns live notes as untrusted data (no Cortex hop). Copy recap and `GET /api/meeting?recap=1` share the last Recap from main.
 
 Privacy chip: `#privacy-chip` in fixed top chrome names On device / STT leaves / LLM leaves / STT+LLM leave. Empty STT/LLM URLs resolve to loopback before labeling. `computer.status.privacy` matches. Not an orb.
+
+Session chip: `#session-chip` names Ready / Recording / Transcribing / Scribing / Paused / Error. `computer.status.session` matches so agents can wait. Scribe in-flight wins over STT. Error wins until the next success.
 
 Scribe pending: failed rewrite keeps transcript+hwnd. Retry re-runs; Paste as-is delivers raw dictation. `GET /api/scribe?pending=1`.
 

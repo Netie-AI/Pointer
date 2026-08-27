@@ -36,11 +36,11 @@
    remembered app window, not the full display. BYOK STT URL is a HUD
    setting (OpenAI-shaped HTTP; not a Deepgram default). BYOK LLM URL and
    model are HUD settings too (blank = loopback OpenVault; keys stay in
-   OpenVault, never settings.json). HUD privacy chip and computer.status
-   name on-device vs off-device STT/LLM (R-0011). Recording, mode, and
-   language hotkeys are settings. Ctrl+Alt+L also pins STT to zh when
-   Traditional Chinese is selected (English stays auto). Loopback status
-   publishes live mode, hotkeys, STT, and LLM;
+   OpenVault, never settings.json). HUD privacy and session chips name
+   on-device vs off-device and Ready/Recording/Transcribing/Scribing.
+   Recording, mode, and language hotkeys are settings. Ctrl+Alt+L also
+   pins STT to zh when Traditional Chinese is selected (English stays
+   auto). Loopback status publishes live mode, hotkeys, STT, and LLM;
    `POST /api/computer {"mode":"scribe"}` switches like the tray.
    IBM Plex HUD. P-04 stays parked.
 2. **Generative tools (DR-0004).** Search then craft a hint. Coordinator
