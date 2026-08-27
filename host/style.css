@@ -177,7 +177,29 @@ pre {
 .teach-map-rail li.now { color: #eee; font-weight: 650; }
 .teach-map-rail li.then { color: #9ad; }
 .teach-map-rail li.done { color: #555; }
-.meeting-talk {
+.meeting-card {
+  margin: 0 0 12px;
+  padding: 16px 18px;
+  border: 1px solid #345;
+  background: #141414;
+}
+.meeting-card-asked {
+  margin: 0 0 8px;
+  color: #9aa3b5;
+  font-size: 13px;
+}
+.meeting-card-say {
+  margin: 0 0 10px;
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: #eee;
+}
+.meeting-card-heard {
+  margin: 0;
+  color: #9ad;
+  font-size: 13px;
+}
   list-style: none;
   margin: 0 0 12px;
   padding: 0;

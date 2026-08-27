@@ -200,6 +200,7 @@ function test(name, fn) {
     assert.match(meetingPage.body, /meeting-heard-web/);
     assert.match(meetingPage.body, /meeting-chips/);
     assert.match(meetingPage.body, /meeting-filed/);
+    assert.match(meetingPage.body, /Live meeting answer/);
     const mailed = await new Promise((resolve, reject) => {
       const req = http.request(
         { host: "127.0.0.1", port, path: "/api/meeting", method: "POST", headers: { "content-type": "application/json" } },

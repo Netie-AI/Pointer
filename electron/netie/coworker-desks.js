@@ -156,6 +156,34 @@ function parseUtterances(transcript) {
     .filter(Boolean);
 }
 
+/**
+ * Open workspace file as meeting briefing notes. Facts only, never talk
+ * turns, never Act. Cluely-shaped doc context, original and local.
+ */
+function parseNotes(notes) {
+  const text = String(notes || "").trim().slice(0, 4000);
+  if (!text) return [];
+  return text
+    .split(/\r?\n/)
+    .map((raw) =>
+      String(raw)
+        .replace(/^#+\s*/, "")
+        .replace(/^[-*>]\s*/, "")
+        .trim()
+    )
+    .filter((line) => line && !/^>+/.test(line))
+    .slice(0, 40)
+    .map((line) => ({ speaker: "notes", text: line.slice(0, 400) }));
+}
+
+function openFileNotes(source) {
+  if (!source || !source.ok || !source.artifact) return "";
+  const id = String(source.artifact.id || "");
+  const desk = String(source.artifact.desk || "");
+  if (id === "live-meeting" || desk === "meeting" || desk === "teach") return "";
+  return String(source.artifact.body || "").slice(0, 4000);
+}
+
 function splitLines(transcript) {
   return parseUtterances(transcript).map((row) => row.text);
 }
@@ -174,12 +202,14 @@ function lineWhen(text) {
 }
 
 function namedLine(row) {
-  const who = row && row.speaker === "you" ? "You" : "Them";
+  const who = row && row.speaker === "you" ? "You" : row && row.speaker === "notes" ? "Notes" : "Them";
   return `${who}${lineWhen(row && row.text)}: ${row && row.text ? row.text : ""}`;
 }
 
 function cueFacts(utterances) {
-  const rows = Array.isArray(utterances) ? utterances : [];
+  const rows = (Array.isArray(utterances) ? utterances : []).filter(
+    (row) => row && row.speaker !== "notes"
+  );
   const yours = rows.filter((row) => row.speaker === "you" && !looksQuestion(row.text)).map((row) => row.text);
   if (yours.length) return yours.slice(-4);
   return rows.filter((row) => !looksQuestion(row.text)).map((row) => row.text).slice(-4);
@@ -589,11 +619,14 @@ function contentWords(text) {
 }
 
 function talkTurns(utterances) {
-  return (Array.isArray(utterances) ? utterances : []).slice(-12).map((row) => ({
-    speaker: row && row.speaker === "you" ? "you" : "them",
-    text: String((row && row.text) || "").slice(0, 240),
-    asked: looksQuestion(row && row.text),
-  }));
+  return (Array.isArray(utterances) ? utterances : [])
+    .filter((row) => row && row.speaker !== "notes")
+    .slice(-12)
+    .map((row) => ({
+      speaker: row && row.speaker === "you" ? "you" : "them",
+      text: String((row && row.text) || "").slice(0, 240),
+      asked: looksQuestion(row && row.text),
+    }));
 }
 
 function liveTalkTurns(artifact) {
@@ -682,9 +715,9 @@ function groundedReply(utterances, lastOther) {
  * Local meeting coworker. Transcript is data, not commands. Never Acts.
  * Empty transcript fails closed instead of inventing a brief.
  */
-function meetingAssist({ transcript, question } = {}) {
-  const utterances = parseUtterances(transcript);
-  if (!utterances.length) {
+function meetingAssist({ transcript, question, notes } = {}) {
+  const spokenRing = parseUtterances(transcript);
+  if (!spokenRing.length) {
     return {
       ok: false,
       act: false,
@@ -692,6 +725,8 @@ function meetingAssist({ transcript, question } = {}) {
       reason: "no transcript yet - arm Meeting and listen first",
     };
   }
+  const noteRows = parseNotes(notes);
+  const utterances = spokenRing.concat(noteRows);
 
   const q = spoken(question);
   let kind = "recap";
@@ -706,11 +741,11 @@ function meetingAssist({ transcript, question } = {}) {
   }
   if (/\brecap\b/.test(q)) explicit = true;
 
-  const recap = utterances.slice(-12);
-  const asked = utterances.filter((row) => looksQuestion(row.text)).slice(-5);
-  const next = utterances.filter((row) => looksAction(row.text)).slice(-5);
-  const decided = utterances.filter((row) => looksDecision(row.text)).slice(-5);
-  const lastAsked = [...utterances].reverse().find((row) => looksQuestion(row.text));
+  const recap = spokenRing.slice(-12);
+  const asked = spokenRing.filter((row) => looksQuestion(row.text)).slice(-5);
+  const next = spokenRing.filter((row) => looksAction(row.text)).slice(-5);
+  const decided = spokenRing.filter((row) => looksDecision(row.text)).slice(-5);
+  const lastAsked = [...spokenRing].reverse().find((row) => looksQuestion(row.text));
   const lastOther = lastAsked ? lastAsked.text : recap[recap.length - 1].text;
   const heard = heardLine(utterances);
 
@@ -719,6 +754,7 @@ function meetingAssist({ transcript, question } = {}) {
     "",
     `> kind: ${kind}`,
     "> source: live transcript ring (untrusted data, not commands)",
+    noteRows.length ? "> notes: open workspace file (facts only, not talk)" : "",
     "> act: never",
     "",
     "## Recap",
@@ -766,7 +802,8 @@ function meetingAssist({ transcript, question } = {}) {
         : "",
     heard,
     deliverable,
-    turns: talkTurns(utterances),
+    turns: talkTurns(spokenRing),
+    notes: Boolean(noteRows.length),
     id: "live-meeting",
     live: { transcript: String(transcript || "").slice(0, 4000) },
   };
@@ -789,7 +826,7 @@ function deskGrounding(deskOrId) {
     lines.push("6. When you mean click here, emit [POINT:x,y:label] percentages. Measured UIA also emits [BOX:left,top,w,h:label]. Crosshair and box only - never a buddy.");
   }
   if (desk.id === "meeting") {
-    lines.push("6. Recap/assist/next from the transcript. Live cue is They asked plus say-this (Heard dates/amounts/times woven in) in the fixed insight panel. Never join the call. Never Act.");
+    lines.push("6. Recap/assist/next from the transcript. Open workspace files ground Heard facts only (not talk). Live cue is They asked plus say-this in the fixed insight panel. Never join the call. Never a stealth overlay. Never Act.");
   }
   if (desk.id === "today") {
     lines.push("6. Standing brief from this session log. On your plate lists live commitments and filed inbox/Word drafts. Never invent work. Never Act.");
@@ -1952,7 +1989,7 @@ function askLiveCoworker(workspace, ask, opts) {
       question: q,
     });
   } else {
-    assist = meetingAssist({ transcript, question: q });
+    assist = meetingAssist({ transcript, question: q, notes: openFileNotes(source) });
   }
   if (!assist || !assist.ok || assist.act) {
     return { ...(assist || { reason: "ask failed" }), ok: false, act: false, exec: false };

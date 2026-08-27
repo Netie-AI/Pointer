@@ -214,6 +214,7 @@ function readAsset(file) {
     assert.match(cssText, /teach-map-mark/);
     assert.match(cssText, /teach-map-rail/);
     assert.match(cssText, /teach-map-key/);
+    assert.match(cssText, /meeting-card-say/);
     assert.match(cssText, /bottom: 36px/);
     assert.match(app, /They asked/);
     assert.match(app, /Heard:/);
@@ -225,6 +226,8 @@ function readAsset(file) {
     assert.match(app, /postMeeting/);
     assert.match(app, /meeting-filed/);
     assert.match(app, /paintTalk/);
+    assert.match(app, /paintMeetingCard/);
+    assert.match(app, /meeting-card-say/);
     assert.match(app, /meeting-talk/);
     assert.doesNotMatch(app, /innerHTML/);
     const meeting = await fetch(new Request("https://host.netie.ai/meeting"));
@@ -238,6 +241,7 @@ function readAsset(file) {
     assert.match(meetingText, /id="brief-copy"/);
     assert.match(meetingText, /id="cue-copy"/);
     assert.match(meetingText, /id="brief-download"/);
+    assert.match(meetingText, /Live meeting answer/);
     const meetingApi = handlePublicRequest({ method: "GET", pathname: "/api/meeting" });
     assert.strictEqual(JSON.parse(meetingApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(meetingApi.body).exec, false);

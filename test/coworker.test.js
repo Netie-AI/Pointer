@@ -274,6 +274,26 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.strictEqual(unrelated.act, false);
   assert.match(unrelated.cue, /no answer/);
   assert.doesNotMatch(unrelated.cue, /bananas/);
+  const fromNotes = meetingAssist({
+    transcript: "them: What is the launch date?",
+    question: "what should I say",
+    notes: "Launch is Friday for $40k.",
+  });
+  assert.strictEqual(fromNotes.act, false);
+  assert.strictEqual(fromNotes.notes, true);
+  assert.match(fromNotes.cue, /Friday/);
+  assert.match(fromNotes.heard, /Friday/);
+  assert.match(fromNotes.heard, /\$40k/);
+  assert.match(fromNotes.deliverable, /open workspace file/);
+  assert.ok(!fromNotes.turns.some((row) => /Launch is Friday/.test(row.text)));
+  assert.doesNotMatch(fromNotes.deliverable, /Notes \[Friday\]: Launch is Friday/);
+  const notesOnly = meetingAssist({
+    transcript: "them: What is the launch date?",
+    question: "what should I say",
+    notes: "bananas are yellow",
+  });
+  assert.match(notesOnly.cue, /no answer/);
+  assert.doesNotMatch(notesOnly.cue, /bananas/);
 });
 
 test("planner grounding names the desk and refuses online exec", () => {
@@ -746,6 +766,28 @@ test("askLiveCoworker files inbox and Word from a stored meeting and never acts"
   const empty = askLiveCoworker(ws, "   ");
   assert.strictEqual(empty.ok, false);
   assert.strictEqual(empty.act, false);
+  const quiet = createWorkspace({ clock: () => 31 });
+  quiet.put({
+    id: "live-meeting",
+    desk: "meeting",
+    title: "Live meeting",
+    body: "# Meeting brief",
+    live: { transcript: "them: What is the launch date?" },
+  });
+  quiet.put({
+    id: "brief-1",
+    desk: "document",
+    title: "brief",
+    body: "Launch is Saturday for $12k.",
+  });
+  const fromFile = askLiveCoworker(quiet, "What should I say?", { sourceId: "brief-1" });
+  assert.strictEqual(fromFile.ok, true);
+  assert.strictEqual(fromFile.act, false);
+  assert.match(fromFile.cue, /Saturday/);
+  assert.match(fromFile.heard, /\$12k/);
+  assert.ok(!fromFile.turns.some((row) => /Saturday/.test(row.text)));
+  const ignoreLiveBody = askLiveCoworker(quiet, "What should I say?", { sourceId: "live-meeting" });
+  assert.match(ignoreLiveBody.cue, /no answer/);
 });
 
 test("askHostCoworker Asks from chrome and advances a stored teach walk", () => {

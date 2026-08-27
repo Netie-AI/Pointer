@@ -473,6 +473,33 @@ function postAsk(ask) {
     .catch(function () {});
 }
 
+function paintMeetingCard(root, m) {
+  if (!root || !m || m.desk !== "meeting" || m.localFirst) return;
+  const asked = String(m.asked || "").trim();
+  const cue = String(m.cue || "").trim();
+  const heard = String(m.heard || "").trim();
+  if (!asked && !cue && !heard) return;
+  const card = el("section", "meeting-card");
+  card.setAttribute("role", "region");
+  card.setAttribute("aria-label", asked ? "They asked: " + asked : "Meeting assist");
+  if (asked) {
+    const q = el("p", "meeting-card-asked");
+    q.textContent = "They asked: " + asked;
+    card.appendChild(q);
+  }
+  if (cue) {
+    const say = el("p", "meeting-card-say");
+    say.textContent = cue;
+    card.appendChild(say);
+  }
+  if (heard) {
+    const facts = el("p", "meeting-card-heard");
+    facts.textContent = "Heard: " + heard;
+    card.appendChild(facts);
+  }
+  root.appendChild(card);
+}
+
 function paintTalk(root, m) {
   if (!root || !m || m.desk !== "meeting") return;
   const rows = Array.isArray(m.turns) ? m.turns : [];
@@ -539,6 +566,7 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
   paintDeskChips(pageId.replace("-brief", "-chips"), (m && m.chips) || []);
   page.replaceChildren();
   paintTeachMap(page, m);
+  paintMeetingCard(page, m);
   paintTalk(page, m);
   const pre = el("pre");
   pre.textContent = (m && m.deliverable) || "";

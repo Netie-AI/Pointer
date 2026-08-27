@@ -1,3 +1,10 @@
+## 2026-08-27 - Meeting answer card; open file grounds Heard
+
+Loopback `/meeting` paints a say-this answer card (They asked / say-this /
+Heard). An open workspace file grounds Heard facts only, never talk turns,
+never a stealth overlay, never Act. Public copies stay empty. P-05 and
+P-06 stay parked.
+
 ## 2026-08-27 - Teach walk path (current hold, later dashed)
 
 Loopback `/teach` paints the measured walk path: current BOX held,

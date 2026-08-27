@@ -13,9 +13,10 @@
    the laptop. P-05 parked.
 2. **Coworker desks (DR-0005).** Loopback Ask bar plus `/meeting` `/today`
    `/workspace` chips file inbox/Word/security from the open file.
-   `/meeting` paints You/Them turns; HUD insight does the same.
-   `/teach` is a walk path from measured BOX (current hold, later dashed;
-   Back/Got it Ask). This session links open `/workspace?id=` (never send,
+   `/meeting` paints a say-this answer card from the ring; an open
+   workspace file grounds Heard facts (not talk). HUD insight does the
+   same say-this. `/teach` is a walk path from measured BOX (current hold,
+   later dashed; Back/Got it Ask). This session links open `/workspace?id=` (never send,
    never a .docx, never Act). Today plate is commitments only. Public catalog
    empty.
    P-06 parked.

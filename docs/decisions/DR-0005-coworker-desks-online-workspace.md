@@ -125,9 +125,11 @@ Loopback sticky chrome has a fixed Ask bar (POST `/api/ask`, never Act).
 way. `/workspace` opens a file as the working set (`id` on Ask, `this
 file` scans only that body). This session file links are
 `/workspace?id=` catalog opens (never exec). Loopback `/meeting` paints
-the You/Them talk track from the stored ring (never a cheater overlay).
-HUD insight paints the same talk in fixed chrome (never a bubble).
+a say-this answer card plus the You/Them talk track from the stored ring
+(never a cheater overlay). An open workspace file grounds Heard facts
+only, never talk. HUD insight paints the same talk in fixed chrome
+(never a bubble).
 Say-this reuses your overlapping line or Heard facts, never an unrelated
-last-you dump. Loopback `/teach` paints a large walk stage from measured
-BOX/POINT (Next/Then on the stage, Got it Ask, never Act). Public POST
+last-you dump. Loopback `/teach` paints a walk path from measured
+BOX/POINT (current hold, later dashed, Got it Ask, never Act). Public POST
 `/api/ask` stays 404.

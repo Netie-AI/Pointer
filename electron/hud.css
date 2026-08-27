@@ -495,8 +495,8 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   color: var(--muted, #9aa3b5);
 }
 .meeting-cue {
-  margin: 0 0 8px; padding: 8px 10px;
-  font-size: 12px; line-height: 1.4; font-weight: 650;
+  margin: 0 0 8px; padding: 10px 12px;
+  font-size: 16px; line-height: 1.35; font-weight: 650;
   border: 1px solid var(--line-soft); border-radius: 12px;
   background: color-mix(in srgb, var(--accent), transparent 88%);
 }
