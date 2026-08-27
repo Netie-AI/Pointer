@@ -175,6 +175,7 @@ function test(name, fn) {
       title: "Live teach",
       desk: "teach",
       body: "# Teach walkthrough\n[POINT:25,42:1 Save]",
+      cue: "1 Save",
     });
     const teach = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/teach" }, (res) => {
@@ -187,6 +188,7 @@ function test(name, fn) {
     assert.strictEqual(teach.body.act, false);
     assert.strictEqual(teach.body.exec, false);
     assert.match(teach.body.deliverable, /1 Save/);
+    assert.match(teach.body.cue, /1 Save/);
     const teachPage = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/teach" }, (res) => {
         const chunks = [];

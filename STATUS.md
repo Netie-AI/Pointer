@@ -12,10 +12,11 @@
    coordinator at `127.0.0.1:18010` (`/` `/today` `/meeting` `/teach`
    `/lanes` `/skills` `/workspace`). Public Worker serves the same pages;
    `/mcp` and live lanes stay on the laptop. P-05 stays parked.
-2. **Coworker desks + online catalog (DR-0005).** Security scans injected
-   files only (redacted findings, never disk). Teach overlays are numbered.
-   Loopback `/meeting` and `/teach` are coworker rooms; public catalog
-   stays empty. P-06 parked. GitHub Actions blocked on org billing.
+2. **Coworker desks + online catalog (DR-0005).** Teach next-control cue
+   and meeting say-this live in fixed HUD chrome. Recap hands off to
+   inbox/Word drafts. Security scans injected files only. Loopback
+   `/meeting` `/teach` are coworker rooms; public catalog stays empty.
+   P-06 parked. GitHub Actions blocked on org billing.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

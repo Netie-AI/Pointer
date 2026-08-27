@@ -175,7 +175,7 @@ function createCoordinator(opts = {}) {
           exec: false,
           localFirst: false,
           desk: "teach",
-          cue: "",
+          cue: got.ok ? String(got.artifact.cue || "") : "",
           deliverable: got.ok ? String(got.artifact.body || "") : "",
           artifact: got.ok ? got.artifact : null,
           reason: got.ok ? "live teach on loopback; no runtime" : "no live teach yet",

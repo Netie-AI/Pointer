@@ -27,7 +27,9 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - Security scans injected attachments/workspace bodies only and redacts
   hits. Never walks disk. Never self-approves.
 - Measured teach labels are numbered (`1 Save`). Meeting recap lists
-  commitments; `next` stays a separate section.
+  commitments; `next` stays a separate section. Teach Next cue and
+  meeting say-this live in the fixed insight panel. Recap chips hand
+  off to inbox/Word drafts.
 - Local meeting Recap/Assist/Next from the transcript ring. `act: false`.
 - Live meeting pump: debounce utterances into the fixed insight panel.
   A question on the ring switches the brief to assist.

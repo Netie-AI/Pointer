@@ -109,8 +109,11 @@ function pickDesk(text, opts = {}) {
   if (!t) return DESKS.teach;
 
   if (
-    /\b(meeting|standup|call recap|what should i say|follow-?up questions?|action items?|next steps?)\b/.test(t) ||
-    /\brecap\b/.test(t)
+    (/\b(meeting|standup|call recap|what should i say|follow-?up questions?|action items?|next steps?)\b/.test(t) ||
+      /\brecap\b/.test(t)) &&
+    !/\b(inbox|gmail|outlook|slack reply|email)\b/.test(t) &&
+    !/\b(?:microsoft\s+)?word\b/.test(t) &&
+    !/\bdocx\b/.test(t)
   ) {
     return DESKS.meeting;
   }
@@ -154,8 +157,10 @@ function looksAction(line) {
 
 /** One line the HUD can put in the fixed insight panel. Never sent. Never Act. */
 function spokenCue(kind, lines, lastOther) {
-  if (kind !== "assist") return "";
-  if (!lastOther) return "No question landed yet.";
+  if (kind === "next") return "";
+  if (!lastOther || !looksQuestion(lastOther)) {
+    return kind === "assist" ? "No question landed yet." : "";
+  }
   const facts = (lines || []).filter((line) => !looksQuestion(line)).slice(-4);
   if (!facts.length) {
     return `Heard "${String(lastOther).slice(0, 100)}" - no answer in the transcript yet.`;
@@ -542,6 +547,8 @@ function teachAssist({ text, controls, screen } = {}) {
     id: "live-teach",
     title: tokens.length ? "Live teach" : "Teach walkthrough",
     via: tokens.length ? "uia" : "none",
+    cue: measured[0] ? `1 ${String(measured[0].name || "control").slice(0, 40)}` : "",
+    cueKind: measured[0] ? "point" : "",
     points: measured.map((p) => ({
       xPct: p.xPct,
       yPct: p.yPct,
@@ -558,13 +565,24 @@ function teachAssist({ text, controls, screen } = {}) {
 /**
  * Inbox draft. Sending is parked (P-05 / P-02). Never Acts.
  */
-function inboxAssist({ text } = {}) {
+function inboxAssist({ text, transcript } = {}) {
   const t = String(text || "").trim();
   if (!t) {
     return { ok: false, act: false, desk: "inbox", reason: "inbox desk needs something to draft" };
   }
   const q = spoken(t);
-  const explicit = /\b(inbox|gmail|outlook|slack reply|draft a reply|email)\b/.test(q);
+  const explicit = /\b(inbox|gmail|outlook|slack reply|draft a reply|email|follow-?up)\b/.test(q);
+  const next = splitLines(transcript).filter(looksAction).slice(-5);
+  const draft = next.length
+    ? [
+        "Following up from the meeting.",
+        "",
+        "What we committed:",
+        ...next.map((line) => `- ${line}`),
+        "",
+        "I will confirm the details on this machine.",
+      ].join("\n")
+    : "Thanks - I will confirm the details on this machine and follow up.";
   const deliverable = [
     "# Draft (not sent)",
     "",
@@ -577,7 +595,7 @@ function inboxAssist({ text } = {}) {
     "",
     "## Draft",
     "",
-    "Thanks - I will confirm the details on this machine and follow up.",
+    draft,
     "",
     "---",
     "Pointer will not send this.",
@@ -717,17 +735,21 @@ function publicTodaySnapshot() {
  * Document draft for the workspace. Never writes Word. Never Acts.
  * skipLlm is false so Agent mode can still reach word_docx_write.
  */
-function documentAssist({ text } = {}) {
+function documentAssist({ text, source } = {}) {
   const t = String(text || "").trim();
   if (!t) {
     return { ok: false, act: false, desk: "document", reason: "document desk needs something to write" };
   }
+  const fromLive = String(source || "").trim();
+  const reuse = Boolean(fromLive && /\b(recap|meeting|brief|this)\b/.test(spoken(t)));
+  const draft = (reuse ? fromLive : t.replace(/^(write|put|type)\s+/i, "")).slice(0, 1500);
   const deliverable = [
     "# Document draft",
     "",
     "> act: laptop-only after Cortex gate + approval",
     "> do not click the Word ribbon",
     "> this brief is not a .docx",
+    reuse ? "> source: live-meeting artifact (untrusted data)" : "> source: this request",
     "",
     "## Request",
     "",
@@ -735,7 +757,7 @@ function documentAssist({ text } = {}) {
     "",
     "## Draft to write",
     "",
-    t.replace(/^(write|put|type)\s+/i, "").slice(0, 1500),
+    draft,
     "",
     "## How",
     "word_docx_write or word_from_clipboard. Pointer will not type this until a human approves.",
@@ -808,6 +830,8 @@ function suggestsFromAssist(assist) {
     add("What should I say?", "Assist", ">");
     add("List next steps", "Next steps", ">");
     add("Recap this meeting", "Recap", "*");
+    add("draft a follow-up email from this meeting", "Draft email", "@");
+    add("write this recap in Word", "Write in Word", "W");
   }
   if (assist.desk === "today") {
     add("What's on my plate?", "Today", "*");
@@ -818,6 +842,10 @@ function suggestsFromAssist(assist) {
     add("walk me through this on my screen", "Teach", "*");
     const first = Array.isArray(assist.points) && assist.points[0];
     if (first && first.label) add(`point at ${first.label}`, "Next", ">");
+  }
+  if (assist.desk === "security") {
+    add("Security review this session", "Review again", "!");
+    add("What's on my plate?", "Today", "*");
   }
   const lines = String(assist.deliverable || "").split(/\n/);
   for (const line of lines) {

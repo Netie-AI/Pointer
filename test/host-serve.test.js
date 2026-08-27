@@ -157,6 +157,7 @@ function readAsset(file) {
     assert.strictEqual(teach.status, 200);
     const teachText = await teach.text();
     assert.match(teachText, /id="teach-brief"/);
+    assert.match(teachText, /id="teach-cue-web"/);
     const teachApi = handlePublicRequest({ method: "GET", pathname: "/api/teach" });
     assert.strictEqual(JSON.parse(teachApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(teachApi.body).exec, false);

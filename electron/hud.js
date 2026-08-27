@@ -103,6 +103,14 @@ function paintSuggests(mode) {
 }
 
 let lastCueText = "";
+let lastCueKind = "say";
+function cueCopyLabel(kind) {
+  return kind === "point" ? "Copy next" : "Copy say-this";
+}
+function cueDisplay(kind, cue) {
+  if (!cue) return "";
+  return kind === "point" ? `Next: ${cue}` : `Say this: ${cue}`;
+}
 function paintLiveBrief(event) {
   const brief = $("coworker-brief");
   const meta = $("coworker-brief-meta");
@@ -111,7 +119,9 @@ function paintLiveBrief(event) {
   if (!brief) return;
   const text = String((event && event.text) || "").slice(0, 4000);
   const cue = String((event && event.cue) || "").trim().slice(0, 240);
+  const kind = String((event && event.cueKind) || "").toLowerCase() === "point" ? "point" : "say";
   lastCueText = cue;
+  lastCueKind = kind;
   if (!text || (event && event.act)) {
     brief.hidden = true;
     if (meta) meta.hidden = true;
@@ -121,6 +131,7 @@ function paintLiveBrief(event) {
     }
     if (copyBtn) copyBtn.hidden = true;
     lastCueText = "";
+    lastCueKind = "say";
     return;
   }
   brief.hidden = false;
@@ -131,9 +142,12 @@ function paintLiveBrief(event) {
   }
   if (cueEl) {
     cueEl.hidden = !cue;
-    cueEl.textContent = cue ? `Say this: ${cue}` : "";
+    cueEl.textContent = cueDisplay(kind, cue);
   }
-  if (copyBtn) copyBtn.hidden = !cue;
+  if (copyBtn) {
+    copyBtn.hidden = !cue;
+    copyBtn.textContent = cueCopyLabel(kind);
+  }
 }
 
 /** Mirrors the main-process settings the renderer needs each frame. */
@@ -1218,7 +1232,7 @@ if (btnCopyCue) {
     const res = await invoke("hud:copyText", { text });
     btnCopyCue.textContent = res && res.ok ? "Copied" : "Copy failed";
     setTimeout(() => {
-      btnCopyCue.textContent = "Copy say-this";
+      btnCopyCue.textContent = cueCopyLabel(lastCueKind);
     }, 1200);
   });
 }

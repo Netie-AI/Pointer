@@ -54,6 +54,8 @@ test("pickDesk routes Clicky/Cluely/OpenWorker jobs to Pointer desks", () => {
   assert.strictEqual(pickDesk("write hello in Word").id, "document");
   assert.strictEqual(pickDesk("security review this repo").id, "security");
   assert.strictEqual(pickDesk("draft a gmail reply").id, "inbox");
+  assert.strictEqual(pickDesk("draft a follow-up email from this meeting").id, "inbox");
+  assert.strictEqual(pickDesk("write this recap in Word").id, "document");
   assert.strictEqual(pickDesk("what's on my plate").id, "today");
   assert.strictEqual(pickDesk("morning brief").id, "today");
   assert.strictEqual(pickDesk("click Save", { mode: "meeting" }).id, "meeting");
@@ -89,7 +91,7 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.match(assist.deliverable, /Suggested reply/);
   assert.ok(assist.cue);
   assert.match(assist.cue, /send it/);
-  assert.strictEqual(recap.cue, "");
+  assert.match(recap.cue, /send it/);
   const next = meetingAssist({ transcript, question: "list next steps" });
   assert.strictEqual(next.kind, "next");
   assert.match(next.deliverable, /## Next steps/);
@@ -235,6 +237,8 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(walk.skipLlm, true);
   assert.strictEqual(walk.via, "uia");
   assert.strictEqual(walk.id, "live-teach");
+  assert.strictEqual(walk.cueKind, "point");
+  assert.match(walk.cue, /^1 /);
   assert.match(walk.deliverable, /\[POINT:25,42:\d+ Save\]/);
   assert.match(walk.deliverable, /\[BOX:20,40,10,4:\d+ Save\]/);
   assert.match(walk.deliverable, /will not click/i);
@@ -250,6 +254,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.ok(pin.points.length >= 1);
   assert.strictEqual(pin.points[0].label, "Cancel");
   assert.strictEqual(pin.points[0].xPct, 5);
+  assert.strictEqual(pin.cue, "1 Cancel");
   const emptyTree = teachAssist({
     text: "walk me through this on my screen",
     controls: [{ name: "Save", controlType: "Button" }],
@@ -263,6 +268,8 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
   assert.match(main, /measureTeachControls/);
   assert.match(main, /listControls/);
+  assert.match(main, /publishLiveCoworker/);
+  assert.match(main, /liveArtifactBody/);
   const ask = main.slice(main.indexOf('ipcMain.handle("hud:ask"'), main.indexOf("P4-BG-AGENTS"));
   assert.match(ask, /toOverlayEvent/);
   assert.doesNotMatch(ask, /driver\./);
@@ -276,6 +283,13 @@ test("inbox assist drafts and never sends", () => {
   assert.strictEqual(draft.skipLlm, true);
   assert.match(draft.deliverable, /not sent/i);
   assert.match(draft.deliverable, /will not send/);
+  const fromMeet = inboxAssist({
+    text: "draft a follow-up email from this meeting",
+    transcript: "system: Can you send the deck?\nmic: I will send it Friday.",
+  });
+  assert.strictEqual(fromMeet.act, false);
+  assert.match(fromMeet.deliverable, /will send it Friday/);
+  assert.match(fromMeet.deliverable, /will not send/);
 });
 
 test("suggestsFromAssist turns transcript questions into HUD chips", () => {
@@ -286,6 +300,8 @@ test("suggestsFromAssist turns transcript questions into HUD chips", () => {
   const items = suggestsFromAssist(recap);
   assert.ok(items.some((i) => /What should I say/.test(i.q)));
   assert.ok(items.some((i) => /send the deck/.test(i.q)));
+  assert.ok(items.some((i) => /follow-up email/.test(i.q)));
+  assert.ok(items.some((i) => /write this recap in Word/.test(i.q)));
   assert.ok(items.length <= 6);
   const fs = require("fs");
   const path = require("path");
@@ -328,6 +344,14 @@ test("document assist drafts and never writes Word", () => {
   assert.match(draft.deliverable, /not a \.docx/);
   assert.match(draft.deliverable, /word_docx_write/);
   assert.doesNotMatch(draft.deliverable, /will execute/i);
+  const fromMeet = documentAssist({
+    text: "write this recap in Word",
+    source: "# Meeting brief\n- ship the deck Friday",
+  });
+  assert.strictEqual(fromMeet.act, false);
+  assert.match(fromMeet.deliverable, /ship the deck Friday/);
+  assert.match(fromMeet.deliverable, /live-meeting/);
+  assert.doesNotMatch(fromMeet.deliverable, /will execute/i);
 });
 
 test("spawn coworker never acts and never claims the pointer-act lane", () => {
@@ -440,8 +464,11 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   const html = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");
   assert.match(html, /id="meeting-cue"/);
   assert.doesNotMatch(html, /clicky-orb|stage-orb/);
-  const mainCue = main.slice(main.indexOf("function publishLiveMeeting"), main.indexOf("function localMeetingReply"));
+  const mainCue = main.slice(main.indexOf("function publishLiveCoworker"), main.indexOf("function publishTeachOverlay"));
   assert.match(mainCue, /cue:/);
+  assert.match(mainCue, /cueKind/);
+  assert.match(hud, /cueDisplay/);
+  assert.match(hud, /Next:/);
   assert.match(hud, /brief\.textContent/);
   assert.doesNotMatch(hud, /coworker-brief[\s\S]{0,80}innerHTML/);
   assert.match(hud, /event\.act/);
@@ -486,6 +513,8 @@ async function asyncTest(name, fn) {
     assert.strictEqual(hits.length, 1);
     assert.strictEqual(hits[0].act, false);
     assert.match(hits[0].deliverable, /\[BOX:20,40,10,4:\d+ Save\]/);
+    assert.match(hits[0].cue, /^1 Save$/);
+    assert.strictEqual(hits[0].cueKind, "point");
     if (tick) await tick();
     await Promise.resolve();
     assert.strictEqual(hits.length, 1);

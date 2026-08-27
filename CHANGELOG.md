@@ -1,3 +1,11 @@
+## 2026-08-27 - Live HUD cues, meeting coaching, desk handoffs
+
+Teach paints a Next cue (`1 Save`) in fixed HUD chrome with the live
+brief; meeting recap keeps say-this when a question is still open.
+Suggest chips hand off to a follow-up email draft and a Word recap
+draft (never send, never write without Cortex). Loopback `/teach`
+shows the next-control cue. Never Acts. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Injected secret review, numbered teach, /teach room
 
 Security desk scans HUD attachments and workspace bodies only, redacts

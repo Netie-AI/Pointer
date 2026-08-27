@@ -266,7 +266,8 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse) {
         const text = String((m && m.cue) || "").trim();
         if (cue) {
           cue.hidden = !text;
-          cue.textContent = text ? "Say this: " + text : "";
+          const prefix = (m && m.desk) === "teach" ? "Next: " : "Say this: ";
+          cue.textContent = text ? prefix + text : "";
         }
         page.replaceChildren();
         const pre = el("pre");
@@ -278,7 +279,7 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse) {
 }
 
 paintLiveRoom("meeting-brief", "/api/meeting", "meeting-cue-web", "refused: meeting must not grow a runtime");
-paintLiveRoom("teach-brief", "/api/teach", null, "refused: teach must not grow a runtime");
+paintLiveRoom("teach-brief", "/api/teach", "teach-cue-web", "refused: teach must not grow a runtime");
 
 const lanesPage = document.getElementById("lanes");
 if (lanesPage) {

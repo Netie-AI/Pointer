@@ -305,24 +305,27 @@ function publishSuggests(assist) {
 const liveMeetingPump = createLiveMeetingPump({ delayMs: 900 });
 const liveTeachPump = createLiveTeachPump({ delayMs: 1500 });
 const standingClock = createBriefClock({ delayMs: 30000 });
-function publishTeachOverlay(assist) {
-  if (!assist || !assist.ok || assist.act) return;
-  publishBrief(assist);
-  publishSuggests(assist);
-  const pointed = parsePoints(assist.deliverable);
-  if (pointed.points.length) sendHud(toOverlayEvent(assist.deliverable));
-}
-function publishLiveMeeting(assist) {
-  if (!assist || !assist.ok || assist.act) return;
+function publishLiveCoworker(assist) {
+  if (!assist || !assist.ok || assist.act || !assist.deliverable) return;
   publishBrief(assist);
   publishSuggests(assist);
   sendHudQuiet({
     type: "live-brief",
-    desk: assist.desk || "meeting",
+    desk: assist.desk || "coworker",
     act: false,
     text: assist.deliverable,
     cue: assist.cue || "",
+    cueKind: assist.cueKind || (assist.desk === "teach" ? "point" : "say"),
   });
+}
+function publishTeachOverlay(assist) {
+  if (!assist || !assist.ok || assist.act) return;
+  publishLiveCoworker(assist);
+  const pointed = parsePoints(assist.deliverable);
+  if (pointed.points.length) sendHud(toOverlayEvent(assist.deliverable));
+}
+function publishLiveMeeting(assist) {
+  publishLiveCoworker(assist);
 }
 function localMeetingReply(message, extraTranscript, extra) {
   const desk = pickDesk(message, { mode: appMode });
@@ -339,31 +342,29 @@ function localMeetingReply(message, extraTranscript, extra) {
       return null;
     }
     if (!assist.skipLlm) return null;
-    publishBrief(assist);
-    publishSuggests(assist);
+    publishLiveCoworker(assist);
     return assist;
   }
   if (desk.id === "security") {
     const assist = securityAssist({ text: message, files: sessionScanFiles() });
     if (!assist.ok || !assist.skipLlm) return assist.ok ? null : assist;
-    publishBrief(assist);
+    publishLiveCoworker(assist);
     return assist;
   }
   if (desk.id === "inbox") {
-    const assist = inboxAssist({ text: message });
+    const assist = inboxAssist({ text: message, transcript: heardTranscript(extraTranscript) });
     if (!assist.ok || !assist.skipLlm) return assist.ok ? null : assist;
-    publishBrief(assist);
+    publishLiveCoworker(assist);
     return assist;
   }
   if (desk.id === "today") {
     const assist = todayAssist({ state: sessionCoworkerState(), question: message });
     if (!assist.ok || !assist.skipLlm) return assist.ok ? null : assist;
-    publishBrief(assist);
-    publishSuggests(assist);
+    publishLiveCoworker(assist);
     return assist;
   }
   if (desk.id === "document") {
-    const assist = documentAssist({ text: message });
+    const assist = documentAssist({ text: message, source: liveArtifactBody("live-meeting") });
     if (assist.ok) publishBrief(assist);
     return null;
   }
@@ -374,8 +375,7 @@ function localMeetingReply(message, extraTranscript, extra) {
       screen: extra && extra.screen,
     });
     if (assist.ok) {
-      publishBrief(assist);
-      publishSuggests(assist);
+      publishLiveCoworker(assist);
       if (assist.skipLlm) return assist;
     }
     return null;
@@ -2827,6 +2827,15 @@ function sessionScanFiles() {
   return out;
 }
 
+function liveArtifactBody(id) {
+  try {
+    const got = liveCoordinator && liveCoordinator.workspace && liveCoordinator.workspace.get(id);
+    return got && got.ok ? String(got.artifact.body || "") : "";
+  } catch {
+    return "";
+  }
+}
+
 async function runDeskAssist(message, extraTranscript) {
   const desk = pickDesk(message, { mode: appMode });
   if (desk.id === "meeting") {
@@ -2836,9 +2845,13 @@ async function runDeskAssist(message, extraTranscript) {
     });
   }
   if (desk.id === "security") return securityAssist({ text: message, files: sessionScanFiles() });
-  if (desk.id === "inbox") return inboxAssist({ text: message });
+  if (desk.id === "inbox") {
+    return inboxAssist({ text: message, transcript: heardTranscript(extraTranscript) });
+  }
   if (desk.id === "today") return todayAssist({ state: sessionCoworkerState(), question: message });
-  if (desk.id === "document") return documentAssist({ text: message });
+  if (desk.id === "document") {
+    return documentAssist({ text: message, source: liveArtifactBody("live-meeting") });
+  }
   const walkHit = teachAssist({ text: message });
   if (walkHit.ok) {
     const measured = await measureTeachControls();
@@ -2857,8 +2870,7 @@ function enqueueCoworkerJob(message, extraTranscript, spawn) {
       if (ctx.cancelled) return { ok: false, act: false, reason: "cancelled" };
       const assist = await runDeskAssist(message, extraTranscript);
       if (assist && assist.ok) {
-        publishBrief(assist);
-        publishSuggests(assist);
+        publishLiveCoworker(assist);
         const pointed = parsePoints(assist.deliverable);
         sendHud({
           type: "answer",

@@ -77,3 +77,5 @@ Live teach pump redraws measured overlays. Standing Today clock
 republishes `standing-today`. Loopback `/meeting` and `/teach` are
 coworker rooms; public `/api/meeting` and `/api/teach` are localFirst empty.
 Security scans injected files only (redacted). Teach labels are numbered.
+Teach Next cue and meeting say-this live in fixed HUD chrome. Recap chips
+hand off to inbox/Word drafts (never send, never write without Cortex).
