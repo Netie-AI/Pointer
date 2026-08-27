@@ -32,6 +32,7 @@ const {
   replayTeachWalk,
   advanceLiveTeach,
   frameLiveTeach,
+  hitTeachBox,
   askLiveCoworker,
   askHostCoworker,
   chipsForArtifact,
@@ -703,11 +704,14 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(secondBox.path[1].label, /region 2/);
   assert.match(secondBox.cue, /Look at region 1/);
   assert.match(secondBox.rest, /Look at region 2/);
-  const stackedNext = advanceLiveTeach(stackWs, "got it");
-  assert.strictEqual(stackedNext.act, false);
-  assert.match(stackedNext.cue, /Look at region 2/);
-  assert.strictEqual(stackedNext.path[1].now, true);
-  assert.strictEqual(stackedNext.path[0].now, false);
+  const stackedClick = advanceLiveTeach(stackWs, "i clicked");
+  assert.strictEqual(stackedClick.act, false);
+  assert.match(stackedClick.cue, /Look at region 2/);
+  assert.strictEqual(stackedClick.path[1].now, true);
+  assert.strictEqual(stackedClick.path[0].now, false);
+  assert.strictEqual(hitTeachBox({ leftPct: 20, topPct: 40, wPct: 10, hPct: 4 }, 25, 42), true);
+  assert.strictEqual(hitTeachBox({ leftPct: 20, topPct: 40, wPct: 10, hPct: 4 }, 5, 5), false);
+  assert.strictEqual(hitTeachBox(null, 25, 42), false);
   const uiaWs = createWorkspace({ clock: () => 12 });
   uiaWs.put({
     id: "live-teach",
@@ -824,6 +828,10 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /createElementNS/);
   assert.match(teachOverlay, /stroke:/);
   assert.match(teachOverlay, /teach-overlay:frame/);
+  assert.match(teachOverlay, /i clicked/);
+  assert.match(teachOverlay, /demoAdvance/);
+  assert.match(teachOverlay, /html\.demo/);
+  assert.match(teachOverlay, /#point-layer/);
   const overlayAsk = main.slice(main.indexOf('ipcMain.handle("teach-overlay:ask"'), main.indexOf('ipcMain.handle("hud:setMode"'));
   assert.match(overlayAsk, /teachAdvance/);
   assert.match(overlayAsk, /act: false/);
@@ -1402,7 +1410,9 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /paintChrome/);
   assert.match(hostApp, /setFinishedDownloads/);
   assert.match(hostApp, /Open in workspace/);
-  assert.match(hostApp, /paintOpenFileHero/);
+  assert.match(hostApp, /hitTeachBox/);
+  assert.match(hostApp, /i clicked/);
+  assert.match(hostApp, /Click the current BOX to Got it/);
   assert.match(hostApp, /Finished file/);
   assert.match(hostApp, /live-cue-next/);
   assert.match(hostApp, /live-cue-captions/);

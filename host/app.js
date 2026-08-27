@@ -980,6 +980,20 @@ paintLiveRoom("security-brief", "/api/security", "security-cue-web", "refused: s
 paintLiveRoom("document-brief", "/api/document", "document-cue-web", "refused: document must not grow a runtime");
 paintLiveRoom("inbox-brief", "/api/inbox", "inbox-cue-web", "refused: inbox must not grow a runtime");
 
+function hitTeachBox(box, xPct, yPct) {
+  if (!box) return false;
+  const x = Number(xPct);
+  const y = Number(yPct);
+  const left = Number(box.leftPct);
+  const top = Number(box.topPct);
+  const w = Number(box.wPct);
+  const h = Number(box.hPct);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(left) || !Number.isFinite(top) || !(w > 0) || !(h > 0)) {
+    return false;
+  }
+  return x >= left && x <= left + w && y >= top && y <= top + h;
+}
+
 function postTeachFrame(box, apply) {
   fetch("/api/teach", {
     method: "POST",
@@ -998,7 +1012,7 @@ function postTeachFrame(box, apply) {
     .catch(function () {});
 }
 
-function wireTeachFrame(map, apply) {
+function wireTeachFrame(map, apply, current) {
   if (!map || map.dataset.framed === "1") return;
   map.dataset.framed = "1";
   let drag = null;
@@ -1091,7 +1105,15 @@ function wireTeachFrame(map, apply) {
     drag = null;
     if (ghost) ghost.hidden = true;
     if (strokeSvg) strokeSvg.hidden = true;
-    if (stroke.length < 2) return;
+    const tap =
+      stroke.length < 2 ||
+      (Math.abs(box.x1 - box.x0) < 1.5 && Math.abs(box.y1 - box.y0) < 1.5);
+    if (tap) {
+      if (hitTeachBox(current, box.x1, box.y1) || hitTeachBox(current, box.x0, box.y0)) {
+        postTeach("i clicked", apply);
+      }
+      return;
+    }
     postTeachFrame(box, apply);
   }
   map.addEventListener("pointerup", endDrag);
@@ -1122,7 +1144,7 @@ function paintTeachMap(root, m, opts) {
   if (draw) {
     const hint = el("p", boxes.length ? "teach-map-hint add" : "teach-map-hint");
     hint.textContent = boxes.length
-      ? "Draw another BOX to add a step."
+      ? "Click the current BOX to Got it. Draw another BOX to add a step."
       : "Draw around a control. Pointer stores a BOX and will not click.";
     map.appendChild(hint);
   }
@@ -1168,7 +1190,7 @@ function paintTeachMap(root, m, opts) {
     });
     map.appendChild(rail);
   }
-  if (draw) wireTeachFrame(map, opts.apply);
+  if (draw) wireTeachFrame(map, opts.apply, boxes.find(function (p) { return p.now; }) || null);
   root.appendChild(map);
 }
 

@@ -1,3 +1,10 @@
+## 2026-08-27 - Click the current teach BOX to Got it
+
+Loopback `/teach` treats a tap inside the current BOX as `i clicked`
+(Ask, never Act). A drag still stacks a drawn step. Overlay `?demo=1`
+does the same on the hold BOX. Real overlay stays click-through.
+Never a buddy. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Open workspace file leads the Computer catalog
 
 Loopback `/workspace?id=` hoists the open file above desks and Run.

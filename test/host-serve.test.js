@@ -235,6 +235,9 @@ function readAsset(file) {
     assert.match(app, /teach-map-key/);
     assert.match(app, /teach-map-box then/);
     assert.match(app, /Draw another BOX to add a step/);
+    assert.match(app, /Click the current BOX to Got it/);
+    assert.match(app, /hitTeachBox/);
+    assert.match(app, /i clicked/);
     assert.match(app, /teach-map-stroke/);
     const cssText = fs.readFileSync(path.join(HOST, "style.css"), "utf8");
     assert.match(cssText, /56vh/);

@@ -144,7 +144,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/teach-overlay:frame/.test(walk), "drawn overlay boxes POST a region, never Act");
       assert.ok(/Got it/.test(walk) && /data-q="got it, next"/.test(walk), "Got it Asks, never Acts");
       assert.ok(/Then:/.test(walk), "Then remaining stays on the overlay");
-      assert.ok(/Look at region 1/.test(walk), "current overlay box shows the action, not only the catalog name");
+      assert.ok(/i clicked/.test(walk), "demo click on the current BOX Asks, never Acts");
+      assert.ok(/html\.demo, html\.demo body/.test(walk), "demo overlay can receive a click on the current BOX");
       assert.ok(/point-key/.test(walk), "current overlay box can show Tab/Enter");
       assert.ok(!/innerHTML/.test(walk), "the walk paints with createElement");
       assert.ok(

@@ -1432,6 +1432,23 @@ function boundsFromStroke(stroke) {
  * Percents the human drew on /teach. Not invented. Clicky-shaped
  * freehand, Pointer rules: a BOX, never a buddy, never Act.
  */
+/**
+ * Clicky-shaped teacher loop: a tap inside the current BOX is Got it.
+ * Percent hit-test only. Never a click. Never Act.
+ */
+function hitTeachBox(box, xPct, yPct) {
+  if (!box || typeof box !== "object") return false;
+  const x = Number(xPct);
+  const y = Number(yPct);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+  const left = Number(box.leftPct);
+  const top = Number(box.topPct);
+  const w = Number(box.wPct);
+  const h = Number(box.hPct);
+  if (!Number.isFinite(left) || !Number.isFinite(top) || !(w > 0) || !(h > 0)) return false;
+  return x >= left && x <= left + w && y >= top && y <= top + h;
+}
+
 function parseTeachFrame(spec) {
   if (!spec || typeof spec !== "object") return null;
   if (Array.isArray(spec.stroke) && spec.stroke.length) {
@@ -3090,6 +3107,7 @@ module.exports = {
   advanceLiveTeach,
   frameLiveTeach,
   parseTeachFrame,
+  hitTeachBox,
   teachWalkPath,
   askLiveCoworker,
   askHostCoworker,

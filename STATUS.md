@@ -21,8 +21,9 @@
    and filed work cards. `/teach` stacks drawn BOX steps (current hold,
    later dashed), Back/Got it Ask, never invented coords. Overlay stays
    numbered BOX tokens (`1 Save`). Current BOX paints Click /
-   Type in / Look at. Overlay Draw stores a freehand BOX. Cap 8. Tiny boxes
-   fail closed at 0.4%. Compact HUD `cueDisplay` for `point` strips `N of M`.
+   Type in / Look at. A tap on the current BOX is Got it (Ask, never Act).
+   Overlay Draw stores a freehand BOX. Cap 8. Tiny boxes fail closed at 0.4%.
+   Compact HUD `cueDisplay` for `point` strips `N of M`.
    This session links `/workspace?id=` to the live document or inbox file
    and shows Download generated .docx / unsent .eml there. The open file
    leads the `/workspace` page. Home theater cards include Open in

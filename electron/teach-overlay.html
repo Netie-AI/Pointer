@@ -146,6 +146,14 @@
         background: transparent;
         opacity: 0.4;
       }
+      html.demo, html.demo body {
+        pointer-events: auto;
+        background: #243044;
+      }
+      html.demo #point-layer .point-box:not(.later):not(.done) {
+        pointer-events: auto;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
@@ -166,6 +174,9 @@
       const thenEl = document.getElementById("walk-then");
       const api = window.netieTeachOverlay;
       let mouseOverChrome = false;
+      const demo = /(?:^|[?&])demo=1(?:&|$)/.test(location.search);
+      if (demo) document.documentElement.classList.add("demo");
+      let demoAdvance = function () {};
 
       function paint(points) {
         if (!layer) return;
@@ -178,6 +189,7 @@
           mark.className = boxed ? "point-mark point-box" : "point-mark";
           if (later) mark.classList.add("later");
           if (done) mark.classList.add("done");
+          if (boxed && !later && !done) mark.classList.add("now");
           if (boxed) {
             mark.style.left = Number(point.leftPct) + "%";
             mark.style.top = Number(point.topPct) + "%";
@@ -203,6 +215,16 @@
             kbd.className = "point-key";
             kbd.textContent = String(point.key).slice(0, 12);
             mark.appendChild(kbd);
+          }
+          if (demo && boxed && !later && !done) {
+            mark.addEventListener("click", function (ev) {
+              ev.preventDefault();
+              if (api && typeof api.invoke === "function") {
+                api.invoke("teach-overlay:ask", { message: "i clicked", act: false });
+                return;
+              }
+              demoAdvance();
+            });
           }
           layer.appendChild(mark);
         });
@@ -377,10 +399,28 @@
       if (/(?:^|[?&])demo=1(?:&|$)/.test(location.search)) {
         document.documentElement.style.background = "#243044";
         document.body.style.background = "#243044";
-        paint([
+        const demoWalk = [
           { leftPct: 12, topPct: 18, wPct: 28, hPct: 22, label: "Look at region 1" },
-          { leftPct: 48, topPct: 42, wPct: 30, hPct: 24, label: "2 region 2", later: true },
-        ]);
+          { leftPct: 48, topPct: 42, wPct: 30, hPct: 24, label: "Look at region 2" },
+        ];
+        let demoStep = 0;
+        demoAdvance = function () {
+          if (demoStep < demoWalk.length - 1) demoStep += 1;
+          const pts = demoWalk.map(function (p, i) {
+            return Object.assign({}, p, {
+              later: i > demoStep,
+              done: i < demoStep,
+            });
+          });
+          paint(pts);
+          paintChrome({
+            cue: demoWalk[demoStep] ? demoWalk[demoStep].label : "",
+            rest: demoWalk[demoStep + 1] ? demoWalk[demoStep + 1].label : "",
+          });
+        };
+        paint(demoWalk.map(function (p, i) {
+          return Object.assign({}, p, { later: i > 0, done: false });
+        }));
         paintChrome({
           cue: "1 of 2 Look at region 1",
           rest: "Look at region 2",

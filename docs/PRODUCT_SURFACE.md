@@ -33,7 +33,8 @@ work cards. Loopback host pages keep They asked / Heard / Live captions /
 Click/Type in in sticky chrome
 (Back / Got it Ask, never Act). Loopback
 `/teach` draws a read-only box map from measured markers and Back / Got
-it Ask the next step on loopback (never Act). Draw around a control to
+it Ask the next step on loopback (never Act). A tap inside the current BOX
+is Got it (Ask, never Act). Draw around a control to
 stack a BOX. Copy next / Copy say-this
 copy the cue line. Overlay current BOX shows Click / Type in / Look at
 (not only `1 Save`). Loopback `/meeting` Ask chips file an unsent follow-up
