@@ -801,6 +801,11 @@ function paintTeachMap(root, m) {
     const lab = el("span");
     lab.textContent = String(p.label || "").slice(0, 40);
     box.appendChild(lab);
+    if (p.now && p.key) {
+      const k = el("kbd", "teach-map-key");
+      k.textContent = String(p.key).slice(0, 12);
+      box.appendChild(k);
+    }
     map.appendChild(box);
   });
   dots.forEach((p) => {

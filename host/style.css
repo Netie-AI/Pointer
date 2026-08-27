@@ -127,6 +127,18 @@ pre {
   color: #9ad;
   white-space: nowrap;
 }
+.teach-map-key {
+  position: absolute;
+  right: 0;
+  bottom: -18px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-family: inherit;
+  color: #111;
+  background: #9ad;
+  border: 1px solid #9ad;
+  border-radius: 4px;
+}
 #artifacts, #events, #hits, #drafts { padding-left: 18px; }
 #brief pre, #artifact-body pre, #session-md { margin-top: 8px; }
 #session-md {

@@ -475,8 +475,11 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(form.path.length, 3);
   assert.strictEqual(form.path[0].now, true);
   assert.match(form.path[0].label, /Email/);
+  assert.strictEqual(form.path[0].key, "Tab");
   assert.strictEqual(form.path[1].later, true);
   assert.match(form.path[1].label, /Save/);
+  assert.strictEqual(form.path[1].key, "Enter");
+  assert.strictEqual(form.path[2].key, "");
   assert.strictEqual(form.path[2].later, true);
   assert.deepStrictEqual(teachWalkPath(form.live).map((p) => p.label), form.path.map((p) => p.label));
   assert.deepStrictEqual(publicTeachSnapshot().path, []);

@@ -1,9 +1,9 @@
 ## 2026-08-27 - Teach walk path (current hold, later dashed)
 
 Loopback `/teach` paints the measured walk path: current BOX held,
-later dashed, numbered rail (Ask, never Act, never invented coords).
-HUD overlay dashes later boxes the same way. Public copies stay empty.
-P-05 and P-06 stay parked.
+later dashed, numbered rail, Tab/Enter/Space key on the current step
+(Ask, never Act, never invented coords). HUD overlay dashes later boxes
+the same way. Public copies stay empty. P-05 and P-06 stay parked.
 
 ## 2026-08-27 - Teach walk stage on loopback /teach
 

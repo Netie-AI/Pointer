@@ -206,12 +206,14 @@ function readAsset(file) {
     assert.match(app, /teach-map-cue/);
     assert.match(app, /teach-map-mark/);
     assert.match(app, /teach-map-rail/);
+    assert.match(app, /teach-map-key/);
     assert.match(app, /teach-map-box then/);
     const cssText = fs.readFileSync(path.join(HOST, "style.css"), "utf8");
     assert.match(cssText, /56vh/);
     assert.match(cssText, /teach-map-cue/);
     assert.match(cssText, /teach-map-mark/);
     assert.match(cssText, /teach-map-rail/);
+    assert.match(cssText, /teach-map-key/);
     assert.match(cssText, /bottom: 36px/);
     assert.match(app, /They asked/);
     assert.match(app, /Heard:/);

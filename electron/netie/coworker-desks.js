@@ -1242,6 +1242,14 @@ function teachRest(measured, idx) {
     .join(" / ");
 }
 
+function teachKeyName(point) {
+  const key = teachKey(point);
+  if (/\bTab\b/.test(key)) return "Tab";
+  if (/\bEnter\b/.test(key)) return "Enter";
+  if (/\bSpace\b/.test(key)) return "Space";
+  return "";
+}
+
 /**
  * Host / HUD walk path from measured controls. Overlay tokens stay current
  * only; later rects are dashed catalog marks, never clicks.
@@ -1255,6 +1263,7 @@ function teachPathMarks(measured, idx) {
     later: i > now,
     label: `${i + 1} ${String((p && p.name) || "control").slice(0, 40)}`.trim(),
     cue: teachStepPhrase(p),
+    key: teachKeyName(p),
     xPct: p && p.xPct,
     yPct: p && p.yPct,
     leftPct: p && p.leftPct,
