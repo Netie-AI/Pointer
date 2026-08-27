@@ -26,8 +26,8 @@
    Compact HUD `cueDisplay` for `point` strips `N of M`.
    This session links `/workspace?id=` to the live document or inbox file
    and shows Download generated .docx / unsent .eml there. The open file
-   leads the `/workspace` page. Home theater cards include Open in
-   workspace. Public those paths stay 404.
+   leads the `/workspace` page with This session files as tabs. Home theater
+   cards include Open in workspace. Public those paths stay 404.
    `/workspace` Run is a named refuse (P-06). Public catalog empty.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 

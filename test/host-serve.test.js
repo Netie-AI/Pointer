@@ -148,6 +148,8 @@ function readAsset(file) {
     assert.match(page, /id="eml-download"/);
     assert.match(page, /id="open-file"/);
     assert.match(page, /id="open-file-kicker"/);
+    assert.match(page, /id="open-file-tabs"/);
+    assert.match(page, /tabs on the open file/);
     assert.match(page, /generated \.docx/);
   });
 
@@ -259,6 +261,9 @@ function readAsset(file) {
     assert.match(cssText, /workspace-open-file/);
     assert.match(app, /workspace-open-file/);
     assert.match(app, /paintOpenFileHero/);
+    assert.match(app, /paintOpenFileTabs/);
+    assert.match(cssText, /open-file-tabs/);
+    assert.match(cssText, /open-file-tab\.open/);
     assert.match(app, /Finished file/);
     assert.match(cssText, /stage \.teach-map/);
     assert.match(cssText, /bottom: 36px/);

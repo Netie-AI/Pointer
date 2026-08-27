@@ -100,6 +100,7 @@ function paintArtifacts(items) {
 let artifactCache = [];
 let lastOpenId = "";
 let lastOpenTitle = "";
+let lastSessionFiles = [];
 let openedQueryId = false;
 
 function workspaceQueryId() {
@@ -177,6 +178,30 @@ function paintOpenFileHero() {
   const main = document.querySelector("main");
   if (!main || !isWorkspacePage()) return;
   main.classList.toggle("workspace-open-file", Boolean(lastOpenId));
+  paintOpenFileTabs();
+}
+
+function paintOpenFileTabs(files) {
+  const root = document.getElementById("open-file-tabs");
+  if (!root) return;
+  if (Array.isArray(files)) lastSessionFiles = files;
+  root.replaceChildren();
+  if (!lastOpenId || !lastSessionFiles.length) {
+    root.hidden = true;
+    return;
+  }
+  lastSessionFiles.slice(0, 8).forEach(function (row) {
+    const id = String((row && row.id) || "").trim();
+    if (!/^[A-Za-z0-9._-]+$/.test(id)) return;
+    const btn = el("button", id === lastOpenId ? "open-file-tab open" : "open-file-tab");
+    btn.type = "button";
+    btn.textContent = String((row && row.title) || id).slice(0, 40);
+    btn.addEventListener("click", function () {
+      openArtifact(id);
+    });
+    root.appendChild(btn);
+  });
+  root.hidden = !root.childNodes.length;
 }
 
 function renderArtifactList() {
@@ -1478,6 +1503,7 @@ function paintSession(session, localFirst) {
       li.textContent = "Live session stays on the laptop. Open 127.0.0.1:18010 while Pointer is running.";
       filesEl.appendChild(li);
     }
+    paintOpenFileTabs([]);
     return;
   }
   root.hidden = empty;
@@ -1493,6 +1519,7 @@ function paintSession(session, localFirst) {
     const li = el("li", "muted");
     li.textContent = empty ? "No live session yet." : "No filed artifacts yet.";
     filesEl.appendChild(li);
+    paintOpenFileTabs([]);
     return;
   }
   files.forEach((row) => {
@@ -1509,6 +1536,7 @@ function paintSession(session, localFirst) {
     }
     filesEl.appendChild(li);
   });
+  paintOpenFileTabs(files);
 }
 
 function copyNodeText(id) {

@@ -153,7 +153,7 @@ floating LIVE bar). Compact HUD falls back to the stored meeting ring
 when STT is quiet. Loopback host chrome paints the same Live captions
 and shows Click/Type in on `/teach` (not `Next: 1 of 3`). Loopback
 `/workspace?id=` opens the file: live-document downloads the generated
-.docx, live-inbox the unsent .eml. The open file leads that page.
+.docx, live-inbox the unsent .eml. The open file leads that page with This session files as tabs.
 Home work cards link Open in
 workspace. Loopback `/workspace` This computer dock Run POSTs `/api/workspace/exec`
 and always fails closed (P-06). Public catalog shows the same refuse.

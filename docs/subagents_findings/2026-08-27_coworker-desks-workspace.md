@@ -59,8 +59,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   `Open:` the working set. Ask chips review that body. Public `?id=` 404.
   Opening `live-document` / `live-inbox` there also offers Download
   generated .docx / unsent .eml (same loopback bytes as `/document` and
-  `/inbox`). The open file leads the page. Home theater cards include
-  Open in workspace.
+  `/inbox`). The open file leads the page with This session files as tabs.
+  Home theater cards include Open in workspace.
 - Loopback `/` paints the live teach path, meeting say-this, Today
   plate, and filed inbox/Word/security work cards from `/api/home`
   (Ask, never Act, never a runtime, never send). `/today`

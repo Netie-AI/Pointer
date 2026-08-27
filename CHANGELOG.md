@@ -1,3 +1,9 @@
+## 2026-08-27 - Workspace open file keeps This session as tabs
+
+Loopback `/workspace?id=` paints This session files as tabs on the open
+file. Switching tabs opens that file. Never exec. Never Act. Public
+catalog stays 404. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Click the current teach BOX to Got it
 
 Loopback `/teach` treats a tap inside the current BOX as `i clicked`
