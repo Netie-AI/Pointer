@@ -85,7 +85,14 @@ function readAsset(file) {
     const fetch = createPublicFetch(readAsset);
     const html = await fetch(new Request("https://host.netie.ai/workspace"));
     assert.strictEqual(html.status, 200);
-    assert.match(await html.text(), /no runtime/i);
+    const page = await html.text();
+    assert.match(page, /no runtime/i);
+    assert.match(page, /id="desks"/);
+    const app = fs.readFileSync(path.join(HOST, "app.js"), "utf8");
+    assert.match(app, /paintDesks/);
+    assert.match(app, /textContent/);
+    assert.doesNotMatch(app, /innerHTML/);
+    assert.match(app, /ws\.exec/);
   });
 
   await test("public fetch serves /today and style.css from host/", async () => {
@@ -137,6 +144,7 @@ function readAsset(file) {
     assert.match(wrangler, /run_worker_first/);
     const app = fs.readFileSync(path.join(HOST, "app.js"), "utf8");
     assert.match(app, /localFirst/);
+    assert.match(app, /paintDesks/);
   });
 
   console.log(`\n${pass} passed, ${fails.length} failed`);

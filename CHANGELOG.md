@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Public /workspace is a desk catalog, not a JSON dump
+
+host.netie.ai/workspace now paints teach/meeting/document/security cards
+and an artifact list with textContent only. Exec true is refused in the
+page. Live briefs still require the laptop coordinator. GitHub Actions
+still cannot start (org billing).
+
 ## 2026-08-27 - Meeting stop writes a recap into notes and workspace
 
 Stopping Meeting or Transcribe now runs `finishListeningSession`: a local
