@@ -18,7 +18,10 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 
 - `coworker-desks.js`: teach / meeting / today / document / security (+ parked inbox).
 - Teach POINT tokens come from measured UIA rects. Empty tree fails closed
-  (no invented coords; vision still runs). Never Acts.
+  (no invented coords; vision still runs). Measured rects also emit BOX
+  highlights. Never Acts.
+- Meeting live assist paints a say-this cue in the fixed insight panel.
+- Loopback host pages poll while live; public localFirst does not.
 - Local meeting Recap/Assist/Next from the transcript ring. `act: false`.
 - Live meeting pump: debounce utterances into the fixed insight panel.
   A question on the ring switches the brief to assist.

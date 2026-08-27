@@ -241,6 +241,16 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 }
 @keyframes point-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); } }
 .point-mark.fading { opacity: 0; transition: opacity 420ms ease; }
+.point-mark.point-box {
+  transform: none;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent), transparent 88%);
+  animation: point-box-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+.point-mark.point-box .point-label { top: -22px; }
+@keyframes point-box-in { from { opacity: 0; } }
 
 /* P4-BG-AGENTS — background work is a status line, not a stage orb. */
 .bg-status {
@@ -445,6 +455,12 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   font-size: 11px; line-height: 1.45; white-space: pre-wrap;
   border: 1px solid var(--line-soft); border-radius: 12px;
   background: color-mix(in srgb, var(--surface), #000 18%);
+}
+.meeting-cue {
+  margin: 0 0 8px; padding: 8px 10px;
+  font-size: 12px; line-height: 1.4; font-weight: 650;
+  border: 1px solid var(--line-soft); border-radius: 12px;
+  background: color-mix(in srgb, var(--accent), transparent 88%);
 }
 .quick-actions { display: grid; gap: 6px; }
 .quick-actions button {

@@ -152,7 +152,16 @@ function looksAction(line) {
   );
 }
 
-/** Draft a spoken reply from the ring only. Never invents facts. Never Acts. */
+/** One line the HUD can put in the fixed insight panel. Never sent. Never Act. */
+function spokenCue(kind, lines, lastOther) {
+  if (kind !== "assist") return "";
+  if (!lastOther) return "No question landed yet.";
+  const facts = (lines || []).filter((line) => !looksQuestion(line)).slice(-4);
+  if (!facts.length) {
+    return `Heard "${String(lastOther).slice(0, 100)}" - no answer in the transcript yet.`;
+  }
+  return String(facts[facts.length - 1]).slice(0, 240);
+}
 function groundedReply(lines, lastOther) {
   if (!lastOther) return "No question landed yet. Keep listening.";
   const facts = (lines || []).filter((line) => !looksQuestion(line)).slice(-4);
@@ -235,6 +244,7 @@ function meetingAssist({ transcript, question } = {}) {
     kind,
     skipLlm,
     title: `Meeting ${kind}`,
+    cue: spokenCue(kind, lines, lastOther),
     deliverable,
   };
 }
@@ -253,10 +263,10 @@ function deskGrounding(deskOrId) {
     "5. workspace.exec does not exist. Online host is an artifact catalog (P-06 parked).",
   ];
   if (desk.id === "teach") {
-    lines.push("6. When you mean click here, emit [POINT:x,y:label] percentages. Crosshair only.");
+    lines.push("6. When you mean click here, emit [POINT:x,y:label] percentages. Measured UIA also emits [BOX:left,top,w,h:label]. Crosshair and box only - never a buddy.");
   }
   if (desk.id === "meeting") {
-    lines.push("6. Recap/assist/next from the transcript. Never join the call. Never Act.");
+    lines.push("6. Recap/assist/next from the transcript. Live cue is say-this in the fixed insight panel. Never join the call. Never Act.");
   }
   if (desk.id === "today") {
     lines.push("6. Standing brief from this session log. Never invent work. Never Act.");
@@ -376,7 +386,9 @@ function teachAssist({ text, controls, screen } = {}) {
     ? "> coordinates measured from the control tree, not invented"
     : "> do not invent coordinates";
   const steps = tokens.length
-    ? measured.map((p, i) => `${i + 1}. ${p.token}`).join("\n")
+    ? measured
+        .map((p, i) => `${i + 1}. ${[p.boxToken, p.token].filter(Boolean).join(" ")}`)
+        .join("\n")
     : [
         "1. Name the control you mean.",
         "2. POINT at it from the screenshot, not from memory.",
@@ -396,7 +408,8 @@ function teachAssist({ text, controls, screen } = {}) {
     "",
     "## How to point",
     "Emit `[POINT:x,y:label]` with x,y as 0-100 percentages of the screen. Max 8.",
-    "Off-screen points are dropped. The overlay is a crosshair and a label.",
+    "Measured controls also emit `[BOX:left,top,w,h:label]` so the overlay can draw around the real rect.",
+    "Off-screen points are dropped. The overlay is a crosshair, an optional box, and a label.",
     "",
     tokens.length ? "## Controls (measured)" : "## Steps",
     steps,
@@ -409,7 +422,15 @@ function teachAssist({ text, controls, screen } = {}) {
     kind: "walkthrough",
     title: "Teach walkthrough",
     via: tokens.length ? "uia" : "none",
-    points: measured.map((p) => ({ xPct: p.xPct, yPct: p.yPct, label: p.name })),
+    points: measured.map((p) => ({
+      xPct: p.xPct,
+      yPct: p.yPct,
+      label: p.name,
+      leftPct: p.leftPct,
+      topPct: p.topPct,
+      wPct: p.wPct,
+      hPct: p.hPct,
+    })),
     deliverable,
   };
 }

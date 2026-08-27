@@ -105,11 +105,17 @@ function paintSuggests(mode) {
 function paintLiveBrief(event) {
   const brief = $("coworker-brief");
   const meta = $("coworker-brief-meta");
+  const cueEl = $("meeting-cue");
   if (!brief) return;
   const text = String((event && event.text) || "").slice(0, 4000);
+  const cue = String((event && event.cue) || "").trim().slice(0, 240);
   if (!text || (event && event.act)) {
     brief.hidden = true;
     if (meta) meta.hidden = true;
+    if (cueEl) {
+      cueEl.hidden = true;
+      cueEl.textContent = "";
+    }
     return;
   }
   brief.hidden = false;
@@ -117,6 +123,10 @@ function paintLiveBrief(event) {
   if (meta) {
     meta.hidden = false;
     meta.textContent = `${(event && event.desk) || "meeting"} coworker · live · never acts`;
+  }
+  if (cueEl) {
+    cueEl.hidden = !cue;
+    cueEl.textContent = cue ? `Say this: ${cue}` : "";
   }
 }
 
@@ -1652,9 +1662,17 @@ function renderPoints(points, ttlMs) {
   const ttl = Number(ttlMs) > 0 ? Number(ttlMs) : 6000;
   for (const point of points || []) {
     const mark = document.createElement("div");
-    mark.className = "point-mark";
-    mark.style.left = `${point.xPct}%`;
-    mark.style.top = `${point.yPct}%`;
+    const boxed = Number(point.wPct) > 0 && Number(point.hPct) > 0;
+    mark.className = boxed ? "point-mark point-box" : "point-mark";
+    if (boxed) {
+      mark.style.left = `${point.leftPct}%`;
+      mark.style.top = `${point.topPct}%`;
+      mark.style.width = `${point.wPct}%`;
+      mark.style.height = `${point.hPct}%`;
+    } else {
+      mark.style.left = `${point.xPct}%`;
+      mark.style.top = `${point.yPct}%`;
+    }
     const ring = document.createElement("div");
     ring.className = "point-ring";
     mark.appendChild(ring);

@@ -130,6 +130,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/event\.type === "live-brief"/.test(js), "live meeting brief must paint in HUD");
       assert.ok(/paintLiveBrief/.test(js));
       assert.ok(/coworker-brief/.test(read("electron/hud.html")), "live brief lives in fixed insight chrome");
+      assert.ok(/id="meeting-cue"/.test(read("electron/hud.html")), "say-this cue is fixed chrome, not a bubble");
       assert.ok(/id="desk-pill"/.test(read("electron/hud.html")), "desk chips are fixed chrome");
       const desk = js.slice(js.indexOf('$("desk-pill")'), js.indexOf('$("mode-pill")'));
       assert.ok(/doAsk\(\)/.test(desk), "desk chips must Ask");

@@ -21,13 +21,13 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
   const tests = [
     T("a POINT token becomes a coordinate and leaves clean prose", async () => {
       const out = po.parsePoints("Click [POINT:42.1,31:Save] to keep your work.");
-      assert.deepStrictEqual(out.points, [{ xPct: 42.1, yPct: 31, label: "Save" }]);
+      assert.deepStrictEqual(out.points, [{ xPct: 42.1, yPct: 31, label: "Save", kind: "point" }]);
       assert.strictEqual(out.text, "Click Save to keep your work.");
     }),
 
     T("the label is optional", async () => {
       const out = po.parsePoints("Look here [POINT:10,20]");
-      assert.deepStrictEqual(out.points, [{ xPct: 10, yPct: 20, label: "" }]);
+      assert.deepStrictEqual(out.points, [{ xPct: 10, yPct: 20, label: "", kind: "point" }]);
       assert.strictEqual(out.text, "Look here");
     }),
 
@@ -68,6 +68,26 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(!out.text.includes("[POINT"), out.text);
     }),
 
+    T("a BOX token becomes a measured highlight and leaves clean prose", async () => {
+      const out = po.parsePoints("Aim [BOX:20,40,10,4:Save] now.");
+      assert.strictEqual(out.points.length, 1);
+      assert.strictEqual(out.points[0].kind, "box");
+      assert.strictEqual(out.points[0].leftPct, 20);
+      assert.strictEqual(out.points[0].topPct, 40);
+      assert.strictEqual(out.points[0].wPct, 10);
+      assert.strictEqual(out.points[0].hPct, 4);
+      assert.strictEqual(out.points[0].xPct, 25);
+      assert.strictEqual(out.points[0].yPct, 42);
+      assert.strictEqual(out.text, "Aim Save now.");
+      assert.strictEqual(po.hasPoints("[BOX:1,2,3,4:x]"), true);
+    }),
+
+    T("off-screen boxes are dropped", async () => {
+      const out = po.parsePoints("Try [BOX:180,20,10,4:Save] and [BOX:-5,10,10,4:Cancel].");
+      assert.deepStrictEqual(out.points, []);
+      assert.strictEqual(out.dropped, 2);
+    }),
+
     T("the overlay is not a companion and cannot eat clicks", async () => {
       const css = read("electron/hud.css");
       const html = read("electron/hud.html");
@@ -75,6 +95,10 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(
         /\.point-layer\s*\{[^}]*pointer-events:\s*none/.test(css),
         "the teach layer must never intercept the click it is pointing at"
+      );
+      assert.ok(
+        /\.point-mark\.point-box[\s\S]{0,400}pointer-events:\s*none/.test(css),
+        "a measured box must not eat the click it is highlighting"
       );
       // The floating Clicky chrome was removed on purpose — do not grow it back.
       assert.ok(

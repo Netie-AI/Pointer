@@ -1,3 +1,15 @@
+# CHANGELOG
+
+Append-only. Never edited, only added to. Newest first.
+
+## 2026-08-27 - Measured BOX overlay, live say-this cue, loopback catalog poll
+
+Teach draws around measured UIA rects (`[BOX:left,top,w,h:label]`) plus the
+existing POINT crosshair. Empty trees still invent nothing. Meeting assist
+puts a say-this cue in the fixed insight panel (not a floating bubble).
+Loopback host pages poll while live; public localFirst snapshots do not.
+Never Acts. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Teach points from measured controls, never invented
 
 Teach walkthroughs emit `[POINT:x,y:label]` from UI Automation bounding

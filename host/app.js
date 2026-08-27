@@ -9,6 +9,28 @@ function el(tag, className) {
   return node;
 }
 
+/**
+ * Loopback catalog stays current while the tab is open.
+ * Public localFirst snapshots are empty and must not poll.
+ */
+function pollWhileLive(load) {
+  let timer = null;
+  function arm(keep) {
+    if (keep === false) {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      return;
+    }
+    if (!timer) timer = setInterval(function () { load(); }, 2500);
+  }
+  Promise.resolve()
+    .then(load)
+    .then(arm)
+    .catch(function () { arm(false); });
+}
+
 function paintDesks(desks) {
   const root = document.getElementById("desks");
   if (!root) return;
@@ -178,14 +200,14 @@ fetch("/api/state")
 
 const workspacePage = document.getElementById("desks");
 if (workspacePage) {
-  Promise.all([
-    fetch("/api/workspace").then((r) => r.json()),
-    fetch("/api/state").then((r) => r.json()).catch(() => ({})),
-  ])
-    .then(([ws, state]) => {
+  pollWhileLive(function () {
+    return Promise.all([
+      fetch("/api/workspace").then((r) => r.json()),
+      fetch("/api/state").then((r) => r.json()).catch(() => ({})),
+    ]).then(([ws, state]) => {
       if (ws && ws.exec) {
         show("policy", "refused: public workspace must not grow a runtime");
-        return;
+        return false;
       }
       show(
         "policy",
@@ -200,8 +222,9 @@ if (workspacePage) {
           ? "This is the public catalog. Open " + coord + " while Pointer is running for live briefs."
           : "Live workspace on this machine. Exec stays refused."
       );
-    })
-    .catch((err) => show("policy", String(err)));
+      return !(ws && ws.localFirst);
+    });
+  });
 }
 
 const artifactFilter = document.getElementById("artifact-filter");
@@ -211,63 +234,69 @@ if (artifactFilter) {
 
 const todayPage = document.getElementById("brief");
 if (todayPage) {
-  fetch("/api/today")
-    .then((r) => r.json())
-    .then((t) => {
-      if (t && t.exec) {
-        show("policy", "refused: today must not grow a runtime");
-        return;
-      }
-      show("policy", (t && t.reason) || "standing brief; Act stays on the laptop");
-      paintBrief((t && (t.deliverable || t.brief)) || "");
-      paintEvents((t && (t.events || t.today)) || []);
-    })
-    .catch((err) => show("policy", String(err)));
+  pollWhileLive(function () {
+    return fetch("/api/today")
+      .then((r) => r.json())
+      .then((t) => {
+        if (t && t.exec) {
+          show("policy", "refused: today must not grow a runtime");
+          return false;
+        }
+        show("policy", (t && t.reason) || "standing brief; Act stays on the laptop");
+        paintBrief((t && (t.deliverable || t.brief)) || "");
+        paintEvents((t && (t.events || t.today)) || []);
+        return !(t && t.localFirst);
+      });
+  });
 }
 
 const lanesPage = document.getElementById("lanes");
 if (lanesPage) {
-  fetch("/api/state")
-    .then((r) => r.json())
-    .then((s) => {
-      if (s && s.exec) {
-        show("policy", "refused: lanes must not grow a runtime");
-        return;
-      }
-      show(
-        "policy",
-        s && s.localFirst
-          ? s.reason || "live lanes stay on the laptop"
-          : "Live lanes on this machine. A second owner is refused."
-      );
-      paintLanes((s && s.lanes) || {});
-    })
-    .catch((err) => show("policy", String(err)));
+  pollWhileLive(function () {
+    return fetch("/api/state")
+      .then((r) => r.json())
+      .then((s) => {
+        if (s && s.exec) {
+          show("policy", "refused: lanes must not grow a runtime");
+          return false;
+        }
+        show(
+          "policy",
+          s && s.localFirst
+            ? s.reason || "live lanes stay on the laptop"
+            : "Live lanes on this machine. A second owner is refused."
+        );
+        paintLanes((s && s.lanes) || {});
+        return !(s && s.localFirst);
+      });
+  });
 }
 
 const skillsPage = document.getElementById("hits");
 if (skillsPage) {
-  fetch("/api/state")
-    .then((r) => r.json())
-    .then((s) => {
-      show(
-        "policy",
-        s && s.localFirst
-          ? "Skill search stays on the laptop. Craft cannot emit actions."
-          : "Live skill hits. A miss is a hint draft with empty actions."
-      );
-      paintList(
-        "hits",
-        (s && s.lastSearch) || [],
-        "No search hits on this host.",
-        (h) => (h.id || h.title || "hit") + (h.score != null ? " · " + h.score : "")
-      );
-      paintList(
-        "drafts",
-        (s && s.drafts) || [],
-        "No hint drafts.",
-        (d) => (d.title || d.id || "draft") + " · " + (d.tier || "hint")
-      );
-    })
-    .catch((err) => show("policy", String(err)));
+  pollWhileLive(function () {
+    return fetch("/api/state")
+      .then((r) => r.json())
+      .then((s) => {
+        show(
+          "policy",
+          s && s.localFirst
+            ? "Skill search stays on the laptop. Craft cannot emit actions."
+            : "Live skill hits. A miss is a hint draft with empty actions."
+        );
+        paintList(
+          "hits",
+          (s && s.lastSearch) || [],
+          "No search hits on this host.",
+          (h) => (h.id || h.title || "hit") + (h.score != null ? " · " + h.score : "")
+        );
+        paintList(
+          "drafts",
+          (s && s.drafts) || [],
+          "No hint drafts.",
+          (d) => (d.title || d.id || "draft") + " · " + (d.tier || "hint")
+        );
+        return !(s && s.localFirst);
+      });
+  });
 }

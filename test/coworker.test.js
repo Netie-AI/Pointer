@@ -83,6 +83,9 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.match(assist.deliverable, /launch date/);
   assert.match(assist.deliverable, /will not send/i);
   assert.match(assist.deliverable, /Suggested reply/);
+  assert.ok(assist.cue);
+  assert.match(assist.cue, /send it/);
+  assert.strictEqual(recap.cue, "");
   const next = meetingAssist({ transcript, question: "list next steps" });
   assert.strictEqual(next.kind, "next");
   assert.match(next.deliverable, /send it/);
@@ -94,6 +97,7 @@ test("planner grounding names the desk and refuses online exec", () => {
   assert.match(g, /workspace.exec/);
   assert.match(deskGrounding("security"), /Never self-approve/);
   assert.match(deskGrounding("teach"), /\[POINT:/);
+  assert.match(deskGrounding("teach"), /\[BOX:/);
   assert.match(deskGrounding("today"), /Never invent work/);
 });
 
@@ -173,6 +177,7 @@ test("teach assist never invents POINT coordinates and never acts", () => {
   assert.deepStrictEqual(walk.points, []);
   assert.match(walk.deliverable, /do not invent coordinates/i);
   assert.doesNotMatch(walk.deliverable, /\[POINT:\s*\d/);
+  assert.doesNotMatch(walk.deliverable, /\[BOX:\s*\d/);
 });
 
 test("teach assist emits POINT tokens from measured controls only", () => {
@@ -193,8 +198,10 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(walk.skipLlm, true);
   assert.strictEqual(walk.via, "uia");
   assert.match(walk.deliverable, /\[POINT:25,42:Save\]/);
+  assert.match(walk.deliverable, /\[BOX:20,40,10,4:Save\]/);
   assert.match(walk.deliverable, /will not click/i);
   assert.doesNotMatch(walk.deliverable, /\[POINT:.*Ghost/);
+  assert.doesNotMatch(walk.deliverable, /\[BOX:.*Ghost/);
   assert.doesNotMatch(walk.deliverable, /\[POINT:.*Dead/);
   const pin = teachAssist({
     text: "point at Cancel on my screen",
@@ -212,6 +219,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   });
   assert.strictEqual(emptyTree.skipLlm, false);
   assert.doesNotMatch(emptyTree.deliverable, /\[POINT:\s*\d/);
+  assert.doesNotMatch(emptyTree.deliverable, /\[BOX:\s*\d/);
   const fs = require("fs");
   const path = require("path");
   const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
@@ -333,6 +341,8 @@ test("live meeting update fails closed with no transcript and never acts", () =>
   assert.strictEqual(asked.kind, "assist");
   assert.strictEqual(asked.act, false);
   assert.match(asked.deliverable, /Suggested reply/);
+  assert.ok(asked.cue);
+  assert.match(asked.cue, /send it Friday/);
 });
 
 test("desk chips ask, never act", () => {
@@ -387,6 +397,13 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   const hud = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
   assert.match(hud, /event\.type === "live-brief"/);
   assert.match(hud, /paintLiveBrief/);
+  assert.match(hud, /meeting-cue/);
+  assert.match(hud, /point-box/);
+  const html = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");
+  assert.match(html, /id="meeting-cue"/);
+  assert.doesNotMatch(html, /clicky-orb|stage-orb/);
+  const mainCue = main.slice(main.indexOf("function publishLiveMeeting"), main.indexOf("function localMeetingReply"));
+  assert.match(mainCue, /cue:/);
   assert.match(hud, /brief\.textContent/);
   assert.doesNotMatch(hud, /coworker-brief[\s\S]{0,80}innerHTML/);
   assert.match(hud, /event\.act/);

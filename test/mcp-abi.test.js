@@ -156,6 +156,7 @@ function test(name, fn) {
     assert.strictEqual(pointed.result.act, false);
     assert.strictEqual(pointed.result.exec, false);
     assert.match(pointed.result.deliverable, /\[POINT:25,42:Save\]/);
+    assert.match(pointed.result.deliverable, /\[BOX:20,40,10,4:Save\]/);
     const unknown = await mcp.handle({ jsonrpc: "2.0", id: 14, method: "browser.run" });
     assert.ok(unknown.error);
     assert.match(unknown.error.message, /unknown tool/);

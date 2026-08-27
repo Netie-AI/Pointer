@@ -87,6 +87,35 @@ function rectToPct(rect, screen) {
   return { xPct, yPct };
 }
 
+/**
+ * Screen-pixel rect -> overlay box percents (top-left + size).
+ * Fully off-screen boxes are refused so we do not invent an edge highlight.
+ */
+function rectToBoxPct(rect, screen) {
+  if (!rect || !screen) return null;
+  const width = Number(screen.width);
+  const height = Number(screen.height);
+  if (!(width > 0) || !(height > 0)) return null;
+  const left = Number(rect.x) - (Number(screen.x) || 0);
+  const top = Number(rect.y) - (Number(screen.y) || 0);
+  const w = Number(rect.width);
+  const h = Number(rect.height);
+  if (!(w > 0) || !(h > 0) || !Number.isFinite(left) || !Number.isFinite(top)) return null;
+  let leftPct = (left / width) * 100;
+  let topPct = (top / height) * 100;
+  let wPct = (w / width) * 100;
+  let hPct = (h / height) * 100;
+  if (leftPct + wPct <= 0 || topPct + hPct <= 0 || leftPct >= 100 || topPct >= 100) return null;
+  const right = Math.min(100, leftPct + wPct);
+  const bottom = Math.min(100, topPct + hPct);
+  leftPct = Math.max(0, leftPct);
+  topPct = Math.max(0, topPct);
+  wPct = right - leftPct;
+  hPct = bottom - topPct;
+  if (wPct < 0.4 || hPct < 0.4) return null;
+  return { leftPct, topPct, wPct, hPct };
+}
+
 /** Smaller is more specific: a Button inside a Pane, not the Pane. */
 function area(candidate) {
   const r = candidate && candidate.rect;
@@ -236,6 +265,14 @@ function formatPointToken(pct, name) {
   return `[POINT:${x},${y}:${pointLabel(name)}]`;
 }
 
+function formatBoxToken(box, name) {
+  const l = Math.round(Number(box.leftPct) * 10) / 10;
+  const t = Math.round(Number(box.topPct) * 10) / 10;
+  const w = Math.round(Number(box.wPct) * 10) / 10;
+  const h = Math.round(Number(box.hPct) * 10) / 10;
+  return `[BOX:${l},${t},${w},${h}:${pointLabel(name)}]`;
+}
+
 function interactivity(candidate) {
   const t = String((candidate && candidate.controlType) || "");
   if (t === "Button" || t === "Hyperlink" || t === "MenuItem" || t === "SplitButton") return 0;
@@ -271,6 +308,7 @@ function pointControls(controls, screen, opts = {}) {
     if (candidate.enabled === false || candidate.offscreen === true) return false;
     const pct = rectToPct(candidate.rect, screen);
     if (!pct) return false;
+    const box = rectToBoxPct(candidate.rect, screen);
     const key = `${pointLabel(candidate.name)}|${Math.round(pct.xPct)}|${Math.round(pct.yPct)}`;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -279,6 +317,11 @@ function pointControls(controls, screen, opts = {}) {
       yPct: pct.yPct,
       name: candidate.name,
       token: formatPointToken(pct, candidate.name),
+      boxToken: box ? formatBoxToken(box, candidate.name) : "",
+      leftPct: box ? box.leftPct : undefined,
+      topPct: box ? box.topPct : undefined,
+      wPct: box ? box.wPct : undefined,
+      hPct: box ? box.hPct : undefined,
       via: "uia",
     });
     return true;
@@ -309,7 +352,9 @@ module.exports = {
   scoreCandidate,
   chooseCandidate,
   rectToPct,
+  rectToBoxPct,
   psLiteral,
+  formatBoxToken,
   buildProbeScript,
   parseProbeOutput,
   findControl,

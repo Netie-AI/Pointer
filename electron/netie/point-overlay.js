@@ -6,15 +6,21 @@
  * The answer text may contain `[POINT:42.1,31:Save]` tokens; this pulls them
  * out and hands back clean prose plus the coordinates to draw.
  *
+ * Measured UIA walkthroughs also emit `[BOX:left,top,w,h:label]` so the overlay
+ * can draw around a real control instead of guessing a dot. Vision still uses
+ * POINT only. Neither token is a click. Neither is a companion.
+ *
  * Deliberately not a companion: no orb, no ring, no bubble, no character. A
- * crosshair and a label that fade. The floating Clicky chrome was removed for
- * good reasons and this must not smuggle it back in a new hat.
+ * crosshair, an optional measured box, and a label that fade.
  *
  * Pure parsing — the renderer only draws what comes out of here.
  */
 
 /** `[POINT:x,y]` or `[POINT:x,y:label]`, percentages of the screen. */
 const POINT_RE = /\[POINT:\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*(?::\s*([^\]]*?))?\s*\]/gi;
+/** `[BOX:left,top,w,h:label]` — measured top-left box, percentages. */
+const BOX_RE =
+  /\[BOX:\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*(?::\s*([^\]]*?))?\s*\]/gi;
 
 /** A teach layer that covers the screen in dots is not teaching anything. */
 const MAX_POINTS = 8;
@@ -25,9 +31,20 @@ function inRange(value) {
   return Number.isFinite(value) && value >= 0 && value <= 100;
 }
 
+function clipBox(leftPct, topPct, wPct, hPct) {
+  if (!inRange(leftPct) || !inRange(topPct) || !(wPct > 0) || !(hPct > 0)) return null;
+  if (leftPct >= 100 || topPct >= 100) return null;
+  const right = Math.min(100, leftPct + wPct);
+  const bottom = Math.min(100, topPct + hPct);
+  const w = right - leftPct;
+  const h = bottom - topPct;
+  if (w < 0.4 || h < 0.4) return null;
+  return { leftPct, topPct, wPct: w, hPct: h };
+}
+
 /**
- * @param {string} raw  assistant text, possibly containing POINT tokens
- * @returns {{text:string, points:Array<{xPct:number,yPct:number,label:string}>, dropped:number}}
+ * @param {string} raw  assistant text, possibly containing POINT / BOX tokens
+ * @returns {{text:string, points:Array<object>, dropped:number}}
  */
 function parsePoints(raw) {
   const input = String(raw || "");
@@ -36,17 +53,35 @@ function parsePoints(raw) {
   const points = [];
   let dropped = 0;
 
-  const text = input.replace(POINT_RE, (_token, x, y, label) => {
+  let text = input.replace(BOX_RE, (_token, l, t, w, h, label) => {
+    const box = clipBox(Number(l), Number(t), Number(w), Number(h));
+    if (!box || points.length >= MAX_POINTS) {
+      dropped += 1;
+      return label ? String(label).trim() : "";
+    }
+    const clean = String(label || "").trim();
+    points.push({
+      xPct: box.leftPct + box.wPct / 2,
+      yPct: box.topPct + box.hPct / 2,
+      leftPct: box.leftPct,
+      topPct: box.topPct,
+      wPct: box.wPct,
+      hPct: box.hPct,
+      label: clean,
+      kind: "box",
+    });
+    return clean;
+  });
+
+  text = text.replace(POINT_RE, (_token, x, y, label) => {
     const xPct = Number(x);
     const yPct = Number(y);
-    // Off-screen coordinates are a model error, not an instruction to click the
-    // edge. Drop the point but keep the label so the sentence still reads.
     if (!inRange(xPct) || !inRange(yPct) || points.length >= MAX_POINTS) {
       dropped += 1;
       return label ? String(label).trim() : "";
     }
     const clean = String(label || "").trim();
-    points.push({ xPct, yPct, label: clean });
+    points.push({ xPct, yPct, label: clean, kind: "point" });
     return clean;
   });
 
@@ -71,4 +106,12 @@ function toOverlayEvent(raw, opts = {}) {
   };
 }
 
-module.exports = { POINT_RE, MAX_POINTS, DEFAULT_TTL_MS, parsePoints, hasPoints, toOverlayEvent };
+module.exports = {
+  POINT_RE,
+  BOX_RE,
+  MAX_POINTS,
+  DEFAULT_TTL_MS,
+  parsePoints,
+  hasPoints,
+  toOverlayEvent,
+};

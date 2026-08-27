@@ -310,6 +310,7 @@ function publishLiveMeeting(assist) {
     desk: assist.desk || "meeting",
     act: false,
     text: assist.deliverable,
+    cue: assist.cue || "",
   });
 }
 function localMeetingReply(message, extraTranscript, extra) {

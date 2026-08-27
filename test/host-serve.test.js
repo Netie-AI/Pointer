@@ -92,6 +92,7 @@ function readAsset(file) {
     assert.match(app, /paintDesks/);
     assert.match(app, /textContent/);
     assert.doesNotMatch(app, /innerHTML/);
+    assert.match(app, /pollWhileLive/);
     assert.match(app, /ws\.exec/);
     assert.match(app, /openArtifact/);
     assert.match(app, /paintLanes/);

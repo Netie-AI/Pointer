@@ -92,9 +92,14 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
     T("a control outside the capture region is not a target", async () => {
       assert.strictEqual(uia.rectToPct(rect(2000, 10, 10, 10), SCREEN), null);
       assert.strictEqual(uia.rectToPct(rect(10, 10, 10, 10), { x: 0, y: 0, width: 0, height: 0 }), null);
-      // Region offsets are honoured, not ignored.
       const pct = uia.rectToPct(rect(1100, 100, 100, 100), { x: 1000, y: 0, width: 1000, height: 1000 });
       assert.strictEqual(pct.xPct, 15);
+      const box = uia.rectToBoxPct(rect(200, 400, 100, 40), SCREEN);
+      assert.strictEqual(box.leftPct, 20);
+      assert.strictEqual(box.topPct, 40);
+      assert.strictEqual(box.wPct, 10);
+      assert.strictEqual(box.hPct, 4);
+      assert.strictEqual(uia.rectToBoxPct(rect(2000, 10, 10, 10), SCREEN), null);
     }),
 
     T("PowerShell's single-result object is still a list", async () => {
@@ -143,6 +148,9 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
       assert.strictEqual(points[0].xPct, 25);
       assert.strictEqual(points[0].yPct, 42);
       assert.strictEqual(points[0].via, "uia");
+      assert.ok(points[0].boxToken.includes("[BOX:20,40,10,4:Save]"));
+      assert.strictEqual(points[0].leftPct, 20);
+      assert.strictEqual(points[0].wPct, 10);
       assert.ok(points.every((p) => p.name !== "Gone"));
       assert.ok(points.length <= uia.MAX_TEACH_POINTS);
       assert.deepStrictEqual(uia.pointControls(null, SCREEN), []);
