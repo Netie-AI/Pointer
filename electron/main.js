@@ -28,7 +28,7 @@ const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
 const { ensureActionCoords } = require("./netie/targeting");
-const { dumpForeground } = require("./netie/uia");
+const { dumpForeground, readSelection } = require("./netie/uia");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
@@ -118,6 +118,31 @@ function uiaContext(region) {
   if (driver.dryRun) return null; // never spawn a probe in a dry run
   if (!region || !region.width) return null;
   return { run: runUiaProbe, screen: region };
+}
+
+/**
+ * OpenWillow-class selection: UIA TextPattern first, never Ctrl+C on a
+ * password field. Ctrl+C is the fallback when UIA has no selection.
+ */
+async function copySelectionText() {
+  if (UIA_ENABLED && !driver.dryRun) {
+    try {
+      const hit = await readSelection({ run: runUiaProbe });
+      if (hit && hit.reason === "password") return "";
+      if (hit && hit.ok && hit.text) return hit.text;
+    } catch {
+      /* fall through to Ctrl+C */
+    }
+  }
+  try {
+    await driver.perform({ type: "clipboard_baseline" });
+    await driver.perform({ type: "press", value: "ctrl+c" });
+    await driver.perform({ type: "wait", ms: 120 });
+    const clip = await driver.clipboardGet();
+    return String((clip && clip.text) || "").trim();
+  } catch {
+    return "";
+  }
 }
 const {
   MAX_REPLANS,
@@ -265,6 +290,18 @@ const liveMcp = createMcpAbi({
         clipboard = "";
       }
     }
+    let selection = null;
+    if (params && params.selection === true) {
+      try {
+        if (UIA_ENABLED && !driver.dryRun) {
+          selection = await readSelection({ run: runUiaProbe });
+        } else {
+          selection = { ok: false, reason: "unavailable" };
+        }
+      } catch {
+        selection = { ok: false, reason: "unavailable" };
+      }
+    }
     return computerObserve({
       captureVisible: captureVisible(),
       uacc: detectUacc(),
@@ -273,6 +310,7 @@ const liveMcp = createMcpAbi({
       elements,
       screenshot,
       clipboard,
+      selection,
       delivery: publicTarget(deliveryTarget),
     });
   },
@@ -1613,17 +1651,7 @@ async function runScribeApi(params) {
       language: () => normalizeScribeLanguage(settings.get("scribeLanguage")),
       writingStyle: () => settings.get("writingStyle") || "",
       personalContext: () => settings.get("personalContext") || "",
-      copySelection: async () => {
-        try {
-          await driver.perform({ type: "clipboard_baseline" });
-          await driver.perform({ type: "press", value: "ctrl+c" });
-          await driver.perform({ type: "wait", ms: 120 });
-          const clip = await driver.clipboardGet();
-          return String((clip && clip.text) || "").trim();
-        } catch {
-          return "";
-        }
-      },
+      copySelection: () => copySelectionText(),
       complete: async (req) =>
         eco.visionChat({
           message: `${req.system}\n\n${req.user}`,
@@ -1663,17 +1691,7 @@ async function runScribeTurn({ instruction, source = "ask" } = {}) {
       language: () => normalizeScribeLanguage(settings.get("scribeLanguage")),
       writingStyle: () => settings.get("writingStyle") || "",
       personalContext: () => settings.get("personalContext") || "",
-      copySelection: async () => {
-        try {
-          await driver.perform({ type: "clipboard_baseline" });
-          await driver.perform({ type: "press", value: "ctrl+c" });
-          await driver.perform({ type: "wait", ms: 120 });
-          const clip = await driver.clipboardGet();
-          return String((clip && clip.text) || "").trim();
-        } catch {
-          return "";
-        }
-      },
+      copySelection: () => copySelectionText(),
       complete: async (req) =>
         eco.visionChat({
           message: `${req.system}\n\n${req.user}`,

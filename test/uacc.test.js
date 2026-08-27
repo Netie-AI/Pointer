@@ -125,6 +125,7 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("replace: hello"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?screenshot=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?clipboard=1"));
+    assert.ok(shown.drive.instructions.includes("GET /api/observe?selection=1"));
     assert.strictEqual(shown.drive.tools, "GET /api/tools");
     assert.match(shown.drive.gated, /dms\/secure/);
   });
@@ -138,6 +139,7 @@ function test(name, fn) {
     assert.deepStrictEqual(obs.windows, []);
     assert.strictEqual(obs.screenshot, null);
     assert.strictEqual(obs.clipboard, null);
+    assert.strictEqual(obs.selection, null);
   });
 
   await test("computer.observe can publish a PNG and clipboard as untrusted data", () => {
@@ -153,6 +155,19 @@ function test(name, fn) {
     assert.strictEqual(obs.clipboard.present, true);
     assert.strictEqual(obs.clipboard.text, "paste me");
     assert.match(obs.clipboard.note, /untrusted/);
+    const selected = computerObserve({
+      captureVisible: true,
+      selection: { ok: true, text: "Please move Friday.", via: "uia" },
+    });
+    assert.strictEqual(selected.selection.present, true);
+    assert.strictEqual(selected.selection.text, "Please move Friday.");
+    assert.match(selected.selection.note, /untrusted/);
+    const secret = computerObserve({
+      captureVisible: true,
+      selection: { ok: false, reason: "password", blocked: true },
+    });
+    assert.strictEqual(secret.selection.present, false);
+    assert.strictEqual(secret.selection.reason, "password");
     const tooBig = computerObserve({
       captureVisible: true,
       screenshot: "data:image/png;base64," + "A".repeat(1300000),

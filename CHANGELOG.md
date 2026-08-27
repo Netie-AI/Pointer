@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Read selected text without copying a password
+
+Scribe and `GET /api/observe?selection=1` read the focused selection
+through UIA TextPattern. Password fields return empty and never get
+Ctrl+C. Ctrl+C is only the fallback when UIA has no selection. GitHub
+CI on this account is still a spending-limit cutoff (0 steps), not a
+product fail. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - Meeting assist sees this screen unless asked not to
 
 `computer.meeting_assist` and `POST /api/meeting` capture a fresh crop

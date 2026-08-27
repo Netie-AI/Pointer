@@ -235,9 +235,75 @@ async function dumpForeground(opts = {}) {
   return listForegroundControls(parseProbeOutput(stdout), opts);
 }
 
+const MAX_SELECTION_CHARS = 4000;
+
+/**
+ * OpenWillow-class selection read: TextPattern on the focused control, walk
+ * parents a short way, refuse password fields. No Ctrl+C, so the pasteboard
+ * stays put and a password box is never copied.
+ */
+function buildSelectionScript() {
+  return [
+    "$ErrorActionPreference='Stop'",
+    "Add-Type -AssemblyName UIAutomationClient,UIAutomationTypes | Out-Null",
+    "$el=[System.Windows.Automation.AutomationElement]::FocusedElement",
+    "if($el -eq $null){ '{\"ok\":false,\"reason\":\"no focus\"}'; exit 0 }",
+    "$walker=[System.Windows.Automation.TreeWalker]::ControlViewWalker",
+    "for($i=0; $i -lt 8 -and $el -ne $null; $i++){",
+    "  try{ if($el.Current.IsPassword){ '{\"ok\":false,\"reason\":\"password\"}'; exit 0 } } catch {}",
+    "  try{",
+    "    $pat=$el.GetCurrentPattern([System.Windows.Automation.TextPattern]::Pattern)",
+    "    if($pat -ne $null){",
+    "      $ranges=$pat.GetSelection()",
+    "      $parts=New-Object System.Collections.ArrayList",
+    "      foreach($r in $ranges){ $t=$r.GetText(4000); if($t){ [void]$parts.Add($t) } }",
+    "      $text=(($parts -join \"`n\")).Trim()",
+    "      if($text){ [pscustomobject]@{ok=$true;text=$text;via='uia'} | ConvertTo-Json -Compress; exit 0 }",
+    "    }",
+    "  } catch {}",
+    "  try{ $el=$walker.GetParent($el) } catch { break }",
+    "}",
+    "'{\"ok\":false,\"reason\":\"no selection\"}'",
+  ].join("\n");
+}
+
+function parseSelectionOutput(stdout) {
+  const raw = String(stdout || "").trim();
+  if (!raw) return { ok: false, reason: "empty" };
+  try {
+    const data = JSON.parse(raw);
+    if (data && data.reason === "password") {
+      return { ok: false, reason: "password", blocked: true };
+    }
+    const text = String((data && data.text) || "").trim();
+    if (data && data.ok && text) {
+      return {
+        ok: true,
+        text: text.slice(0, MAX_SELECTION_CHARS),
+        via: "uia",
+      };
+    }
+    return { ok: false, reason: (data && data.reason) || "no selection" };
+  } catch {
+    return { ok: false, reason: "bad probe" };
+  }
+}
+
+async function readSelection(opts = {}) {
+  if (typeof opts.run !== "function") return { ok: false, reason: "no runner" };
+  let stdout;
+  try {
+    stdout = await opts.run(buildSelectionScript());
+  } catch {
+    return { ok: false, reason: "uia unavailable" };
+  }
+  return parseSelectionOutput(stdout);
+}
+
 module.exports = {
   TARGET_CONTROL_TYPES,
   MAX_CANDIDATES,
+  MAX_SELECTION_CHARS,
   normalize,
   scoreCandidate,
   chooseCandidate,
@@ -248,4 +314,7 @@ module.exports = {
   findControl,
   listForegroundControls,
   dumpForeground,
+  buildSelectionScript,
+  parseSelectionOutput,
+  readSelection,
 };

@@ -40,6 +40,10 @@ async function run() {
       assert.ok(/captureDisplayCrop/.test(observeBody), "observe screenshot uses the live display crop");
       assert.ok(/params\.clipboard === true/.test(observeBody), "observe must read clipboard when asked");
       assert.ok(/clipboardGet/.test(observeBody), "observe clipboard uses the driver pasteboard");
+      assert.ok(/params\.selection === true/.test(observeBody), "observe must read focused selection when asked");
+      assert.ok(/readSelection/.test(observeBody), "observe selection uses UIA TextPattern");
+      assert.ok(/async function copySelectionText/.test(main), "Scribe must share one selection reader");
+      assert.ok(/reason === "password"/.test(main), "password fields must never be Ctrl+C copied");
       assert.ok(/applyAutostart/.test(main), "OpenWillow autostart must reach login items");
       assert.ok(/buildMeetingAssist/.test(main), "meeting mode must offer Cluely-class assist");
       assert.ok(/meetingNotes/.test(main), "GET /api/meeting?notes=1 must read live notes");

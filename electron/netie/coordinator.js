@@ -197,6 +197,7 @@ function createCoordinator(opts = {}) {
                 elements: queryFlag(url, "elements"),
                 screenshot: queryFlag(url, "screenshot"),
                 clipboard: queryFlag(url, "clipboard"),
+                selection: queryFlag(url, "selection"),
               },
             },
             { coordinator: api }

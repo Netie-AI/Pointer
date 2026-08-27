@@ -204,6 +204,20 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
       assert.ok(rows.some((r) => r.name === "Save" && r.xPct === 25));
       assert.ok(rows.some((r) => r.name === "Cancel"));
     }),
+
+    T("UIA selection refuses password fields and returns focused text", async () => {
+      const blocked = uia.parseSelectionOutput(JSON.stringify({ ok: false, reason: "password" }));
+      assert.strictEqual(blocked.ok, false);
+      assert.strictEqual(blocked.reason, "password");
+      assert.strictEqual(blocked.blocked, true);
+      const hit = await uia.readSelection({
+        run: async () => JSON.stringify({ ok: true, text: "Please move Friday.", via: "uia" }),
+      });
+      assert.strictEqual(hit.ok, true);
+      assert.strictEqual(hit.text, "Please move Friday.");
+      assert.ok(/IsPassword/.test(uia.buildSelectionScript()), "probe must refuse password boxes");
+      assert.ok(/TextPattern/.test(uia.buildSelectionScript()), "probe must use TextPattern");
+    }),
   ];
 
   const ok = await suite.run(tests);
