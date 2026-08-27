@@ -34,6 +34,7 @@ test("put lists a brief and never grows a runtime", () => {
   assert.strictEqual(ws.get("brief-1").artifact.cue, "I will send it Friday.");
   assert.strictEqual(ws.get("brief-1").artifact.rest, "Click Cancel");
   assert.strictEqual(ws.get("brief-1").artifact.heard, "Friday / $40k");
+  assert.strictEqual(ws.get("brief-1").artifact.notes, false);
   assert.strictEqual(ws.list().length, 1);
   assert.strictEqual(ws.get("brief-1").artifact.body.includes("ship the deck"), true);
   const pub = ws.publicList();
@@ -59,9 +60,11 @@ test("put lists a brief and never grows a runtime", () => {
     title: "Live meeting",
     body: "# Meeting brief\n- ship it",
     cue: "I will send it Friday.",
+    notes: true,
     live: { transcript: "them: Can we ship Friday?\nyou: I will send it Friday." },
   });
   assert.match(meetingLive.artifact.live.transcript, /send it Friday/);
+  assert.strictEqual(meetingLive.artifact.notes, true);
   assert.ok(!Object.prototype.hasOwnProperty.call(ws.list().find((r) => r.id === "live-meeting"), "live"));
   const exec = ws.exec({ backend: "container" });
   assert.strictEqual(exec.ok, false);

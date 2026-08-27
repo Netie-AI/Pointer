@@ -1706,6 +1706,7 @@ function todayAssist({ state, question, localFirst } = {}) {
     id: "standing-today",
     title: "Today",
     cue: plateCue,
+    plate: plate.map((row) => speakable(String(row.text || "").replace(/^-\s+/, ""))).filter(Boolean).slice(0, 6),
     deliverable: parts.join("\n"),
   };
 }
@@ -1740,6 +1741,7 @@ function publicTodaySnapshot() {
     deliverable: assist.deliverable,
     cue: assist.cue || "",
     asked: "",
+    plate: Array.isArray(assist.plate) ? assist.plate.slice(0, 6) : [],
     chips: [],
     ok: true,
   };
@@ -1917,6 +1919,7 @@ function putAssist(workspace, assist) {
     asked: assist.asked || "",
     rest: assist.rest || "",
     heard: assist.heard || "",
+    notes: Boolean(assist.notes),
     live: assist.live,
   });
 }
@@ -2405,6 +2408,8 @@ function publicEmptyRoom(desk, title, reason) {
     advance: false,
     chips: [],
     turns: [],
+    notes: false,
+    plate: [],
     coordinator: "http://127.0.0.1:18010",
     reason,
     desk,

@@ -374,6 +374,12 @@ function applyToday(t) {
   paintBrief((t && (t.deliverable || t.brief)) || "", "today", Boolean(t && t.localFirst));
   paintEvents((t && (t.events || t.today)) || []);
   paintTodayChips((t && t.chips) || []);
+  const stage = document.getElementById("today-plate");
+  if (stage) {
+    stage.replaceChildren();
+    paintTodayPlate(stage, t);
+    stage.hidden = !stage.childNodes.length;
+  }
   return !(t && t.localFirst);
 }
 
@@ -497,6 +503,11 @@ function paintMeetingCard(root, m) {
     const facts = el("p", "meeting-card-heard");
     facts.textContent = "Heard: " + heard;
     card.appendChild(facts);
+  }
+  if (m.notes) {
+    const from = el("p", "meeting-card-from");
+    from.textContent = "From the open file";
+    card.appendChild(from);
   }
   root.appendChild(card);
 }
@@ -855,6 +866,54 @@ function paintTeachMap(root, m) {
   root.appendChild(map);
 }
 
+function plateItems(m) {
+  const out = [];
+  const seen = {};
+  function add(line) {
+    const text = String(line || "")
+      .replace(/^[-*]\s*/, "")
+      .trim();
+    if (!text || /^nothing yet$/i.test(text)) return;
+    const key = text.toLowerCase();
+    if (seen[key]) return;
+    seen[key] = true;
+    out.push(text);
+  }
+  if (Array.isArray(m && m.plate) && m.plate.length) {
+    m.plate.forEach(add);
+    return out.slice(0, 6);
+  }
+  add(m && m.cue);
+  const body = String((m && m.deliverable) || "");
+  const idx = body.search(/^## On your plate\b/m);
+  if (idx >= 0) {
+    const rest = body.slice(idx).replace(/^## On your plate[^\n]*\n/, "");
+    const chunk = rest.split(/^## /m)[0];
+    chunk.split("\n").forEach(add);
+  }
+  return out.slice(0, 6);
+}
+
+function paintTodayPlate(root, m) {
+  if (!root || !m || m.desk !== "today" || m.localFirst) return;
+  const lines = plateItems(m);
+  if (!lines.length) return;
+  const card = el("section", "today-plate");
+  card.setAttribute("role", "region");
+  card.setAttribute("aria-label", "On your plate");
+  const kicker = el("p", "today-plate-kicker");
+  kicker.textContent = "On your plate";
+  card.appendChild(kicker);
+  const list = el("ul", "today-plate-list");
+  lines.forEach(function (line) {
+    const li = el("li");
+    li.textContent = line;
+    list.appendChild(li);
+  });
+  card.appendChild(list);
+  root.appendChild(card);
+}
+
 function paintStage(rooms, localFirst) {
   const root = document.getElementById("stage");
   if (!root) return;
@@ -865,6 +924,7 @@ function paintStage(rooms, localFirst) {
   }
   paintTeachMap(root, (rooms && rooms.teach) || {});
   paintMeetingCard(root, (rooms && rooms.meeting) || {});
+  paintTodayPlate(root, (rooms && rooms.today) || {});
   root.hidden = !root.childNodes.length;
 }
 

@@ -46,6 +46,9 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   unrelated last-you dump. Never a cheater overlay.
 - Loopback This session files link to `/workspace?id=` and chrome shows
   `Open:` the working set. Ask chips review that body. Public `?id=` 404.
+- Loopback `/` paints the live teach path, meeting say-this, and Today
+  plate from `/api/home` (Ask, never Act, never a runtime). `/today`
+  shows the same plate hero. Open-file notes stay facts-only.
 - `workspace.js`: artifact catalog. `exec()` always refuses (P-06). `get` is
   loopback-only; public `?id=` is 404.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.

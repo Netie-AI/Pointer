@@ -57,6 +57,7 @@ function createWorkspace(opts = {}) {
       asked: String(spec.asked || "").slice(0, 160),
       rest: String(spec.rest || "").slice(0, 160),
       heard: String(spec.heard || "").slice(0, 160),
+      notes: Boolean(spec.notes),
       t: nowMs(clock),
     };
     const live = freezeCoworkerLive(spec.live);

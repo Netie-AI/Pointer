@@ -25,7 +25,7 @@ security Review live in the fixed insight panel. HUD desk chips Ask,
 never Act. Home `/api/home` lists live rooms for every desk. Loopback
 `/` and `/workspace` show a This session catalog (They asked / Heard /
 filed inbox and Word links, no runtime). Loopback `/` also paints the live
-teach path and meeting say-this card. Loopback host pages keep They asked / Heard / Next in sticky chrome
+teach path, meeting say-this card, and Today plate. Loopback host pages keep They asked / Heard / Next in sticky chrome
 (Back / Got it Ask, never Act). Loopback
 `/teach` draws a read-only box map from measured markers and Back / Got
 it Ask the next step on loopback (never Act). Copy next / Copy say-this

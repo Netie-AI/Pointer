@@ -1,3 +1,10 @@
+## 2026-08-27 - Home paints the Today plate
+
+Loopback `/` paints On your plate next to the teach path and meeting
+say-this (Ask, never Act, never a runtime). `/today` shows the same
+hero. Open-file notes stay facts-only and label From the open file.
+Public copies stay empty. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Home paints the live session theater
 
 Loopback `/` paints the live teach path and meeting say-this card from

@@ -71,6 +71,7 @@ function test(name, fn) {
     assert.strictEqual(html.status, 200);
     assert.match(html.body, /\/today/);
     assert.match(html.body, /today-chips/);
+    assert.match(html.body, /id="today-plate"/);
     const st = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/state" }, (res) => {
         const chunks = [];
@@ -157,6 +158,7 @@ function test(name, fn) {
       cue: "I'll send it Friday.",
       asked: "What is the launch date?",
       heard: "Friday / $40k",
+      notes: true,
       live: {
         transcript: [
           "them: I'm Sarah Chen",
@@ -187,6 +189,7 @@ function test(name, fn) {
     assert.ok(Array.isArray(meeting.body.turns));
     assert.ok(meeting.body.turns.some((row) => row.speaker === "them" && /launch date/.test(row.text)));
     assert.ok(meeting.body.turns.some((row) => row.speaker === "you" && /send it Friday/.test(row.text)));
+    assert.strictEqual(meeting.body.notes, true);
     const meetingPage = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/meeting" }, (res) => {
         const chunks = [];
@@ -460,6 +463,28 @@ function test(name, fn) {
     });
     assert.strictEqual(inbox.status, 200);
     assert.match(inbox.body.cue, /not sent/);
+    c.workspace.put({
+      id: "brief-notes",
+      desk: "document",
+      title: "launch notes",
+      body: "Launch is Friday for $40k.",
+    });
+    const fromNotes = await new Promise((resolve, reject) => {
+      const req = http.request(
+        { host: "127.0.0.1", port, path: "/api/ask", method: "POST", headers: { "content-type": "application/json" } },
+        (res) => {
+          const chunks = [];
+          res.on("data", (d) => chunks.push(d));
+          res.on("end", () => resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) }));
+        }
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ ask: "What should I say?", id: "brief-notes", act: true }));
+    });
+    assert.strictEqual(fromNotes.status, 200);
+    assert.strictEqual(fromNotes.body.act, false);
+    assert.strictEqual(fromNotes.body.desk, "meeting");
+    assert.strictEqual(fromNotes.body.notes, true);
     const home = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/home" }, (res) => {
         const chunks = [];
@@ -478,9 +503,12 @@ function test(name, fn) {
     assert.match(home.body.rooms.meeting.asked, /launch date/);
     assert.ok(Array.isArray(home.body.rooms.meeting.turns));
     assert.ok(home.body.rooms.meeting.turns.some((row) => /Sarah Chen/.test(row.text)));
+    assert.strictEqual(home.body.rooms.meeting.notes, true);
     assert.match(home.body.rooms.today.cue, /send it Friday/);
     assert.match(home.body.rooms.security.cue, /do not approve/);
     assert.match(home.body.rooms.today.deliverable, /# Today/);
+    assert.ok(Array.isArray(home.body.rooms.today.plate));
+    assert.ok(home.body.rooms.today.plate.some((line) => /Friday/.test(line)));
     assert.match(home.body.rooms.document.cue, /not a \.docx/);
     assert.match(home.body.rooms.inbox.cue, /not sent/);
     assert.ok(home.body.session);

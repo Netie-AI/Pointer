@@ -155,6 +155,7 @@ function readAsset(file) {
     assert.match(text, /id="brief"/);
     assert.match(text, /id="today-cue-web"/);
     assert.match(text, /id="today-chips"/);
+    assert.match(text, /id="today-plate"/);
     assert.match(text, /id="events"/);
     const todayApi = handlePublicRequest({ method: "GET", pathname: "/api/today" });
     assert.strictEqual(todayApi.status, 200);
@@ -164,6 +165,7 @@ function readAsset(file) {
     assert.strictEqual(todayBody.exec, false);
     assert.deepStrictEqual(todayBody.events, []);
     assert.deepStrictEqual(todayBody.chips, []);
+    assert.deepStrictEqual(todayBody.plate, []);
     assert.match(todayBody.deliverable, /nothing yet/);
     assert.match(todayBody.deliverable, /P-06/);
     const app = fs.readFileSync(path.join(HOST, "app.js"), "utf8");
@@ -217,6 +219,7 @@ function readAsset(file) {
     assert.match(cssText, /teach-map-rail/);
     assert.match(cssText, /teach-map-key/);
     assert.match(cssText, /meeting-card-say/);
+    assert.match(cssText, /today-plate-kicker/);
     assert.match(cssText, /stage \.teach-map/);
     assert.match(cssText, /bottom: 36px/);
     assert.match(app, /They asked/);
@@ -230,9 +233,14 @@ function readAsset(file) {
     assert.match(app, /meeting-filed/);
     assert.match(app, /paintTalk/);
     assert.match(app, /paintMeetingCard/);
+    assert.match(app, /paintTodayPlate/);
     assert.match(app, /paintStage/);
     assert.match(app, /You:/);
     assert.match(app, /meeting-card-say/);
+    assert.match(app, /meeting-card-from/);
+    assert.match(app, /today-plate/);
+    assert.match(app, /On your plate/);
+    assert.match(app, /From the open file/);
     assert.match(app, /meeting-talk/);
     assert.doesNotMatch(app, /innerHTML/);
     const meeting = await fetch(new Request("https://host.netie.ai/meeting"));
@@ -293,6 +301,8 @@ function readAsset(file) {
     assert.strictEqual(homeBody.rooms.teach.advance, false);
     assert.deepStrictEqual(homeBody.rooms.teach.path, []);
     assert.deepStrictEqual(homeBody.rooms.meeting.turns, []);
+    assert.strictEqual(homeBody.rooms.meeting.notes, false);
+    assert.deepStrictEqual(homeBody.rooms.today.plate, []);
     assert.strictEqual(homeBody.rooms.inbox.desk, "inbox");
     assert.strictEqual(homeBody.rooms.document.desk, "document");
     assert.ok(homeBody.session);

@@ -785,6 +785,8 @@ test("askLiveCoworker files inbox and Word from a stored meeting and never acts"
   assert.strictEqual(fromFile.act, false);
   assert.match(fromFile.cue, /Saturday/);
   assert.match(fromFile.heard, /\$12k/);
+  assert.strictEqual(fromFile.notes, true);
+  assert.strictEqual(quiet.get("live-meeting").artifact.notes, true);
   assert.ok(!fromFile.turns.some((row) => /Saturday/.test(row.text)));
   const ignoreLiveBody = askLiveCoworker(quiet, "What should I say?", { sourceId: "live-meeting" });
   assert.match(ignoreLiveBody.cue, /no answer/);
@@ -900,6 +902,8 @@ test("today assist ships a standing brief and never invents work", () => {
   assert.match(plated.cue, /send it Friday/);
   assert.match(plated.deliverable, /On your plate/);
   assert.match(plated.deliverable, /I'll send it Friday/);
+  assert.ok(Array.isArray(plated.plate));
+  assert.ok(plated.plate.some((line) => /Friday/.test(line)));
   assert.doesNotMatch(plated.deliverable, /will execute/i);
   const publicPlate = todayAssist({
     state: { transcript: "mic: I will send it Friday." },
@@ -907,6 +911,7 @@ test("today assist ships a standing brief and never invents work", () => {
   });
   assert.strictEqual(publicPlate.act, false);
   assert.strictEqual(publicPlate.cue || "", "");
+  assert.deepStrictEqual(publicPlate.plate, []);
   assert.doesNotMatch(publicPlate.deliverable, /send it Friday/);
   const filed = todayAssist({
     state: {

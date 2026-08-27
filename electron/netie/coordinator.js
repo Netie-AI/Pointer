@@ -138,6 +138,7 @@ function createCoordinator(opts = {}) {
         markers,
         path,
         turns,
+        notes: desk === "meeting" && got.ok ? Boolean(got.artifact.notes) : false,
         advance: desk === "teach" && got.ok && canAdvanceTeach(got.artifact.live),
         chips:
           got.ok && desk !== "teach"
@@ -167,6 +168,7 @@ function createCoordinator(opts = {}) {
       advance: desk === "teach" && got.ok && canAdvanceTeach(live),
       path: desk === "teach" && got.ok ? teachWalkPath(live) : [],
       turns: desk === "meeting" && got.ok ? liveTalkTurns(got.artifact) : [],
+      notes: desk === "meeting" && got.ok ? Boolean(got.artifact.notes) : false,
     };
   }
 
@@ -198,6 +200,7 @@ function createCoordinator(opts = {}) {
           kind: assist.kind,
           title: assist.title,
           cue: assist.cue || "",
+          plate: Array.isArray(assist.plate) ? assist.plate.slice(0, 6) : [],
           deliverable: assist.deliverable,
           events: today.slice(-40),
           artifacts: workspace.publicList(),
@@ -328,6 +331,7 @@ function createCoordinator(opts = {}) {
               cue: todayBrief.cue || "",
               deliverable: todayBrief.deliverable || "",
               title: todayBrief.title || "Today",
+              plate: Array.isArray(todayBrief.plate) ? todayBrief.plate.slice(0, 6) : [],
             },
             document: roomCard(workspace.get("live-document"), "document", "Document"),
             security: roomCard(workspace.get("live-security"), "security", "Security"),
