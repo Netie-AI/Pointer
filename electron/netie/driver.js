@@ -32,6 +32,8 @@ public class NetieInput {
   [StructLayout(LayoutKind.Sequential)]
   public struct POINT { public int X; public int Y; }
   [StructLayout(LayoutKind.Sequential)]
+  public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+  [StructLayout(LayoutKind.Sequential)]
   public struct INPUT { public uint type; public MOUSEKEYBDHARDWAREINPUT mkhi; }
   [StructLayout(LayoutKind.Explicit)]
   public struct MOUSEKEYBDHARDWAREINPUT {
@@ -57,6 +59,7 @@ public class NetieInput {
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   [DllImport("user32.dll")] public static extern IntPtr SetProcessDpiAwarenessContext(IntPtr value);
   [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int vKey);
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
   public const uint INPUT_MOUSE=0; public const uint INPUT_KEYBOARD=1;
   public const uint MOUSEEVENTF_LEFTDOWN=0x0002; public const uint MOUSEEVENTF_LEFTUP=0x0004;
   public const uint MOUSEEVENTF_RIGHTDOWN=0x0008; public const uint MOUSEEVENTF_RIGHTUP=0x0010;
@@ -175,6 +178,11 @@ while (-not $done) {
         $pname = '?'
         try { $pname = (Get-Process -Id ([int]$parts[1]) -ErrorAction Stop).ProcessName } catch {}
         $r.hwnd = $parts[0]; $r.title = $parts[2]; $r.proc = $pname
+        $rect = New-Object NetieInput+RECT
+        if ($parts[0] -and [NetieInput]::GetWindowRect([IntPtr][int64]$parts[0], [ref]$rect)) {
+          $r.x = $rect.Left; $r.y = $rect.Top
+          $r.width = $rect.Right - $rect.Left; $r.height = $rect.Bottom - $rect.Top
+        }
       }
       'focus' {
         $ok = [NetieInput]::FocusHwnd([int64]$m.hwnd)
@@ -183,7 +191,14 @@ while (-not $done) {
       'windows' {
         $list = New-Object System.Collections.ArrayList
         Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle } | Select-Object -First 40 | ForEach-Object {
-          [void]$list.Add(@{ hwnd = [string][int64]$_.MainWindowHandle; title = [string]$_.MainWindowTitle; proc = [string]$_.ProcessName })
+          $hwnd = [int64]$_.MainWindowHandle
+          $row = @{ hwnd = [string]$hwnd; title = [string]$_.MainWindowTitle; proc = [string]$_.ProcessName }
+          $rect = New-Object NetieInput+RECT
+          if ([NetieInput]::GetWindowRect([IntPtr]$hwnd, [ref]$rect)) {
+            $row.x = $rect.Left; $row.y = $rect.Top
+            $row.width = $rect.Right - $rect.Left; $row.height = $rect.Bottom - $rect.Top
+          }
+          [void]$list.Add($row)
         }
         $r.windows = @($list)
       }
@@ -242,6 +257,20 @@ function vkOf(key) {
     if (c >= 0x30 && c <= 0x39) return c; // 0-9
   }
   return null;
+}
+
+/** Screen box from GetWindowRect. Omitted when the worker did not return one. */
+function attachWindowBox(row, src = {}) {
+  const x = Number(src.x);
+  const y = Number(src.y);
+  const width = Number(src.width);
+  const height = Number(src.height);
+  if (!(width > 0 && height > 0 && Number.isFinite(x) && Number.isFinite(y))) return row;
+  row.x = Math.round(x);
+  row.y = Math.round(y);
+  row.width = Math.round(width);
+  row.height = Math.round(height);
+  return row;
 }
 
 /**
@@ -454,11 +483,14 @@ class InputDriver {
     }
   }
 
-  /** Foreground window { hwnd, title, proc } via the same worker — no process spawn per tick. */
+  /** Foreground window { hwnd, title, proc, optional screen box } via the same worker. */
   async foreground() {
     if (this.dryRun) return { hwnd: "0", title: "?", proc: "?" };
     const r = await this._send({ op: "fg" }, { timeoutMs: 2500 });
-    return { hwnd: String(r.hwnd || "0"), title: r.title || "?", proc: r.proc || "?" };
+    return attachWindowBox(
+      { hwnd: String(r.hwnd || "0"), title: r.title || "?", proc: r.proc || "?" },
+      r
+    );
   }
 
   async focusHwnd(hwnd) {
@@ -479,11 +511,16 @@ class InputDriver {
     return raw
       .filter((w) => w && (w.title || w.hwnd))
       .slice(0, 40)
-      .map((w) => ({
-        hwnd: String(w.hwnd || "0"),
-        title: String(w.title || "").slice(0, 120),
-        proc: String(w.proc || "").slice(0, 40),
-      }));
+      .map((w) =>
+        attachWindowBox(
+          {
+            hwnd: String(w.hwnd || "0"),
+            title: String(w.title || "").slice(0, 120),
+            proc: String(w.proc || "").slice(0, 40),
+          },
+          w
+        )
+      );
   }
 
   /**
@@ -974,4 +1011,4 @@ class InputDriver {
   }
 }
 
-module.exports = { InputDriver, coworkerOutcome, VK, MOD_VK, parseKeyCombo, vkOf };
+module.exports = { InputDriver, coworkerOutcome, VK, MOD_VK, parseKeyCombo, vkOf, attachWindowBox };

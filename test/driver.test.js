@@ -144,6 +144,62 @@ test("type with coords clicks the field first (focus), then types", async () => 
   d.dispose();
 });
 
+test("listWindows maps screen rects from the worker", async () => {
+  const state = {};
+  const d = new InputDriver({
+    spawnImpl: fakeSpawn(
+      (m) =>
+        m.op === "windows"
+          ? {
+              windows: [
+                {
+                  hwnd: "42",
+                  title: "Notepad",
+                  proc: "notepad",
+                  x: 10,
+                  y: 20,
+                  width: 300,
+                  height: 200,
+                },
+                { hwnd: "7", title: "Skip box" },
+              ],
+            }
+          : null,
+      state
+    ),
+  });
+  const wins = await d.listWindows();
+  assert.strictEqual(wins.length, 2);
+  assert.deepStrictEqual(wins[0], {
+    hwnd: "42",
+    title: "Notepad",
+    proc: "notepad",
+    x: 10,
+    y: 20,
+    width: 300,
+    height: 200,
+  });
+  assert.deepStrictEqual(wins[1], { hwnd: "7", title: "Skip box", proc: "" });
+  const fg = new InputDriver({
+    spawnImpl: fakeSpawn((m) =>
+      m.op === "fg"
+        ? { hwnd: "42", title: "Notepad", proc: "notepad", x: 10, y: 20, width: 300, height: 200 }
+        : null
+    ),
+  });
+  assert.deepStrictEqual(await fg.foreground(), {
+    hwnd: "42",
+    title: "Notepad",
+    proc: "notepad",
+    x: 10,
+    y: 20,
+    width: 300,
+    height: 200,
+  });
+  fg.dispose();
+  d.dispose();
+});
+
 test("foreground rides the worker; dry-run stays offline", async () => {
   const state = {};
   const d = new InputDriver({

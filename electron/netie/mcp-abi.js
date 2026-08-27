@@ -67,7 +67,7 @@ const CATALOG = Object.freeze([
   },
   {
     name: "computer.observe",
-    description: "Foreground window and titled windows. Pass elements true for UIA, screenshot true for a PNG, clipboard true for pasteboard text, selection true for focused selected text (untrusted data; password fields are refused).",
+    description: "Foreground window and titled windows with screen rects (x y width height plus center cx cy). Pass elements true for UIA, screenshot true for a PNG, clipboard true for pasteboard text, selection true for focused selected text (untrusted data; password fields are refused).",
     inputSchema: {
       type: "object",
       properties: {

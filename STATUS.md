@@ -9,7 +9,8 @@
 1. **DR-0005 (founder).** HUD is screenshotable (settings v3). UACC READ
    skills in search. Loopback MCP `computer.status` / `observe` / `act` /
    `scribe` / `meeting_assist` plus `/api/computer` `/api/observe`
-   `/api/scribe` `/api/meeting`. Observe returns live windows; `?screenshot=1`
+   `/api/scribe` `/api/meeting`. Observe returns live windows with screen
+   rects (x y width height plus center); `?screenshot=1`
    adds a PNG and `?clipboard=1` pasteboard text (untrusted data). Act/scribe
    fail-closed without Cortex. Transcribe types into the remembered window.
    Scribe rewrites then pastes. Optional screen context. Esc cancels

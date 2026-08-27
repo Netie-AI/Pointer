@@ -223,6 +223,28 @@ function rememberMeetingRecap(kind, text) {
   const body = String(text || "").trim();
   if (body) lastMeetingRecap = body;
 }
+
+/** Worker GetWindowRect is physical. Clicks use DIP. Convert when Electron screen is up. */
+function dipWindowBox(win) {
+  if (!win || !(Number(win.width) > 0) || !(Number(win.height) > 0)) return win;
+  try {
+    const x = Number(win.x);
+    const y = Number(win.y);
+    const width = Number(win.width);
+    const height = Number(win.height);
+    const tl = screen.screenToDipPoint({ x, y });
+    const br = screen.screenToDipPoint({ x: x + width, y: y + height });
+    return {
+      ...win,
+      x: Math.round(tl.x),
+      y: Math.round(tl.y),
+      width: Math.max(1, Math.round(br.x - tl.x)),
+      height: Math.max(1, Math.round(br.y - tl.y)),
+    };
+  } catch {
+    return win;
+  }
+}
 function liveComputerStatus() {
   const loc = liveLocality();
   const llmModel =
@@ -278,12 +300,12 @@ const liveMcp = createMcpAbi({
     let windows = [];
     let elements = [];
     try {
-      foreground = await driver.foreground();
+      foreground = dipWindowBox(await driver.foreground());
     } catch {
       foreground = null;
     }
     try {
-      windows = await driver.listWindows();
+      windows = (await driver.listWindows()).map(dipWindowBox);
     } catch {
       windows = [];
     }

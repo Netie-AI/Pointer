@@ -142,6 +142,7 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("GET /api/observe?screenshot=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?clipboard=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?selection=1"));
+    assert.ok(shown.drive.instructions.includes("observe windows include x y width height cx cy"));
     assert.strictEqual(shown.drive.tools, "GET /api/tools");
     assert.match(shown.drive.gated, /dms\/secure/);
   });
@@ -271,9 +272,9 @@ function test(name, fn) {
     const obs = computerObserve({
       captureVisible: true,
       uacc: { installed: false },
-      foreground: { hwnd: "42", title: "Untitled - Notepad", proc: "notepad" },
+      foreground: { hwnd: "42", title: "Untitled - Notepad", proc: "notepad", x: 100, y: 200, width: 640, height: 480 },
       windows: [
-        { hwnd: "42", title: "Untitled - Notepad", proc: "notepad" },
+        { hwnd: "42", title: "Untitled - Notepad", proc: "notepad", x: 100, y: 200, width: 640, height: 480 },
         { hwnd: "0", title: "", proc: "?" },
       ],
     });
@@ -281,6 +282,13 @@ function test(name, fn) {
     assert.strictEqual(obs.foreground.title, "Untitled - Notepad");
     assert.strictEqual(obs.windows.length, 1);
     assert.strictEqual(obs.windows[0].proc, "notepad");
+    assert.strictEqual(obs.windows[0].x, 100);
+    assert.strictEqual(obs.windows[0].y, 200);
+    assert.strictEqual(obs.windows[0].width, 640);
+    assert.strictEqual(obs.windows[0].height, 480);
+    assert.strictEqual(obs.windows[0].cx, 420);
+    assert.strictEqual(obs.windows[0].cy, 440);
+    assert.strictEqual(obs.foreground.cx, 420);
   });
 
   await test("MCP computer.act refuses without a secure gate", async () => {

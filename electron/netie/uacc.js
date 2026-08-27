@@ -246,6 +246,7 @@ function computerStatus(opts = {}) {
         "GET /api/observe?screenshot=1",
         "GET /api/observe?clipboard=1",
         "GET /api/observe?selection=1",
+        "observe windows include x y width height cx cy",
         "GET /api/meeting?notes=1",
         "GET /api/meeting?export=1",
         "GET /api/meeting?recap=1",
@@ -267,11 +268,24 @@ function publicWindow(win) {
   const title = String(win.title || "").trim();
   const proc = String(win.proc || "").trim();
   if ((!hwnd || hwnd === "0") && !title && (!proc || proc === "?")) return null;
-  return {
+  const out = {
     hwnd: hwnd && hwnd !== "0" ? hwnd : "",
     title: title.slice(0, 80),
     proc: proc && proc !== "?" ? proc.slice(0, 40) : "",
   };
+  const x = Number(win.x);
+  const y = Number(win.y);
+  const width = Number(win.width);
+  const height = Number(win.height);
+  if (width > 0 && height > 0 && Number.isFinite(x) && Number.isFinite(y)) {
+    out.x = Math.round(x);
+    out.y = Math.round(y);
+    out.width = Math.round(width);
+    out.height = Math.round(height);
+    out.cx = Math.round(x + width / 2);
+    out.cy = Math.round(y + height / 2);
+  }
+  return out;
 }
 
 const MAX_SHOT_CHARS = 1200000;

@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Observe window screen rects for agents
+
+UACC-class list_windows: computer.observe windows and foreground now
+carry x y width height plus center cx cy. GetWindowRect on the input
+worker; DIP conversion in main so clicks match. GitHub CI on this
+account is still a spending-limit cutoff (0 steps), not a product
+fail. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - HUD session chip Ready/Recording/Scribing
 
 OpenWillow-class session: fixed top chrome names Ready, Recording,
