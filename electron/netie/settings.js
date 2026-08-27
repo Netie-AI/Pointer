@@ -131,7 +131,8 @@ const DEFAULTS = Object.freeze({
   scribeInstruction: DEFAULT_SCRIBE_INSTRUCTION,
   /** Optional Scribe personal reference (company, links). Data, not commands. */
   personalContext: "",
-  /** OpenWillow-class Scribe output language. Ctrl+Alt+L toggles. */
+  /** OpenWillow-class Scribe + STT language. Ctrl+Alt+L toggles. English
+   *  keeps STT on auto; Traditional Chinese pins STT to zh. */
   scribeLanguage: "English",
   /**
    * OpenWillow screen context: attach a screenshot to Scribe. Off by default

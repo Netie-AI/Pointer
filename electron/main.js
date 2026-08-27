@@ -55,6 +55,7 @@ const {
   runComputerScribe,
   nextScribeLanguage,
   normalizeScribeLanguage,
+  sttLanguageCode,
 } = require("./netie/scribe");
 const { createPendingScribe } = require("./netie/pending-scribe");
 const {
@@ -439,6 +440,8 @@ const transcriber = new Transcriber({
   // it re-reads the live value so toggling the checkbox takes effect without
   // recreating the Transcriber.
   allowDeepgramCloud: () => settings.get("cloudStt") === true,
+  // Live: Ctrl+Alt+L / HUD language also pin STT. English stays auto.
+  language: () => sttLanguageCode(settings.get("scribeLanguage")),
 });
 const notes = new NotesSession();
 const settings = new SettingsStore();
@@ -2756,7 +2759,7 @@ function registerHotkey() {
     globalShortcut.register(keys.languageHotkey, () => {
       const next = nextScribeLanguage(settings.get("scribeLanguage"));
       settings.set({ scribeLanguage: next });
-      sendHudQuiet({ type: "insight", text: `Scribe language: ${next}` });
+      sendHudQuiet({ type: "insight", text: `Language: ${next} (Scribe + STT)` });
     });
   } catch {
     /* ok */

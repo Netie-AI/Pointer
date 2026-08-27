@@ -41,6 +41,8 @@ async function run() {
       assert.ok(/sanitizeLlmUrl/.test(main), "BYOK LLM URL must be sanitized before use");
       assert.ok(/incoming\.llmUrl/.test(main), "settings save must sanitize the LLM URL");
       assert.ok(/chatUrl:\s*\(\)\s*=>\s*settings\.get\("llmUrl"\)/.test(main), "chat hop must read live llmUrl");
+      assert.ok(/sttLanguageCode/.test(main), "language hotkey must pin STT as well as Scribe");
+      assert.ok(/language:\s*\(\)\s*=>\s*sttLanguageCode/.test(main), "Transcriber must read live STT language");
       assert.ok(/async function captureRememberedWindow/.test(main), "Scribe screen must prefer the remembered window");
       assert.ok(/captureRememberedWindow\(/.test(main), "Scribe screen context must call captureRememberedWindow");
       assert.ok(/pickWindowSource/.test(main), "window capture must match hwnd/title, not dump PrintWindow");

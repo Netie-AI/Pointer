@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Language hotkey pins STT too
+
+OpenWillow-class language: Ctrl+Alt+L / HUD Dictation+Scribe language
+pins Whisper and sidecar STT to zh when Traditional Chinese is selected.
+English stays auto so zh/en/ms mix is not forced to a single language.
+GitHub CI on this account is still a spending-limit cutoff (0 steps),
+not a product fail. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - Clickable meeting follow-ups
 
 Cluely-class Follow-ups: numbered questions become Ask chips on the

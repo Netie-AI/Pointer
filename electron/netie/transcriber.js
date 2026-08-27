@@ -79,6 +79,7 @@ class Transcriber {
       opts.openvaultUrl ?? process.env.NETIE_STT_OPENVAULT_URL ?? DEFAULT_OPENVAULT;
     this._sidecarUrlOpt = opts.sidecarUrl;
     this._hasSidecarOpt = Object.prototype.hasOwnProperty.call(opts, "sidecarUrl");
+    this._languageOpt = opts.language;
     // A live function may close over `settings` declared after this constructor
     // (same trick as allowDeepgramCloud). Do not call it here.
     this.sidecarUrl =
@@ -126,6 +127,14 @@ class Transcriber {
     return sanitizeSttUrl(process.env.NETIE_STT_URL);
   }
 
+  /** Whisper/OpenAI language. Empty or English stays auto (rojak). zh pins. */
+  sttLanguage() {
+    const raw = typeof this._languageOpt === "function" ? this._languageOpt() : this._languageOpt;
+    const s = String(raw || "").trim().toLowerCase();
+    if (s === "zh" || s === "zh-tw" || s === "zh-hant" || s.includes("traditional")) return "zh";
+    return "auto";
+  }
+
   _winSpeech() {
     if (!this._win) this._win = new WinSpeech();
     return this._win;
@@ -149,8 +158,9 @@ class Transcriber {
     const form = new FormData();
     form.append("file", new Blob([wav], { type: "audio/wav" }), "audio.wav");
     form.append("model", this.model);
-    // Multilingual / Malaysian rojak — never force a single language.
-    if (!("language" in extra)) form.append("language", "auto");
+    // Default auto so zh/en/ms mix is not forced to a single language.
+    // Callers may pass language:"zh" when the user picked Traditional Chinese.
+    if (!("language" in extra)) form.append("language", this.sttLanguage());
     for (const [k, v] of Object.entries(extra)) form.append(k, v);
     const ctrl = new AbortController();
     // Whisper on CPU can take ~10s for a few seconds of speech; a 20s ceiling
@@ -330,7 +340,7 @@ class Transcriber {
       const args = [
         "-m", this.whisperModel,
         "-f", wavPath,
-        "-l", "auto",   // zh/en/ms mix — never pin *.en model
+        "-l", this.sttLanguage(),   // auto unless the user pinned Traditional Chinese
         "-nt",          // no timestamps
         "-np",          // no progress prints
         "-t", String(Math.max(2, Math.min(8, os.cpus().length - 2))),

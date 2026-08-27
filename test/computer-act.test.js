@@ -374,8 +374,10 @@ function test(name, fn) {
   });
 
   await test("computer.scribe rewrites after a green gate and can skip deliver", async () => {
-    const { runComputerScribe, nextScribeLanguage, normalizeScribeLanguage } = require("../electron/netie/scribe");
+    const { runComputerScribe, nextScribeLanguage, normalizeScribeLanguage, sttLanguageCode } = require("../electron/netie/scribe");
     assert.strictEqual(normalizeScribeLanguage("zh-TW"), "Traditional Chinese");
+    assert.strictEqual(sttLanguageCode("English"), "auto");
+    assert.strictEqual(sttLanguageCode("Traditional Chinese"), "zh");
     assert.strictEqual(nextScribeLanguage("English"), "Traditional Chinese");
     assert.strictEqual(nextScribeLanguage("Traditional Chinese"), "English");
     const r = await runComputerScribe(

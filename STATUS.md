@@ -36,7 +36,8 @@
    setting (OpenAI-shaped HTTP; not a Deepgram default). BYOK LLM URL and
    model are HUD settings too (blank = loopback OpenVault; keys stay in
    OpenVault, never settings.json). Recording, mode, and language hotkeys
-   are settings. Loopback status publishes live mode, hotkeys, STT, and
+   are settings. Ctrl+Alt+L also pins STT to zh when Traditional Chinese
+   is selected (English stays auto). Loopback status publishes live mode, hotkeys, STT, and
    LLM; `POST /api/computer {"mode":"scribe"}` switches like the tray.
    IBM Plex HUD. P-04 stays parked.
 2. **Generative tools (DR-0004).** Search then craft a hint. Coordinator

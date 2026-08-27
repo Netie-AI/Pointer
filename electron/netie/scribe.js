@@ -30,6 +30,14 @@ function nextScribeLanguage(current) {
   return SCRIBE_LANGUAGES[(i + 1) % SCRIBE_LANGUAGES.length];
 }
 
+/**
+ * Whisper/OpenAI STT language. Traditional Chinese pins zh.
+ * English stays auto so zh/en/ms mix is not forced to *.en.
+ */
+function sttLanguageCode(value) {
+  return normalizeScribeLanguage(value) === "Traditional Chinese" ? "zh" : "auto";
+}
+
 function buildScribeRequest(input = {}) {
   const language = normalizeScribeLanguage(input.language);
   const instruction = String(input.instruction || input.transcript || "").trim();
@@ -203,6 +211,7 @@ module.exports = {
   resolveScribeInstruction,
   normalizeScribeLanguage,
   nextScribeLanguage,
+  sttLanguageCode,
   buildScribeRequest,
   isScribeInstruction,
   scribeSecureGoal,

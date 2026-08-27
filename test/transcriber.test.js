@@ -47,6 +47,42 @@ test("prefers local whisper.cpp over any network engine", async () => {
   assert.ok(calls[0].args.includes("-l") && calls[0].args.includes("auto"), "multilingual auto");
 });
 
+test("Traditional Chinese pins whisper and sidecar STT to zh", async () => {
+  const calls = [];
+  const tWhisper = new Transcriber({
+    whisperBin: "C:\\w\\main.exe",
+    whisperModel: "C:\\w\\ggml-tiny.bin",
+    fsImpl: fakeFs(["C:\\w\\main.exe", "C:\\w\\ggml-tiny.bin"]),
+    language: () => "zh",
+    execFileImpl: (bin, args, opts, cb) => {
+      calls.push(args);
+      cb(null, "ok");
+    },
+    fetchImpl: () => {
+      throw new Error("must not touch the network when local whisper exists");
+    },
+  });
+  await tWhisper.transcribe(pcm());
+  assert.ok(calls[0].includes("-l") && calls[0].includes("zh"), "whisper -l zh");
+  const seen = [];
+  const tSidecar = new Transcriber({
+    fsImpl: fakeFs(),
+    openvaultUrl: "",
+    sidecarUrl: "http://127.0.0.1:8766",
+    language: () => "Traditional Chinese",
+    allowWindowsSpeech: false,
+    fetchImpl: async (url, opts) => {
+      if (String(url).endsWith("/health")) return { ok: true };
+      if (opts && opts.body && typeof opts.body.get === "function") {
+        seen.push(String(opts.body.get("language") || ""));
+      }
+      return { ok: true, json: async () => ({ text: "ok" }) };
+    },
+  });
+  await tSidecar.transcribe(pcm());
+  assert.ok(seen.includes("zh"), "sidecar language zh");
+});
+
 test("half-installed whisper (binary but no model) is not used", async () => {
   const t = new Transcriber({
     whisperBin: "C:\\w\\main.exe",
