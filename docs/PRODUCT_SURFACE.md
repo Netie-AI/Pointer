@@ -41,7 +41,8 @@ on every page (`/api/ask`, never Act). `/today` chips file Recap / mail /
 Word / security the same way. Loopback `/workspace` opens a file as the
 working set and Ask chips review/file from that body (`this file` scans
 only the open artifact). This session links open `/workspace?id=` as
-the working set (never exec). Loopback `/meeting` paints the You/Them
+the working set (never exec). `/workspace` This computer dock Run POSTs
+`/api/workspace/exec` and always fails closed (P-06). Loopback `/meeting` paints the You/Them
 talk track from the stored ring. HUD insight paints the same You/Them
 turns in fixed chrome. Say-this reuses your overlapping line
 or Heard facts, never an unrelated last-you dump. Loopback `/teach`

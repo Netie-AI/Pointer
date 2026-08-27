@@ -1,3 +1,9 @@
+## 2026-08-27 - Workspace Run is a named Computer refuse
+
+Loopback `/workspace` keeps a This computer dock. Run POSTs
+`/api/workspace/exec` and always fails closed (P-06). Public catalog
+shows the same refuse. Never Act. Never a runtime. P-05 stays parked.
+
 ## 2026-08-27 - Meeting cue keeps last You/Them when HUD hides
 
 HUD live cue bar keeps last You/Them with They asked / Say this /

@@ -144,5 +144,7 @@ Got it Ask and Draw (freehand stroke, stored BOX) to stack a drawn step (never a
 meeting say-this). Loopback
 `/` paints that teach path, meeting card, Today plate, and filed
 inbox/Word/security work cards from `/api/home` (never exec).
+Loopback `/workspace` This computer dock Run POSTs `/api/workspace/exec`
+and always fails closed (P-06). Public catalog shows the same refuse.
 Public POST
 `/api/ask` stays 404.

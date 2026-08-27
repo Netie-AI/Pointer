@@ -309,6 +309,57 @@ fetch("/api/state")
   })
   .catch((err) => show("state", String(err)));
 
+function paintComputerDock(ws) {
+  const dock = document.getElementById("computer-dock");
+  if (!dock) return;
+  dock.hidden = false;
+  const status = document.getElementById("computer-status");
+  if (status) {
+    status.textContent =
+      ws && ws.localFirst
+        ? "Public catalog. Run is refused (P-06)."
+        : String((ws && ws.reason) || "Live laptop workspace. Run is refused (P-06).");
+  }
+  wireComputerRun();
+}
+
+function wireComputerRun() {
+  const btn = document.getElementById("computer-run");
+  if (!btn || btn.dataset.wired === "1") return;
+  btn.dataset.wired = "1";
+  btn.addEventListener("click", function () {
+    fetch("/api/workspace/exec", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ backend: "container", act: false }),
+    })
+      .then(function (r) {
+        return r.json().then(function (body) {
+          return { status: r.status, body: body };
+        });
+      })
+      .then(function (out) {
+        const reason = String(
+          (out.body && (out.body.reason || out.body.error)) ||
+            "workspace has no runtime; Act stays on the laptop (P-06)"
+        );
+        const refuse = document.getElementById("computer-refuse");
+        if (refuse) {
+          refuse.hidden = false;
+          refuse.textContent = reason;
+        }
+        show("policy", reason);
+      })
+      .catch(function () {
+        const refuse = document.getElementById("computer-refuse");
+        if (refuse) {
+          refuse.hidden = false;
+          refuse.textContent = "workspace has no runtime; Act stays on the laptop (P-06)";
+        }
+      });
+  });
+}
+
 const workspacePage = document.getElementById("desks");
 if (workspacePage) {
   pollWhileLive(function () {
@@ -318,12 +369,17 @@ if (workspacePage) {
     ]).then(([ws, state]) => {
       if (ws && ws.exec) {
         show("policy", "refused: public workspace must not grow a runtime");
+        paintComputerDock({
+          localFirst: true,
+          reason: "refused: workspace must not grow a runtime",
+        });
         return false;
       }
       show(
         "policy",
         (ws && ws.reason) || "workspace has no runtime; Act stays on the laptop"
       );
+      paintComputerDock(ws);
       paintDesks((ws && ws.desks) || (state && state.desks) || []);
       paintArtifacts((ws && ws.artifacts) || []);
       paintSession(ws && ws.session, Boolean(ws && ws.localFirst));

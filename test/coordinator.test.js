@@ -72,6 +72,16 @@ function test(name, fn) {
     assert.match(html.body, /\/today/);
     assert.match(html.body, /today-chips/);
     assert.match(html.body, /id="today-plate"/);
+    const wsPage = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/workspace" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(wsPage.status, 200);
+    assert.match(wsPage.body, /id="computer-dock"/);
+    assert.match(wsPage.body, /id="computer-run"/);
     const st = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/state" }, (res) => {
         const chunks = [];
@@ -124,6 +134,8 @@ function test(name, fn) {
     });
     assert.strictEqual(exec.status, 404);
     assert.strictEqual(exec.body.ok, false);
+    assert.strictEqual(exec.body.exec, false);
+    assert.match(exec.body.reason, /no runtime/);
     const today = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/today" }, (res) => {
         const chunks = [];

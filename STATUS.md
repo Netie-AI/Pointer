@@ -23,7 +23,7 @@
    fixed Next / Then / Back / Got it chrome, plus Draw for a freehand
    stroke that stores a BOX (Ask, never a buddy).
    This session links `/workspace?id=` (never send, never a .docx, never
-   Act). Public catalog empty. P-06 parked.
+   Act). `/workspace` Run is a named refuse (P-06). Public catalog empty.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

@@ -99,8 +99,14 @@ function readAsset(file) {
     const page = await html.text();
     assert.match(page, /no runtime/i);
     assert.match(page, /id="desks"/);
+    assert.match(page, /id="computer-dock"/);
+    assert.match(page, /id="computer-run"/);
     const app = fs.readFileSync(path.join(HOST, "app.js"), "utf8");
     assert.match(app, /paintDesks/);
+    assert.match(app, /paintComputerDock/);
+    assert.match(app, /wireComputerRun/);
+    assert.match(app, /\/api\/workspace\/exec/);
+    assert.match(app, /act: false/);
     assert.match(app, /textContent/);
     assert.doesNotMatch(app, /innerHTML/);
     assert.match(app, /pollWhileLive/);

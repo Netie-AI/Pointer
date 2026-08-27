@@ -59,7 +59,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   (Ask, never Act, never a runtime, never send, never a .docx). `/today`
   shows the same plate hero. Open-file notes stay facts-only.
 - `workspace.js`: artifact catalog. `exec()` always refuses (P-06). `get` is
-  loopback-only; public `?id=` is 404.
+  loopback-only; public `?id=` is 404. `/workspace` This computer dock
+  Run POSTs that named refuse (never a runtime).
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
 ## Traps
