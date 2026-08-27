@@ -1,3 +1,9 @@
+## 2026-08-27 - Teach Got it chrome and due-tagged recap
+
+Fixed insight chrome shows Back / Got it during a teach walk (Ask, never Act).
+Teach cue is `N of M Label`. Recap tags You/Them with a weekday when heard.
+Never Acts. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Speaker recap, hold teach overlay, teach map
 
 Meeting recap labels You vs Them. Say-this prefers what you said after they

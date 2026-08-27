@@ -86,8 +86,8 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.match(recap.deliverable, /## Commitments/);
   assert.match(recap.deliverable, /## Decisions/);
   assert.match(recap.deliverable, /decided to ship/);
-  assert.match(recap.deliverable, /Them: Can you send the deck/);
-  assert.match(recap.deliverable, /You: We decided to ship/);
+  assert.match(recap.deliverable, /Them \[Friday\]: Can you send the deck/);
+  assert.match(recap.deliverable, /You \[Friday\]: We decided to ship/);
   assert.doesNotMatch(recap.deliverable, /## Next steps/);
   const assist = meetingAssist({ transcript, question: "what should I say" });
   assert.strictEqual(assist.kind, "assist");
@@ -255,7 +255,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(walk.via, "uia");
   assert.strictEqual(walk.id, "live-teach");
   assert.strictEqual(walk.cueKind, "point");
-  assert.match(walk.cue, /^1 /);
+  assert.match(walk.cue, /^1 of 2 /);
   assert.match(walk.deliverable, /current step only/i);
   assert.match(walk.deliverable, /\[POINT:5,2:\d+ Cancel\]/);
   assert.match(walk.deliverable, /\[BOX:0,0,10,4:\d+ Cancel\]/);
@@ -275,7 +275,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.ok(pin.points.length >= 1);
   assert.strictEqual(pin.points[0].label, "Cancel");
   assert.strictEqual(pin.points[0].xPct, 5);
-  assert.strictEqual(pin.cue, "1 Cancel");
+  assert.strictEqual(pin.cue, "1 of 2 Cancel");
   const two = teachAssist({
     text: "next",
     controls,
@@ -285,7 +285,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   });
   assert.strictEqual(two.act, false);
   assert.strictEqual(two.step, 1);
-  assert.match(two.cue, /^2 Save$/);
+  assert.match(two.cue, /^2 of 2 Save$/);
   assert.match(two.deliverable, /\[POINT:25,42:\d+ Save\]/);
   assert.doesNotMatch(two.deliverable, /\[POINT:.*Cancel/);
   const { nextTeachStep, teachAdvance } = require("../electron/netie/coworker-desks");
@@ -336,8 +336,8 @@ test("inbox assist drafts and never sends", () => {
     transcript: "system: Can you send the deck?\nmic: I will send it Friday.\nmic: We decided to ship Friday.",
   });
   assert.strictEqual(fromMeet.act, false);
-  assert.match(fromMeet.deliverable, /You: I will send it Friday/);
-  assert.match(fromMeet.deliverable, /You: We decided to ship/);
+  assert.match(fromMeet.deliverable, /You \[Friday\]: I will send it Friday/);
+  assert.match(fromMeet.deliverable, /You \[Friday\]: We decided to ship/);
   assert.match(fromMeet.deliverable, /will not send/);
 });
 
@@ -467,11 +467,14 @@ test("desk chips ask, never act", () => {
   const path = require("path");
   const html = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");
   assert.match(html, /id="desk-pill"/);
+  assert.match(html, /id="btn-teach-next"/);
+  assert.match(html, /id="btn-teach-back"/);
   assert.doesNotMatch(html, /clicky-orb|stage-orb/);
   const hud = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
   const desk = hud.slice(hud.indexOf('$("desk-pill")'), hud.indexOf('$("mode-pill")'));
   assert.match(desk, /doAsk\(\)/);
   assert.doesNotMatch(desk, /doAct\(\)/);
+  assert.match(desk, /btn-teach-next/);
   assert.doesNotMatch(desk, /hud:act/);
 });
 
@@ -569,7 +572,7 @@ async function asyncTest(name, fn) {
     assert.strictEqual(hits.length, 1);
     assert.strictEqual(hits[0].act, false);
     assert.match(hits[0].deliverable, /\[BOX:20,40,10,4:\d+ Save\]/);
-    assert.match(hits[0].cue, /^1 Save$/);
+    assert.match(hits[0].cue, /^1 of 1 Save$/);
     assert.strictEqual(hits[0].cueKind, "point");
     if (tick) await tick();
     await Promise.resolve();
@@ -588,7 +591,7 @@ async function asyncTest(name, fn) {
     await Promise.resolve();
     await Promise.resolve();
     assert.strictEqual(hits.length, 2);
-    assert.match(hits[1].cue, /^2 Save$/);
+    assert.match(hits[1].cue, /^2 of 2 Save$/);
     assert.match(hits[1].deliverable, /\[POINT:25,42:\d+ Save\]/);
     assert.doesNotMatch(hits[1].deliverable, /\[POINT:.*Cancel/);
     pump.reset();

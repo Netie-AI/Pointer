@@ -120,6 +120,9 @@ function paintLiveBrief(event) {
   const meta = $("coworker-brief-meta");
   const cueEl = $("meeting-cue");
   const copyBtn = $("btn-copy-cue");
+  const cueRow = $("cue-row");
+  const teachBack = $("btn-teach-back");
+  const teachNext = $("btn-teach-next");
   if (!brief) return;
   const text = String((event && event.text) || "").slice(0, 4000);
   const cue = String((event && event.cue) || "").trim().slice(0, 240);
@@ -134,7 +137,10 @@ function paintLiveBrief(event) {
       cueEl.hidden = true;
       cueEl.textContent = "";
     }
+    if (cueRow) cueRow.hidden = true;
     if (copyBtn) copyBtn.hidden = true;
+    if (teachBack) teachBack.hidden = true;
+    if (teachNext) teachNext.hidden = true;
     lastCueText = "";
     lastCueKind = "say";
     return;
@@ -149,6 +155,9 @@ function paintLiveBrief(event) {
     cueEl.hidden = !cue;
     cueEl.textContent = cueDisplay(kind, cue);
   }
+  if (cueRow) cueRow.hidden = !cue;
+  if (teachBack) teachBack.hidden = !(kind === "point" && cue);
+  if (teachNext) teachNext.hidden = !(kind === "point" && cue);
   if (copyBtn) {
     copyBtn.hidden = !cue;
     copyBtn.textContent = cueCopyLabel(kind);
@@ -1229,6 +1238,17 @@ $("desk-pill").addEventListener("click", (event) => {
   if (button.dataset.autoask === "1") doAsk();
   else askInput.focus();
 });
+const cueRow = $("cue-row");
+if (cueRow) {
+  cueRow.addEventListener("click", (event) => {
+    const button = event.target.closest("#btn-teach-back, #btn-teach-next");
+    if (!button) return;
+    const q = String(button.dataset.q || "");
+    if (!q) return;
+    askInput.value = q;
+    doAsk();
+  });
+}
 const btnCopyCue = $("btn-copy-cue");
 if (btnCopyCue) {
   btnCopyCue.addEventListener("click", async () => {

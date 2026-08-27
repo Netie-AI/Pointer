@@ -462,6 +462,10 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   border: 1px solid var(--line-soft); border-radius: 12px;
   background: color-mix(in srgb, var(--accent), transparent 88%);
 }
+.cue-row {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px;
+}
+.cue-row .text-btn { margin: 0; }
 .quick-actions { display: grid; gap: 6px; }
 .quick-actions button {
   text-align: left; border-radius: 14px; padding: 10px 12px;

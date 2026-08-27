@@ -128,7 +128,11 @@
           <p class="insight-summary" id="insight-summary">Listening for speech or a typed request.</p>
           <div class="section-label" id="coworker-brief-meta" hidden>Meeting coworker</div>
           <p class="meeting-cue" id="meeting-cue" hidden></p>
-          <button type="button" class="text-btn" id="btn-copy-cue" hidden>Copy say-this</button>
+          <div class="cue-row" id="cue-row" hidden>
+            <button type="button" class="text-btn" id="btn-teach-back" data-q="back" hidden>Back</button>
+            <button type="button" class="text-btn" id="btn-teach-next" data-q="got it, next" hidden>Got it</button>
+            <button type="button" class="text-btn" id="btn-copy-cue" hidden>Copy say-this</button>
+          </div>
           <pre class="coworker-brief" id="coworker-brief" hidden></pre>
           <div class="section-label">Suggest</div>
           <div class="quick-actions" id="insight-actions">

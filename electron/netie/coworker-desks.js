@@ -162,7 +162,11 @@ function splitLines(transcript) {
 
 function namedLine(row) {
   const who = row && row.speaker === "you" ? "You" : "Them";
-  return `${who}: ${row && row.text ? row.text : ""}`;
+  const due = String((row && row.text) || "").match(
+    /\b(today|tomorrow|(mon|tues|wednes|thurs|fri|satur|sun)day)\b/i
+  );
+  const tag = due ? ` [${due[0]}]` : "";
+  return `${who}${tag}: ${row && row.text ? row.text : ""}`;
 }
 
 function cueFacts(utterances) {
@@ -637,7 +641,9 @@ function teachAssist({ text, controls, screen, step, live } = {}) {
     via: measured.length ? "uia" : "none",
     step: current ? idx : 0,
     remaining: current ? Math.max(0, measured.length - idx - 1) : 0,
-    cue: current ? `${idx + 1} ${String(current.name || "control").slice(0, 40)}` : "",
+    cue: current
+      ? `${idx + 1} of ${measured.length} ${String(current.name || "control").slice(0, 40)}`
+      : "",
     cueKind: current ? "point" : "",
     points: current
       ? [

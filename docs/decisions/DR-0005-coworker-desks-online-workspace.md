@@ -84,5 +84,7 @@ Teach overlay shows the current measured control only; `got it` advances.
 Loopback `/security` `/document` `/inbox` and `/api/home` are coworker
 rooms; public copies are localFirst empty. Recap lists `## Decisions`.
 Teach overlay holds the current measured control until `got it` (not a 6s
-hint). Recap labels You vs Them; say-this prefers your answer. Loopback
-`/teach` maps measured BOX markers read-only. Public copies stay empty.
+hint). HUD Back / Got it Ask the next step (never Act). Recap labels You
+vs Them and tags a weekday when heard; say-this prefers your answer.
+Loopback `/teach` maps measured BOX markers read-only. Public copies stay
+empty.
