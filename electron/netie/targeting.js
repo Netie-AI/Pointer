@@ -15,6 +15,15 @@
 
 const { findControl } = require("./uia");
 
+/** True when the action already names a screen point (pct, DIP, or physical). */
+function hasScreenPoint(action) {
+  if (!action || typeof action !== "object") return false;
+  if (action.xPct != null && action.yPct != null) return true;
+  if (action.screenX != null && action.screenY != null) return true;
+  if (action.x != null && action.y != null) return true;
+  return false;
+}
+
 /**
  * @param {object} opts
  * @param {string} opts.target
@@ -109,9 +118,7 @@ async function ensureActionCoords(action, { dataUrl, eco, uia = null }) {
     type === "paste" ||
     type === "setvalue";
   if (!needs) return action;
-  if (action.xPct != null && action.yPct != null) return action;
-  if (action.screenX != null && action.screenY != null) return action;
-  if (action.x != null && action.y != null) return action;
+  if (hasScreenPoint(action)) return action;
 
   const label = action.target || action.field || action.label;
 
@@ -128,4 +135,4 @@ async function ensureActionCoords(action, { dataUrl, eco, uia = null }) {
   return { ...action, xPct: hit.xPct, yPct: hit.yPct, _targeted: true, _targetedVia: "vision" };
 }
 
-module.exports = { resolveTargetPoint, ensureActionCoords };
+module.exports = { resolveTargetPoint, ensureActionCoords, hasScreenPoint };

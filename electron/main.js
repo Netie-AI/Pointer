@@ -27,7 +27,7 @@ const { NetieEcosystem, sanitizeLlmUrl, sanitizeLlmModel, isLoopbackLlmUrl } = r
 const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
-const { ensureActionCoords } = require("./netie/targeting");
+const { ensureActionCoords, hasScreenPoint } = require("./netie/targeting");
 const { dumpForeground, readSelection } = require("./netie/uia");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const { ConversationStore } = require("./netie/conversations");
@@ -234,12 +234,18 @@ function dipWindowBox(win) {
     const height = Number(win.height);
     const tl = screen.screenToDipPoint({ x, y });
     const br = screen.screenToDipPoint({ x: x + width, y: y + height });
+    const xDip = Math.round(tl.x);
+    const yDip = Math.round(tl.y);
+    const wDip = Math.max(1, Math.round(br.x - tl.x));
+    const hDip = Math.max(1, Math.round(br.y - tl.y));
     return {
       ...win,
-      x: Math.round(tl.x),
-      y: Math.round(tl.y),
-      width: Math.max(1, Math.round(br.x - tl.x)),
-      height: Math.max(1, Math.round(br.y - tl.y)),
+      x: xDip,
+      y: yDip,
+      width: wDip,
+      height: hDip,
+      cx: Math.round(xDip + wDip / 2),
+      cy: Math.round(yDip + hDip / 2),
     };
   } catch {
     return win;
@@ -377,7 +383,7 @@ const liveMcp = createMcpAbi({
       plan: async (instruction) => {
         let windows = [];
         try {
-          windows = await driver.listWindows();
+          windows = (await driver.listWindows()).map(dipWindowBox);
         } catch {
           windows = [];
         }
@@ -2388,11 +2394,10 @@ async function executeApproved(actions, opts = {}) {
       let refreshedView = false;
       // Only pay the ~350ms capture when this step must actually be AIMED by
       // vision — no coordinates, or plan-guard stripped them after an app
-      // switch. Steps that already carry valid coordinates were costing a full
-      // screen capture for nothing, on every single step.
+      // switch. Absolute x/y (click window: center) counts as aimed; an
+      // xPct-only check used to throw those points away and call vision.
       const mustReaim =
-        needsFreshView(action.type) &&
-        (action._reaim === true || (action.xPct == null && action.yPct == null));
+        needsFreshView(action.type) && (action._reaim === true || !hasScreenPoint(action));
       if (!driver.dryRun && mustReaim) {
         try {
           await captureDisplayCrop(null);

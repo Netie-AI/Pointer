@@ -18,9 +18,9 @@
    Ctrl+Alt+M/L. Meeting Suggest, Recap, and Follow-ups pills. Live notes
    at `GET /api/meeting?notes=1`. Failed Scribe keeps a pending transcript
    so Retry or Paste as-is can finish (`POST /api/scribe` retry/dictate).
-   Teach LINE and PATH marks.
-   `focus:` matches a window title; `click: Save` aims by name. Autostart
-   is a setting. MCP `tools.list` and `GET /api/tools` return schemas.
+   Teach LINE and PATH marks. `focus:` matches a window title; `click: Save`
+   aims by name; `click window: notepad` aims at the window center.
+   Autostart is a setting. MCP `tools.list` and `GET /api/tools` return schemas.
    `wait` / `scroll` / `doubleclick` / `rightclick` / `hover` / `replace:`
    plan locally. `focus: notepad then type: hello` chains local verbs.
    Ask captures a fresh screen (Clicky sees-what-you-see). Ctrl+Enter is

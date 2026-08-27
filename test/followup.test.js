@@ -45,6 +45,16 @@ test("ensureActionCoords keeps existing xPct", async () => {
   assert.strictEqual(a._targeted, undefined);
 });
 
+test("ensureActionCoords keeps absolute x/y (click window: center)", async () => {
+  const a = await ensureActionCoords(
+    { type: "click", x: 420, y: 440 },
+    { dataUrl: "data:image/png;base64,aaa", eco: null }
+  );
+  assert.strictEqual(a.x, 420);
+  assert.strictEqual(a.y, 440);
+  assert.strictEqual(a._targeted, undefined);
+});
+
 test("ensureActionCoords fills missing coords via vision mock", async () => {
   const f = mockFetch([
     [

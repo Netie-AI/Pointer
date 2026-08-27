@@ -226,6 +226,35 @@ function test(name, fn) {
     const namedRight = planFromInstruction("rightclick: Close");
     assert.strictEqual(namedRight.actions[0].type, "rightclick");
     assert.strictEqual(namedRight.actions[0].target, "Close");
+    const winClick = planFromInstruction("click window: notepad", {
+      windows: [
+        { hwnd: "77", title: "Untitled - Notepad", proc: "notepad", x: 100, y: 200, width: 640, height: 480 },
+      ],
+    });
+    assert.strictEqual(winClick.ok, true);
+    assert.strictEqual(winClick.source, "click-window");
+    assert.strictEqual(winClick.actions[0].type, "click");
+    assert.strictEqual(winClick.actions[0].x, 420);
+    assert.strictEqual(winClick.actions[0].y, 440);
+    const miss = planFromInstruction("click window: missing", { windows: [] });
+    assert.strictEqual(miss.ok, false);
+    const noBox = planFromInstruction("click window: notepad", {
+      windows: [{ hwnd: "77", title: "Untitled - Notepad", proc: "notepad" }],
+    });
+    assert.strictEqual(noBox.ok, false);
+    assert.strictEqual(noBox.reason, "no window rect");
+    const { windowClickPoint } = require("../electron/netie/computer-act");
+    const fromBox = windowClickPoint({
+      x: 100,
+      y: 200,
+      width: 640,
+      height: 480,
+      cx: 1,
+      cy: 2,
+    });
+    assert.deepStrictEqual(fromBox, { x: 420, y: 440 });
+    const fromCenter = windowClickPoint({ cx: 15, cy: 25 });
+    assert.deepStrictEqual(fromCenter, { x: 15, y: 25 });
   });
 
   await test("planFromInstruction chains local verbs and keeps type: then as one step", () => {
@@ -249,6 +278,63 @@ function test(name, fn) {
       "focus: notepad",
       "type: hello",
     ]);
+    const aimed = planFromInstruction("click window: notepad then type: hello", {
+      windows: [
+        { hwnd: "77", title: "Untitled - Notepad", proc: "notepad", x: 0, y: 0, width: 100, height: 40 },
+      ],
+    });
+    assert.strictEqual(aimed.ok, true);
+    assert.strictEqual(aimed.source, "chain");
+    assert.strictEqual(aimed.actions[0].type, "click");
+    assert.strictEqual(aimed.actions[0].x, 50);
+    assert.strictEqual(aimed.actions[0].y, 20);
+    assert.strictEqual(aimed.actions[1].type, "type");
+    assert.strictEqual(aimed.actions[1].value, "hello");
+  });
+
+  await test("computer.act click window: uses observed rects and keeps named click: Save", async () => {
+    const { planFromInstruction } = require("../electron/netie/computer-act");
+    const named = planFromInstruction("click: Save");
+    assert.strictEqual(named.ok, true);
+    assert.strictEqual(named.actions[0].target, "Save");
+    assert.strictEqual(named.actions[0].x, undefined);
+    const r = await runComputerAct(
+      { instruction: "click window: notepad", approved: true },
+      {
+        secure: async () => ({ ok: true }),
+        windows: [
+          {
+            hwnd: "88",
+            title: "Untitled - Notepad",
+            proc: "notepad",
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 40,
+          },
+        ],
+        execute: async (actions) => actions,
+      }
+    );
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.ran, true);
+    assert.strictEqual(r.actions[0].type, "click");
+    assert.strictEqual(r.actions[0].x, 50);
+    assert.strictEqual(r.actions[0].y, 20);
+  });
+
+  await test("executor treats absolute x/y as aimed so click window: is not vision re-aimed", () => {
+    const fs = require("fs");
+    const src = fs.readFileSync(require.resolve("../electron/main.js"), "utf8");
+    assert.ok(/hasScreenPoint/.test(src), "mustReaim must use hasScreenPoint");
+    assert.ok(
+      !/action\.xPct == null && action\.yPct == null/.test(src),
+      "xPct-only reaim would strip window-center clicks"
+    );
+    const { hasScreenPoint } = require("../electron/netie/targeting");
+    assert.strictEqual(hasScreenPoint({ type: "click", x: 420, y: 440 }), true);
+    assert.strictEqual(hasScreenPoint({ type: "click", xPct: 40, yPct: 50 }), true);
+    assert.strictEqual(hasScreenPoint({ type: "click", target: "Save" }), false);
   });
 
   await test("computer.act uses deps.windows when planning focus:", async () => {

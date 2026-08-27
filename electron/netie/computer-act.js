@@ -68,6 +68,36 @@ function parseNamedInstruction(type, text) {
   return { ok: true, source: type, actions: [{ type, target: hit[1].trim() }] };
 }
 
+function findWindow(windows, want) {
+  const needle = String(want || "").trim().toLowerCase();
+  if (!needle) return null;
+  const list = Array.isArray(windows) ? windows : [];
+  return (
+    list.find((w) => {
+      const title = String((w && w.title) || "").toLowerCase();
+      const proc = String((w && w.proc) || "").toLowerCase();
+      return title.includes(needle) || proc.includes(needle);
+    }) || null
+  );
+}
+
+function windowClickPoint(win) {
+  if (!win) return null;
+  const x = Number(win.x);
+  const y = Number(win.y);
+  const width = Number(win.width);
+  const height = Number(win.height);
+  if (width > 0 && height > 0 && Number.isFinite(x) && Number.isFinite(y)) {
+    return { x: Math.round(x + width / 2), y: Math.round(y + height / 2) };
+  }
+  if (win.cx != null && win.cy != null) {
+    const cx = Number(win.cx);
+    const cy = Number(win.cy);
+    if (Number.isFinite(cx) && Number.isFinite(cy)) return { x: Math.round(cx), y: Math.round(cy) };
+  }
+  return null;
+}
+
 const MAX_CHAIN = 8;
 
 function looksLocalStep(text) {
@@ -150,12 +180,7 @@ function planOneInstruction(instruction, opts = {}) {
   }
   const focusTitle = text.match(/^(?:please\s+)?focus\s*:\s*([\s\S]+)$/i);
   if (focusTitle && focusTitle[1].trim()) {
-    const want = focusTitle[1].trim().toLowerCase();
-    const hit = (Array.isArray(opts.windows) ? opts.windows : []).find((w) => {
-      const title = String((w && w.title) || "").toLowerCase();
-      const proc = String((w && w.proc) || "").toLowerCase();
-      return title.includes(want) || proc.includes(want);
-    });
+    const hit = findWindow(opts.windows, focusTitle[1]);
     if (hit && hit.hwnd && String(hit.hwnd) !== "0") {
       return {
         ok: true,
@@ -164,6 +189,21 @@ function planOneInstruction(instruction, opts = {}) {
       };
     }
     return { ok: false, reason: "no matching window" };
+  }
+  const windowClick = text.match(
+    /^(?:please\s+)?(click|doubleclick|rightclick|hover)\s+window\s*:\s*([\s\S]+)$/i
+  );
+  if (windowClick && windowClick[2].trim()) {
+    const kind = String(windowClick[1] || "click").toLowerCase();
+    const hit = findWindow(opts.windows, windowClick[2]);
+    if (!hit) return { ok: false, reason: "no matching window" };
+    const pt = windowClickPoint(hit);
+    if (!pt) return { ok: false, reason: "no window rect" };
+    return {
+      ok: true,
+      source: "click-window",
+      actions: [{ type: kind, x: pt.x, y: pt.y }],
+    };
   }
   for (const kind of ["click", "doubleclick", "rightclick", "hover"]) {
     const named = parseNamedInstruction(kind, text);
@@ -288,6 +328,8 @@ module.exports = {
   splitInstructionSteps,
   planOneInstruction,
   planFromInstruction,
+  findWindow,
+  windowClickPoint,
   prepareComputerAct,
   runComputerAct,
   MAX_CHAIN,

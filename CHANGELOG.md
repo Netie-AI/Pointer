@@ -2,6 +2,15 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - click window: uses observed screen rects
+
+Agents can say `click window: notepad` (also doubleclick/rightclick/hover).
+The local planner finds the titled window and clicks its center. Needs a
+rect from observe/GetWindowRect. Absolute x/y skips vision re-aim so the
+center is not thrown away. Still Cortex-gated. GitHub CI on this
+account is still a spending-limit cutoff (0 steps), not a product fail.
+No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - Observe window screen rects for agents
 
 UACC-class list_windows: computer.observe windows and foreground now

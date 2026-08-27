@@ -231,6 +231,7 @@ function computerStatus(opts = {}) {
         "type: hello",
         "click 40 50",
         "click: Save",
+        "click window: notepad",
         "doubleclick 40 50",
         "rightclick: Close",
         "hover 40 50",
