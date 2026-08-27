@@ -169,6 +169,8 @@ function readAsset(file) {
     assert.match(app, /\/api\/home/);
     assert.match(app, /paintRooms/);
     assert.match(app, /paintSession/);
+    assert.match(app, /paintChrome/);
+    assert.match(app, /live-cue-bar/);
     const paint = app.slice(app.indexOf("function paintSession"), app.indexOf("const roomsPage"));
     assert.match(paint, /session-md/);
     assert.match(paint, /session-copy/);
@@ -238,6 +240,7 @@ function readAsset(file) {
     assert.strictEqual(homeBody.exec, false);
     assert.strictEqual(homeBody.rooms.security.cue, "");
     assert.strictEqual(homeBody.rooms.teach.desk, "teach");
+    assert.strictEqual(homeBody.rooms.teach.advance, false);
     assert.strictEqual(homeBody.rooms.inbox.desk, "inbox");
     assert.strictEqual(homeBody.rooms.document.desk, "document");
     assert.ok(homeBody.session);

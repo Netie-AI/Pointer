@@ -115,3 +115,5 @@ Loopback `/teach` Back / Got it Ask the next measured step from a stored
 walk (POST `/api/teach`, never Act, public copy 404). Copy next / Copy
 say-this / Copy plate copy the cue line. Today plate lists your
 commitments, not the meeting say-this dump.
+Loopback host pages keep They asked / Heard / Next in sticky chrome
+from `/api/home` (Back / Got it Ask, never Act). Public copies hide it.

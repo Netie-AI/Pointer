@@ -350,6 +350,23 @@ function paintLiveRoom(pageId, apiPath, cueId, refuse, askedId) {
   if (pageId === "teach-brief") wireTeachAdvance(apply);
 }
 
+function postTeach(ask, apply) {
+  fetch("/api/teach", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ask: ask, act: false }),
+  })
+    .then((r) => r.json())
+    .then(function (m) {
+      if (typeof apply === "function") apply(m);
+      fetch("/api/home")
+        .then((r) => r.json())
+        .then(paintChrome)
+        .catch(function () {});
+    })
+    .catch(function () {});
+}
+
 function setTeachButtons(m) {
   const on = Boolean(m && m.advance && !m.localFirst && !m.exec && m.ok !== false);
   const back = document.getElementById("teach-back");
@@ -359,26 +376,106 @@ function setTeachButtons(m) {
 }
 
 function wireTeachAdvance(apply) {
-  function post(ask) {
-    fetch("/api/teach", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ask: ask, act: false }),
-    })
-      .then((r) => r.json())
-      .then(apply)
-      .catch(function () {});
-  }
   const next = document.getElementById("teach-next");
   const back = document.getElementById("teach-back");
   if (next && !next.dataset.wired) {
     next.dataset.wired = "1";
-    next.addEventListener("click", function () { post("got it, next"); });
+    next.addEventListener("click", function () { postTeach("got it, next", apply); });
   }
   if (back && !back.dataset.wired) {
     back.dataset.wired = "1";
-    back.addEventListener("click", function () { post("back"); });
+    back.addEventListener("click", function () { postTeach("back", apply); });
   }
+}
+
+let lastChromeCue = "";
+
+function chromeBtn(id, label) {
+  const b = el("button");
+  b.id = id;
+  b.type = "button";
+  b.textContent = label;
+  b.hidden = true;
+  return b;
+}
+
+function ensureLiveCueBar() {
+  let bar = document.getElementById("live-cue-bar");
+  if (bar) return bar;
+  bar = el("div", "live-cue-bar");
+  bar.id = "live-cue-bar";
+  bar.hidden = true;
+  const asked = el("p", "live-cue-asked");
+  asked.id = "live-cue-asked";
+  asked.hidden = true;
+  const heard = el("p", "live-cue-heard");
+  heard.id = "live-cue-heard";
+  heard.hidden = true;
+  const text = el("p", "live-cue-text");
+  text.id = "live-cue-text";
+  const actions = el("div", "live-cue-actions");
+  const back = chromeBtn("live-cue-back", "Back");
+  const next = chromeBtn("live-cue-next", "Got it");
+  const copy = chromeBtn("live-cue-copy", "Copy");
+  actions.appendChild(back);
+  actions.appendChild(next);
+  actions.appendChild(copy);
+  bar.appendChild(asked);
+  bar.appendChild(heard);
+  bar.appendChild(text);
+  bar.appendChild(actions);
+  const header = document.querySelector("header");
+  if (header && header.parentNode) header.parentNode.insertBefore(bar, header.nextSibling);
+  else document.body.insertBefore(bar, document.body.firstChild);
+  back.addEventListener("click", function () { postTeach("back"); });
+  next.addEventListener("click", function () { postTeach("got it, next"); });
+  copy.addEventListener("click", function () { copyPlain(lastChromeCue); });
+  return bar;
+}
+
+function paintChrome(home) {
+  const bar = ensureLiveCueBar();
+  if (!bar) return;
+  if (!home || home.localFirst || home.exec) {
+    bar.hidden = true;
+    lastChromeCue = "";
+    return;
+  }
+  const s = home.session || {};
+  const rooms = home.rooms || {};
+  const teach = rooms.teach || {};
+  const meeting = rooms.meeting || {};
+  const asked = String(s.asked || meeting.asked || "").trim();
+  const heard = String(s.heard || meeting.heard || "").trim();
+  const meetingCue = String(meeting.cue || s.cue || "").trim();
+  const teachCue = String(teach.cue || "").trim();
+  const plate = String(s.plate || "").trim();
+  let cueLine = "";
+  if (asked && meetingCue) cueLine = "Say this: " + meetingCue;
+  else if (teachCue) cueLine = "Next: " + teachCue;
+  else if (plate) cueLine = "Plate: " + plate;
+  else if (meetingCue) cueLine = "Say this: " + meetingCue;
+  const askedEl = document.getElementById("live-cue-asked");
+  const heardEl = document.getElementById("live-cue-heard");
+  const textEl = document.getElementById("live-cue-text");
+  if (askedEl) {
+    askedEl.hidden = !asked;
+    askedEl.textContent = asked ? "They asked: " + asked : "";
+  }
+  if (heardEl) {
+    heardEl.hidden = !heard;
+    heardEl.textContent = heard ? "Heard: " + heard : "";
+  }
+  if (textEl) textEl.textContent = cueLine;
+  lastChromeCue = meetingCue || teachCue || plate;
+  bar.hidden = !(asked || heard || cueLine);
+  const canWalk = Boolean(teach.advance);
+  const back = document.getElementById("live-cue-back");
+  const next = document.getElementById("live-cue-next");
+  const copy = document.getElementById("live-cue-copy");
+  if (back) back.hidden = !canWalk;
+  if (next) next.hidden = !canWalk;
+  if (copy) copy.hidden = !lastChromeCue;
 }
 
 paintLiveRoom("meeting-brief", "/api/meeting", "meeting-cue-web", "refused: meeting must not grow a runtime", "meeting-asked-web");
@@ -670,6 +767,7 @@ if (roomsPage) {
         show("policy", (h && h.reason) || "live coworker rooms; Act stays on the laptop");
         paintRooms((h && h.rooms) || {}, Boolean(h && h.localFirst));
         paintSession(h && h.session, Boolean(h && h.localFirst));
+        paintChrome(h);
         return !(h && h.localFirst);
       });
   });
@@ -722,6 +820,18 @@ if (skillsPage) {
           (d) => (d.title || d.id || "draft") + " · " + (d.tier || "hint")
         );
         return !(s && s.localFirst);
+      });
+  });
+}
+
+if (!document.getElementById("rooms")) {
+  pollWhileLive(function () {
+    return fetch("/api/home")
+      .then((r) => r.json())
+      .then(function (h) {
+        if (h && h.exec) return false;
+        paintChrome(h);
+        return !(h && h.localFirst);
       });
   });
 }

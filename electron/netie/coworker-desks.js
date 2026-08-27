@@ -1991,6 +1991,7 @@ function publicEmptyRoom(desk, title, reason) {
     heard: "",
     deliverable: "",
     markers: [],
+    advance: false,
     coordinator: "http://127.0.0.1:18010",
     reason,
     desk,

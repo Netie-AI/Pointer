@@ -1,3 +1,9 @@
+## 2026-08-27 - Fixed live cue bar on loopback host pages
+
+Loopback host pages paint They asked / Heard / Next in sticky chrome
+from `/api/home`, with Back/Got it Ask (never Act). Public copies hide
+the bar. Today plate stays commitments only. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Host teach Got it; Today plate is commitments
 
 Loopback `/teach` Back/Got it Ask the next measured control from a

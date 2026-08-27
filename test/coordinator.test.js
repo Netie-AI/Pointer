@@ -323,6 +323,7 @@ function test(name, fn) {
     assert.strictEqual(home.body.act, false);
     assert.strictEqual(home.body.exec, false);
     assert.match(home.body.rooms.teach.cue, /Click Save/);
+    assert.strictEqual(home.body.rooms.teach.advance, true);
     assert.match(home.body.rooms.meeting.cue, /Friday/);
     assert.match(home.body.rooms.meeting.asked, /launch date/);
     assert.match(home.body.rooms.today.cue, /send it Friday/);

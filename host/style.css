@@ -4,7 +4,7 @@ body {
   background: #111;
   color: #eee;
 }
-header, main { max-width: 720px; margin: 0 auto; padding: 16px; }
+header, main, .live-cue-bar { max-width: 720px; margin: 0 auto; padding: 16px; }
 .kicker { letter-spacing: 0.08em; text-transform: uppercase; font-size: 12px; color: #9ad; }
 nav a { color: #9ad; margin-right: 12px; }
 pre {
@@ -27,10 +27,30 @@ pre {
 .meeting-asked {
   margin: 0 0 8px; color: #9aa3b5; font-size: 13px;
 }
-.meeting-cue {
-  padding: 8px 10px; border: 1px solid #345; border-radius: 8px;
+.live-cue-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 16px;
+  background: #111;
+  border-bottom: 1px solid #345;
+}
+.live-cue-asked, .live-cue-heard {
+  margin: 0;
+  font-size: 12px;
+  color: #9aa3b5;
+}
+.live-cue-bar .live-cue-text {
+  margin: 0;
+  padding: 0;
+  border: 0;
   font-weight: 650;
 }
+.live-cue-actions { display: flex; align-items: center; gap: 6px; }
 .teach-map {
   position: relative;
   width: 100%;
@@ -63,7 +83,7 @@ pre {
 .teach-map-box.now {
   border-color: #9ad;
 }
-#teach-back, #teach-next, #cue-copy, #session-copy, #session-download, #brief-copy, #brief-download, #artifact-copy, #artifact-download {
+#live-cue-back, #live-cue-next, #live-cue-copy, #teach-back, #teach-next, #cue-copy, #session-copy, #session-download, #brief-copy, #brief-download, #artifact-copy, #artifact-download {
   background: #1a1a1a;
   color: #9ad;
   border: 1px solid #345;

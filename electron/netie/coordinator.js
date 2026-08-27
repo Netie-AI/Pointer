@@ -151,6 +151,7 @@ function createCoordinator(opts = {}) {
       heard: got.ok ? String(got.artifact.heard || "") : "",
       deliverable: got.ok ? String(got.artifact.body || "") : "",
       title: got.ok && got.artifact.title ? got.artifact.title : fallbackTitle,
+      advance: desk === "teach" && got.ok && canAdvanceTeach(got.artifact.live),
     };
   }
 

@@ -921,6 +921,8 @@ test("desk chips ask, never act", () => {
   const hostApp = fs.readFileSync(path.join(__dirname, "..", "host", "app.js"), "utf8");
   assert.match(hostApp, /got it, next/);
   assert.match(hostApp, /wireTeachAdvance/);
+  assert.match(hostApp, /paintChrome/);
+  assert.match(hostApp, /live-cue-next/);
   assert.doesNotMatch(hostApp, /innerHTML/);
   const hud = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
   const desk = hud.slice(hud.indexOf('$("desk-pill")'), hud.indexOf('$("mode-pill")'));
