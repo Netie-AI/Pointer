@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Netie teach overlay</title>
+    <style>
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        pointer-events: none;
+        user-select: none;
+      }
+      #point-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+      .point-mark {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        display: grid;
+        place-items: center;
+        pointer-events: none;
+      }
+      .point-mark::before, .point-mark::after {
+        content: "";
+        position: absolute;
+        background: #6ea8ff;
+        opacity: 0.85;
+      }
+      .point-mark::before { width: 26px; height: 1.5px; }
+      .point-mark::after { width: 1.5px; height: 26px; }
+      .point-ring {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        border: 1.5px solid rgba(110, 168, 255, 0.6);
+      }
+      .point-label {
+        position: absolute;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 3px 8px;
+        border-radius: 999px;
+        white-space: nowrap;
+        background: #111;
+        border: 1px solid #345;
+        color: #eee;
+        font: 650 11px "Segoe UI", system-ui, sans-serif;
+      }
+      .point-mark.point-box {
+        transform: none;
+        border: 2px solid #6ea8ff;
+        border-radius: 8px;
+        background: rgba(110, 168, 255, 0.12);
+        pointer-events: none;
+      }
+      .point-mark.point-box .point-label { top: -22px; }
+      .point-mark.later::before, .point-mark.later::after,
+      .point-mark.done::before, .point-mark.done::after { display: none; }
+      .point-mark.point-box.later {
+        border-style: dashed;
+        border-color: rgba(110, 168, 255, 0.45);
+        background: transparent;
+      }
+      .point-mark.point-box.done {
+        border-color: rgba(238, 238, 238, 0.28);
+        background: transparent;
+        opacity: 0.4;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="point-layer" aria-hidden="true"></div>
+    <script>
+      const layer = document.getElementById("point-layer");
+
+      function paint(points) {
+        if (!layer) return;
+        while (layer.firstChild) layer.removeChild(layer.firstChild);
+        (points || []).forEach(function (point) {
+          const mark = document.createElement("div");
+          const boxed = Number(point.wPct) > 0 && Number(point.hPct) > 0;
+          const later = Boolean(point.later);
+          const done = Boolean(point.done);
+          mark.className = boxed ? "point-mark point-box" : "point-mark";
+          if (later) mark.classList.add("later");
+          if (done) mark.classList.add("done");
+          if (boxed) {
+            mark.style.left = Number(point.leftPct) + "%";
+            mark.style.top = Number(point.topPct) + "%";
+            mark.style.width = Number(point.wPct) + "%";
+            mark.style.height = Number(point.hPct) + "%";
+          } else {
+            mark.style.left = Number(point.xPct) + "%";
+            mark.style.top = Number(point.yPct) + "%";
+          }
+          if (!later && !done) {
+            const ring = document.createElement("div");
+            ring.className = "point-ring";
+            mark.appendChild(ring);
+          }
+          if (point.label) {
+            const label = document.createElement("span");
+            label.className = "point-label";
+            label.textContent = String(point.label).slice(0, 40);
+            mark.appendChild(label);
+          }
+          layer.appendChild(mark);
+        });
+      }
+
+      if (window.netieTeachOverlay && typeof window.netieTeachOverlay.onPoint === "function") {
+        window.netieTeachOverlay.onPoint(function (event) {
+          paint(event && event.points);
+        });
+      }
+      if (/(?:^|[?&])demo=1(?:&|$)/.test(location.search)) {
+        paint([
+          { leftPct: 12, topPct: 18, wPct: 28, hPct: 22, label: "1 region 1" },
+          { leftPct: 48, topPct: 42, wPct: 30, hPct: 24, label: "2 region 2", later: true },
+        ]);
+      }
+    </script>
+  </body>
+</html>

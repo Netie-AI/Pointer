@@ -237,6 +237,7 @@ try {
 let tray = null;
 let panelWindow = null;
 let overlayWindow = null;
+let teachOverlayWindow = null;
 let stageWindow = null;
 let hudWindow = null;
 let overlayDisplayBounds = null; // bounds of the display the overlay covers
@@ -353,6 +354,7 @@ function resetTeachWalk() {
   teachLive = false;
   liveTeachPump.reset();
   sendHud({ type: "point", points: [], ttlMs: 1, hold: false });
+  sendTeachOverlay({ type: "point", points: [], ttlMs: 1, hold: false });
 }
 function noteTeachStep(text) {
   if (appMode === "meeting" || appMode === "transcribe") return;
@@ -410,7 +412,9 @@ function publishTeachOverlay(assist) {
   if (!assist || !assist.ok || assist.act) return;
   publishLiveCoworker(assist);
   const pointed = parsePoints(assist.deliverable);
-  if (pointed.points.length) sendHud(toOverlayEvent(assist.deliverable, { hold: true, path: assist.path }));
+  if (pointed.points.length) {
+    publishPointOverlay(assist.deliverable, { hold: true, path: assist.path });
+  }
 }
 function publishLiveMeeting(assist) {
   publishLiveCoworker(assist);
@@ -807,6 +811,7 @@ function hideHud() {
   // desktop. Anything that draws must be hidden here.
   hideStage();
   if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.hide();
+  // Teach BOX overlay stays click-through on the display until resetTeachWalk.
 }
 
 /** Push HUD events only when the overlay is already open — never force-pop. */
@@ -943,7 +948,7 @@ function captureVisible() {
 
 function applyContentProtection(visible) {
   const protect = !visible;
-  for (const win of [hudWindow, stageWindow, panelWindow, overlayWindow]) {
+  for (const win of [hudWindow, stageWindow, panelWindow, overlayWindow, teachOverlayWindow]) {
     if (win && !win.isDestroyed()) {
       try {
         win.setContentProtection(protect);
@@ -1170,11 +1175,103 @@ function closeOverlay() {
   overlayWindow = null;
 }
 
+function closeTeachOverlay() {
+  if (teachOverlayWindow && !teachOverlayWindow.isDestroyed()) {
+    teachOverlayWindow.close();
+  }
+  teachOverlayWindow = null;
+}
+
+/**
+ * Click-through BOX walk on the display (Clicky-shaped, original).
+ * Not a buddy, not a ring, never Act. Stays up when HUD hides.
+ */
+function teachOverlayBounds() {
+  if (overlayDisplayBounds && Number(overlayDisplayBounds.width) > 0) {
+    return overlayDisplayBounds;
+  }
+  try {
+    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+    return display && display.bounds ? display.bounds : { x: 0, y: 0, width: 1280, height: 720 };
+  } catch {
+    return { x: 0, y: 0, width: 1280, height: 720 };
+  }
+}
+
+function ensureTeachOverlay() {
+  if (teachOverlayWindow && !teachOverlayWindow.isDestroyed()) {
+    return Promise.resolve(teachOverlayWindow);
+  }
+  const { x, y, width, height } = teachOverlayBounds();
+  teachOverlayWindow = new BrowserWindow({
+    x,
+    y,
+    width,
+    height,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    hasShadow: false,
+    focusable: false,
+    show: true,
+    backgroundColor: "#00000000",
+    webPreferences: {
+      preload: path.join(__dirname, "teach-overlay-preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  teachOverlayWindow.setAlwaysOnTop(true, "screen-saver");
+  try {
+    teachOverlayWindow.setIgnoreMouseEvents(true, { forward: true });
+  } catch {
+    teachOverlayWindow.setIgnoreMouseEvents(true);
+  }
+  applyContentProtection(captureVisible());
+  const win = teachOverlayWindow;
+  win.on("closed", () => {
+    if (teachOverlayWindow === win) teachOverlayWindow = null;
+  });
+  return new Promise((resolve) => {
+    win.webContents.once("did-finish-load", () => resolve(win));
+    win.loadFile(path.join(__dirname, "teach-overlay.html"));
+  });
+}
+
+function sendTeachOverlay(event) {
+  const points = event && Array.isArray(event.points) ? event.points : [];
+  if (!points.length) {
+    closeTeachOverlay();
+    return;
+  }
+  void ensureTeachOverlay().then((win) => {
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send("teach-overlay:point", {
+      type: "point",
+      points,
+      hold: Boolean(event && event.hold),
+      ttlMs: Number(event && event.ttlMs) || 0,
+    });
+  });
+}
+
+function publishPointOverlay(raw, opts) {
+  const event = toOverlayEvent(raw, opts);
+  sendHud(event);
+  if (event.hold) sendTeachOverlay(event);
+}
+
 /** HUD Frame arms a teach walk after commit. Tray Frame stays capture for Act. */
 let frameForTeach = false;
 
 function openOverlay(opts = {}) {
   closeOverlay();
+  closeTeachOverlay();
   frameForTeach = Boolean(opts.teach);
   // Hide chrome while framing; restore only if the user had HUD open.
   hudVisibleBeforeOverlay = isHudVisible() || hudUserOpened;
@@ -2847,7 +2944,7 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
       meta: `${local.desk} · ${local.kind}`,
       text: pointed.text || local.deliverable,
     });
-    if (pointed.points.length) sendHud(toOverlayEvent(local.deliverable, { hold: true, path: local.path }));
+    if (pointed.points.length) publishPointOverlay(local.deliverable, { hold: true, path: local.path });
     if (local.desk === "teach") {
       armTeachWalk(asked);
     }
@@ -3013,7 +3110,11 @@ function enqueueCoworkerJob(message, extraTranscript, spawn) {
           text: pointed.text || assist.deliverable,
         });
         if (pointed.points.length) {
-          sendHud(toOverlayEvent(assist.deliverable, assist.desk === "teach" ? { hold: true, path: assist.path } : {}));
+          if (assist.desk === "teach") {
+            publishPointOverlay(assist.deliverable, { hold: true, path: assist.path });
+          } else {
+            sendHud(toOverlayEvent(assist.deliverable, {}));
+          }
         }
         if (assist.desk === "teach") {
           armTeachWalk(job);

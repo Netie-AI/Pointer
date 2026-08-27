@@ -123,6 +123,17 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
           !/class="[^"]*point-layer[^"]*chrome/.test(html),
         "the point layer must not be .chrome"
       );
+      const walk = read("electron/teach-overlay.html");
+      assert.ok(/pointer-events:\s*none/.test(walk), "the screen walk must not eat clicks");
+      assert.ok(/point-box\.later/.test(walk), "later boxes stay dashed");
+      assert.ok(!/innerHTML/.test(walk), "the walk paints with createElement");
+      assert.ok(
+        !/id="clicky-orb"|class="clicky-orb"|stage-orb|chat-bubble/.test(walk),
+        "the screen walk is boxes, not a buddy"
+      );
+      const main = read("electron/main.js");
+      assert.ok(main.includes("sendTeachOverlay"), "held BOX walks also paint on the display overlay");
+      assert.ok(/setIgnoreMouseEvents\(true/.test(main), "the display overlay is click-through");
     }),
   ];
 

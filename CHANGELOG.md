@@ -1,3 +1,11 @@
+## 2026-08-27 - Teach BOX overlay stays click-through on the display
+
+Held teach walks paint current BOX and later dashed boxes on a
+click-through display overlay (Ask, never Act). HUD hide does not
+clear it; reset / empty walk does. Frame drag still owns the mouse.
+Not a buddy, not a ring, not a stealth meeting overlay. P-05 and
+P-06 stay parked.
+
 ## 2026-08-27 - Teach stacks drawn BOX steps
 
 Loopback `/teach` stacks each drag as the next numbered BOX
