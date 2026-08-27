@@ -29,7 +29,7 @@ const cleanToast = $("clean-toast");
 const cleanToastText = $("clean-toast-text");
 const clickyOrb = null; // floating Clicky hold removed — Ctrl+Shift+Space arms real OS pointer
 const peekDrop = null;
-const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify"), $("set-autosend"), $("set-cloud-stt"), $("set-stt-url"), $("set-follow"), $("set-capture-visible"), $("set-dictate"), $("set-scribe"), $("set-scribe-screen"), $("set-autostart"), $("set-meeting-suggest"), $("set-writing-style"), $("set-scribe-instruction"), $("set-personal-context"), $("set-scribe-language")];
+const settingInputs = [$("set-auto"), $("set-nod"), $("set-cursor"), $("set-md"), $("set-py"), $("set-demo-debug"), $("set-verify"), $("set-autosend"), $("set-cloud-stt"), $("set-stt-url"), $("set-follow"), $("set-capture-visible"), $("set-dictate"), $("set-scribe"), $("set-scribe-screen"), $("set-autostart"), $("set-meeting-suggest"), $("set-recording-hotkey"), $("set-mode-hotkey"), $("set-language-hotkey"), $("set-writing-style"), $("set-scribe-instruction"), $("set-personal-context"), $("set-scribe-language")];
 
 let listening = false;
 let systemAudio = false;
@@ -342,6 +342,9 @@ async function loadSettings() {
   if ($("set-scribe-screen")) $("set-scribe-screen").checked = settings.scribeScreenContext === true;
   if ($("set-autostart")) $("set-autostart").checked = settings.autostart === true;
   if ($("set-meeting-suggest")) $("set-meeting-suggest").checked = settings.meetingAutoSuggest !== false;
+  if ($("set-recording-hotkey")) $("set-recording-hotkey").value = settings.recordingHotkey || "Control+Alt+Space";
+  if ($("set-mode-hotkey")) $("set-mode-hotkey").value = settings.modeHotkey || "Control+Alt+M";
+  if ($("set-language-hotkey")) $("set-language-hotkey").value = settings.languageHotkey || "Control+Alt+L";
   if ($("set-writing-style")) $("set-writing-style").value = settings.writingStyle || "";
   if ($("set-scribe-instruction")) $("set-scribe-instruction").value = settings.scribeInstruction || "";
   if ($("set-personal-context")) $("set-personal-context").value = settings.personalContext || "";
@@ -379,6 +382,9 @@ async function saveSettingsFromUi() {
       scribeScreenContext: $("set-scribe-screen") ? $("set-scribe-screen").checked : false,
       autostart: $("set-autostart") ? $("set-autostart").checked : false,
       meetingAutoSuggest: $("set-meeting-suggest") ? $("set-meeting-suggest").checked : true,
+      recordingHotkey: $("set-recording-hotkey") ? $("set-recording-hotkey").value.trim() : "Control+Alt+Space",
+      modeHotkey: $("set-mode-hotkey") ? $("set-mode-hotkey").value.trim() : "Control+Alt+M",
+      languageHotkey: $("set-language-hotkey") ? $("set-language-hotkey").value.trim() : "Control+Alt+L",
       writingStyle: $("set-writing-style") ? $("set-writing-style").value.trim() : "",
       scribeInstruction: $("set-scribe-instruction") ? $("set-scribe-instruction").value.trim() : "",
       personalContext: $("set-personal-context") ? $("set-personal-context").value.trim() : "",

@@ -32,8 +32,8 @@
    the HUD. Scribe has a standing rewrite instruction (HUD + settings;
    this take stays USER INSTRUCTION). Scribe screen context captures the
    remembered app window, not the full display. BYOK STT URL is a HUD
-   setting (OpenAI-shaped HTTP; not a Deepgram default). IBM Plex HUD.
-   P-04 stays parked.
+   setting (OpenAI-shaped HTTP; not a Deepgram default). Recording, mode,
+   and language hotkeys are settings. IBM Plex HUD. P-04 stays parked.
 2. **Generative tools (DR-0004).** Search then craft a hint. Coordinator
    at `127.0.0.1:18010`. Public Worker is pages only. P-06 parked.
 3. **EPIC-P04 and EPIC-P07 remain open.** No GPLv3 dump.

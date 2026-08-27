@@ -1,6 +1,6 @@
 "use strict";
 const assert = require("assert");
-const { createHoldMonitor, DICTATE_HOLD_VKS } = require("../electron/netie/holdkey");
+const { createHoldMonitor, DICTATE_HOLD_VKS, canonicalizeHotkey, comboVks, normalizeDictateHotkeys } = require("../electron/netie/holdkey");
 const { InputDriver, MOD_VK, VK } = require("../electron/netie/driver");
 
 let pass = 0;
@@ -21,6 +21,39 @@ function test(name, fn) {
 (async () => {
   await test("dictate hold combo is Ctrl+Alt+Space", () => {
     assert.deepStrictEqual(DICTATE_HOLD_VKS.slice(), [MOD_VK.ctrl, MOD_VK.alt, VK.space]);
+    assert.deepStrictEqual(comboVks("ctrl+alt+space"), [MOD_VK.ctrl, MOD_VK.alt, VK.space]);
+    assert.strictEqual(canonicalizeHotkey("ctrl+alt+space"), "Control+Alt+Space");
+    const ok = normalizeDictateHotkeys({
+      recordingHotkey: "Ctrl+Alt+Space",
+      modeHotkey: "ctrl+alt+m",
+      languageHotkey: "Control+Alt+L",
+    });
+    assert.strictEqual(ok.ok, true);
+    assert.strictEqual(ok.recordingHotkey, "Control+Alt+Space");
+    const clash = normalizeDictateHotkeys({
+      recordingHotkey: "Control+Alt+M",
+      modeHotkey: "Control+Alt+M",
+      languageHotkey: "Control+Alt+L",
+    });
+    assert.strictEqual(clash.ok, false);
+    const reserved = normalizeDictateHotkeys({
+      recordingHotkey: "Control+Enter",
+      modeHotkey: "Control+Alt+M",
+      languageHotkey: "Control+Alt+L",
+    });
+    assert.strictEqual(reserved.ok, false);
+    const bare = normalizeDictateHotkeys({
+      recordingHotkey: "M",
+      modeHotkey: "Control+Alt+M",
+      languageHotkey: "Control+Alt+L",
+    });
+    assert.strictEqual(bare.ok, false);
+    const fs = require("fs");
+    const path = require("path");
+    const html = fs.readFileSync(path.join(__dirname, "../electron/hud.html"), "utf8");
+    assert.ok(html.includes('id="set-recording-hotkey"'));
+    assert.ok(html.includes('id="set-mode-hotkey"'));
+    assert.ok(html.includes('id="set-language-hotkey"'));
   });
 
   await test("hold monitor ignores dry-run so Linux stays toggle", async () => {

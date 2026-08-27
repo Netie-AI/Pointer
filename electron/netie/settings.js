@@ -136,6 +136,13 @@ const DEFAULTS = Object.freeze({
   meetingAutoSuggest: true,
   /** Launch Pointer at Windows sign-in (OpenWillow autostart pattern). */
   autostart: false,
+  /**
+   * OpenWillow-class global shortcuts. Electron accelerators.
+   * Recording is hold-to-talk. The three must stay distinct.
+   */
+  recordingHotkey: "Control+Alt+Space",
+  modeHotkey: "Control+Alt+M",
+  languageHotkey: "Control+Alt+L",
 });
 
 function defaultPath() {

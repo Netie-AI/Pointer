@@ -65,7 +65,7 @@ const {
   pickWindowSource,
 } = require("./netie/delivery");
 const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetingNotes } = require("./netie/meeting");
-const { createHoldMonitor, DICTATE_HOLD_VKS } = require("./netie/holdkey");
+const { createHoldMonitor, DICTATE_HOLD_VKS, comboVks, normalizeDictateHotkeys } = require("./netie/holdkey");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
 const { shouldAcceptFrame, detectCaptureCommand } = require("./netie/capture-gate");
@@ -460,10 +460,14 @@ const driver = new InputDriver({
   toPhysical: (pt) => screen.dipToScreenPoint(pt),
 });
 
-/** OpenWillow hold-to-talk: after Ctrl+Alt+Space press, stop when the combo lifts. */
+/** OpenWillow hold-to-talk: after the recording hotkey press, stop when the combo lifts. */
 const dictateHold = createHoldMonitor({
   intervalMs: 40,
-  poll: () => driver.keysHeld(DICTATE_HOLD_VKS),
+  poll: () => {
+    const acc = settings.get("recordingHotkey") || "Control+Alt+Space";
+    const vks = comboVks(acc);
+    return driver.keysHeld(vks.length ? vks : DICTATE_HOLD_VKS);
+  },
   onRelease: () => {
     if (!listenMic) return;
     if (appMode !== "transcribe" && appMode !== "scribe") return;
@@ -2695,18 +2699,23 @@ function registerHotkey() {
     /* ok */
   }
   // OpenWillow-class global dictation: snapshot the current app, then hold
-  // Ctrl+Alt+Space to speak. Electron only sees the press; release is polled.
+  // the recording hotkey to speak. Electron only sees the press; release is polled.
+  const keys = normalizeDictateHotkeys({
+    recordingHotkey: settings.get("recordingHotkey") || "Control+Alt+Space",
+    modeHotkey: settings.get("modeHotkey") || "Control+Alt+M",
+    languageHotkey: settings.get("languageHotkey") || "Control+Alt+L",
+  });
   try {
-    globalShortcut.register("Control+Alt+Space", () => {
+    globalShortcut.register(keys.recordingHotkey, () => {
       void toggleDictateHotkey();
     });
   } catch {
     /* ok */
   }
-  // OpenWillow: Ctrl+Alt+M flips Dictation / Scribe. Snapshot the app first
+  // OpenWillow: mode hotkey flips Dictation / Scribe. Snapshot the app first
   // so the HUD pill click does not steal the paste target.
   try {
-    globalShortcut.register("Control+Alt+M", () => {
+    globalShortcut.register(keys.modeHotkey, () => {
       const next = appMode === "scribe" ? "transcribe" : "scribe";
       void snapshotDeliveryNow();
       applyAppMode(next, { reason: "hotkey" });
@@ -2715,7 +2724,7 @@ function registerHotkey() {
     /* ok */
   }
   try {
-    globalShortcut.register("Control+Alt+L", () => {
+    globalShortcut.register(keys.languageHotkey, () => {
       const next = nextScribeLanguage(settings.get("scribeLanguage"));
       settings.set({ scribeLanguage: next });
       sendHudQuiet({ type: "insight", text: `Scribe language: ${next}` });
@@ -4107,6 +4116,20 @@ ipcMain.handle("hud:setSettings", async (_e, payload) => {
   if (Object.prototype.hasOwnProperty.call(incoming, "sttUrl")) {
     incoming.sttUrl = sanitizeSttUrl(incoming.sttUrl);
   }
+  const keys = normalizeDictateHotkeys({
+    recordingHotkey: incoming.recordingHotkey ?? settings.get("recordingHotkey"),
+    modeHotkey: incoming.modeHotkey ?? settings.get("modeHotkey"),
+    languageHotkey: incoming.languageHotkey ?? settings.get("languageHotkey"),
+  });
+  if (keys.ok) {
+    incoming.recordingHotkey = keys.recordingHotkey;
+    incoming.modeHotkey = keys.modeHotkey;
+    incoming.languageHotkey = keys.languageHotkey;
+  } else {
+    delete incoming.recordingHotkey;
+    delete incoming.modeHotkey;
+    delete incoming.languageHotkey;
+  }
   const next = settings.set(incoming);
   agentPointer.enabled = next.cursorBubble !== false;
   demoDebug.setEnabled(next.demoDebug === true);
@@ -4116,6 +4139,7 @@ ipcMain.handle("hud:setSettings", async (_e, payload) => {
   stt.sidecarUrl =
     sanitizeSttUrl(next.sttUrl) || sanitizeSttUrl(process.env.NETIE_STT_URL) || DEFAULT_SIDECAR;
   void transcriber.probe(true);
+  registerHotkey();
   if (next.followCursor === false) stopCursorTracking();
   else startCursorTracking();
   if (!agentPointer.enabled) {

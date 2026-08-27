@@ -26,8 +26,11 @@ async function run() {
       assert.ok(/runScribeTurn/.test(main), "Scribe must complete then paste");
       assert.ok(/deliverIntoTarget/.test(main), "dictation/scribe must restore the remembered window");
       assert.ok(/Control\+Alt\+Space/.test(main), "global dictation hotkey must snapshot the current app");
-      assert.ok(/Control\+Alt\+M/.test(main), "Ctrl+Alt+M must flip transcribe and scribe");
-      assert.ok(/Control\+Alt\+L/.test(main), "Ctrl+Alt+L must toggle Scribe language");
+      assert.ok(/recordingHotkey/.test(main), "OpenWillow recording hotkey must be a setting");
+      assert.ok(/modeHotkey/.test(main), "OpenWillow mode hotkey must be a setting");
+      assert.ok(/languageHotkey/.test(main), "OpenWillow language hotkey must be a setting");
+      assert.ok(/normalizeDictateHotkeys/.test(main), "hotkeys must be canonicalized and kept distinct");
+      assert.ok(/registerHotkey\(\)/.test(main), "saving settings must rebind global shortcuts");
       assert.ok(/runComputerScribe/.test(main), "loopback computer.scribe must use the gated runner");
       assert.ok(/runMeetingAssist/.test(main), "loopback computer.meeting_assist must use the gated runner");
       assert.ok(/listWindows/.test(main), "computer.observe must list live windows");

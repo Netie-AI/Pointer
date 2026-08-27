@@ -29,7 +29,7 @@ the issue wins.
 | Skill search / craft hints | `electron/netie/skill-search.js`, `skills-exec.js` |
 | Coordinator + first-party MCP ABI | `electron/netie/coordinator.js`, `mcp-abi.js`, `host-serve.js`; pages in `host/`; public Worker `workers/netie-host.js` |
 | UACC skills + loopback detect | `electron/netie/uacc.js`; MCP `computer.status` / `observe` / `act` / `scribe` / `meeting_assist`; loopback `/api/computer` `/api/observe` `/api/scribe` `/api/meeting` `/api/tools` on `127.0.0.1:18010`; observe optional screenshot + clipboard |
-| Dictation / Scribe | `electron/netie/dictate.js`, `scribe.js`, `delivery.js`, `holdkey.js`, `pending-scribe.js`; standing `scribeInstruction`; remembered-window screen capture; HUD `sttUrl` BYOK sidecar |
+| Dictation / Scribe | `electron/netie/dictate.js`, `scribe.js`, `delivery.js`, `holdkey.js`, `pending-scribe.js`; standing `scribeInstruction`; remembered-window screen capture; HUD `sttUrl` BYOK sidecar; recording/mode/language hotkeys |
 | Meeting assist | `electron/netie/meeting.js`; HUD Suggest/Recap/Follow-ups/Copy notes; `GET /api/meeting?notes=1` `?export=1` |
 | Word safe API | `electron/netie/word-coworker.js` |
 | Driver (SendInput) | `electron/netie/driver.js` |

@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-27 - Customizable dictation hotkeys
+
+OpenWillow-class shortcuts: recording, Transcribe/Scribe, and language
+hotkeys persist in settings and rebind on save. They must stay distinct
+and cannot steal Assist/Clicky/Escape. Hold-to-talk polls the recording
+combo. GitHub CI on this account is still a spending-limit cutoff
+(0 steps), not a product fail. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-27 - BYOK STT URL in settings
 
 OpenWillow-class HTTP STT: HUD `sttUrl` feeds the sidecar slot (same
