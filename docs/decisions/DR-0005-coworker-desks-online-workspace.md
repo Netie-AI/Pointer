@@ -139,7 +139,8 @@ Loopback `/teach` paints a walk path from measured
 BOX/POINT (current hold, later dashed, Got it Ask, never Act). Draw
 around a control on that stage to stack numbered BOX regions in display
 percents (never invented, cap 8). The walk keeps that freehand stroke on
-each BOX (later ink dashed). A click-through laptop overlay paints that
+each BOX (later ink dashed). `/teach` This screen paints field / button
+faces at those measured percents. A click-through laptop overlay paints that
 walk on the display when HUD hides, with fixed Next / Then / Back /
 Got it Ask and Draw (freehand stroke, stored BOX) to stack a drawn step (never a buddy, never
 meeting say-this). A tap inside the current BOX on `/teach` or overlay

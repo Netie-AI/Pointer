@@ -276,7 +276,11 @@ function setFinishedDownloads(art, flags) {
   const exec = Boolean(flags && flags.exec);
   const desk = String((art && art.desk) || "").toLowerCase();
   const id = String((art && art.id) || "").toLowerCase();
-  const hasDraft = Boolean(String((art && art.preview) || "").trim()) && !localFirst && !exec;
+  const preview = String((art && art.preview) || "").trim();
+  const body = String((art && (art.body || art.deliverable)) || "");
+  const hasDocxDraft = Boolean(preview) || /## Draft to write[\s\S]*\S/.test(body);
+  const hasEmlDraft = Boolean(preview) || /^## Draft\b(?! to write)/m.test(body);
+  const hasDraft = !localFirst && !exec && (desk === "inbox" || id === "live-inbox" ? hasEmlDraft : hasDocxDraft);
   const hasReview =
     Boolean(String((art && (art.body || art.deliverable || art.preview)) || "").trim()) && !localFirst && !exec;
   const showDocx = hasDraft && (desk === "document" || id === "live-document");
@@ -1237,6 +1241,23 @@ function teachActionLine(m) {
     .trim();
 }
 
+function teachControlFace(p) {
+  const cue = String((p && (p.cue || p.label)) || "").toLowerCase();
+  if (/\btype in\b|\bedit\b|\bemail\b|\bfield\b|\binput\b/.test(cue)) return "field";
+  if (/\bclick\b|\bsave\b|\bcancel\b|\bbutton\b|\bsubmit\b/.test(cue)) return "button";
+  return "region";
+}
+
+function teachControlCaption(p) {
+  return String((p && (p.label || p.cue)) || "control")
+    .replace(/^\d+\s+of\s+\d+\s+/i, "")
+    .replace(/^\d+\s+/, "")
+    .replace(/^(type in|click|look at)\s+/i, "")
+    .replace(/\s+then\s+tab$/i, "")
+    .trim()
+    .slice(0, 24) || "control";
+}
+
 function paintTeachInk(map, boxes) {
   if (!map) return;
   const inked = (boxes || []).filter(function (p) {
@@ -1280,6 +1301,9 @@ function paintTeachMap(root, m, opts) {
   const action = teachActionLine(m);
   const rest = String((m && m.rest) || "").trim();
   map.setAttribute("aria-label", action ? action : draw ? "Draw around a control on this stage. Never Act." : "Teach walk");
+  const screen = el("p", "teach-map-screen");
+  screen.textContent = "This screen";
+  map.appendChild(screen);
   if (draw) {
     const hint = el("p", boxes.length ? "teach-map-hint add" : "teach-map-hint");
     hint.textContent = boxes.length
@@ -1298,6 +1322,16 @@ function paintTeachMap(root, m, opts) {
     map.appendChild(then);
   }
   boxes.forEach((p) => {
+    const face = teachControlFace(p);
+    const control = el("div", "teach-map-control " + face);
+    control.style.left = Number(p.leftPct) + "%";
+    control.style.top = Number(p.topPct) + "%";
+    control.style.width = Number(p.wPct) + "%";
+    control.style.height = Number(p.hPct) + "%";
+    const faceLab = el("span", "teach-map-face");
+    faceLab.textContent = teachControlCaption(p);
+    control.appendChild(faceLab);
+    map.appendChild(control);
     const cls = p.now ? "teach-map-box now" : p.later ? "teach-map-box then" : path.length ? "teach-map-box done" : "teach-map-box now";
     const box = el("div", cls);
     box.style.left = Number(p.leftPct) + "%";

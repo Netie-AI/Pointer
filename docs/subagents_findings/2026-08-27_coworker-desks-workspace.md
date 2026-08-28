@@ -41,7 +41,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   (Next/Then on the stage, never invented coords, never Act). Draw
   around a control on that stage to stack numbered BOX regions in
   display percents (current hold, later dashed, cap 8). The walk keeps
-  that freehand stroke on each BOX. A click-through
+  that freehand stroke on each BOX. This screen paints field / button
+  faces at those measured percents. A click-through
   laptop overlay paints that walk on the display when HUD hides, with
   Click/Type in on the current BOX, tap current BOX is Got it, fixed Next / Then / Back / Got it Ask and Draw for a freehand stroke
   that stores a BOX plus the ink (never a buddy).

@@ -174,12 +174,63 @@ pre {
   height: min(56vh, 520px);
   min-height: 280px;
   margin: 0 0 12px;
-  background: #0d0d0d;
+  background: #1a2433;
   border: 1px solid #333;
   overflow: hidden;
   pointer-events: none;
   touch-action: none;
 }
+.teach-map-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9ad;
+  background: #243044;
+  border-bottom: 1px solid #345;
+  z-index: 1;
+  pointer-events: none;
+}
+.teach-map-control {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 2px;
+  pointer-events: none;
+  z-index: 1;
+}
+.teach-map-control.field {
+  background: #e8eef4;
+  border: 1px solid #9ad;
+  border-radius: 4px;
+}
+.teach-map-control.button {
+  background: #345;
+  border: 1px solid #6be;
+  border-radius: 6px;
+}
+.teach-map-control.region {
+  background: #15202c;
+  border: 1px dashed #567;
+  border-radius: 6px;
+}
+.teach-map-face {
+  font-size: 11px;
+  color: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.teach-map-control.button .teach-map-face,
+.teach-map-control.region .teach-map-face { color: #eee; }
 .teach-map.draw {
   pointer-events: auto;
   cursor: crosshair;
@@ -213,6 +264,7 @@ pre {
   border: 2px solid #6be;
   border-radius: 6px;
   pointer-events: none;
+  z-index: 2;
 }
 .teach-map-box span {
   position: absolute;

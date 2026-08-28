@@ -28,7 +28,8 @@
    numbered BOX tokens (`1 Save`). Current BOX paints Click /
    Type in / Look at. A tap on the current BOX is Got it (Ask, never Act).
    Overlay Draw stores a freehand BOX and keeps that stroke on the walk.
-   Cap 8. Tiny boxes fail closed at 0.4%.
+   Cap 8. Tiny boxes fail closed at 0.4%. `/teach` This screen paints
+   measured controls (field / button) at those BOX percents.
    Compact HUD `cueDisplay` for `point` strips `N of M`.
    This session links `/workspace?id=` to the live document, inbox, or
    security file and shows Download generated .docx / unsent .eml /

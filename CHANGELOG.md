@@ -1,3 +1,10 @@
+## 2026-08-28 - Teach This screen shows measured controls
+
+Loopback `/teach` paints field and button faces at measured BOX percents
+(This screen). Never invented coords. Click current BOX is still Got it.
+Opening a Word or unsent file offers the generated download from the
+draft body, not only `preview`. Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Workspace files sit on This computer
 
 Loopback `/workspace` paints This session files as a desktop grid on

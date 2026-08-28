@@ -61,7 +61,8 @@ talk track from the stored ring. HUD insight paints the same You/Them
 turns in fixed chrome. Say-this reuses your overlapping line
 or Heard facts, never an unrelated last-you dump. Loopback `/teach`
 paints a large walk stage from measured BOX/POINT (Next/Then on the
-stage, Got it Ask, never Act). Today plate lists your commitments, not the meeting
+stage, Got it Ask, never Act). This screen shows field / button faces
+at those measured percents. Today plate lists your commitments, not the meeting
 say-this dump. Inbox never
 sends (P-05); loopback `/inbox` may download a generated `.eml` (never send).
 Public `/api/inbox.eml` is 404. Security never self-approves; loopback

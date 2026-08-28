@@ -1530,6 +1530,10 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /stroke:/);
   assert.match(hostApp, /paintTeachInk/);
   assert.match(hostApp, /teach-map-ink/);
+  assert.match(hostApp, /teachControlFace/);
+  assert.match(hostApp, /teach-map-control/);
+  assert.match(hostApp, /teach-map-screen/);
+  assert.match(hostApp, /## Draft to write/);
   assert.match(hostApp, /teachActionLine/);
   assert.match(hostApp, /showMeeting = !onTeach/);
   assert.match(hostApp, /onTeach/);

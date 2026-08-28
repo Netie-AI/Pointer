@@ -241,6 +241,9 @@ function readAsset(file) {
     assert.doesNotMatch(paint, /innerHTML/);
     assert.match(app, /Live session stays on the laptop/);
     assert.match(app, /paintTeachMap/);
+    assert.match(app, /teachControlFace/);
+    assert.match(app, /teach-map-control/);
+    assert.match(app, /teach-map-screen/);
     assert.match(app, /p\.now && p\.cue/);
     assert.match(app, /wireTeachFrame/);
     assert.match(app, /postTeachFrame/);
@@ -271,6 +274,8 @@ function readAsset(file) {
     assert.match(cssText, /teach-map-cue/);
     assert.match(cssText, /teach-map-mark/);
     assert.match(cssText, /teach-map-rail/);
+    assert.match(cssText, /teach-map-control/);
+    assert.match(cssText, /teach-map-screen/);
     assert.match(cssText, /\.teach-map\.draw/);
     assert.match(cssText, /teach-map-key/);
     assert.match(cssText, /teach-map-hint\.add/);
@@ -360,6 +365,7 @@ function readAsset(file) {
     assert.match(teachText, /id="teach-next"/);
     assert.match(teachText, /id="teach-back"/);
     assert.match(teachText, /Walk path/);
+    assert.match(teachText, /This screen/);
     const teachApi = handlePublicRequest({ method: "GET", pathname: "/api/teach" });
     assert.strictEqual(JSON.parse(teachApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(teachApi.body).exec, false);
