@@ -87,7 +87,7 @@
         pointer-events: none;
       }
       #walk-cue { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      #walk-then {
+      #walk-then, #walk-fill, #walk-filed {
         margin: 0;
         color: #9ad;
         font-weight: 500;
@@ -232,6 +232,8 @@
       <div id="walk-row">
         <p id="walk-cue"></p>
         <p id="walk-then" hidden></p>
+        <p id="walk-fill" hidden></p>
+        <p id="walk-filed" hidden></p>
         <button type="button" id="walk-back" data-q="back">Back</button>
         <button type="button" id="walk-next" data-q="got it, next">Got it</button>
         <button type="button" id="walk-draw">Draw</button>
@@ -321,7 +323,10 @@
             const kind = point.face || overlayControlFace(point.label);
             const face = document.createElement("div");
             face.className = "point-face " + (kind === "field" ? "field" : kind === "button" ? "button" : "region");
-            face.textContent = point.caption || overlayControlCaption(point.label);
+            face.textContent =
+              !later && !done && point.fill
+                ? String(point.fill).slice(0, 24)
+                : point.caption || overlayControlCaption(point.label);
             mark.appendChild(face);
           }
           if (point.label) {
@@ -412,18 +417,22 @@
       function paintChrome(event) {
         const cue = String((event && event.cue) || "").trim();
         const rest = String((event && event.rest) || "").trim();
-        if (cueEl) {
-          const action = String(cue || "").replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
-          cueEl.textContent = action;
-        }
+        const fill = String((event && event.fill) || "").trim();
+        const action = String(cue || "").replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
+        if (cueEl) cueEl.textContent = action;
         if (thenEl) {
           const line = restLine(rest, cue);
           thenEl.hidden = !line;
           thenEl.textContent = line;
         }
+        const fillEl = document.getElementById("walk-fill");
+        if (fillEl) {
+          fillEl.hidden = !fill;
+          fillEl.textContent = fill;
+        }
         if (chromeBar) chromeBar.classList.toggle("show", Boolean(cue));
-        const action = String(cue || "").replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
-        speakTeachCue(rest ? action : action ? action + ". Last step" : "");
+        const spoken = fill && /^type in\b/i.test(action) ? "Type " + fill : action;
+        speakTeachCue(rest ? spoken : spoken ? spoken + ". Last step" : "");
       }
 
       let lastSpokenTeach = "";
@@ -547,6 +556,32 @@
         return "";
       }
 
+      function overlayFiledLine(href) {
+        if (/live-inbox/.test(href)) return "Opened unsent mail. Never sent.";
+        if (/live-document/.test(href)) return "Opened Notes. Never a .docx.";
+        if (/live-security/.test(href)) return "Opened Needs you. Never approval.";
+        if (/live-meeting/.test(href)) return "Opened Live answer.";
+        return "";
+      }
+
+      function openDeskWindow(href) {
+        const next = String(href || "");
+        if (!next || !/^\/workspace\?id=(live-inbox|live-document|live-security|live-meeting)$/.test(next)) return;
+        const line = overlayFiledLine(next);
+        const filedEl = document.getElementById("walk-filed");
+        if (filedEl) {
+          filedEl.hidden = !line;
+          filedEl.textContent = line;
+        }
+        let win = null;
+        try {
+          win = window.open(next, "_blank", "noopener");
+        } catch (err) {
+          win = null;
+        }
+        if (!win) location.href = next;
+      }
+
       function onDesk(q) {
         const text = String(q || "").trim();
         if (!text) return;
@@ -556,7 +591,7 @@
         }
         const href = overlayDeskHref(text);
         if (demo) {
-          if (href) location.href = href;
+          if (href) openDeskWindow(href);
           return;
         }
         fetch("/api/ask", {
@@ -568,12 +603,10 @@
           .then(function (out) {
             if (out && out.act) return;
             const next = (out && out.href) || href;
-            if (next && /^\/workspace\?id=(live-inbox|live-document|live-security|live-meeting)$/.test(next)) {
-              location.href = next;
-            }
+            openDeskWindow(next);
           })
           .catch(function () {
-            if (href) location.href = href;
+            openDeskWindow(href);
           });
       }
 
@@ -667,6 +700,7 @@
         paintChrome({
           cue: now.label || now.cue || "",
           rest: next.label || next.cue || "",
+          fill: now.fill || "",
         });
       }
 
@@ -699,9 +733,11 @@
       function applyLive(m) {
         const path = Array.isArray(m && m.path) ? m.path : [];
         paint(path);
+        const now = path.find(function (p) { return p && p.now; }) || path[0] || {};
         paintChrome({
           cue: (m && (m.action || m.cue)) || "",
           rest: (m && m.rest) || "",
+          fill: (m && m.fill) || now.fill || "",
         });
       }
 
@@ -763,6 +799,7 @@
             label: "Type in Email",
             face: "field",
             caption: "Email",
+            fill: "Sarah Chen",
             stroke: [
               { x: 18, y: 28 },
               { x: 66, y: 28 },

@@ -45,7 +45,8 @@ Public and loopback `/overlay` is that same walk full-screen (demo
 online when APIs are empty; live path on the laptop). Overlay Draw
 stacks a BOX (cap 8, 0.4% fail-closed). Last BOX says Last step.
 Overlay chrome keeps a remaining walk rail and Ask chips (Draft email /
-Notes / Needs you / Live answer). Enter is Got it. Never send.
+Notes / Needs you / Live answer). Desk chips open a window and keep the
+walk. Email BOX types the Heard name. Enter is Got it. Never send.
 The laptop HUD cue bar paints that same remaining rail and those chips
 when chrome hides. OS voice says Last step on the last BOX.
 Loopback `/meeting` Ask chips file an unsent follow-up

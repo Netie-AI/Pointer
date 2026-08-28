@@ -641,6 +641,20 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   });
   assert.strictEqual(form.act, false);
   assert.match(form.cue, /^1 of 3 Type in Email then Tab$/);
+  const named = teachAssist({
+    text: "walk me through this on my screen",
+    controls: [
+      { name: "Cancel", controlType: "Button", rect: { x: 0, y: 0, width: 100, height: 40 } },
+      { name: "Save", controlType: "Button", rect: { x: 200, y: 400, width: 100, height: 40 } },
+      { name: "Email", controlType: "Edit", rect: { x: 50, y: 80, width: 200, height: 32 } },
+    ],
+    screen,
+    transcript: "them: this is Sarah Chen from Acme",
+  });
+  assert.strictEqual(named.act, false);
+  assert.strictEqual(named.fill, "Sarah Chen");
+  assert.strictEqual(named.path[0].fill, "Sarah Chen");
+  assert.match(named.cue, /^1 of 3 Type in Email then Tab$/);
   assert.match(form.rest, /Click Save or press Enter \/ Click Cancel/);
   assert.strictEqual(form.path.length, 3);
   assert.strictEqual(form.path[0].now, true);
@@ -925,10 +939,14 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(openFrame, /closeTeachOverlay/);
   const teachOverlay = fs.readFileSync(path.join(__dirname, "..", "host", "overlay.html"), "utf8");
   assert.match(teachOverlay, /id="walk-chrome"/);
+  assert.match(teachOverlay, /window\.open/);
+  assert.match(teachOverlay, /walk-filed/);
+  assert.match(teachOverlay, /Sarah Chen/);
+  assert.match(teachOverlay, /Type " \+ fill/);
   assert.match(teachOverlay, /onRailStep/);
   assert.match(teachOverlay, /data-rail/);
   assert.match(teachOverlay, /data-step/);
-  assert.match(teachOverlay, /action \+ "\. Last step"/);
+  assert.match(teachOverlay, /spoken \+ "\. Last step"/);
   assert.match(teachOverlay, /Got it/);
   assert.match(teachOverlay, /Then:/);
   assert.match(teachOverlay, /Last step/);
@@ -1744,7 +1762,8 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /point-face/);
   assert.match(hud, /overlayControlFace/);
   assert.match(hud, /speakTeachCue/);
-  assert.match(hud, /kind === "point"\) speakTeachCue/);
+  assert.match(hud, /kind === "point"/);
+  assert.match(hud, /Type " \+ nowFill/);
   assert.match(hud, /classList.add\("now"\)/);
   assert.match(hud, /later/);
   assert.match(hud, /event\.hold/);

@@ -3097,6 +3097,7 @@ async function runDeskAssist(message, extraTranscript) {
       framed: Boolean(measured.framed),
       step: teachStep,
       live: true,
+      transcript: heardTranscript(extraTranscript),
     });
   }
   return todayAssist({ state: sessionCoworkerState(), question: message });

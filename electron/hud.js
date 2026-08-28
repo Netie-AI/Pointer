@@ -408,7 +408,12 @@ function paintLiveBrief(event) {
     barCopy.hidden = !cue;
     barCopy.textContent = cueCopyLabel(kind);
   }
-  if (kind === "point") speakTeachCue(rest ? cueLine : cueLine ? cueLine + ". Last step" : "");
+  if (kind === "point") {
+    const nowRow = Array.isArray(event.path) ? event.path.find((row) => row && row.now) : null;
+    const nowFill = String((nowRow && nowRow.fill) || "").trim();
+    const spoken = nowFill && /^type in\b/i.test(cueLine) ? "Type " + nowFill : cueLine;
+    speakTeachCue(rest ? spoken : spoken ? spoken + ". Last step" : "");
+  }
   paintMeetingTalk(event, asked);
 }
 
@@ -2024,7 +2029,10 @@ function renderPoints(points, ttlMs, hold) {
       const kind = point.face || overlayControlFace(point.label);
       const face = document.createElement("div");
       face.className = "point-face " + (kind === "field" ? "field" : kind === "button" ? "button" : "region");
-      face.textContent = point.caption || overlayControlCaption(point.label);
+      face.textContent =
+        !later && !done && point.fill
+          ? String(point.fill).slice(0, 24)
+          : point.caption || overlayControlCaption(point.label);
       mark.appendChild(face);
     }
     if (point.label) {

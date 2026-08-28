@@ -1,3 +1,9 @@
+## 2026-08-28 - Overlay stays; Email types the Heard name
+
+Public `/overlay` keeps the walk when Draft email / Notes / Needs you /
+Live answer open a window. Email BOX shows Sarah Chen (Heard). OS voice
+says Type Sarah Chen. Never send. Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Walk rail ticks jump by Ask
 
 Overlay, This screen, and HUD remaining-walk ticks Ask toward that

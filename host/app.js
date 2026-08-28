@@ -1846,7 +1846,7 @@ function paintTeachMap(root, m, opts) {
     control.style.width = Number(p.wPct) + "%";
     control.style.height = Number(p.hPct) + "%";
     const faceLab = el("span", "teach-map-face");
-    faceLab.textContent = teachControlCaption(p);
+    faceLab.textContent = p.now && p.fill ? String(p.fill).slice(0, 24) : teachControlCaption(p);
     control.appendChild(faceLab);
     map.appendChild(control);
     const cls = p.now ? "teach-map-box now" : p.later ? "teach-map-box then" : path.length ? "teach-map-box done" : "teach-map-box now";
@@ -2518,6 +2518,7 @@ function demoTeachWalk() {
       cue: "Type in Email",
       face: "field",
       caption: "Email",
+      fill: "Sarah Chen",
       stroke: [
         { x: 18, y: 28 },
         { x: 66, y: 28 },

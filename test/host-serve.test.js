@@ -270,6 +270,8 @@ function readAsset(file) {
     assert.match(app, /teach-map-cue/);
     assert.match(app, /teach-map-mark/);
     assert.match(app, /teach-map-rail/);
+    assert.match(app, /fill: "Sarah Chen"/);
+    assert.match(app, /p\.now && p\.fill/);
     assert.match(app, /onTeachRailStep/);
     assert.match(app, /data-rail/);
     assert.match(app, /data-step/);
@@ -467,6 +469,8 @@ function readAsset(file) {
     assert.match(overlayText, /Last step/);
     assert.match(overlayText, /demoFrame/);
     assert.match(overlayText, /Type in Email/);
+    assert.match(overlayText, /Sarah Chen/);
+    assert.match(overlayText, /window\.open/);
     assert.doesNotMatch(overlayText, /innerHTML/);
     assert.doesNotMatch(overlayText, /Send mail|Approve/);
     assert.doesNotMatch(overlayText, /clicky-orb|stage-orb|chat-bubble/);
