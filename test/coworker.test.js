@@ -925,6 +925,10 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(openFrame, /closeTeachOverlay/);
   const teachOverlay = fs.readFileSync(path.join(__dirname, "..", "host", "overlay.html"), "utf8");
   assert.match(teachOverlay, /id="walk-chrome"/);
+  assert.match(teachOverlay, /onRailStep/);
+  assert.match(teachOverlay, /data-rail/);
+  assert.match(teachOverlay, /data-step/);
+  assert.match(teachOverlay, /action \+ "\. Last step"/);
   assert.match(teachOverlay, /Got it/);
   assert.match(teachOverlay, /Then:/);
   assert.match(teachOverlay, /Last step/);
@@ -1784,6 +1788,12 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /Last step/);
   assert.match(hud, /got it, next/);
   assert.match(hud, /cue-advance/);
+  const railFn = hud.slice(hud.indexOf("function paintLiveCueRail"), hud.indexOf("function paintMeetingTalk"));
+  assert.match(railFn, /cue-advance/);
+  assert.match(railFn, /got it, next/);
+  assert.match(railFn, /data-q/);
+  assert.match(railFn, /createElement\("button"\)/);
+  assert.doesNotMatch(railFn, /innerHTML/);
   assert.doesNotMatch(hud, /coworker-brief[\s\S]{0,80}innerHTML/);
   const css = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.css"), "utf8");
   assert.match(css, /\.live-cue-bar/);

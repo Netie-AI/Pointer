@@ -50,9 +50,12 @@
         border-radius: 999px;
         border: 1px solid #345;
         color: #9ad;
-        pointer-events: none;
+        background: #1a1a1a;
+        cursor: pointer;
+        font: inherit;
+        pointer-events: auto;
       }
-      .walk-rail-tick.now { color: #eee; border-color: #6ea8ff; }
+      .walk-rail-tick.now { color: #eee; border-color: #6ea8ff; cursor: default; }
       .walk-rail-tick.later { opacity: 0.7; }
       .walk-rail-tick.done { opacity: 0.4; color: #eee; }
       body.draw { pointer-events: auto; cursor: crosshair; }
@@ -233,7 +236,7 @@
         <button type="button" id="walk-next" data-q="got it, next">Got it</button>
         <button type="button" id="walk-draw">Draw</button>
       </div>
-      <p id="walk-rail"></p>
+      <div id="walk-rail"></div>
       <p id="walk-chips">
         <button type="button" data-desk="1" data-q="draft a follow-up email from this meeting">Draft email</button>
         <button type="button" data-desk="1" data-q="write this recap in Word">Notes</button>
@@ -261,6 +264,7 @@
       let demoAdvance = function () {};
       let demoWalk = [];
       let demoStep = 0;
+      let lastRailPoints = [];
 
       function restLine(rest, cue) {
         const t = String(rest || "").trim();
@@ -346,17 +350,38 @@
 
       function paintRail(points) {
         if (!railEl) return;
+        lastRailPoints = Array.isArray(points) ? points : [];
         while (railEl.firstChild) railEl.removeChild(railEl.firstChild);
-        (points || []).forEach(function (point, i) {
-          const tick = document.createElement("span");
+        lastRailPoints.forEach(function (point, i) {
+          const tick = document.createElement("button");
+          tick.type = "button";
           tick.className = "walk-rail-tick";
           if (point && point.later) tick.classList.add("later");
           else if (point && point.done) tick.classList.add("done");
           else tick.classList.add("now");
+          tick.setAttribute("data-rail", "1");
+          tick.setAttribute("data-step", String(i));
           tick.textContent = overlayControlCaption((point && (point.caption || point.label || point.cue)) || String(i + 1));
           railEl.appendChild(tick);
         });
         railEl.hidden = !railEl.childNodes.length;
+      }
+
+      function onRailStep(i) {
+        const want = Number(i);
+        if (!Number.isInteger(want) || want < 0) return;
+        let now = 0;
+        lastRailPoints.forEach(function (p, idx) {
+          if (p && p.now) now = idx;
+          else if (p && !p.later && !p.done) now = idx;
+        });
+        if (want === now) return;
+        if (demo) {
+          demoStep = Math.max(0, Math.min(want, demoWalk.length - 1));
+          paintDemoState();
+          return;
+        }
+        onAsk(want < now ? "back" : "got it, next");
       }
 
       function paintWalkInk(points) {
@@ -398,7 +423,7 @@
         }
         if (chromeBar) chromeBar.classList.toggle("show", Boolean(cue));
         const action = String(cue || "").replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
-        speakTeachCue(action);
+        speakTeachCue(rest ? action : action ? action + ". Last step" : "");
       }
 
       let lastSpokenTeach = "";
@@ -556,6 +581,12 @@
         if (ev.target && ev.target.closest && ev.target.closest("#walk-draw")) {
           ev.preventDefault();
           setDraw(true);
+          return;
+        }
+        const railBtn = ev.target && ev.target.closest ? ev.target.closest("button[data-rail]") : null;
+        if (railBtn) {
+          ev.preventDefault();
+          onRailStep(Number(railBtn.getAttribute("data-step")));
           return;
         }
         const btn = ev.target && ev.target.closest ? ev.target.closest("button[data-q]") : null;

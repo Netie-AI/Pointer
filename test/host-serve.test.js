@@ -270,6 +270,9 @@ function readAsset(file) {
     assert.match(app, /teach-map-cue/);
     assert.match(app, /teach-map-mark/);
     assert.match(app, /teach-map-rail/);
+    assert.match(app, /onTeachRailStep/);
+    assert.match(app, /data-rail/);
+    assert.match(app, /data-step/);
     assert.match(app, /teach-map-key/);
     assert.match(app, /teach-map-box then/);
     assert.match(app, /Draw another BOX to add a step/);
@@ -298,6 +301,8 @@ function readAsset(file) {
     const demoAskFn = app.slice(app.indexOf("function demoAsk"), app.indexOf("function postAsk"));
     assert.doesNotMatch(demoAskFn, /mode:\s*"meeting"/);
     assert.match(app, /if \(onTeach\) speakTeachCue/);
+    assert.match(app, /Last step/);
+    assert.match(app, /\. Last step/);
     assert.match(app, /showMeeting = !onTeach/);
     assert.match(app, /onTeach/);
     assert.match(app, /Then: /);
@@ -318,6 +323,8 @@ function readAsset(file) {
     assert.match(cssText, /teach-map-cue/);
     assert.match(cssText, /teach-map-mark/);
     assert.match(cssText, /teach-map-rail/);
+    assert.match(cssText, /teach-map-rail button/);
+    assert.match(cssText, /pointer-events:\s*auto/);
     assert.match(cssText, /teach-map-control/);
     assert.match(cssText, /teach-map-screen/);
     assert.match(cssText, /\.teach-map\.draw/);

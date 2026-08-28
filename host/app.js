@@ -1520,7 +1520,7 @@ function paintChrome(home) {
   }
   if (textEl) textEl.textContent = cueLine;
   lastChromeCue = onTeach ? teachAction || teachCue : meetingCue || plate;
-  if (onTeach) speakTeachCue(teachAction || teachCue);
+  if (onTeach) speakTeachCue(teachRest ? teachAction || teachCue : teachAction || teachCue ? (teachAction || teachCue) + ". Last step" : "");
   bar.hidden = false;
   const canWalk = onTeach && Boolean(teach.advance);
   const back = document.getElementById("live-cue-back");
@@ -1663,6 +1663,7 @@ function wireTeachFrame(map, apply, current) {
   }
   map.addEventListener("pointerdown", function (ev) {
     if (ev.button != null && ev.button !== 0) return;
+    if (ev.target && ev.target.closest && ev.target.closest("[data-rail]")) return;
     const p = pctFromEvent(ev);
     drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y, stroke: [p] };
     if (!ghost) {
@@ -1712,6 +1713,7 @@ function wireTeachTap(map, apply, current) {
   if (!map || map.dataset.tapped === "1") return;
   map.dataset.tapped = "1";
   map.addEventListener("click", function (ev) {
+    if (ev.target && ev.target.closest && ev.target.closest("[data-rail]")) return;
     const r = map.getBoundingClientRect();
     const w = r.width || 1;
     const h = r.height || 1;
@@ -1772,6 +1774,26 @@ function paintTeachInk(map, boxes) {
     svg.appendChild(line);
   });
   map.appendChild(svg);
+}
+
+function onTeachRailStep(i, path, apply) {
+  const want = Number(i);
+  if (!Number.isInteger(want) || want < 0) return;
+  let now = 0;
+  (path || []).forEach(function (p, idx) {
+    if (p && p.now) now = idx;
+    else if (p && !p.later && !p.done) now = idx;
+  });
+  if (want === now) return;
+  if (isDemoCatalog()) {
+    const last = demoTeachWalk().length - 1;
+    demoTeachStep = Math.max(0, Math.min(want, last));
+    const m = demoTeachRoom();
+    if (typeof apply === "function") apply(m);
+    applyDemoCatalog();
+    return;
+  }
+  postTeach(want < now ? "back" : "got it, next", apply);
 }
 
 function paintTeachMap(root, m, opts) {
@@ -1852,10 +1874,21 @@ function paintTeachMap(root, m, opts) {
   });
   if (path.length) {
     const rail = el("ol", "teach-map-rail");
-    path.forEach((p) => {
-      const li = el("li", p.now ? "now" : p.later ? "then" : "done");
-      li.textContent = String(p.cue || p.label || "").slice(0, 80);
-      rail.appendChild(li);
+    path.forEach((p, i) => {
+      const tick = el("button", p.now ? "now" : p.later ? "then" : "done");
+      tick.type = "button";
+      tick.setAttribute("data-rail", "1");
+      tick.setAttribute("data-step", String(i));
+      tick.textContent = teachControlCaption(p);
+      tick.addEventListener("pointerdown", function (ev) {
+        ev.stopPropagation();
+      });
+      tick.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        onTeachRailStep(i, path, opts && opts.apply);
+      });
+      rail.appendChild(tick);
     });
     map.appendChild(rail);
   }

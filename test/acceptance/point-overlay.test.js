@@ -153,6 +153,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/paintWalkInk/.test(walk), "stored ink is SVG, not innerHTML");
       assert.ok(/createElementNS/.test(walk), "stroke is SVG, not innerHTML");
       assert.ok(/teach-overlay:frame/.test(walk), "drawn overlay boxes POST a region, never Act");
+      assert.ok(/onRailStep/.test(walk) && /data-rail/.test(walk) && /data-step/.test(walk), "overlay rail ticks jump by Ask");
+      assert.ok(/action \+ "\. Last step"/.test(walk), "overlay speaks Last step on the last BOX");
       assert.ok(/Got it/.test(walk) && /data-q="got it, next"/.test(walk), "Got it Asks, never Acts");
       assert.ok(/Then:/.test(walk), "Then remaining stays on the overlay");
       assert.ok(/id="walk-rail"/.test(walk) && /walk-rail-tick/.test(walk), "overlay paints a remaining walk rail");

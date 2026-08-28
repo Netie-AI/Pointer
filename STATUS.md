@@ -30,7 +30,7 @@
    `/overlay` is the same teach walk (Draw stacks a BOX; Last step
    when nothing remains; walk rail plus Ask chips; Enter is Got it).
    HUD cue bar keeps that remaining rail and those chips when chrome
-   hides. Never Act.
+   hides. Walk rail ticks jump by Ask. Last step is spoken. Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

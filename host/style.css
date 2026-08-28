@@ -451,10 +451,27 @@ pre {
   font-size: 12px;
   pointer-events: none;
 }
-.teach-map-rail li { padding: 4px 0; color: #777; }
-.teach-map-rail li.now { color: #eee; font-weight: 650; }
-.teach-map-rail li.then { color: #9ad; }
-.teach-map-rail li.done { color: #555; }
+.teach-map-rail li,
+.teach-map-rail button {
+  display: block;
+  width: 100%;
+  padding: 4px 0;
+  color: #777;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  font: inherit;
+}
+.teach-map-rail button {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.teach-map-rail li.now,
+.teach-map-rail button.now { color: #eee; font-weight: 650; cursor: default; }
+.teach-map-rail li.then,
+.teach-map-rail button.then { color: #9ad; }
+.teach-map-rail li.done,
+.teach-map-rail button.done { color: #555; }
 .stage .teach-map {
   height: min(32vh, 280px);
   min-height: 180px;

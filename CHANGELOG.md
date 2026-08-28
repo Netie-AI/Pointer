@@ -1,3 +1,9 @@
+## 2026-08-28 - Walk rail ticks jump by Ask
+
+Overlay, This screen, and HUD remaining-walk ticks Ask toward that
+step (demo jumps; live is one Got it or Back). Last BOX speaks Last
+step. Never send. Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - HUD cue bar keeps the remaining walk
 
 Laptop live cue bar paints the remaining teach rail and Ask chips

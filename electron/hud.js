@@ -187,9 +187,18 @@ function paintLiveCueRail(path) {
   rail.replaceChildren();
   const rows = Array.isArray(path) ? path.slice(0, 8) : [];
   rows.forEach((row) => {
-    const tick = document.createElement("span");
     const later = Boolean(row && row.later);
-    tick.className = "live-cue-tick" + ((row && row.now) ? " now" : later ? " later" : " done");
+    const now = Boolean(row && row.now);
+    let tick;
+    if (now) {
+      tick = document.createElement("span");
+      tick.className = "live-cue-tick now";
+    } else {
+      tick = document.createElement("button");
+      tick.type = "button";
+      tick.className = "live-cue-tick cue-advance " + (later ? "later" : "done");
+      tick.setAttribute("data-q", later ? "got it, next" : "back");
+    }
     tick.textContent = overlayControlCaption((row && (row.caption || row.label || row.cue)) || "");
     rail.appendChild(tick);
   });
