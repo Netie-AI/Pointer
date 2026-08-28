@@ -41,12 +41,11 @@
    not sent). Got it on Save files that draft then docks Live
    answer on overlay and home (never send, never speak meeting).
    Overlay Live answer is They asked / You / Say this / Also /
-   Don't say (HUD docks that stack). Chrome keeps They asked /
-   You / Live / Also / Heard / Don't say after Ask or Save (never
-   spoken). Chrome sits above This computer so the Email BOX stays
-   clear. Ask Live answer keeps a side tile until Save. Leftover
-   BOX yields. Back restores. Copy clips that stack. Never a
-   cheater overlay. Never Act.
+   Don't say (HUD docks that stack). Chrome keeps that stack plus
+   Live / Heard after Ask or Save (never spoken) and sits above
+   This computer so the Email BOX stays clear. Ask Live answer
+   is a side tile until Save. Leftover BOX yields. Back restores.
+   Copy clips that stack. Never a cheater overlay. Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next
