@@ -117,6 +117,7 @@ function test(name, fn) {
     assert.strictEqual(shown.privacy.text, "On device");
     assert.strictEqual(shown.session.state, "ready");
     assert.strictEqual(shown.session.text, "Ready");
+    assert.strictEqual(shown.session.maxMs, 120000);
     assert.strictEqual(shown.scribe.language, "English");
     assert.strictEqual(shown.scribe.languages.length, 12);
     assert.ok(shown.scribe.languages.includes("Spanish"));
@@ -135,6 +136,7 @@ function test(name, fn) {
     assert.strictEqual(shown.meeting.say, "GET /api/meeting?say=1");
     assert.strictEqual(shown.meeting.email, "GET /api/meeting?email=1");
     assert.strictEqual(shown.meeting.actions, "GET /api/meeting?actions=1");
+    assert.strictEqual(shown.meeting.pack, "GET /api/meeting?pack=1");
     assert.deepStrictEqual(shown.meeting.kinds, ["say", "recap", "followups", "email", "actions"]);
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?notes=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?export=1"));
@@ -142,6 +144,7 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?say=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?email=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?actions=1"));
+    assert.ok(shown.drive.instructions.includes("GET /api/meeting?pack=1"));
     assert.ok(shown.drive.instructions.includes("overlay [BOX:10,20,30,12:Save]"));
     assert.ok(shown.drive.instructions.includes("POST /api/meeting screenshot false"));
     assert.ok(shown.drive.instructions.includes("focus: notepad"));

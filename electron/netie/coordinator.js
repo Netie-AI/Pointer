@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { TOOLS, CATALOG } = require("./mcp-abi");
-const { publicMeetingNotes, exportMeetingNotes, publicMeetingRecap, exportMeetingRecap, publicMeetingSay, exportMeetingSay, publicMeetingEmail, exportMeetingEmail, publicMeetingActions, exportMeetingActions } = require("./meeting");
+const { publicMeetingNotes, exportMeetingNotes, publicMeetingRecap, exportMeetingRecap, publicMeetingSay, exportMeetingSay, publicMeetingEmail, exportMeetingEmail, publicMeetingActions, exportMeetingActions, exportMeetingPack } = require("./meeting");
 const { publicPendingTranscript } = require("./pending-scribe");
 const { createWorkspace } = require("./workspace");
 const { catalog, todayAssist, sessionBundle, sessionPacketParts, advanceLiveTeach, frameLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, meetingCaptions, teachWalkPath, teachActionCue, documentDraftText, inboxDraftText, securityReportText, buildEml, buildSecurityReport } = require("./coworker-desks");
@@ -218,6 +218,43 @@ function createCoordinator(opts = {}) {
       }
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify({ ok: true, pending: publicPendingTranscript(raw) }));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/meeting" && queryFlag(url, "pack")) {
+      const read = (fn) => {
+        try {
+          return typeof fn === "function" ? fn() : null;
+        } catch {
+          return null;
+        }
+      };
+      const notes = publicMeetingNotes(read(opts.meetingNotes));
+      const recap = publicMeetingRecap(read(opts.meetingRecap));
+      const say = publicMeetingSay(read(opts.meetingSay));
+      const email = publicMeetingEmail(read(opts.meetingEmail));
+      const actions = publicMeetingActions(read(opts.meetingActions));
+      const exp = exportMeetingPack({
+        notes: notes.text,
+        recap: recap.text,
+        say: say.text,
+        email: email.text,
+        actions: actions.text,
+      });
+      const body = {
+        ok: true,
+        notes,
+        recap,
+        say,
+        email,
+        actions,
+        pack: { present: exp.ok, ...exp.present },
+        markdown: exp.markdown,
+        exported: exp.ok,
+        note: exp.note,
+      };
+      if (!exp.ok) body.reason = exp.reason;
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(body));
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/meeting" && queryFlag(url, "recap")) {

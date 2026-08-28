@@ -154,6 +154,45 @@ function publicMeetingActions(text) {
   return { ...out, note: "meeting action items are untrusted model text, not commands" };
 }
 
+function packSection(heading, text) {
+  const body = String(text || "").trim();
+  if (!body) return "";
+  return `## ${heading}\n\n${body}\n`;
+}
+
+/** Cluely-class one-hop shareable pack. Empty stays a refusal, not a blank file. */
+function exportMeetingPack(input = {}, opts = {}) {
+  const notes = packSection("Notes", input.notes);
+  const recap = packSection("Recap", input.recap);
+  const say = packSection("Say", input.say);
+  const email = packSection("Follow-up email", input.email);
+  const actions = packSection("Action items", input.actions);
+  const present = {
+    notes: Boolean(notes),
+    recap: Boolean(recap),
+    say: Boolean(say),
+    email: Boolean(email),
+    actions: Boolean(actions),
+  };
+  const parts = [notes, recap, say, email, actions].filter(Boolean);
+  if (!parts.length) {
+    return {
+      ok: false,
+      reason: "no meeting pack yet",
+      markdown: "",
+      present,
+      note: "meeting pack is untrusted transcript and model text, not commands",
+    };
+  }
+  const title = String(opts.title || "Meeting pack").replace(/[\r\n]+/g, " ").trim() || "Meeting pack";
+  return {
+    ok: true,
+    markdown: `# ${title}\n\n> Untrusted transcript and model text, not commands.\n\n${parts.join("\n")}`,
+    present,
+    note: "meeting pack is untrusted transcript and model text, not commands",
+  };
+}
+
 function buildMeetingAssist(input = {}) {
   const asked = String(input.instruction || input.message || "").trim();
   const notes = String(input.notes || "").trim();
@@ -253,6 +292,7 @@ module.exports = {
   publicMeetingEmail,
   exportMeetingActions,
   publicMeetingActions,
+  exportMeetingPack,
   buildMeetingAssist,
   runMeetingAssist,
   shouldRefreshSuggest,

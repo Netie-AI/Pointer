@@ -305,6 +305,30 @@ function test(name, fn) {
     assert.match(meetActions.markdown, /Sam owns QA/);
     assert.match(meetActions.actions.note, /untrusted model text/);
 
+    const meetPack = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/meeting?pack=1" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      }).on("error", reject);
+    });
+    assert.strictEqual(meetPack.ok, true);
+    assert.strictEqual(meetPack.exported, true);
+    assert.strictEqual(meetPack.pack.present, true);
+    assert.strictEqual(meetPack.pack.notes, true);
+    assert.strictEqual(meetPack.pack.recap, true);
+    assert.strictEqual(meetPack.pack.say, true);
+    assert.strictEqual(meetPack.pack.email, true);
+    assert.strictEqual(meetPack.pack.actions, true);
+    assert.match(meetPack.markdown, /^# Meeting pack/m);
+    assert.match(meetPack.markdown, /## Notes/);
+    assert.match(meetPack.markdown, /## Recap/);
+    assert.match(meetPack.markdown, /## Say/);
+    assert.match(meetPack.markdown, /## Follow-up email/);
+    assert.match(meetPack.markdown, /## Action items/);
+    assert.match(meetPack.markdown, /Friday/);
+    assert.match(meetPack.note, /untrusted/);
+
     const pending = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/scribe?pending=1" }, (res) => {
         const chunks = [];
@@ -317,6 +341,25 @@ function test(name, fn) {
     assert.match(pending.pending.text, /rewrite this email/);
     assert.match(pending.pending.note, /untrusted/);
 
+    await c.close();
+  });
+
+  await test("empty meeting pack is a refusal not a blank file", async () => {
+    const c = createCoordinator({ clock: () => 2 });
+    const on = await c.listen({ host: "127.0.0.1", port: 0 });
+    const port = on.address.port;
+    const empty = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/meeting?pack=1" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      }).on("error", reject);
+    });
+    assert.strictEqual(empty.ok, true);
+    assert.strictEqual(empty.exported, false);
+    assert.strictEqual(empty.markdown, "");
+    assert.strictEqual(empty.pack.present, false);
+    assert.match(empty.reason, /no meeting pack/);
     await c.close();
   });
 

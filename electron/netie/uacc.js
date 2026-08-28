@@ -191,13 +191,15 @@ function computerStatus(opts = {}) {
       sttLocal: !opts.stt || opts.stt.local !== false,
       llmLocal: !opts.llm || opts.llm.local !== false,
     }),
-    session:
-      opts.session && opts.session.state
+    session: {
+      ...(opts.session && opts.session.state
         ? {
             state: String(opts.session.state).slice(0, 24),
             text: String(opts.session.text || opts.session.state).slice(0, 24),
           }
-        : sessionLabel({}),
+        : sessionLabel({})),
+      maxMs: Number(opts.sessionMaxMs) > 0 ? Number(opts.sessionMaxMs) : 120000,
+    },
     scribe: {
       available: opts.scribeAvailable === true || opts.actAvailable === true,
       gated: true,
@@ -220,6 +222,7 @@ function computerStatus(opts = {}) {
       say: "GET /api/meeting?say=1",
       email: "GET /api/meeting?email=1",
       actions: "GET /api/meeting?actions=1",
+      pack: "GET /api/meeting?pack=1",
       kinds: ["say", "recap", "followups", "email", "actions"],
     },
     drive: {
@@ -258,6 +261,7 @@ function computerStatus(opts = {}) {
         "GET /api/meeting?say=1",
         "GET /api/meeting?email=1",
         "GET /api/meeting?actions=1",
+        "GET /api/meeting?pack=1",
         "overlay [BOX:10,20,30,12:Save]",
         "POST /api/meeting kind recap",
         "POST /api/meeting kind followups",
