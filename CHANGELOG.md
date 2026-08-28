@@ -1,3 +1,10 @@
+## 2026-08-28 - Home is windows; This computer holds the catalog
+
+Loopback `/` no longer paints the desks catalog dump. Workspace poller
+runs on `/workspace` only. Session markdown stays copy-only. Today plate
+is the standing brief (copy still files the markdown). Never Act. P-05
+and P-06 stay parked.
+
 ## 2026-08-28 - Home paints filed windows and a room dock
 
 Loopback `/` paints Notes / Unsent mail / Needs you as windows on the

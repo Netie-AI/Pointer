@@ -103,6 +103,7 @@ function readAsset(file) {
     assert.match(page, /id="computer-run"/);
     const app = fs.readFileSync(path.join(HOST, "app.js"), "utf8");
     assert.match(app, /paintDesks/);
+    assert.match(app, /isWorkspacePage/);
     assert.match(app, /paintComputerDock/);
     assert.match(app, /wireComputerRun/);
     assert.match(app, /\/api\/workspace\/exec/);
@@ -167,9 +168,10 @@ function readAsset(file) {
     assert.strictEqual(home.status, 200);
     const homeText = await home.text();
     assert.match(homeText, /Pointer coworker/);
-    assert.match(homeText, /id="desks"/);
+    assert.doesNotMatch(homeText, /id="desks"/);
     assert.match(homeText, /id="rooms"/);
     assert.match(homeText, /room-dock/);
+    assert.match(homeText, /This computer/);
     assert.match(homeText, /id="stage"/);
     assert.match(homeText, /id="session"/);
     assert.match(homeText, /id="session-files"/);
@@ -231,6 +233,7 @@ function readAsset(file) {
     assert.match(app, /\/workspace\?id=/);
     const paint = app.slice(app.indexOf("function paintSession"), app.indexOf("const roomsPage"));
     assert.match(paint, /session-md/);
+    assert.match(paint, /mdEl.hidden = true/);
     assert.match(paint, /session-copy/);
     assert.match(paint, /session-download/);
     assert.match(paint, /textContent/);

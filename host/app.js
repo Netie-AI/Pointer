@@ -48,7 +48,7 @@ function pollWhileLive(load) {
 
 function paintDesks(desks) {
   const root = document.getElementById("desks");
-  if (!root) return;
+  if (!root || !isWorkspacePage()) return;
   root.replaceChildren();
   (desks || []).forEach((d) => {
     const card = el("article", "desk");
@@ -722,7 +722,7 @@ function wireComputerRun() {
   });
 }
 
-const workspacePage = document.getElementById("desks");
+const workspacePage = isWorkspacePage();
 if (workspacePage) {
   pollWhileLive(function () {
     return Promise.all([
@@ -790,7 +790,8 @@ function applyToday(t) {
   }
   setCueButton(plateText, Boolean(t && t.localFirst));
   if (pageDesk() === "today") {
-    paintBrief((t && (t.deliverable || t.brief)) || "", "today", Boolean(t && t.localFirst));
+    const body = (t && (t.deliverable || t.brief)) || "";
+    setBriefButtons(body, "today", Boolean(t && t.localFirst));
     paintEvents((t && (t.events || t.today)) || []);
   }
   paintTodayChips((t && t.chips) || []);
@@ -1854,8 +1855,8 @@ function paintSession(session, localFirst) {
   }
   function setMarkdown(text) {
     if (!mdEl) return;
-    mdEl.hidden = !text;
     mdEl.textContent = text || "";
+    mdEl.hidden = true;
   }
   function setCopy(on) {
     const copyBtn = document.getElementById("session-copy");

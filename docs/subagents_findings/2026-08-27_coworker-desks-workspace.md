@@ -93,7 +93,7 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   This screen. Opening a Meeting paints the Live answer. Opening Word /
   mail / review paints Notes / Unsent mail / Needs you on `/workspace`
   and on `/document` `/inbox` `/security`. Home `/` paints those windows
-  on the rail and a room dock. Public catalog stays empty.
+  on the rail and a room dock. Session markdown stays copy-only. Public catalog stays empty.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
 ## Traps

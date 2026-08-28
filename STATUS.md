@@ -42,7 +42,8 @@
    Live answer. Word / mail / review paint Notes / Unsent mail / Needs you
    on `/workspace` and `/document` `/inbox` `/security`. Unsent `To` is a
    Heard name or not sent (never invent, never send). Home rail is those
-   windows plus a room dock (no markdown dump). Public those paths stay 404.
+   windows plus a room dock. Session markdown stays copy-only. Public those
+   paths stay 404.
    `/workspace` Run is a named refuse (P-06). Public catalog empty.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 

@@ -1576,6 +1576,8 @@ test("desk chips ask, never act", () => {
   assert.doesNotMatch(liveRoom, /el\("pre"\)/);
   assert.match(hostApp, /room-dock-tile/);
   assert.match(hostApp, /paintFiledWindow/);
+  assert.match(hostApp, /isWorkspacePage/);
+  assert.match(hostApp, /mdEl.hidden = true/);
   assert.match(fs.readFileSync(path.join(__dirname, "..", "host", "document.html"), "utf8"), /Notes from this laptop/);
   assert.match(fs.readFileSync(path.join(__dirname, "..", "host", "inbox.html"), "utf8"), /Unsent mail from this laptop/);
   assert.match(fs.readFileSync(path.join(__dirname, "..", "host", "security.html"), "utf8"), /Needs you from this laptop/);
