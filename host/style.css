@@ -339,6 +339,11 @@ pre {
 }
 .desk-window-row span { color: #9ad; }
 .desk-window-row b { font-weight: 650; }
+.desk-window-row.typed {
+  outline: 1px solid rgba(110, 168, 255, 0.7);
+  border-radius: 6px;
+  padding: 2px 4px;
+}
 .desk-window-body {
   margin: 12px 0;
   min-height: 140px;

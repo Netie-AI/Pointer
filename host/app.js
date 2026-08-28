@@ -404,6 +404,9 @@ function paintDeskWindow(root, spec) {
     lab.textContent = String((row && row.label) || "");
     const val = document.createElement("b");
     val.textContent = String((row && row.value) || "");
+    if (String((row && row.label) || "") === "To" && String((row && row.value) || "") && String((row && row.value) || "") !== "not sent") {
+      p.classList.add("typed");
+    }
     p.appendChild(lab);
     p.appendChild(val);
     win.appendChild(p);
@@ -2651,8 +2654,8 @@ function demoHome() {
     desk: "inbox",
     title: "Draft follow-up (not sent)",
     cue: "not sent",
-    preview: "To: Sarah Chen\nSubject: Friday deck\n\nFriday works if the deck is in tonight.",
-    deliverable: "## Draft\nTo: Sarah Chen\nSubject: Friday deck\n\nFriday works if the deck is in tonight.",
+    preview: "To: " + (demoTeachStep > 0 ? "Sarah Chen" : "not sent") + "\nSubject: Friday deck\n\nFriday works if the deck is in tonight.",
+    deliverable: "## Draft\nTo: " + (demoTeachStep > 0 ? "Sarah Chen" : "not sent") + "\nSubject: Friday deck\n\nFriday works if the deck is in tonight.",
   };
   const security = {
     ok: true,

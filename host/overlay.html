@@ -315,6 +315,11 @@
       .walk-win .dock-row, .walk-win .dock-body, .walk-win .dock-foot { margin: 0 0 6px; }
       .walk-win .dock-foot { color: #f88; }
       .walk-win .dock-body { white-space: pre-wrap; color: #ddd; }
+      .dock-row.typed, .walk-win .dock-row.typed {
+        outline: 1px solid rgba(110, 168, 255, 0.7);
+        border-radius: 6px;
+        padding: 2px 4px;
+      }
     </style>
   </head>
   <body>
@@ -362,6 +367,7 @@
       let demoAdvance = function () {};
       let demoWalk = [];
       let demoStep = 0;
+      let inboxTypedTo = "";
       let lastRailPoints = [];
 
       function restLine(rest, cue) {
@@ -480,6 +486,7 @@
         if (demo) {
           demoStep = Math.max(0, Math.min(want, demoWalk.length - 1));
           paintDemoState();
+          syncInboxType();
           return;
         }
         onAsk(want < now ? "back" : "got it, next");
@@ -666,7 +673,7 @@
           return {
             kicker: "Unsent mail",
             rows: [
-              { label: "To", value: "Sarah Chen" },
+              { label: "To", value: inboxTypedTo || "not sent" },
               { label: "Subject", value: "Friday deck" },
             ],
             body: "Friday works if the deck is in tonight.",
@@ -713,15 +720,7 @@
         kick.textContent = spec.kicker;
         dock.appendChild(kick);
         (spec.rows || []).forEach(function (row) {
-          const p = document.createElement("p");
-          p.className = "dock-row";
-          const lab = document.createElement("span");
-          lab.textContent = String(row.label || "") + " ";
-          const val = document.createElement("b");
-          val.textContent = String(row.value || "");
-          p.appendChild(lab);
-          p.appendChild(val);
-          dock.appendChild(p);
+          dock.appendChild(paintDockRow(row));
         });
         if (spec.body) {
           const body = document.createElement("p");
@@ -807,21 +806,28 @@
         if (node) node.classList.add("now");
       }
 
+      function paintDockRow(row) {
+        const p = document.createElement("p");
+        p.className = "dock-row";
+        const label = String((row && row.label) || "");
+        const value = String((row && row.value) || "");
+        if (label === "To" && value && value !== "not sent") p.classList.add("typed");
+        const lab = document.createElement("span");
+        lab.textContent = label + " ";
+        const val = document.createElement("b");
+        val.textContent = value;
+        p.appendChild(lab);
+        p.appendChild(val);
+        return p;
+      }
+
       function appendDockBits(root, spec) {
         const kick = document.createElement("p");
         kick.className = "dock-kicker";
         kick.textContent = spec.kicker;
         root.appendChild(kick);
         (spec.rows || []).forEach(function (row) {
-          const p = document.createElement("p");
-          p.className = "dock-row";
-          const lab = document.createElement("span");
-          lab.textContent = String(row.label || "") + " ";
-          const val = document.createElement("b");
-          val.textContent = String(row.value || "");
-          p.appendChild(lab);
-          p.appendChild(val);
-          root.appendChild(p);
+          root.appendChild(paintDockRow(row));
         });
         if (spec.body) {
           const body = document.createElement("p");
@@ -1144,10 +1150,23 @@
           if (/\bback\b/i.test(String(q || ""))) demoStep = Math.max(0, demoStep - 1);
           else if (demoStep < last) demoStep += 1;
           paintDemoState();
+          syncInboxType();
         };
+        inboxTypedTo = "";
         paintWalkDesktop();
         highlightWalkWindow("/workspace?id=live-inbox");
         paintDemoState();
+      }
+
+      function syncInboxType() {
+        if (!demo) return;
+        const next = demoStep > 0 ? "Sarah Chen" : "";
+        if (next === inboxTypedTo) return;
+        inboxTypedTo = next;
+        paintWalkDesktop();
+        highlightWalkWindow("/workspace?id=live-inbox");
+        const dock = document.getElementById("walk-dock");
+        if (dock && dock.classList.contains("show")) paintWalkDock("/workspace?id=live-inbox");
       }
 
       function endDrag() {

@@ -1,3 +1,9 @@
+## 2026-08-28 - Got it types Unsent mail To
+
+Demo overlay and home Got it type Sarah Chen into Unsent mail To on
+This computer (starts not sent). Never send. Never Act. P-05 and P-06
+stay parked.
+
 ## 2026-08-28 - Overlay highlights the window; Draw stays a pencil
 
 Demo `/overlay` BOX is a highlight on This computer (To Sarah Chen
