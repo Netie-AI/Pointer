@@ -64,6 +64,8 @@ function test(name, fn) {
     assert.ok(observe.inputSchema.properties.screenshot);
     assert.ok(observe.inputSchema.properties.clipboard);
     assert.ok(observe.inputSchema.properties.selection);
+    assert.ok(observe.inputSchema.properties.captions);
+    assert.match(observe.description, /captions true/);
     const meeting = r.result.catalog.find((t) => t.name === "computer.meeting_assist");
     assert.ok(meeting.inputSchema.properties.kind);
     assert.ok(meeting.inputSchema.properties.screenshot);

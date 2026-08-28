@@ -18,6 +18,7 @@
    and session chips. `GET /api/meeting?pack=1` is one shareable pack.
    Dictation auto-stops at 120s. LIVE captions peek the open utterance
    (partials replace the tail; notes/scribe/commands stay final-only).
+   `GET /api/observe?captions=1` is the same lines for agents.
    BYOK STT/LLM (keys stay OpenVault).
    P-04 parked.
 2. **Generative tools + coworker desks (DR-0004 / DR-0005).** Coordinator

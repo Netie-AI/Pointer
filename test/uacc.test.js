@@ -159,6 +159,7 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("GET /api/observe?screenshot=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?clipboard=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?selection=1"));
+    assert.ok(shown.drive.instructions.includes("GET /api/observe?captions=1"));
     assert.ok(shown.drive.instructions.includes("observe windows include x y width height cx cy"));
     assert.strictEqual(shown.drive.tools, "GET /api/tools");
     assert.match(shown.drive.gated, /dms\/secure/);
@@ -251,6 +252,7 @@ function test(name, fn) {
     assert.strictEqual(obs.screenshot, null);
     assert.strictEqual(obs.clipboard, null);
     assert.strictEqual(obs.selection, null);
+    assert.strictEqual(obs.captions, null);
   });
 
   await test("computer.observe can publish a PNG and clipboard as untrusted data", () => {
@@ -285,6 +287,21 @@ function test(name, fn) {
     });
     assert.strictEqual(tooBig.screenshot.truncated, true);
     assert.strictEqual(tooBig.screenshot.dataUrl, "");
+    const live = computerObserve({
+      captureVisible: true,
+      captions: [
+        { source: "system", text: "can we ship Friday", partial: true },
+        { source: "mic", text: "yes", partial: false },
+      ],
+    });
+    assert.strictEqual(live.captions.present, true);
+    assert.strictEqual(live.captions.lines.length, 2);
+    assert.strictEqual(live.captions.lines[0].partial, true);
+    assert.strictEqual(live.captions.lines[1].text, "yes");
+    assert.match(live.captions.note, /untrusted/);
+    const silent = computerObserve({ captureVisible: true, captions: [] });
+    assert.strictEqual(silent.captions.present, false);
+    assert.deepStrictEqual(silent.captions.lines, []);
   });
 
   await test("computer.observe includes foreground and window list for agents", () => {

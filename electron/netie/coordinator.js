@@ -383,6 +383,7 @@ function createCoordinator(opts = {}) {
                 screenshot: queryFlag(url, "screenshot"),
                 clipboard: queryFlag(url, "clipboard"),
                 selection: queryFlag(url, "selection"),
+                captions: queryFlag(url, "captions"),
               },
             },
             { coordinator: api }
