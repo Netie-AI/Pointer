@@ -135,10 +135,24 @@ function elementClickPoint(el) {
   return windowClickPoint(el);
 }
 
+function aimedElementAction(kind, hit, fallbackName) {
+  const pt = elementClickPoint(hit);
+  if (!pt) return null;
+  const action = { type: kind, target: String((hit && hit.name) || fallbackName || "").trim() };
+  if (pt.xPct != null) {
+    action.xPct = pt.xPct;
+    action.yPct = pt.yPct;
+  } else {
+    action.x = pt.x;
+    action.y = pt.y;
+  }
+  return action;
+}
+
 const MAX_CHAIN = 8;
 
 function looksLocalStep(text) {
-  return /^(?:please\s+)?(?:observe|screenshot|screen info|type\s*:|dictate\s*:|click|doubleclick|rightclick|hover|wait|scroll|press\s+|open\s*:|focus|deliver\s*:|replace\s*:|copy|paste|select)/i.test(
+  return /^(?:please\s+)?(?:observe|screenshot|screen info|type\s+(?:in\s+|into\s+)?(?:element|control)\s*:|type\s*:|dictate\s*:|click|doubleclick|rightclick|hover|wait|scroll|press\s+|open\s*:|focus|deliver\s*:|replace\s*:|copy|paste|select)/i.test(
     String(text || "").trim()
   );
 }
@@ -199,6 +213,17 @@ function planOneInstruction(instruction, opts = {}) {
   if (typed && typed[1].trim()) {
     return { ok: true, source: "type", actions: [{ type: "type", value: typed[1].trim() }] };
   }
+  const typeElement = text.match(
+    /^(?:please\s+)?type\s+(?:in\s+|into\s+)?(?:element|control)\s*:\s*(.+?)\s*(?::|=)\s*([\s\S]+)$/i
+  );
+  if (typeElement && typeElement[1].trim() && typeElement[2].trim()) {
+    const hit = findElement(opts.elements, typeElement[1]);
+    if (!hit) return { ok: false, reason: "no matching element" };
+    const action = aimedElementAction("type", hit, typeElement[1]);
+    if (!action) return { ok: false, reason: "no element rect" };
+    action.value = typeElement[2].trim();
+    return { ok: true, source: "type-element", actions: [action] };
+  }
   const press = text.match(/^(?:please\s+)?press\s+([a-z0-9+]+)$/i);
   if (press) {
     return { ok: true, source: "press", actions: [{ type: "press", value: press[1] }] };
@@ -249,16 +274,8 @@ function planOneInstruction(instruction, opts = {}) {
     const kind = String(elementClick[1] || "click").toLowerCase();
     const hit = findElement(opts.elements, elementClick[2]);
     if (!hit) return { ok: false, reason: "no matching element" };
-    const pt = elementClickPoint(hit);
-    if (!pt) return { ok: false, reason: "no element rect" };
-    const action = { type: kind, target: String(hit.name || elementClick[2]).trim() };
-    if (pt.xPct != null) {
-      action.xPct = pt.xPct;
-      action.yPct = pt.yPct;
-    } else {
-      action.x = pt.x;
-      action.y = pt.y;
-    }
+    const action = aimedElementAction(kind, hit, elementClick[2]);
+    if (!action) return { ok: false, reason: "no element rect" };
     return { ok: true, source: "click-element", actions: [action] };
   }
   for (const kind of ["click", "doubleclick", "rightclick", "hover"]) {

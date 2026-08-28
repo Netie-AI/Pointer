@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Type into an observed element
+
+`type element: Search: hello` clicks the named UIA control then types.
+`GET /api/observe?elements=1` is the dump agents use first. A miss is a
+visible no. Cortex then reviewPlan still gate. No GPLv3 dump. No
+third-party MCP.
+
 ## 2026-08-28 - Click element from observed UIA
 
 `click element: Save` aims at a named control from the observe/UIA dump

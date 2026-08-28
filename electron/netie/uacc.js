@@ -252,6 +252,8 @@ function computerStatus(opts = {}) {
         "click window: notepad",
         "click element: Save",
         "observe then click element: Save",
+        "type element: Search: hello",
+        "GET /api/observe?elements=1",
         "doubleclick 40 50",
         "rightclick: Close",
         "hover 40 50",

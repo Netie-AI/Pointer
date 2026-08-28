@@ -274,6 +274,25 @@ function test(name, fn) {
     assert.strictEqual(chained.actions[0].type, "observe");
     assert.strictEqual(chained.actions[1].xPct, 12);
     assert.strictEqual(chained.actions[2].type, "type");
+    const typedEl = planFromInstruction("type element: Search: hello world", {
+      elements: [{ name: "Search", xPct: 20, yPct: 10 }],
+    });
+    assert.strictEqual(typedEl.ok, true);
+    assert.strictEqual(typedEl.source, "type-element");
+    assert.strictEqual(typedEl.actions[0].type, "type");
+    assert.strictEqual(typedEl.actions[0].value, "hello world");
+    assert.strictEqual(typedEl.actions[0].xPct, 20);
+    assert.strictEqual(typedEl.actions[0].target, "Search");
+    const typedEq = planFromInstruction("type in element: Search = hi", {
+      elements: [{ name: "Search", xPct: 20, yPct: 10 }],
+    });
+    assert.strictEqual(typedEq.actions[0].value, "hi");
+    const typeChain = planFromInstruction("observe then type element: Search: hello", {
+      elements: [{ name: "Search", xPct: 20, yPct: 10 }],
+    });
+    assert.strictEqual(typeChain.source, "chain");
+    assert.strictEqual(typeChain.actions[0].type, "observe");
+    assert.strictEqual(typeChain.actions[1].type, "type");
     const { windowClickPoint } = require("../electron/netie/computer-act");
     const fromBox = windowClickPoint({
       x: 100,
