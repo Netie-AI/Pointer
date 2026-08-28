@@ -493,6 +493,8 @@ function readAsset(file) {
     assert.match(overlayText, /closest\("#walk-ask-form"\)/);
     assert.match(overlayText, /Draft email/);
     assert.match(overlayText, /overlayDeskHref/);
+    assert.match(overlayText, /looksWalkAsk/);
+    assert.match(overlayText, /what should i \(say\|type\|put\)/);
     assert.match(overlayText, /Got it/);
     assert.match(overlayText, /Last step/);
     assert.match(overlayText, /demoFrame/);

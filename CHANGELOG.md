@@ -1,3 +1,10 @@
+## 2026-08-28 - Ask what to type opens Live answer
+
+Ask "what should I type" (or another question) opens Live answer in
+overlay chrome and keeps Type in Email pointing. It does not silently
+Got it. Home Ask stays on This screen the same way. Never send.
+Never speak meeting. Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Overlay chrome does not cover the Email BOX
 
 Honest-stack chrome sits in two columns. Demo This computer and the

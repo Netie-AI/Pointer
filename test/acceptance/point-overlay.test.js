@@ -197,6 +197,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/id="walk-rail"/.test(walk) && /walk-rail-tick/.test(walk), "overlay paints a remaining walk rail");
       assert.ok(/id="walk-chips"/.test(walk) && /Draft email/.test(walk), "overlay chips Ask the next desk");
       assert.ok(/overlayDeskHref/.test(walk) && /live-inbox/.test(walk), "overlay desk chips open fixed workspace ids");
+      assert.ok(/looksWalkAsk/.test(walk) && /what should i \(say\|type\|put\)/.test(walk), "Ask what to type opens Live answer, not Got it");
       assert.ok(/data-desk/.test(walk), "desk chips are not teach advance");
       assert.ok(/ev.key === "Enter"/.test(walk), "Enter Asks Got it");
       assert.ok(/id="walk-ask"/.test(walk) && /id="walk-ask-go"/.test(walk) && /submitWalkAsk/.test(walk), "overlay chrome Ask never Acts");

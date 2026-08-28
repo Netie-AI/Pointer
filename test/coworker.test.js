@@ -224,6 +224,8 @@ test("pickDesk routes Clicky/Cluely/OpenWorker jobs to Pointer desks", () => {
   assert.strictEqual(pickDesk("walk me through this on screen").id, "teach");
   assert.strictEqual(pickDesk("got it, next").id, "teach");
   assert.strictEqual(pickDesk("what should I say").id, "meeting");
+  assert.strictEqual(pickDesk("what should I type").id, "meeting");
+  assert.strictEqual(pickDesk("what should I type in the email").id, "meeting");
   assert.strictEqual(pickDesk("recap this standup").id, "meeting");
   assert.strictEqual(pickDesk("list next steps").id, "meeting");
   assert.strictEqual(pickDesk("write hello in Word").id, "document");
@@ -266,6 +268,7 @@ test("meeting assist ships a brief from the ring without acting", () => {
   assert.doesNotMatch(recap.deliverable, /## Next steps/);
   const assist = meetingAssist({ transcript, question: "what should I say" });
   assert.strictEqual(assist.kind, "assist");
+  assert.strictEqual(meetingAssist({ transcript, question: "what should I type" }).kind, "assist");
   assert.strictEqual(assist.act, false);
   assert.match(assist.deliverable, /launch date/);
   assert.match(assist.deliverable, /will not send/i);
@@ -1017,6 +1020,8 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /closest\("#walk-ask-form"\)/);
   assert.match(teachOverlay, /data-desk/);
   assert.match(teachOverlay, /overlayDeskHref/);
+  assert.match(teachOverlay, /looksWalkAsk/);
+  assert.match(teachOverlay, /what should i \(say\|type\|put\)/);
   assert.match(teachOverlay, /live-inbox/);
   assert.match(teachOverlay, /Enter/);
   const deskHref = teachOverlay.slice(teachOverlay.indexOf("function overlayDeskHref"), teachOverlay.indexOf("function onDesk"));
@@ -1726,6 +1731,7 @@ test("desk chips ask, never act", () => {
   assert.match(demoAskFn, /desk === "meeting"/);
   assert.match(demoAskFn, /!demoInboxSaved\(\)/);
   assert.match(demoAskFn, /revealHomeWindow\("live-inbox"\)/);
+  assert.match(hostApp, /what should i \(say\|type\|put\)/);
   assert.match(hostApp, /demoAskChips/);
   assert.match(hostApp, /host-ask-chips/);
   assert.match(hostApp, /Draft email/);

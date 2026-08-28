@@ -109,6 +109,9 @@ function pickDesk(text, opts = {}) {
   const t = spoken(text);
   if (!t) return DESKS.teach;
 
+  if (/\b(what should i (say|type|put)|what do i (say|type)|what to (say|type))\b/.test(t)) {
+    return DESKS.meeting;
+  }
   if (
     (/\b(meeting|standup|call recap|what should i say|follow-?up questions?|action items?|next steps?)\b/.test(t) ||
       /\brecap\b/.test(t)) &&
@@ -835,7 +838,7 @@ function meetingAssist({ transcript, question, notes } = {}) {
   const q = spoken(question);
   let kind = "recap";
   let explicit = !q;
-  if (/\b(what should i say|assist|reply|respond|answer them)\b/.test(q)) {
+  if (/\b(what should i (say|type|put)|what do i (say|type)|what to (say|type)|assist|reply|respond|answer them)\b/.test(q)) {
     kind = "assist";
     explicit = true;
   }

@@ -934,6 +934,9 @@ function demoAskDesk(ask) {
     return "teach";
   }
   if (/\b(security review|vuln|cve)\b/.test(t)) return "security";
+  if (/\b(what should i (say|type|put)|what do i (say|type)|what to (say|type))\b/.test(t)) {
+    return "meeting";
+  }
   if (/\b(?:microsoft\s+)?word\b/.test(t) || /\bdocx\b/.test(t)) return "document";
   if (/\b(inbox|gmail|outlook|slack reply|email|follow-?up)\b/.test(t)) return "inbox";
   if (

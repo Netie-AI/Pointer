@@ -438,7 +438,7 @@ function localMeetingReply(message, extraTranscript, extra) {
     });
     if (!assist.ok) {
       const q = String(message || "").toLowerCase();
-      if (/\b(recap|what should i say|assist|next steps?|action item)\b/.test(q)) return assist;
+      if (/\b(recap|what should i (say|type|put)|assist|next steps?|action item)\b/.test(q)) return assist;
       return null;
     }
     if (!assist.skipLlm) return null;

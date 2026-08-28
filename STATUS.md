@@ -43,9 +43,9 @@
    Overlay Live answer is They asked / You / Say this / Also /
    Don't say (HUD docks that stack). Chrome keeps that stack plus
    Live / Heard after Ask or Save (never spoken) and sits above
-   This computer so the Email BOX stays clear. Ask Live answer
-   is a side tile until Save. Leftover BOX yields. Back restores.
-   Copy clips that stack. Never a cheater overlay. Never Act.
+   This computer so the Email BOX stays clear. Ask what to type
+   or say is a Live answer side tile until Save. Leftover BOX
+   yields. Back restores. Copy clips that stack. Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next
