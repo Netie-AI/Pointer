@@ -66,6 +66,7 @@ function test(name, fn) {
     assert.ok(observe.inputSchema.properties.selection);
     assert.ok(observe.inputSchema.properties.captions);
     assert.match(observe.description, /captions true/);
+    assert.match(observe.description, /elements=1/);
     const meeting = r.result.catalog.find((t) => t.name === "computer.meeting_assist");
     assert.ok(meeting.inputSchema.properties.kind);
     assert.ok(meeting.inputSchema.properties.screenshot);
@@ -86,6 +87,8 @@ function test(name, fn) {
     assert.ok(scribe.inputSchema.properties.dictate);
     const act = r.result.catalog.find((t) => t.name === "computer.act");
     assert.match(act.description, /focus: notepad then type: hello/);
+    assert.match(act.description, /click element:/);
+    assert.match(act.description, /type element:/);
     assert.match(act.description, /use Claude/);
     assert.match(act.description, /use Cursor/);
     assert.ok(act.inputSchema.properties.mode);

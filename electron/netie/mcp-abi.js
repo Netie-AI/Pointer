@@ -86,7 +86,7 @@ const CATALOG = Object.freeze([
   },
   {
     name: "computer.observe",
-    description: "Foreground window and titled windows with screen rects (x y width height plus center cx cy). Pass elements true for UIA, screenshot true for a PNG, clipboard true for pasteboard text, selection true for focused selected text, captions true for LIVE speech lines (untrusted data; password fields are refused).",
+    description: "Foreground window and titled windows with screen rects (x y width height plus center cx cy). Pass elements true for UIA, screenshot true for a PNG, clipboard true for pasteboard text, selection true for focused selected text, captions true for LIVE speech lines (untrusted data; password fields are refused). GET /api/observe?elements=1 returns those named controls for click element: / type element:.",
     inputSchema: {
       type: "object",
       properties: {
@@ -101,7 +101,7 @@ const CATALOG = Object.freeze([
   {
     name: "computer.act",
     description:
-      "Gated OS actions. instruction plans via recipes then type:/click:/click window:/focus:/open:/deliver:/replace:/wait/scroll/doubleclick/rightclick/hover. Chain local verbs with then: focus: notepad then type: hello or click window: notepad then type: hello. use Claude opens Claude Code while the 5-hour window is open; use Cursor when that limit is used. Clicks and launches need approved true. mode alone switches Agent/General/Transcribe/Scribe/Meeting like the tray (no Cortex).",
+      "Gated OS actions. instruction plans via recipes then type:/type element:/click:/click window:/click element:/focus:/open:/deliver:/replace:/wait/scroll/doubleclick/rightclick/hover. Chain local verbs with then: focus: notepad then type: hello, click window: notepad then type: hello, observe then click element: Save, or type element: Search: hello. use Claude opens Claude Code while the 5-hour window is open; use Cursor when that limit is used. Clicks and launches need approved true. mode alone switches Agent/General/Transcribe/Scribe/Meeting like the tray (no Cortex).",
     inputSchema: {
       type: "object",
       properties: {

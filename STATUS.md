@@ -14,7 +14,9 @@
    keeps going (hands-free). Meeting
    Suggest/Recap/Follow-ups/Email/Actions. HUD lists 12 languages
    (English STT stays auto; Ctrl+Alt+L still English/Traditional Chinese).
-   Teach LINE/PATH/BOX. `click window:` uses observed rects. Privacy
+   Teach LINE/PATH/BOX. `click window:` uses observed rects.
+   `click element:` uses observed UIA names (miss is a visible no).
+   `type element: Search: hello` types into that control. Privacy
    and session chips. `GET /api/meeting?pack=1` is one shareable pack.
    Dictation auto-stops at 120s. LIVE captions peek the open utterance
    (partials replace the tail; notes/scribe/commands stay final-only).

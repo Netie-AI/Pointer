@@ -249,6 +249,50 @@ function test(name, fn) {
     });
     assert.strictEqual(noBox.ok, false);
     assert.strictEqual(noBox.reason, "no window rect");
+    const elClick = planFromInstruction("click element: Save", {
+      elements: [{ name: "Save", xPct: 40, yPct: 82, enabled: true }],
+    });
+    assert.strictEqual(elClick.ok, true);
+    assert.strictEqual(elClick.source, "click-element");
+    assert.strictEqual(elClick.actions[0].type, "click");
+    assert.strictEqual(elClick.actions[0].xPct, 40);
+    assert.strictEqual(elClick.actions[0].yPct, 82);
+    assert.strictEqual(elClick.actions[0].target, "Save");
+    const elMiss = planFromInstruction("click element: Save", { elements: [] });
+    assert.strictEqual(elMiss.ok, false);
+    assert.strictEqual(elMiss.reason, "no matching element");
+    const elNoBox = planFromInstruction("click element: Save", {
+      elements: [{ name: "Save" }],
+    });
+    assert.strictEqual(elNoBox.ok, false);
+    assert.strictEqual(elNoBox.reason, "no element rect");
+    const chained = planFromInstruction("observe then click element: Save then type: hello", {
+      elements: [{ name: "Save", xPct: 12, yPct: 88 }],
+    });
+    assert.strictEqual(chained.ok, true);
+    assert.strictEqual(chained.source, "chain");
+    assert.strictEqual(chained.actions[0].type, "observe");
+    assert.strictEqual(chained.actions[1].xPct, 12);
+    assert.strictEqual(chained.actions[2].type, "type");
+    const typedEl = planFromInstruction("type element: Search: hello world", {
+      elements: [{ name: "Search", xPct: 20, yPct: 10 }],
+    });
+    assert.strictEqual(typedEl.ok, true);
+    assert.strictEqual(typedEl.source, "type-element");
+    assert.strictEqual(typedEl.actions[0].type, "type");
+    assert.strictEqual(typedEl.actions[0].value, "hello world");
+    assert.strictEqual(typedEl.actions[0].xPct, 20);
+    assert.strictEqual(typedEl.actions[0].target, "Search");
+    const typedEq = planFromInstruction("type in element: Search = hi", {
+      elements: [{ name: "Search", xPct: 20, yPct: 10 }],
+    });
+    assert.strictEqual(typedEq.actions[0].value, "hi");
+    const typeChain = planFromInstruction("observe then type element: Search: hello", {
+      elements: [{ name: "Search", xPct: 20, yPct: 10 }],
+    });
+    assert.strictEqual(typeChain.source, "chain");
+    assert.strictEqual(typeChain.actions[0].type, "observe");
+    assert.strictEqual(typeChain.actions[1].type, "type");
     const { windowClickPoint } = require("../electron/netie/computer-act");
     const fromBox = windowClickPoint({
       x: 100,
@@ -327,6 +371,29 @@ function test(name, fn) {
     assert.strictEqual(r.actions[0].type, "click");
     assert.strictEqual(r.actions[0].x, 50);
     assert.strictEqual(r.actions[0].y, 20);
+  });
+
+  await test("computer.act click element: uses observed UIA percents", async () => {
+    const r = await runComputerAct(
+      { instruction: "click element: Save", approved: true },
+      {
+        secure: async () => ({ ok: true }),
+        elements: [{ name: "Save", xPct: 41, yPct: 80 }],
+        execute: async (actions) => actions,
+      }
+    );
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.ran, true);
+    assert.strictEqual(r.actions[0].type, "click");
+    assert.strictEqual(r.actions[0].xPct, 41);
+    assert.strictEqual(r.actions[0].yPct, 80);
+    assert.strictEqual(r.actions[0].target, "Save");
+    const miss = await prepareComputerAct(
+      { instruction: "click element: Save" },
+      { secure: async () => ({ ok: true }), elements: [] }
+    );
+    assert.strictEqual(miss.ok, false);
+    assert.strictEqual(miss.reason, "no matching element");
   });
 
   await test("executor treats absolute x/y as aimed so click window: is not vision re-aimed", () => {
