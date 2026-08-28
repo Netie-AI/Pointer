@@ -159,7 +159,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/id="walk-dock"/.test(walk) && /paintWalkDock/.test(walk) && /walk-filed/.test(walk), "overlay desk chips dock the filed file on the walk");
       assert.ok(/copy\.id = "walk-dock-copy"/.test(walk) && /copyWalkDock/.test(walk) && /navigator\.clipboard\.writeText/.test(walk), "overlay dock Copy is clipboard, never send");
       assert.ok(/html\.demo \.point-face\.field/.test(walk) && /background:\s*transparent/.test(walk), "demo BOX highlights the window instead of covering it");
-      assert.ok(/leftPct:\s*13/.test(walk) && /topPct:\s*23/.test(walk), "demo Email BOX sits on Unsent mail To, not a covering Email face");
+      assert.ok(/leftPct:\s*12/.test(walk) && /topPct:\s*21/.test(walk), "demo Email BOX sits on Unsent mail To, not a covering Email face");
       assert.ok(/stroke-width:\s*1\.35/.test(walk), "overlay Draw ink is a visible pencil");
       assert.ok(/setDraw\(!drawing\)/.test(walk), "Draw stays armed until Draw or Escape");
       assert.ok(/id="walk-desktop"/.test(walk) && /paintWalkDesktop/.test(walk) && /walk-win-inbox/.test(walk), "demo overlay is This computer under the walk");

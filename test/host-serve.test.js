@@ -489,7 +489,7 @@ function readAsset(file) {
     assert.match(overlayText, /not sent/);
     assert.match(overlayText, /spoken \+ "\. Then "/);
     assert.match(overlayText, /spoken \+ "\. Last step"/);
-    assert.match(overlayText, /leftPct: 13/);
+    assert.match(overlayText, /leftPct: 12/);
     assert.match(overlayText, /navigator\.clipboard\.writeText/);
     assert.doesNotMatch(overlayText, /window\.open/);
     assert.doesNotMatch(overlayText, /innerHTML/);
