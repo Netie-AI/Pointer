@@ -393,6 +393,7 @@
       let demoStep = 0;
       let inboxTypedTo = "";
       let inboxSaved = false;
+      let liveAsked = false;
       let lastInboxSaved = false;
       let lastRailPoints = [];
 
@@ -866,6 +867,8 @@
       function openDeskWindow(href) {
         const next = String(href || "");
         if (!next || !/^\/workspace\?id=(live-inbox|live-document|live-security|live-meeting)$/.test(next)) return;
+        if (/live-meeting/.test(next)) liveAsked = true;
+        else if (!inboxSaved) liveAsked = false;
         const line = overlayFiledLine(next);
         const filedEl = document.getElementById("walk-filed");
         if (filedEl) {
@@ -874,6 +877,7 @@
         }
         paintWalkDock(next);
         highlightWalkWindow(next);
+        paintLiveChrome(inboxSaved || liveAsked);
       }
 
       function highlightWalkWindow(href) {
@@ -1137,12 +1141,13 @@
         if (back) back.hidden = !(saved || demoStep > 0);
         if (next) next.hidden = saved;
         if (saved) {
+          liveAsked = true;
           paint([]);
           paintLiveChrome(true);
           paintChrome({ cue: "Saved on This computer", rest: "", fill: "" });
           return;
         }
-        paintLiveChrome(false);
+        paintLiveChrome(liveAsked);
         const pts = demoWalk.map(function (p, i) {
           return Object.assign({}, p, {
             later: i > demoStep,
@@ -1183,6 +1188,7 @@
         });
         if (inboxSaved) {
           inboxSaved = false;
+          liveAsked = false;
           demoStep = demoWalk.length - 1;
         }
         paintDemoState();
@@ -1274,8 +1280,10 @@
         demoAdvance = function (q) {
           const last = demoWalk.length - 1;
           if (/\bback\b/i.test(String(q || ""))) {
-            if (inboxSaved) inboxSaved = false;
-            else demoStep = Math.max(0, demoStep - 1);
+            if (inboxSaved) {
+              inboxSaved = false;
+              liveAsked = false;
+            } else demoStep = Math.max(0, demoStep - 1);
           } else if (demoStep < last) demoStep += 1;
           else inboxSaved = true;
           paintDemoState();
@@ -1283,6 +1291,7 @@
         };
         inboxTypedTo = "";
         inboxSaved = false;
+        liveAsked = false;
         lastInboxSaved = false;
         paintWalkDesktop();
         highlightWalkWindow("/workspace?id=live-inbox");
@@ -1302,10 +1311,19 @@
         highlightWalkWindow(href);
         const filedEl = document.getElementById("walk-filed");
         if (filedEl) {
-          filedEl.hidden = !saved;
-          filedEl.textContent = saved ? "Opened Live answer. Never sent." : "";
+          if (saved) {
+            filedEl.hidden = false;
+            filedEl.textContent = "Opened Live answer. Never sent.";
+          } else if (liveAsked) {
+            filedEl.hidden = false;
+            filedEl.textContent = overlayFiledLine("/workspace?id=live-meeting");
+          } else {
+            filedEl.hidden = true;
+            filedEl.textContent = "";
+          }
         }
         if (saved || wasSaved) hideWalkDock();
+        else if (liveAsked) paintWalkDock("/workspace?id=live-meeting");
         else {
           const dock = document.getElementById("walk-dock");
           if (dock && dock.classList.contains("show")) paintWalkDock(href);

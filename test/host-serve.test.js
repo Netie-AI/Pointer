@@ -501,7 +501,10 @@ function readAsset(file) {
     assert.match(overlayText, /paint\(\[\]\)/);
     assert.match(overlayText, /next\.hidden = saved/);
     assert.match(overlayText, /saved \? "18%" : "72%"/);
-    assert.match(overlayText, /filedEl\.hidden = !saved/);
+    assert.match(overlayText, /filedEl\.hidden = false/);
+    assert.match(overlayText, /else if \(liveAsked\)/);
+    assert.match(overlayText, /let liveAsked = false/);
+    assert.match(overlayText, /paintLiveChrome\(liveAsked\)/);
     assert.match(overlayText, /id="walk-dock"/);
     assert.match(overlayText, /copy\.id = "walk-dock-copy"/);
     assert.match(overlayText, /copyWalkDock/);

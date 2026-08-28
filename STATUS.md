@@ -42,7 +42,7 @@
    answer on overlay and home (never send, never speak meeting).
    Overlay Live answer is They asked / You / Say this / Also /
    Don't say (HUD docks that stack). Chrome keeps They asked /
-   You / Live captions after Save. Leftover BOX yields. Back
+   You / Live captions after Ask or Save. Leftover BOX yields. Back
    restores. Copy clips that stack. Never a cheater overlay.
    Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.

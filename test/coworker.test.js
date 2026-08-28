@@ -985,7 +985,10 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /paint\(\[\]\)/);
   assert.match(teachOverlay, /next\.hidden = saved/);
   assert.match(teachOverlay, /saved \? "18%" : "72%"/);
-  assert.match(teachOverlay, /filedEl\.hidden = !saved/);
+  assert.match(teachOverlay, /filedEl\.hidden = false/);
+  assert.match(teachOverlay, /else if \(liveAsked\)/);
+  assert.match(teachOverlay, /let liveAsked = false/);
+  assert.match(teachOverlay, /paintLiveChrome\(liveAsked\)/);
   assert.match(teachOverlay, /onRailStep/);
   assert.match(teachOverlay, /data-rail/);
   assert.match(teachOverlay, /data-step/);

@@ -1,3 +1,9 @@
+## 2026-08-28 - Overlay Live captions stay after Ask
+
+Ask Live answer keeps They asked / You / Live captions in overlay
+chrome while the Email walk continues (never spoken). Back after
+Save drops them. Never send. Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Overlay Ask stays in fixed chrome
 
 Overlay chrome Ask (never Act) opens the matching This computer
