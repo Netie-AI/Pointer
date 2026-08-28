@@ -35,6 +35,7 @@ Got it on Save files that draft then docks Live answer on overlay and home (neve
 | Word safe API | `electron/netie/word-coworker.js` (`buildDocx` in memory; loopback `/document` downloads it; Word.app write still needs Cortex; public 404) |
 | Driver (SendInput) | `electron/netie/driver.js`, `platform.js` (Act fail-closed off Windows) |
 | Three-OS packs | `electron-builder.yml`, `scripts/pack.js`, `scripts/pack-all.js` (`npm run pack:linux` AppImage, `pack:win` zip/portable, `pack:mac` zip, `pack:all` together) |
+| Liquid glass | `host/glass.css` (HUD copies tokens; overlay/host consume) |
 | Safety / plan-guard | `electron/netie/safety.js`, `plan-guard.js` |
 | STT chain | `electron/netie/transcriber.js` |
 | UI visual refs | `docs/ui-refs/perplexity-computer/INDEX.md` |

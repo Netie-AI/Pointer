@@ -657,6 +657,9 @@ function readAsset(file) {
     const css = await fetch(new Request("https://host.netie.ai/style.css"));
     assert.strictEqual(css.status, 200);
     assert.match(css.headers.get("content-type"), /text\/css/);
+    const glass = await fetch(new Request("https://host.netie.ai/glass.css"));
+    assert.strictEqual(glass.status, 200);
+    assert.match(glass.headers.get("content-type"), /text\/css/);
   });
 
   await test("public fetch does not traverse host/", async () => {

@@ -49,6 +49,7 @@ const PUBLIC_FILES = Object.freeze([
   "workspace.html",
   "overlay.html",
   "style.css",
+  "glass.css",
   "app.js",
 ]);
 const PUBLIC_FILE_SET = new Set(PUBLIC_FILES);

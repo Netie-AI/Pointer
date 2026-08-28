@@ -122,7 +122,10 @@ Baseline probe: `node scripts/stt_baseline.js`. Notes: [`docs/STT_OCR.md`](STT_O
 
 ## Windows-safe visual direction
 
-No `backdrop-filter` in core HUD surfaces (Windows Electron corruption risk). Netie Pointer uses solid frosted panels, spring-style transitions, and press-on-down feedback.
+Liquid glass uses `backdrop-filter` where Chromium supports it (lensing + frost).
+`@supports not` and `prefers-reduced-transparency` fall back to solid frost so
+Windows Electron stays readable if blur corrupts. Spring-style transitions and
+press-on-down stay. No floating Clicky ring.
 
 ## Lag stance
 
