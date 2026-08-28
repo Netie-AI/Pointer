@@ -446,6 +446,7 @@ pre {
 .stage .teach-map {
   height: min(32vh, 280px);
   min-height: 180px;
+  scroll-margin-top: 88px;
 }
 .meeting-card {
   margin: 0 0 12px;

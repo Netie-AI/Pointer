@@ -307,6 +307,7 @@ function readAsset(file) {
     assert.match(cssText, /\.teach-map\.draw/);
     assert.match(cssText, /teach-map\.tap/);
     assert.match(cssText, /workspace-catalog/);
+    assert.match(cssText, /scroll-margin-top/);
     assert.match(cssText, /teach-map-key/);
     assert.match(cssText, /teach-map-hint\.add/);
     assert.match(cssText, /teach-now-pulse/);
