@@ -249,6 +249,10 @@ function readAsset(file) {
     assert.match(app, /paintTeachInk/);
     assert.match(app, /teach-map-ink/);
     assert.match(app, /teachActionLine/);
+    assert.match(app, /showMeeting = !onTeach/);
+    assert.match(app, /onTeach/);
+    assert.match(app, /Then: /);
+    assert.match(app, /canWalk = onTeach &&/);
     assert.match(app, /meeting-card-kicker/);
     assert.match(app, /meeting-card-captions/);
     const cssText = fs.readFileSync(path.join(HOST, "style.css"), "utf8");

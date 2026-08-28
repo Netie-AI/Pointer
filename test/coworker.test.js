@@ -1452,6 +1452,10 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /paintTeachInk/);
   assert.match(hostApp, /teach-map-ink/);
   assert.match(hostApp, /teachActionLine/);
+  assert.match(hostApp, /showMeeting = !onTeach/);
+  assert.match(hostApp, /onTeach/);
+  assert.match(hostApp, /Then: /);
+  assert.match(hostApp, /canWalk = onTeach &&/);
   assert.match(hostApp, /meeting-card-kicker/);
   assert.match(hostApp, /meeting-card-captions/);
   assert.match(hostApp, /Live answer/);
@@ -1593,6 +1597,7 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(capFn, /Live:/);
   assert.match(capFn, /cueCaptionLines/);
   assert.match(capFn, /cueCaptionTurns/);
+  assert.match(capFn, /lastCueKind === "point"/);
   assert.match(hud, /cueCaptionTurns/);
   assert.match(capFn, /textContent/);
   assert.doesNotMatch(capFn, /innerHTML/);

@@ -52,7 +52,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   host chrome paints the same Live captions. `/meeting` paints a Live
   answer card (They asked / last You/Them / Live captions / say-this).
   `/teach` chrome and the walk stage show
-  Click/Type in on the current BOX.
+  Click/Type in on the current BOX (teach-only chrome; meeting live
+  answer stays on `/meeting` and home).
 - Loopback `/meeting` paints You/Them turns from the stored ring.
   Say-this reuses your overlapping line or Heard facts, never an
   unrelated last-you dump. Meeting assist is Say this / Also / Don't say

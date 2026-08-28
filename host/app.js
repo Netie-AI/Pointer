@@ -962,30 +962,39 @@ function paintChrome(home) {
   const meetingCue = String(meeting.cue || s.cue || "").trim();
   const teachCue = String(teach.cue || "").trim();
   const teachAction = String(teach.action || "").trim() || String(teachCue).replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
+  const teachRest = String(teach.rest || "").trim();
   const plate = String(s.plate || "").trim();
   const onTeach = Boolean(document.getElementById("teach-brief"));
+  const onMeeting = Boolean(document.getElementById("meeting-brief"));
+  const onHome = Boolean(document.getElementById("stage"));
+  const showMeeting = !onTeach && (onMeeting || onHome);
   let cueLine = "";
   if (onTeach && teachAction) cueLine = teachAction;
-  else if (asked && meetingCue) cueLine = "Say this: " + meetingCue;
+  else if (showMeeting && asked && meetingCue) cueLine = "Say this: " + meetingCue;
+  else if (onTeach) cueLine = teachAction || String(teachCue).replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
+  else if (showMeeting && meetingCue) cueLine = "Say this: " + meetingCue;
   else if (teachAction) cueLine = teachAction;
-  else if (teachCue) cueLine = teachAction || String(teachCue).replace(/^\d+\s+of\s+\d+\s+/i, "").trim() || teachCue;
   else if (plate) cueLine = "Plate: " + plate;
-  else if (meetingCue) cueLine = "Say this: " + meetingCue;
   const askedEl = document.getElementById("live-cue-asked");
   const heardEl = document.getElementById("live-cue-heard");
   const textEl = document.getElementById("live-cue-text");
   if (askedEl) {
-    askedEl.hidden = !asked;
-    askedEl.textContent = asked ? "They asked: " + asked : "";
+    askedEl.hidden = onTeach || !asked;
+    askedEl.textContent = !onTeach && asked ? "They asked: " + asked : "";
   }
   if (heardEl) {
-    heardEl.hidden = !heard;
-    heardEl.textContent = heard ? "Heard: " + heard : "";
+    if (onTeach) {
+      heardEl.hidden = !teachRest;
+      heardEl.textContent = teachRest ? "Then: " + teachRest : "";
+    } else {
+      heardEl.hidden = !heard;
+      heardEl.textContent = heard ? "Heard: " + heard : "";
+    }
   }
   const themEl = document.getElementById("live-cue-them");
   const youEl = document.getElementById("live-cue-you");
-  const themLine = lastTalkLine(meeting.turns, "them");
-  const youLine = lastTalkLine(meeting.turns, "you");
+  const themLine = showMeeting ? lastTalkLine(meeting.turns, "them") : "";
+  const youLine = showMeeting ? lastTalkLine(meeting.turns, "you") : "";
   const themShow = Boolean(themLine && themLine !== asked);
   const youShow = Boolean(youLine);
   if (themEl) {
@@ -998,8 +1007,8 @@ function paintChrome(home) {
   }
   const alsoEl = document.getElementById("live-cue-also");
   const avoidEl = document.getElementById("live-cue-avoid");
-  const also = String(meeting.also || "").trim();
-  const avoid = String(meeting.avoid || "").trim();
+  const also = showMeeting ? String(meeting.also || "").trim() : "";
+  const avoid = showMeeting ? String(meeting.avoid || "").trim() : "";
   if (alsoEl) {
     alsoEl.hidden = !also;
     alsoEl.textContent = also ? "Also: " + also : "";
@@ -1009,7 +1018,7 @@ function paintChrome(home) {
     avoidEl.textContent = avoid ? "Don't say: " + avoid : "";
   }
   const cap = document.getElementById("live-cue-captions");
-  const capRows = Array.isArray(meeting.captions) ? meeting.captions : [];
+  const capRows = showMeeting && Array.isArray(meeting.captions) ? meeting.captions : [];
   if (cap) {
     cap.replaceChildren();
     capRows.forEach(function (row) {
@@ -1022,9 +1031,9 @@ function paintChrome(home) {
     cap.hidden = !cap.childNodes.length;
   }
   if (textEl) textEl.textContent = cueLine;
-  lastChromeCue = (onTeach && teachAction) || meetingCue || teachAction || teachCue || plate;
+  lastChromeCue = onTeach ? teachAction || teachCue : meetingCue || teachAction || plate;
   bar.hidden = false;
-  const canWalk = Boolean(teach.advance);
+  const canWalk = onTeach && Boolean(teach.advance);
   const back = document.getElementById("live-cue-back");
   const next = document.getElementById("live-cue-next");
   const copy = document.getElementById("live-cue-copy");

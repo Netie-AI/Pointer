@@ -17,7 +17,9 @@
    send, never a stealth overlay). The HUD and loopback host cue bars keep
    that stack plus last You/Them and Live captions (STT or stored ring)
    when chrome hides. `/teach` sticky chrome and the walk stage show
-   Click/Type in on the current BOX (not `Next: N of M`). Loopback `/`
+   Click/Type in on the current BOX (not `Next: N of M`). `/teach` sticky
+   chrome is teach-only (Then / Got it). `/meeting` and home keep the
+   live answer. Loopback `/`
    paints teach path, meeting card, Today plate,
    and filed work cards. `/meeting` is a live answer: They asked, last
    You/Them, Live captions, and say-this (never a cheater overlay).

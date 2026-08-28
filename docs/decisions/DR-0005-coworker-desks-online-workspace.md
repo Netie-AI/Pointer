@@ -152,7 +152,8 @@ HUD live cue bar paints last system STT lines as Live captions when
 the rest of HUD hides (duplicate They asked / Them stay off; never a
 floating LIVE bar). Compact HUD falls back to the stored meeting ring
 when STT is quiet. Loopback host chrome paints the same Live captions
-and shows Click/Type in on `/teach` (not `Next: 1 of 3`). Loopback
+and shows Click/Type in on `/teach` (not `Next: 1 of 3`). `/teach` chrome
+is teach-only; `/meeting` and home keep the live answer. Loopback
 `/meeting` paints a Live answer card with They asked, last You/Them,
 Live captions, and say-this (never a cheater overlay). Loopback
 `/workspace?id=` opens the file: live-document downloads the generated

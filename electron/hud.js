@@ -138,6 +138,13 @@ function lastTalkLine(turns, speaker) {
 function paintLiveCueCaptions() {
   const cap = $("live-cue-captions");
   if (!cap) return false;
+  if (lastCueKind === "point" || lastCueKind === "warn") {
+    cap.replaceChildren();
+    cap.hidden = true;
+    const bar = $("live-cue-bar");
+    if (bar) bar.hidden = !cueBarHasBrief;
+    return false;
+  }
   cap.replaceChildren();
   let rows = typeof cueCaptionLines === "function"
     ? cueCaptionLines(liveFeed.lines(), { asked: lastCueAsked, them: lastThemLine, max: 2 })

@@ -1,3 +1,10 @@
+## 2026-08-28 - Teach chrome stays teach-only
+
+Loopback `/teach` sticky chrome hides meeting They asked / Live captions
+/ Don't say. Then / Got it stay. `/meeting` and home keep the live
+answer. HUD teach briefs skip Live captions. Never Act. Never a buddy.
+Never a cheater overlay. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Meeting live answer and teach action labels
 
 Loopback `/meeting` paints a Live answer card: They asked, last You/Them,

@@ -32,7 +32,7 @@ teach path, meeting say-this card, Today plate, and filed inbox/Word/security
 work cards. `/meeting` paints a Live answer (They asked / last You/Them /
 Live captions / say-this). Loopback host pages keep They asked / Heard / Live captions /
 Click/Type in in sticky chrome
-(Back / Got it Ask, never Act). Loopback
+(Back / Got it Ask, never Act). `/teach` chrome is teach-only. Loopback
 `/teach` draws a read-only box map from measured markers and Back / Got
 it Ask the next step on loopback (never Act). A tap inside the current BOX
 is Got it (Ask, never Act). Draw around a control to
