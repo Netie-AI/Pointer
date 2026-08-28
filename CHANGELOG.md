@@ -2,6 +2,15 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - UIA ValuePattern for named fields
+
+HeyClicky-class: `fill: Search: hello` and `type in: Search: hello`
+try Windows ValuePattern on the foreground named Edit before
+SendInput. No SetCursorPos. Chrome often ignores SetValue; that miss
+falls back to click-the-field then type. `set: Search: hello` is
+ValuePattern only. Password boxes refuse. Cortex gate unchanged.
+No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Observe LIVE captions for agents
 
 Loopback `computer.observe` and `GET /api/observe?captions=1` return the

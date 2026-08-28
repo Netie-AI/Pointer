@@ -29,7 +29,7 @@ const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
 const { ensureActionCoords, hasScreenPoint } = require("./netie/targeting");
-const { dumpForeground, readSelection, listControls } = require("./netie/uia");
+const { dumpForeground, readSelection, listControls, setValueControl } = require("./netie/uia");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
@@ -902,6 +902,7 @@ const driver = new InputDriver({
   dryRun: process.env.NETIE_CLICK_DRY_RUN === "1",
   // Worker is per-monitor DPI aware → feed it physical pixels, not DIPs.
   toPhysical: (pt) => screen.dipToScreenPoint(pt),
+  uiaSet: (target, value) => setValueControl(target, value, { run: runUiaProbe }),
 });
 
 /** OpenWillow hold-to-talk; Willow double-tap stays hands-free. Session owns the 120s cap. */
@@ -2872,6 +2873,28 @@ async function executeApproved(actions, opts = {}) {
       }
 
       const started = Date.now();
+      // HeyClicky-class: ValuePattern on a named field before screenshot or
+      // SendInput. No SetCursorPos. Chrome often ignores SetValue; that miss
+      // falls through to click-the-field then type. Password boxes refuse.
+      const namedFill =
+        ["type", "fill", "setvalue"].includes(String(action.type || "").toLowerCase()) &&
+        String(action.target || "").trim() &&
+        String(action.value ?? "") !== "";
+      let setEarly = null;
+      if (
+        namedFill &&
+        !driver.dryRun &&
+        UIA_ENABLED &&
+        process.platform === "win32" &&
+        uiaFailures < 3
+      ) {
+        try {
+          setEarly = await setValueControl(action.target, action.value, { run: runUiaProbe });
+        } catch (err) {
+          setEarly = { ok: false, reason: String(err.message || err) };
+        }
+      }
+      const skipAim = Boolean(setEarly && setEarly.ok);
       // Refresh the screenshot before aiming, so targets created by earlier
       // steps (a launched app, an opened dialog) are actually visible.
       let refreshedView = false;
@@ -2880,7 +2903,9 @@ async function executeApproved(actions, opts = {}) {
       // switch. Absolute x/y (click window: center) counts as aimed; an
       // xPct-only check used to throw those points away and call vision.
       const mustReaim =
-        needsFreshView(action.type) && (action._reaim === true || !hasScreenPoint(action));
+        !skipAim &&
+        needsFreshView(action.type) &&
+        (action._reaim === true || !hasScreenPoint(action));
       if (!driver.dryRun && mustReaim) {
         try {
           await captureDisplayCrop(null);
@@ -2891,11 +2916,13 @@ async function executeApproved(actions, opts = {}) {
       }
       const { region, dataUrl } = currentView();
       const aimSource = refreshedView ? stripAimCoords(action) : action;
-      const enriched = await ensureActionCoords(aimSource, {
-        dataUrl,
-        eco,
-        uia: uiaContext(region),
-      });
+      const enriched = skipAim
+        ? { ...action, _targetedVia: "uia-set" }
+        : await ensureActionCoords(aimSource, {
+            dataUrl,
+            eco,
+            uia: uiaContext(region),
+          });
       // Auto-swap Windows pointer face per action (click vs type/agent).
       try {
         const face = modeForAction(enriched.type);
@@ -2913,6 +2940,12 @@ async function executeApproved(actions, opts = {}) {
         sendHudQuiet({
           type: "insight",
           text: `Aiming “${enriched.target || enriched.type}” by vision — the OS could not name that control.`,
+        });
+      }
+      if (skipAim) {
+        sendHudQuiet({
+          type: "insight",
+          text: `Set “${enriched.target}” without moving the cursor.`,
         });
       }
       sendStage({
@@ -2954,7 +2987,19 @@ async function executeApproved(actions, opts = {}) {
 
       let outcome;
       try {
-        outcome = await driver.perform(enriched, { region });
+        if (skipAim) {
+          outcome = {
+            ok: true,
+            type: enriched.type,
+            via: "uia-set",
+            name: setEarly.name,
+            typed: String(enriched.value ?? "").length,
+            keepCursor: true,
+            keepFocus: true,
+          };
+        } else {
+          outcome = await driver.perform(enriched, { region });
+        }
       } catch (err) {
         outcome = { ok: false, error: String(err.message || err) };
       }

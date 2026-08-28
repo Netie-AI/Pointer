@@ -290,6 +290,60 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
       assert.ok(/IsPassword/.test(uia.buildSelectionScript()), "probe must refuse password boxes");
       assert.ok(/TextPattern/.test(uia.buildSelectionScript()), "probe must use TextPattern");
     }),
+
+    T("setValueControl ValuePattern-fills a named Edit without moving the cursor", async () => {
+      const scripts = [];
+      const r = await uia.setValueControl("Search", "hello", {
+        run: async (script) => {
+          scripts.push(script);
+          if (/ValuePattern/.test(script)) {
+            return JSON.stringify({ ok: true, set: true, name: "Search", controlType: "Edit" });
+          }
+          return JSON.stringify([
+            { name: "Save", controlType: "Button", enabled: true, rect: rect(0, 0, 80, 30) },
+            { name: "Search", controlType: "Edit", enabled: true, rect: rect(40, 10, 200, 24) },
+          ]);
+        },
+      });
+      assert.strictEqual(r.ok, true);
+      assert.strictEqual(r.via, "uia-set");
+      assert.strictEqual(r.name, "Search");
+      assert.ok(scripts.some((s) => /ValuePattern/.test(s)));
+      assert.ok(!/SetCursorPos|SendInput|mouse_event/.test(scripts.join("\n")));
+      assert.ok(uia.canSetValue({ name: "Search", controlType: "Edit" }));
+      assert.strictEqual(uia.canSetValue({ name: "Save", controlType: "Button" }), false);
+      assert.ok(/IsPassword/.test(uia.buildSetValueScript("Search", "Edit", "x")));
+      const quoted = uia.buildSetValueScript("O'Brien", "Edit", "it's");
+      assert.ok(quoted.includes("$want='O''Brien'"));
+      assert.ok(quoted.includes("$val='it''s'"));
+    }),
+
+    T("setValueControl miss, Button, and password are a visible no", async () => {
+      const btn = await uia.setValueControl("Save", "x", {
+        run: async () =>
+          JSON.stringify([{ name: "Save", controlType: "Button", enabled: true, rect: rect(0, 0, 80, 30) }]),
+      });
+      assert.strictEqual(btn.ok, false);
+      const miss = await uia.setValueControl("Search", "hello", {
+        run: async () =>
+          JSON.stringify([{ name: "Name", controlType: "Edit", enabled: true, rect: rect(0, 0, 80, 20) }]),
+      });
+      assert.strictEqual(miss.ok, false);
+      const pwd = uia.parseSetValueOutput(JSON.stringify({ ok: false, reason: "password" }));
+      assert.strictEqual(pwd.ok, false);
+      assert.strictEqual(pwd.blocked, true);
+      const empty = await uia.setValueControl("Search", "", { run: async () => "[]" });
+      assert.strictEqual(empty.ok, false);
+      const boom = await uia.setValueControl("Search", "x", {
+        run: async () => {
+          throw new Error("powershell timed out");
+        },
+      });
+      assert.strictEqual(boom.ok, false);
+      const main = fs.readFileSync(path.join(ROOT, "electron/main.js"), "utf8");
+      assert.ok(main.includes("setValueControl"), "named fill must try UIA SetValue before SendInput");
+      assert.ok(main.includes("uia-set"), "a successful SetValue must be visible on the outcome");
+    }),
   ];
 
   const ok = await suite.run(tests);
