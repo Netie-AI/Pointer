@@ -57,7 +57,8 @@ paints those files as a desktop grid (click to open, Run still refused).
 Opening a Teach walk paints This screen. Opening a Meeting paints the
 Live answer. Opening a Word file paints Notes. Opening unsent mail
 paints a compose window (never send). Opening a review paints Needs you
-(never approve). Home theater cards include Open in workspace.
+(never approve). Loopback `/document` `/inbox` `/security` paint the
+same windows. Home theater cards include Open in workspace.
 Loopback `/document`
 downloads a generated `.docx` from the live draft (never Act, never
 Word.app). Public `/api/document.docx` is 404. Loopback `/meeting` paints the You/Them

@@ -307,6 +307,11 @@ function readAsset(file) {
     assert.match(app, /applyOpenDocument/);
     assert.match(app, /applyOpenInbox/);
     assert.match(app, /applyOpenSecurity/);
+    assert.match(app, /function applyLiveRoom/);
+    const liveRoom = app.slice(app.indexOf("function applyLiveRoom"), app.indexOf("function paintLiveRoom"));
+    assert.match(liveRoom, /applyOpenDocument/);
+    assert.match(liveRoom, /applyOpenInbox/);
+    assert.match(liveRoom, /applyOpenSecurity/);
     assert.match(app, /paintDeskWindow/);
     assert.match(app, /desk-window/);
     assert.doesNotMatch(app, /id="inbox-send"|Send mail/);

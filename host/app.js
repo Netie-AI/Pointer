@@ -961,7 +961,9 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
           ? "Say this: "
           : (m && m.desk) === "today"
             ? "Plate: "
-            : "Review: ";
+            : (m && m.desk) === "document" || (m && m.desk) === "inbox"
+              ? ""
+              : "Review: ";
     const line = (m && m.desk) === "teach" ? teachActionLine(m) || text : text;
     cue.hidden = !line;
     cue.textContent = line ? prefix + line : "";
@@ -991,13 +993,29 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
   paintTeachMap(page, m, pageId === "teach-brief" ? { draw: true, apply: function (next) { applyLiveRoom(page, pageId, cueId, askedId, refuse, next); } } : undefined);
   paintMeetingCard(page, m);
   paintTalk(page, m);
-  paintInboxCard(page, m);
-  paintDocumentCard(page, m);
-  paintSecurityCard(page, m);
-  const pre = el("pre");
-  pre.textContent = (m && m.deliverable) || "";
-  page.appendChild(pre);
-  setBriefButtons((m && m.deliverable) || "", (m && m.desk) || "brief", Boolean(m && m.localFirst));
+  const desk = String((m && m.desk) || "").toLowerCase();
+  const body = String((m && m.deliverable) || "");
+  const art = {
+    title: (m && m.artifact && m.artifact.title) || "",
+    cue: (m && m.cue) || "",
+    preview: (m && m.preview) || "",
+    findings: (m && m.findings) || [],
+  };
+  if (desk === "document") {
+    applyOpenDocument(page, art, body);
+  } else if (desk === "inbox") {
+    applyOpenInbox(page, art, body);
+  } else if (desk === "security") {
+    applyOpenSecurity(page, art, body);
+  } else {
+    paintInboxCard(page, m);
+    paintDocumentCard(page, m);
+    paintSecurityCard(page, m);
+    const pre = el("pre");
+    pre.textContent = body;
+    page.appendChild(pre);
+  }
+  setBriefButtons(body, (m && m.desk) || "brief", Boolean(m && m.localFirst));
   setFinishedDownloads(m, m);
   return !(m && m.localFirst);
 }
@@ -1792,7 +1810,7 @@ function paintRooms(rooms, localFirst) {
     const cue = el("p", "muted");
     const cueText = String(r.cue || "").trim();
     if (cueText) {
-      const prefix = id === "teach" ? "" : id === "meeting" ? "Say this: " : id === "today" ? "Plate: " : "Review: ";
+      const prefix = id === "teach" ? "" : id === "meeting" ? "Say this: " : id === "today" ? "Plate: " : id === "document" || id === "inbox" ? "" : "Review: ";
       const line = id === "teach" ? teachActionLine(r) || cueText : cueText;
       cue.textContent = prefix + line;
     } else {

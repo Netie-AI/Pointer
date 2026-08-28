@@ -1,3 +1,9 @@
+## 2026-08-28 - Desk rooms paint Notes, unsent mail, and Needs you
+
+Loopback `/document` paints a Notes window. `/inbox` paints Unsent
+mail (never send). `/security` paints Needs you (never approve). Same
+windows as This computer. Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - This computer opens Notes, unsent mail, and Needs you
 
 Opening a Word file on `/workspace` paints a Notes window. Opening

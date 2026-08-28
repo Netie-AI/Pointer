@@ -1542,6 +1542,16 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /applyOpenSecurity/);
   assert.match(hostApp, /paintDeskWindow/);
   assert.match(hostApp, /paintOpenFileBody/);
+  assert.match(hostApp, /desk === "document"/);
+  assert.match(hostApp, /desk === "inbox"/);
+  assert.match(hostApp, /desk === "security"/);
+  const liveRoom = hostApp.slice(hostApp.indexOf("function applyLiveRoom"), hostApp.indexOf("function paintLiveRoom"));
+  assert.match(liveRoom, /applyOpenDocument/);
+  assert.match(liveRoom, /applyOpenInbox/);
+  assert.match(liveRoom, /applyOpenSecurity/);
+  assert.match(fs.readFileSync(path.join(__dirname, "..", "host", "document.html"), "utf8"), /Notes from this laptop/);
+  assert.match(fs.readFileSync(path.join(__dirname, "..", "host", "inbox.html"), "utf8"), /Unsent mail from this laptop/);
+  assert.match(fs.readFileSync(path.join(__dirname, "..", "host", "security.html"), "utf8"), /Needs you from this laptop/);
   assert.match(hostApp, /## Draft to write/);
   assert.match(hostApp, /teachActionLine/);
   assert.match(hostApp, /showMeeting = !onTeach/);
