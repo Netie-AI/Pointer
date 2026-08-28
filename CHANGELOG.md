@@ -1,3 +1,9 @@
+## 2026-08-27 - Teach walk keeps the freehand stroke
+
+Loopback `/teach` and the overlay keep the drawn polyline on each BOX
+(not only the bounding rect). Later ink stays dashed. Never Act. Never
+a buddy. Public catalog stays empty. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Loopback /security downloads a generated review
 
 Loopback GET `/api/security.md` returns a redacted markdown review from

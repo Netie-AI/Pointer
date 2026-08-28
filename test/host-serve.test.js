@@ -246,9 +246,12 @@ function readAsset(file) {
     assert.match(app, /hitTeachBox/);
     assert.match(app, /i clicked/);
     assert.match(app, /teach-map-stroke/);
+    assert.match(app, /paintTeachInk/);
+    assert.match(app, /teach-map-ink/);
     const cssText = fs.readFileSync(path.join(HOST, "style.css"), "utf8");
     assert.match(cssText, /56vh/);
     assert.match(cssText, /teach-map-stroke/);
+    assert.match(cssText, /teach-map-ink/);
     assert.match(cssText, /teach-map-cue/);
     assert.match(cssText, /teach-map-mark/);
     assert.match(cssText, /teach-map-rail/);

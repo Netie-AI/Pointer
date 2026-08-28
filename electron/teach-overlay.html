@@ -33,20 +33,25 @@
       }
       #walk-chrome.show { display: inline-flex; }
       body.draw { pointer-events: auto; cursor: crosshair; }
-      #draw-stroke {
+      #draw-stroke, #walk-ink {
         position: absolute;
         inset: 0;
         width: 100%;
         height: 100%;
-        z-index: 3;
         pointer-events: none;
       }
-      #draw-stroke polyline {
+      #draw-stroke { z-index: 3; }
+      #walk-ink { z-index: 2; }
+      #draw-stroke polyline, #walk-ink polyline {
         fill: none;
         stroke: #9ad;
         stroke-width: 0.55;
         stroke-linecap: round;
         stroke-linejoin: round;
+      }
+      #walk-ink polyline.then, #walk-ink polyline.done {
+        stroke: #567;
+        stroke-width: 0.45;
       }
       #draw-ghost {
         position: absolute;
@@ -164,6 +169,7 @@
       <button type="button" id="walk-next" data-q="got it, next">Got it</button>
       <button type="button" id="walk-draw">Draw</button>
     </div>
+    <svg id="walk-ink" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
     <svg id="draw-stroke" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
     <div id="draw-ghost" class="point-mark point-box" hidden></div>
     <div id="point-layer" aria-hidden="true"></div>
@@ -228,6 +234,32 @@
           }
           layer.appendChild(mark);
         });
+        paintWalkInk(points);
+      }
+
+      function paintWalkInk(points) {
+        const ink = document.getElementById("walk-ink");
+        if (!ink) return;
+        while (ink.firstChild) ink.removeChild(ink.firstChild);
+        let n = 0;
+        (points || []).forEach(function (point) {
+          const pts = point && Array.isArray(point.stroke) ? point.stroke : [];
+          if (pts.length < 2) return;
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+          line.setAttribute(
+            "points",
+            pts
+              .map(function (p) {
+                return Number(p.x) + " " + Number(p.y);
+              })
+              .join(" ")
+          );
+          if (point.later) line.classList.add("then");
+          if (point.done) line.classList.add("done");
+          ink.appendChild(line);
+          n += 1;
+        });
+        ink.hidden = n === 0;
       }
 
       function paintChrome(event) {

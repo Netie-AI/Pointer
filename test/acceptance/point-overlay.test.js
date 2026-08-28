@@ -64,14 +64,16 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.strictEqual(held.ttlMs, 0);
       assert.strictEqual(held.points[0].kind, "box");
       const path = [
-        { now: true, later: false, leftPct: 5, topPct: 8, wPct: 20, hPct: 3, label: "1 Email" },
-        { now: false, later: true, leftPct: 20, topPct: 40, wPct: 10, hPct: 4, label: "2 Save" },
+        { now: true, later: false, leftPct: 5, topPct: 8, wPct: 20, hPct: 3, label: "1 Email", stroke: [{ x: 5, y: 8 }, { x: 25, y: 11 }] },
+        { now: false, later: true, leftPct: 20, topPct: 40, wPct: 10, hPct: 4, label: "2 Save", stroke: [{ x: 20, y: 40 }, { x: 30, y: 44 }] },
       ];
       const walked = po.toOverlayEvent("[BOX:5,8,20,3:1 Email]", { hold: true, path });
       assert.strictEqual(walked.hold, true);
       assert.ok(walked.points.some((p) => p.later && /Save/.test(p.label)));
       assert.ok(walked.points.some((p) => !p.later && !p.done && /Email/.test(p.label)));
       assert.ok(!walked.points.some((p) => p.later && /Email/.test(p.label)));
+      assert.ok(walked.points.some((p) => p.later && Array.isArray(p.stroke) && p.stroke.length >= 2));
+      assert.ok(walked.points.some((p) => !p.later && !p.done && Array.isArray(p.stroke) && p.stroke.length >= 2));
       const acted = po.toOverlayEvent("[BOX:5,8,20,3:1 Email]", {
         hold: true,
         cue: "1 of 2 Type in Email then Tab",
@@ -140,6 +142,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/pointer-events:\s*none/.test(walk), "the screen walk must not eat clicks");
       assert.ok(/id="walk-draw"/.test(walk) && />Draw</.test(walk), "overlay can stack a drawn BOX");
       assert.ok(/id="draw-stroke"/.test(walk), "overlay paints the freehand stroke");
+      assert.ok(/id="walk-ink"/.test(walk), "overlay keeps stored freehand ink");
+      assert.ok(/paintWalkInk/.test(walk), "stored ink is SVG, not innerHTML");
       assert.ok(/createElementNS/.test(walk), "stroke is SVG, not innerHTML");
       assert.ok(/teach-overlay:frame/.test(walk), "drawn overlay boxes POST a region, never Act");
       assert.ok(/Got it/.test(walk) && /data-q="got it, next"/.test(walk), "Got it Asks, never Acts");

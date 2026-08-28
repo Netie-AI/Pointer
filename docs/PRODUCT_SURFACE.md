@@ -35,7 +35,7 @@ Click/Type in in sticky chrome
 `/teach` draws a read-only box map from measured markers and Back / Got
 it Ask the next step on loopback (never Act). A tap inside the current BOX
 is Got it (Ask, never Act). Draw around a control to
-stack a BOX. Copy next / Copy say-this
+stack a BOX and keep the freehand stroke on the walk. Copy next / Copy say-this
 copy the cue line. Overlay current BOX shows Click / Type in / Look at
 (not only `1 Save`). Loopback `/meeting` Ask chips file an unsent follow-up
 and a Word draft from the stored transcript (never send, never Word.app,

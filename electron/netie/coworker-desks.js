@@ -1408,31 +1408,39 @@ function framedRegionPoint(region, display) {
 const MAX_TEACH_STROKE = 80;
 
 /**
- * Clicky-shaped freehand: the human's stroke, Pointer stores the
- * bounding BOX. Tiny or one-axis scratches fail closed. Never Act.
+ * Clicky-shaped freehand: keep the human's stroke in display percents.
+ * Tiny or one-axis scratches still fail closed at the BOX. Never Act.
  */
-function boundsFromStroke(stroke) {
-  if (!Array.isArray(stroke) || stroke.length < 2) return null;
+function normalizeStroke(stroke) {
+  if (!Array.isArray(stroke)) return [];
+  const out = [];
   const limit = Math.min(stroke.length, MAX_TEACH_STROKE);
-  let x0 = Infinity;
-  let y0 = Infinity;
-  let x1 = -Infinity;
-  let y1 = -Infinity;
-  let n = 0;
   for (let i = 0; i < limit; i++) {
     const p = stroke[i];
     const x = Number(p && (p.x != null ? p.x : p.xPct));
     const y = Number(p && (p.y != null ? p.y : p.yPct));
     if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-    const cx = Math.max(0, Math.min(100, x));
-    const cy = Math.max(0, Math.min(100, y));
-    x0 = Math.min(x0, cx);
-    y0 = Math.min(y0, cy);
-    x1 = Math.max(x1, cx);
-    y1 = Math.max(y1, cy);
-    n += 1;
+    out.push({
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+    });
   }
-  if (n < 2) return null;
+  return out.length >= 2 ? out : [];
+}
+
+function boundsFromStroke(stroke) {
+  const pts = normalizeStroke(stroke);
+  if (pts.length < 2) return null;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (let i = 0; i < pts.length; i++) {
+    x0 = Math.min(x0, pts[i].x);
+    y0 = Math.min(y0, pts[i].y);
+    x1 = Math.max(x1, pts[i].x);
+    y1 = Math.max(y1, pts[i].y);
+  }
   return clipBox(x0, y0, x1 - x0, y1 - y0);
 }
 
@@ -1505,7 +1513,8 @@ function markFromControl(control, screen, index) {
   if (!box || !pct) return null;
   const name = String((control && control.name) || `region ${index + 1}`).slice(0, 40) || `region ${index + 1}`;
   const via = String((control && control.via) || "");
-  return {
+  const stroke = normalizeStroke(control && control.stroke);
+  const mark = {
     xPct: pct.xPct,
     yPct: pct.yPct,
     name,
@@ -1518,6 +1527,8 @@ function markFromControl(control, screen, index) {
     hPct: box.hPct,
     via: via || (String((control && control.controlType) || "") === "Pane" ? "frame" : "uia"),
   };
+  if (stroke.length) mark.stroke = stroke;
+  return mark;
 }
 
 function marksFromStoredWalk(controls, screen) {
@@ -1614,12 +1625,17 @@ function freezeBox(box) {
 function freezeTeachLive(spec) {
   if (!spec || typeof spec !== "object") return undefined;
   const controls = Array.isArray(spec.controls)
-    ? spec.controls.slice(0, 8).map((c) => ({
-        name: String((c && c.name) || "").slice(0, 40),
-        controlType: String((c && c.controlType) || "Pane").slice(0, 40),
-        rect: freezeBox(c && c.rect) || { x: 0, y: 0, width: 0, height: 0 },
-        via: String((c && c.via) || "").slice(0, 16),
-      }))
+    ? spec.controls.slice(0, 8).map((c) => {
+        const row = {
+          name: String((c && c.name) || "").slice(0, 40),
+          controlType: String((c && c.controlType) || "Pane").slice(0, 40),
+          rect: freezeBox(c && c.rect) || { x: 0, y: 0, width: 0, height: 0 },
+          via: String((c && c.via) || "").slice(0, 16),
+        };
+        const stroke = normalizeStroke(c && c.stroke);
+        if (stroke.length) row.stroke = stroke;
+        return row;
+      })
     : [];
   const framed = Boolean(spec.framed);
   if (!controls.length && !framed) return undefined;
@@ -1731,12 +1747,14 @@ function frameLiveTeach(workspace, spec) {
     };
   }
   const region = pctToRegion(box, screen);
+  const stroke = normalizeStroke(spec && spec.stroke);
   const next = {
     name: `region ${existing.length + 1}`,
     controlType: "Pane",
     rect: region,
     via: "frame",
   };
+  if (stroke.length) next.stroke = stroke;
   const assist = teachAssist({
     text: FRAME_TEACH_TEXT,
     controls: existing.concat([next]),
@@ -1828,20 +1846,24 @@ function teachKeyName(point) {
 function teachPathMarks(measured, idx) {
   const list = Array.isArray(measured) ? measured : [];
   const now = Number.isInteger(idx) && idx >= 0 ? idx : 0;
-  return list.map((p, i) => ({
-    step: i,
-    now: i === now,
-    later: i > now,
-    label: `${i + 1} ${String((p && p.name) || "control").slice(0, 40)}`.trim(),
-    cue: teachStepPhrase(p),
-    key: teachKeyName(p),
-    xPct: p && p.xPct,
-    yPct: p && p.yPct,
-    leftPct: p && p.leftPct,
-    topPct: p && p.topPct,
-    wPct: p && p.wPct,
-    hPct: p && p.hPct,
-  }));
+  return list.map((p, i) => {
+    const row = {
+      step: i,
+      now: i === now,
+      later: i > now,
+      label: `${i + 1} ${String((p && p.name) || "control").slice(0, 40)}`.trim(),
+      cue: teachStepPhrase(p),
+      key: teachKeyName(p),
+      xPct: p && p.xPct,
+      yPct: p && p.yPct,
+      leftPct: p && p.leftPct,
+      topPct: p && p.topPct,
+      wPct: p && p.wPct,
+      hPct: p && p.hPct,
+    };
+    if (Array.isArray(p && p.stroke) && p.stroke.length >= 2) row.stroke = p.stroke;
+    return row;
+  });
 }
 
 function teachWalkPath(live) {
@@ -1950,12 +1972,16 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
       : [],
     path: current ? teachPathMarks(measured, idx) : [],
     live: freezeTeachLive({
-      controls: measured.map((p) => ({
-        name: p.name,
-        controlType: p.controlType || "Pane",
-        rect: rectFromPct(p, screen),
-        via: p.via || "",
-      })),
+      controls: measured.map((p) => {
+        const row = {
+          name: p.name,
+          controlType: p.controlType || "Pane",
+          rect: rectFromPct(p, screen),
+          via: p.via || "",
+        };
+        if (Array.isArray(p.stroke) && p.stroke.length >= 2) row.stroke = p.stroke;
+        return row;
+      }),
       screen,
       region,
       framed,

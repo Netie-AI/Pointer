@@ -1,6 +1,6 @@
 # coworker desks + online workspace
 
-keywords: desks, meeting assist, meeting llm enrich, teach stack boxes, teach click box got it, teach overlay click-through, workspace.exec, document.docx download, inbox.eml download, security.md download, meeting cue live captions host, teach action chrome, DR-0005, Clicky, Cluely, OpenWorker, Computer
+keywords: desks, meeting assist, meeting llm enrich, teach stack boxes, teach click box got it, teach overlay click-through, teach stroke ink, workspace.exec, document.docx download, inbox.eml download, security.md download, meeting cue live captions host, teach action chrome, DR-0005, Clicky, Cluely, OpenWorker, Computer
 main_idea: Pointer beats those products with original desks and a public artifact catalog. Do not vendor their source or unlock P-06.
 
 ## What we studied
@@ -40,10 +40,11 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - Loopback `/teach` paints a large walk stage from measured BOX/POINT
   (Next/Then on the stage, never invented coords, never Act). Draw
   around a control on that stage to stack numbered BOX regions in
-  display percents (current hold, later dashed, cap 8). A click-through
+  display percents (current hold, later dashed, cap 8). The walk keeps
+  that freehand stroke on each BOX. A click-through
   laptop overlay paints that walk on the display when HUD hides, with
   Click/Type in on the current BOX, tap current BOX is Got it, fixed Next / Then / Back / Got it Ask and Draw for a freehand stroke
-  that stores a BOX (never a buddy).
+  that stores a BOX plus the ink (never a buddy).
 - HUD insight paints the same You/Them talk in fixed chrome (never a
   bubble, never a cheater overlay). The live cue bar keeps They asked /
   last You/Them / Live system captions / Say this / Also / Don't say when the rest of HUD chrome hides.

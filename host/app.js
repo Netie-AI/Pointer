@@ -1154,6 +1154,32 @@ function wireTeachFrame(map, apply, current) {
   });
 }
 
+function paintTeachInk(map, boxes) {
+  if (!map) return;
+  const inked = (boxes || []).filter(function (p) {
+    return p && Array.isArray(p.stroke) && p.stroke.length >= 2;
+  });
+  if (!inked.length) return;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "teach-map-ink");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+  inked.forEach(function (p) {
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    line.setAttribute(
+      "points",
+      p.stroke
+        .map(function (pt) {
+          return Number(pt.x) + " " + Number(pt.y);
+        })
+        .join(" ")
+    );
+    line.setAttribute("class", p.now ? "now" : p.later ? "then" : "done");
+    svg.appendChild(line);
+  });
+  map.appendChild(svg);
+}
+
 function paintTeachMap(root, m, opts) {
   if (!root || (m && m.desk && m.desk !== "teach") || (m && m.localFirst)) return;
   const draw = Boolean(opts && opts.draw) && !(m && m.localFirst) && !(m && m.exec);
@@ -1205,6 +1231,7 @@ function paintTeachMap(root, m, opts) {
     }
     map.appendChild(box);
   });
+  paintTeachInk(map, boxes);
   dots.forEach((p) => {
     const mark = el("div", "teach-map-mark");
     mark.style.left = Number(p.xPct) + "%";

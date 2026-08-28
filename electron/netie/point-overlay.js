@@ -93,6 +93,20 @@ function hasPoints(raw) {
   return parsePoints(raw).points.length > 0;
 }
 
+function clipStroke(stroke) {
+  if (!Array.isArray(stroke)) return [];
+  const out = [];
+  const limit = Math.min(stroke.length, 80);
+  for (let i = 0; i < limit; i++) {
+    const p = stroke[i];
+    const x = Number(p && (p.x != null ? p.x : p.xPct));
+    const y = Number(p && (p.y != null ? p.y : p.yPct));
+    if (!inRange(x) || !inRange(y)) continue;
+    out.push({ x, y });
+  }
+  return out.length >= 2 ? out : [];
+}
+
 function laterOverlayPoints(path) {
   const list = Array.isArray(path) ? path : [];
   const out = [];
@@ -100,7 +114,7 @@ function laterOverlayPoints(path) {
     if (p && p.now) continue;
     const box = clipBox(Number(p && p.leftPct), Number(p && p.topPct), Number(p && p.wPct), Number(p && p.hPct));
     if (!box || out.length >= MAX_POINTS) continue;
-    out.push({
+    const row = {
       xPct: box.leftPct + box.wPct / 2,
       yPct: box.topPct + box.hPct / 2,
       leftPct: box.leftPct,
@@ -111,7 +125,10 @@ function laterOverlayPoints(path) {
       kind: "box",
       later: Boolean(p && p.later),
       done: !Boolean(p && p.later),
-    });
+    };
+    const stroke = clipStroke(p && p.stroke);
+    if (stroke.length) row.stroke = stroke;
+    out.push(row);
   }
   return out;
 }
@@ -168,6 +185,8 @@ function stampCurrentAction(points, opts) {
     const next = Object.assign({}, p);
     if (action) next.label = action;
     if (key) next.key = key;
+    const stroke = clipStroke(now && now.stroke);
+    if (stroke.length) next.stroke = stroke;
     return next;
   });
 }

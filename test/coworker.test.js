@@ -682,7 +682,8 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(corners.ok, true);
   assert.strictEqual(corners.act, false);
   assert.match(corners.deliverable, /\[BOX:20,40,10,10:1 region 1\]/);
-  const strokeBox = frameLiveTeach(createWorkspace({ clock: () => 10.5 }), {
+  const strokeWs = createWorkspace({ clock: () => 10.5 });
+  const strokeBox = frameLiveTeach(strokeWs, {
     stroke: [
       { x: 20, y: 40 },
       { x: 30, y: 40 },
@@ -694,6 +695,22 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.strictEqual(strokeBox.ok, true);
   assert.strictEqual(strokeBox.act, false);
   assert.match(strokeBox.deliverable, /\[BOX:20,40,10,10:1 region 1\]/);
+  assert.ok(Array.isArray(strokeBox.path[0].stroke));
+  assert.ok(strokeBox.path[0].stroke.length >= 2);
+  assert.strictEqual(strokeBox.path[0].stroke[0].x, 20);
+  const storedStroke = strokeWs.get("live-teach");
+  assert.ok(Array.isArray(storedStroke.artifact.live.controls[0].stroke));
+  assert.ok(storedStroke.artifact.live.controls[0].stroke.length >= 2);
+  const moreInk = frameLiveTeach(strokeWs, {
+    leftPct: 50,
+    topPct: 20,
+    wPct: 12,
+    hPct: 8,
+  });
+  assert.strictEqual(moreInk.ok, true);
+  assert.ok(Array.isArray(moreInk.path[0].stroke));
+  assert.ok(!moreInk.path[1].stroke);
+  assert.ok(strokeWs.get("live-teach").artifact.live.controls[0].stroke.length >= 2);
   const skinny = frameLiveTeach(createWorkspace({ clock: () => 10.6 }), {
     stroke: [
       { x: 10, y: 10 },
@@ -847,6 +864,8 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /id="walk-draw"/);
   assert.match(teachOverlay, />Draw</);
   assert.match(teachOverlay, /id="draw-stroke"/);
+  assert.match(teachOverlay, /id="walk-ink"/);
+  assert.match(teachOverlay, /paintWalkInk/);
   assert.match(teachOverlay, /createElementNS/);
   assert.match(teachOverlay, /stroke:/);
   assert.match(teachOverlay, /teach-overlay:frame/);
@@ -1429,6 +1448,8 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /postTeachFrame/);
   assert.match(hostApp, /Draw another BOX to add a step/);
   assert.match(hostApp, /stroke:/);
+  assert.match(hostApp, /paintTeachInk/);
+  assert.match(hostApp, /teach-map-ink/);
   assert.match(hostApp, /paintChrome/);
   assert.match(hostApp, /setFinishedDownloads/);
   assert.match(hostApp, /report-download/);
