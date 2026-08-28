@@ -1,3 +1,9 @@
+## 2026-08-28 - Talk asks about this BOX
+
+Talk in overlay/home chrome Asks about the current BOX (what should I
+type / say) and opens Live answer. No Chromium SpeechRecognition. Never
+send. Never speak meeting. Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Show me speaks the walk and flies the BOX
 
 Show me in overlay/home chrome speaks Click/Type in, flies a laser

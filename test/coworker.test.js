@@ -1016,6 +1016,10 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /id="walk-chips"/);
   assert.match(teachOverlay, /id="walk-ask"/);
   assert.match(teachOverlay, /id="walk-ask-go"/);
+  assert.match(teachOverlay, /id="walk-talk"/);
+  assert.match(teachOverlay, /talkAboutNow/);
+  assert.match(teachOverlay, /overlayTalk/);
+  assert.doesNotMatch(teachOverlay, /SpeechRecognition/);
   assert.match(teachOverlay, /submitWalkAsk/);
   assert.match(teachOverlay, /closest\("#walk-ask-form"\)/);
   assert.match(teachOverlay, /data-desk/);
@@ -1792,6 +1796,9 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /live-cue-show/);
   assert.match(hostApp, /toggleHostShowMe/);
   assert.match(hostApp, /chromeBtn\("live-cue-show", "Show me"\)/);
+  assert.match(hostApp, /host-ask-talk/);
+  assert.match(hostApp, /function talkAboutNow/);
+  assert.doesNotMatch(hostApp, /SpeechRecognition/);
   assert.match(hostApp, /live-cue-captions/);
   assert.match(hostApp, /Live:/);
   assert.doesNotMatch(hostApp, /innerHTML/);

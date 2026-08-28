@@ -489,6 +489,8 @@ function readAsset(file) {
     assert.match(overlayText, /id="walk-chips"/);
     assert.match(overlayText, /id="walk-ask"/);
     assert.match(overlayText, /id="walk-ask-go"/);
+    assert.match(overlayText, /id="walk-talk"/);
+    assert.match(overlayText, /talkAboutNow/);
     assert.match(overlayText, /submitWalkAsk/);
     assert.match(overlayText, /closest\("#walk-ask-form"\)/);
     assert.match(overlayText, /Draft email/);

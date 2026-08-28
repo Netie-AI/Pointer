@@ -399,6 +399,7 @@
       </p>
       <form id="walk-ask-form">
         <input id="walk-ask" type="text" autocomplete="off" aria-label="Ask the coworker" placeholder="Ask the coworker (never Act)" />
+        <button type="button" id="walk-talk" title="Ask about this BOX (never Act)">Talk</button>
         <button type="submit" id="walk-ask-go">Ask</button>
       </form>
     </div>
@@ -1196,6 +1197,20 @@
           });
       }
 
+      function talkAboutNow() {
+        const cue = String((cueEl && cueEl.textContent) || "").trim();
+        if (/^type in\b/i.test(cue)) return "what should I type?";
+        return "what should I say?";
+      }
+
+      function overlayTalk() {
+        stopShowMe();
+        const q = talkAboutNow();
+        const input = document.getElementById("walk-ask");
+        if (input) input.value = q;
+        submitWalkAsk();
+      }
+
       function submitWalkAsk() {
         const input = document.getElementById("walk-ask");
         const q = String((input && input.value) || "").trim();
@@ -1216,6 +1231,11 @@
         if (ev.target && ev.target.closest && ev.target.closest("#walk-show")) {
           ev.preventDefault();
           toggleShowMe();
+          return;
+        }
+        if (ev.target && ev.target.closest && ev.target.closest("#walk-talk")) {
+          ev.preventDefault();
+          overlayTalk();
           return;
         }
         if (ev.target && ev.target.closest && ev.target.closest("#walk-stack-copy")) {

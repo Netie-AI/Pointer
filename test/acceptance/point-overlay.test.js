@@ -203,6 +203,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/data-desk/.test(walk), "desk chips are not teach advance");
       assert.ok(/ev.key === "Enter"/.test(walk), "Enter Asks Got it");
       assert.ok(/id="walk-ask"/.test(walk) && /id="walk-ask-go"/.test(walk) && /submitWalkAsk/.test(walk), "overlay chrome Ask never Acts");
+      assert.ok(/id="walk-talk"/.test(walk) && /talkAboutNow/.test(walk) && /overlayTalk/.test(walk), "Talk asks about this BOX without a mic STT path");
+      assert.ok(!/SpeechRecognition/.test(walk), "overlay Talk does not ship mic audio to Chromium SpeechRecognition");
       assert.ok(/closest\("#walk-ask-form"\)/.test(walk), "Enter in overlay Ask submits Ask, not Got it");
       assert.ok(!/Send mail|Approve/.test(walk), "overlay never sends or approves");
       assert.ok(/demoFrame/.test(walk) && /0\.4/.test(walk), "demo overlay Draw stacks a BOX with the 0.4% floor");

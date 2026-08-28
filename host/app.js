@@ -1034,6 +1034,12 @@ function demoAsk(ask) {
   if (revealHomeWindow(id)) return;
 }
 
+function talkAboutNow() {
+  const text = String((document.getElementById("live-cue-text") || {}).textContent || "").trim();
+  if (/^type in\b/i.test(text)) return "what should I type?";
+  return "what should I say?";
+}
+
 function postAsk(ask) {
   stopHostShowMe();
   if (isDemoCatalog()) {
@@ -1538,7 +1544,13 @@ function ensureLiveCueBar() {
   go.id = "host-ask-go";
   go.type = "submit";
   go.textContent = "Ask";
+  const talk = el("button");
+  talk.id = "host-ask-talk";
+  talk.type = "button";
+  talk.title = "Ask about this BOX (never Act)";
+  talk.textContent = "Talk";
   form.appendChild(input);
+  form.appendChild(talk);
   form.appendChild(go);
   const filed = el("p", "muted");
   filed.id = "host-filed";
@@ -1557,6 +1569,10 @@ function ensureLiveCueBar() {
     const q = String(input.value || "").trim();
     if (!q) return;
     postAsk(q);
+  });
+  talk.addEventListener("click", function () {
+    stopHostShowMe();
+    postAsk(talkAboutNow());
   });
   return bar;
 }
