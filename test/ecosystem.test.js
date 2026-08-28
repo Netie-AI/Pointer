@@ -253,6 +253,25 @@ test("visionChat uses live chatUrl; custody stays on OpenVault", async () => {
   assert.ok(html.includes('id="set-llm-model"'));
 });
 
+test("visionChat asks the model to emit Clicky overlay tokens", async () => {
+  const f = mockFetch([
+    ["/dms/secure", { json: { ok: true, blocked: false, text: "how do I save" } }],
+    ["/v1/chat/completions", { json: { choices: [{ message: { content: "Click [BOX:10,20,30,12:Save]." } }] } }],
+    ["/dms/audit/append", { json: { ok: true } }],
+  ]);
+  const eco = new NetieEcosystem({ fetchImpl: f });
+  const r = await eco.visionChat({ message: "how do I save" });
+  assert.strictEqual(r.ok, true);
+  const chat = f.calls.find((c) => c.url.includes("/v1/chat/completions"));
+  assert.ok(chat && chat.body && chat.body.messages);
+  const system = String(chat.body.messages[0].content || "");
+  assert.match(system, /\[POINT:/);
+  assert.match(system, /\[LINE:/);
+  assert.match(system, /\[PATH:/);
+  assert.match(system, /\[BOX:/);
+  assert.match(system, /never act/i);
+});
+
 // ── driver: run sequentially, await each ─────────────────────────────────────
 (async () => {
   for (const { name, fn } of tests) {

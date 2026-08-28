@@ -23,7 +23,7 @@
    HUD Ask and MCP plan those verbs locally (still Cortex-gated).
    Autostart is a setting. `wait` / `scroll` / `doubleclick` / `rightclick` /
    `hover` / `replace:` plan locally. `focus: notepad then type: hello`
-   chains local verbs. Ask captures a fresh screen (Clicky sees-what-you-see). Ctrl+Enter is
+   chains local verbs. Ask captures a fresh screen (Clicky sees-what-you-see, overlay tokens). Ctrl+Enter is
    Cluely Assist (meeting say, or "what am I looking at"). Copy notes and
    `GET /api/meeting?export=1` share live markdown. Copy recap / Copy say /
    Copy email / Copy actions plus `?recap=1` `?say=1` `?email=1` `?actions=1` from main. MCP meeting

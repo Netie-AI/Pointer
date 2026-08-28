@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Ask emits Clicky overlay tokens
+
+visionChat tells the model to include POINT/LINE/PATH/BOX percents so the
+HUD can draw a teach frame. Tokens stay stripped from chat. Still never
+acts from screen text. GitHub CI on this account is still a spending-limit
+cutoff (0 steps), not a product fail. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Clicky BOX teach frames on the HUD
 
 HeyClicky-class overlay: Ask answers may include `[BOX:x,y,w,h:Save]` (or RECT)
