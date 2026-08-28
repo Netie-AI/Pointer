@@ -959,6 +959,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /speechSynthesis/);
   assert.match(teachOverlay, /speakTeachCue/);
   assert.doesNotMatch(teachOverlay, /Say this:/);
+  assert.match(teachOverlay, /if \(demo\) demoAdvance\(q\)/);
   const overlayAsk = main.slice(main.indexOf('ipcMain.handle("teach-overlay:ask"'), main.indexOf('ipcMain.handle("hud:setMode"'));
   assert.match(overlayAsk, /teachAdvance/);
   assert.match(overlayAsk, /act: false/);

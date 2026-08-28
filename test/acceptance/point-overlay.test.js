@@ -163,6 +163,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/Type in Email/.test(walk) && /Click Save/.test(walk), "demo walk is Email then Save, not hollow regions");
       assert.ok(/teach-now-pulse/.test(walk) && /speechSynthesis/.test(walk), "overlay speaks Click/Type in and pulses the current BOX");
       assert.ok(/speakTeachCue/.test(walk), "overlay speak is teach-only");
+      assert.ok(/if \(demo\) demoAdvance\(q\)/.test(walk), "demo overlay Got it advances without Electron");
       const hudJs = read("electron/hud.js");
       assert.ok(/point-face/.test(hudJs) && /overlayControlFace/.test(hudJs), "HUD paints the same control faces");
       assert.ok(/speakTeachCue/.test(hudJs) && /kind === "point"\) speakTeachCue/.test(hudJs), "HUD speaks teach cues only");

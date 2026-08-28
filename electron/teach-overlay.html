@@ -455,9 +455,13 @@
         }
         const btn = ev.target && ev.target.closest ? ev.target.closest("button[data-q]") : null;
         const q = btn && String(btn.getAttribute("data-q") || "").trim();
-        if (!q || !api || typeof api.invoke !== "function") return;
+        if (!q) return;
         ev.preventDefault();
-        api.invoke("teach-overlay:ask", { message: q, act: false });
+        if (api && typeof api.invoke === "function") {
+          api.invoke("teach-overlay:ask", { message: q, act: false });
+          return;
+        }
+        if (demo) demoAdvance(q);
       }
 
       if (chromeBar) chromeBar.addEventListener("click", onAdvance);
@@ -535,8 +539,10 @@
           { leftPct: 52, topPct: 52, wPct: 22, hPct: 12, label: "Click Save", face: "button", caption: "Save" },
         ];
         let demoStep = 0;
-        demoAdvance = function () {
-          if (demoStep < demoWalk.length - 1) demoStep += 1;
+        demoAdvance = function (q) {
+          const last = demoWalk.length - 1;
+          if (/\bback\b/i.test(String(q || ""))) demoStep = Math.max(0, demoStep - 1);
+          else if (demoStep < last) demoStep += 1;
           const pts = demoWalk.map(function (p, i) {
             return Object.assign({}, p, {
               later: i > demoStep,
