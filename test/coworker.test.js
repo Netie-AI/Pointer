@@ -1591,8 +1591,16 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /speakTeachCue/);
   assert.match(hostApp, /speechSynthesis/);
   assert.match(hostApp, /isDemoPage/);
+  assert.match(hostApp, /isDemoCatalog/);
+  assert.match(hostApp, /paintDemoIfPublic/);
+  assert.match(hostApp, /demoCatalogOn = true/);
+  assert.match(hostApp, /paintingDemo/);
+  assert.match(hostApp, /if \(demoCatalogOn\) return true/);
+  assert.match(hostApp, /if \(paintingDemo\) return false/);
   assert.match(hostApp, /demoHome/);
   assert.match(hostApp, /Demo catalog/);
+  const pollLive = hostApp.slice(hostApp.indexOf("function pollWhileLive"), hostApp.indexOf("function paintDesks"));
+  assert.match(pollLive, /isDemoCatalog/);
   assert.match(hostApp, /if \(onTeach\) speakTeachCue/);
   assert.match(hostApp, /showMeeting = !onTeach/);
   assert.match(hostApp, /onTeach/);

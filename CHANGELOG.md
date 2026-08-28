@@ -1,3 +1,10 @@
+## 2026-08-28 - Public host paints the sample coworker
+
+Public localFirst pages paint the labeled demo catalog (This screen,
+Live answer, Notes, Unsent mail, Needs you). Not your session. Live
+APIs stay 404. Ask stays on the laptop. Run still refuses (P-06).
+Never Act. P-05 stays parked.
+
 ## 2026-08-28 - Teach speaks the current BOX; demo catalog is online
 
 OS voice speaks Click/Type in on the current BOX (overlay, HUD, `/teach`).

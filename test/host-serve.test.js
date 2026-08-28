@@ -173,6 +173,7 @@ function readAsset(file) {
     assert.match(homeText, /id="rooms"/);
     assert.match(homeText, /room-dock/);
     assert.match(homeText, /This computer/);
+    assert.match(homeText, /sample coworker/);
     assert.match(homeText, /Demo coworker/);
     assert.match(homeText, /id="stage"/);
     assert.match(homeText, /id="session"/);
@@ -271,8 +272,16 @@ function readAsset(file) {
     assert.match(app, /teachActionLine/);
     assert.match(app, /speakTeachCue/);
     assert.match(app, /isDemoPage/);
+    assert.match(app, /isDemoCatalog/);
+    assert.match(app, /paintDemoIfPublic/);
+    assert.match(app, /demoCatalogOn = true/);
+    assert.match(app, /paintingDemo/);
+    assert.match(app, /if \(demoCatalogOn\) return true/);
+    assert.match(app, /if \(paintingDemo\) return false/);
     assert.match(app, /demoHome/);
     assert.match(app, /Demo catalog/);
+    const pollLive = app.slice(app.indexOf("function pollWhileLive"), app.indexOf("function paintDesks"));
+    assert.match(pollLive, /isDemoCatalog/);
     assert.match(app, /if \(onTeach\) speakTeachCue/);
     assert.match(app, /showMeeting = !onTeach/);
     assert.match(app, /onTeach/);

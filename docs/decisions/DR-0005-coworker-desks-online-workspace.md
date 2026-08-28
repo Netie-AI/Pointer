@@ -185,3 +185,5 @@ Public POST
 OS voice speaks Click/Type in on the current BOX (overlay, HUD, `/teach`);
 never meeting. Current BOX pulses in place (not a cursor ring). `?demo=1`
 is a sample catalog (not live, no runtime, Ask stays on the laptop).
+Public localFirst pages paint that same labeled demo (not your session).
+Live APIs stay 404.

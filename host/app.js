@@ -21,11 +21,28 @@ function isDemoPage() {
   }
 }
 
+let demoCatalogOn = false;
+let paintingDemo = false;
+function isDemoCatalog() {
+  return isDemoPage() || demoCatalogOn;
+}
+
 function demoHref(path) {
   const href = String(path || "");
   if (!isDemoPage()) return href;
   if (/[?&]demo=1(?:&|$)/.test(href)) return href;
   return href.indexOf("?") >= 0 ? href + "&demo=1" : href + "?demo=1";
+}
+
+function paintDemoIfPublic(snapshot) {
+  if (paintingDemo) return false;
+  if (demoCatalogOn) return true;
+  if (snapshot && snapshot.exec) return false;
+  if (isDemoPage() || (snapshot && snapshot.localFirst)) {
+    applyDemoCatalog();
+    return true;
+  }
+  return false;
 }
 
 let lastSpokenTeach = "";
@@ -51,6 +68,10 @@ function pollWhileLive(load) {
   let timer = null;
   function tick() {
     if (typeof document !== "undefined" && document.hidden) return;
+    if (isDemoCatalog()) {
+      arm(false);
+      return;
+    }
     load();
   }
   function arm(keep) {
@@ -545,7 +566,7 @@ function paintOpenFileBody(root, body, text) {
   const art = body && body.artifact;
   const desk = String((art && art.desk) || "").toLowerCase();
   const id = String((art && art.id) || "").toLowerCase();
-  if (isDemoPage()) {
+  if (isDemoCatalog()) {
     const home = demoHome();
     if (desk === "teach" || id === "live-teach") {
       applyOpenTeach(root, home.rooms.teach);
@@ -617,7 +638,7 @@ function paintOpenFileBody(root, body, text) {
 function openArtifact(id) {
   const root = document.getElementById("artifact-body");
   if (!root || !id) return;
-  if (isDemoPage()) {
+  if (isDemoCatalog()) {
     openDemoArtifact(id);
     return;
   }
@@ -790,6 +811,7 @@ if (workspacePage) {
         });
         return false;
       }
+      if (paintDemoIfPublic(ws) || paintDemoIfPublic(state)) return false;
       show(
         "policy",
         (ws && ws.reason) || "workspace has no runtime; Act stays on the laptop"
@@ -834,6 +856,7 @@ function applyToday(t) {
     show("policy", "refused: today must not grow a runtime");
     return false;
   }
+  if (paintDemoIfPublic(t)) return false;
   show("policy", (t && t.reason) || "standing brief; Act stays on the laptop");
   const plate = document.getElementById("today-cue-web");
   const plateText = String((t && t.cue) || "").trim();
@@ -888,7 +911,7 @@ function pageDesk() {
 }
 
 function postAsk(ask) {
-  if (isDemoPage()) {
+  if (isDemoCatalog()) {
     const line = "Demo catalog. Ask stays on the laptop. Never Act.";
     ["host-filed", "today-filed", "artifact-filed", "meeting-filed"].forEach(function (id) {
       const filed = document.getElementById(id);
@@ -1065,6 +1088,7 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
     show("policy", refuse || "refused: coworker room must not grow a runtime");
     return false;
   }
+  if (paintDemoIfPublic(m)) return false;
   show("policy", (m && m.reason) || "live coworker; Act stays on the laptop");
   const cue = cueId ? document.getElementById(cueId) : null;
   const text = String((m && m.cue) || "").trim();
@@ -1154,7 +1178,7 @@ function paintMeetingChips(chips) {
 }
 
 function postMeeting(ask) {
-  if (isDemoPage()) {
+  if (isDemoCatalog()) {
     postAsk(ask);
     return;
   }
@@ -1189,7 +1213,7 @@ function postMeeting(ask) {
 }
 
 function postTeach(ask, apply) {
-  if (isDemoPage()) {
+  if (isDemoCatalog()) {
     demoAdvanceTeach(ask);
     const m = demoTeachRoom();
     if (typeof apply === "function") apply(m);
@@ -1459,7 +1483,7 @@ function hitTeachBox(box, xPct, yPct) {
 }
 
 function postTeachFrame(box, apply) {
-  if (isDemoPage()) {
+  if (isDemoCatalog()) {
     const filed = document.getElementById("host-filed");
     if (filed) {
       filed.hidden = false;
@@ -2181,6 +2205,7 @@ if (roomsPage) {
           show("policy", "refused: home must not grow a runtime");
           return false;
         }
+        if (paintDemoIfPublic(h)) return false;
         show("policy", (h && h.reason) || "live coworker rooms; Act stays on the laptop");
         paintRooms((h && h.rooms) || {}, Boolean(h && h.localFirst));
         paintStage((h && h.rooms) || {}, Boolean(h && h.localFirst));
@@ -2201,6 +2226,7 @@ if (lanesPage) {
           show("policy", "refused: lanes must not grow a runtime");
           return false;
         }
+        if (paintDemoIfPublic(s)) return false;
         show(
           "policy",
           s && s.localFirst
@@ -2219,6 +2245,11 @@ if (skillsPage) {
     return fetch("/api/state")
       .then((r) => r.json())
       .then((s) => {
+        if (s && s.exec) {
+          show("policy", "refused: skills must not grow a runtime");
+          return false;
+        }
+        if (paintDemoIfPublic(s)) return false;
         show(
           "policy",
           s && s.localFirst
@@ -2248,6 +2279,7 @@ if (!document.getElementById("rooms")) {
       .then((r) => r.json())
       .then(function (h) {
         if (h && h.exec) return false;
+        if (paintDemoIfPublic(h)) return false;
         paintChrome(h);
         return !(h && h.localFirst);
       });
@@ -2489,34 +2521,41 @@ function openDemoArtifact(id) {
 }
 
 function applyDemoCatalog() {
-  const home = demoHome();
-  show("policy", home.reason);
-  show("hint", home.reason);
-  paintComputerDock({ localFirst: false, reason: home.reason });
-  paintDesks(home.desks);
-  artifactCache = home.artifacts || [];
-  paintArtifacts(home.artifacts || []);
-  paintRooms(home.rooms, false);
-  paintStage(home.rooms, false);
-  paintSession(home.session, false);
-  paintChrome(home);
-  if (pageDesk() === "today") applyToday(home.rooms.today);
-  const pages = [
-    ["teach-brief", "teach-cue-web", "refused: teach must not grow a runtime", null, home.rooms.teach],
-    ["meeting-brief", "meeting-cue-web", "refused: meeting must not grow a runtime", "meeting-asked-web", home.rooms.meeting],
-    ["document-brief", "document-cue-web", "refused: document must not grow a runtime", null, home.rooms.document],
-    ["inbox-brief", "inbox-cue-web", "refused: inbox must not grow a runtime", null, home.rooms.inbox],
-    ["security-brief", "security-cue-web", "refused: security must not grow a runtime", null, home.rooms.security],
-  ];
-  pages.forEach(function (row) {
-    const page = document.getElementById(row[0]);
-    if (!page) return;
-    applyLiveRoom(page, row[0], row[1], row[3], row[2], row[4]);
-  });
-  if (!openedQueryId) {
-    openedQueryId = true;
-    const qid = workspaceQueryId();
-    if (qid) openDemoArtifact(qid);
+  if (paintingDemo) return;
+  paintingDemo = true;
+  demoCatalogOn = true;
+  try {
+    const home = demoHome();
+    show("policy", home.reason);
+    show("hint", home.reason);
+    paintComputerDock({ localFirst: false, reason: home.reason });
+    paintDesks(home.desks);
+    artifactCache = home.artifacts || [];
+    paintArtifacts(home.artifacts || []);
+    paintRooms(home.rooms, false);
+    paintStage(home.rooms, false);
+    paintSession(home.session, false);
+    paintChrome(home);
+    if (pageDesk() === "today") applyToday(home.rooms.today);
+    const pages = [
+      ["teach-brief", "teach-cue-web", "refused: teach must not grow a runtime", null, home.rooms.teach],
+      ["meeting-brief", "meeting-cue-web", "refused: meeting must not grow a runtime", "meeting-asked-web", home.rooms.meeting],
+      ["document-brief", "document-cue-web", "refused: document must not grow a runtime", null, home.rooms.document],
+      ["inbox-brief", "inbox-cue-web", "refused: inbox must not grow a runtime", null, home.rooms.inbox],
+      ["security-brief", "security-cue-web", "refused: security must not grow a runtime", null, home.rooms.security],
+    ];
+    pages.forEach(function (row) {
+      const page = document.getElementById(row[0]);
+      if (!page) return;
+      applyLiveRoom(page, row[0], row[1], row[3], row[2], row[4]);
+    });
+    if (!openedQueryId) {
+      openedQueryId = true;
+      const qid = workspaceQueryId();
+      if (qid) openDemoArtifact(qid);
+    }
+  } finally {
+    paintingDemo = false;
   }
 }
 
