@@ -128,6 +128,15 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(html.includes('id="session-chip"'), "session chip stays in fixed top chrome");
       assert.ok(html.includes('id="btn-scribe-retry"'), "Scribe Retry stays in fixed top chrome");
       assert.ok(html.includes('id="btn-scribe-paste"'), "Scribe Paste as-is stays in fixed top chrome");
+      const langSel = html.slice(
+        html.indexOf('id="set-scribe-language"'),
+        html.indexOf("</select>", html.indexOf('id="set-scribe-language"'))
+      );
+      assert.strictEqual((langSel.match(/<option /g) || []).length, 12, "Cluely 12-language HUD list");
+      assert.ok(langSel.includes('value="English"'));
+      assert.ok(langSel.includes('value="Traditional Chinese"'));
+      assert.ok(langSel.includes('value="Spanish"'));
+      assert.ok(langSel.includes('value="Portuguese"'));
       const css = read("electron/hud.css");
       assert.ok(/\.hud\.mode-meeting #btn-recap/.test(css), "Recap is meeting-only");
       assert.ok(/\.hud\.mode-meeting #btn-followups/.test(css), "Follow-ups is meeting-only");

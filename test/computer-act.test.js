@@ -460,12 +460,30 @@ function test(name, fn) {
   });
 
   await test("computer.scribe rewrites after a green gate and can skip deliver", async () => {
-    const { runComputerScribe, nextScribeLanguage, normalizeScribeLanguage, sttLanguageCode } = require("../electron/netie/scribe");
+    const {
+      runComputerScribe,
+      nextScribeLanguage,
+      normalizeScribeLanguage,
+      sttLanguageCode,
+      SCRIBE_LANGUAGES,
+      HOTKEY_LANGUAGES,
+    } = require("../electron/netie/scribe");
+    assert.strictEqual(SCRIBE_LANGUAGES.length, 12);
+    assert.ok(SCRIBE_LANGUAGES.includes("Spanish"));
+    assert.deepStrictEqual([...HOTKEY_LANGUAGES], ["English", "Traditional Chinese"]);
     assert.strictEqual(normalizeScribeLanguage("zh-TW"), "Traditional Chinese");
+    assert.strictEqual(normalizeScribeLanguage("es"), "Spanish");
+    assert.strictEqual(normalizeScribeLanguage("es-MX"), "Spanish");
+    assert.strictEqual(normalizeScribeLanguage("Portuguese"), "Portuguese");
+    assert.strictEqual(normalizeScribeLanguage("pt-BR"), "Portuguese");
+    assert.notStrictEqual(normalizeScribeLanguage("Portuguese"), "Spanish");
     assert.strictEqual(sttLanguageCode("English"), "auto");
     assert.strictEqual(sttLanguageCode("Traditional Chinese"), "zh");
+    assert.strictEqual(sttLanguageCode("Spanish"), "es");
+    assert.strictEqual(sttLanguageCode("Portuguese"), "pt");
     assert.strictEqual(nextScribeLanguage("English"), "Traditional Chinese");
     assert.strictEqual(nextScribeLanguage("Traditional Chinese"), "English");
+    assert.strictEqual(nextScribeLanguage("Spanish"), "English");
     const r = await runComputerScribe(
       { instruction: "make this formal", selectedText: "hey" },
       {

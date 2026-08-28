@@ -1,6 +1,6 @@
 ---
-keywords: UACC, captureVisible, computer.observe, screenshot, clipboard, PATH overlay, meeting recap, followups, pending scribe, retry, computer.act, chain, captureNowForAsk, Scribe, delivery, IBM Plex, DR-0005, privacy chip, session chip
-main_idea: Screenshotable HUD, loopback act+observe, chained local verbs, Ask live crop, Scribe retry/pending dictation, PATH strokes, Cluely recap/follow-ups plus live notes API, honest on-device vs off-device privacy chip, OpenWillow session chip
+keywords: UACC, captureVisible, computer.observe, screenshot, clipboard, PATH overlay, meeting recap, followups, pending scribe, retry, computer.act, chain, captureNowForAsk, Scribe, delivery, IBM Plex, DR-0005, privacy chip, session chip, 12 languages
+main_idea: Screenshotable HUD, loopback act+observe, chained local verbs, Ask live crop, Scribe retry/pending dictation, PATH strokes, Cluely recap/follow-ups plus 12-language STT list and live notes API, honest on-device vs off-device privacy chip, OpenWillow session chip
 ---
 
 # UACC detectable HUD (DR-0005)
@@ -18,6 +18,8 @@ Privacy chip: `#privacy-chip` in fixed top chrome names On device / STT leaves /
 Session chip: `#session-chip` names Ready / Recording / Transcribing / Scribing / Paused / Error. `computer.status.session` matches so agents can wait. Scribe in-flight wins over STT. Error wins until the next success.
 
 Scribe pending: failed rewrite keeps transcript+hwnd. Retry re-runs; Paste as-is delivers raw dictation. `GET /api/scribe?pending=1`.
+
+Languages: HUD lists 12 English labels (Cluely-class). English STT stays auto. Other picks pin ISO. Ctrl+Alt+L still flips only English / Traditional Chinese. `computer.status.scribe.languages` publishes the list.
 
 Act chain: `focus: notepad then type: hello` concatenates local plans (`source: chain`). `click window: notepad` clicks the observed window center. Absolute x/y skips vision re-aim. HUD Ask and clicks:go use the same planner (raw Ask text, not attachments). Window miss is a visible no, not an LLM guess. `type: hello then world` stays one type. Ask uses `captureNowForAsk` (fresh `captureDisplayCrop`) for meeting + general; retry/dictate skip it.
 

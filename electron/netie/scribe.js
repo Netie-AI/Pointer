@@ -7,7 +7,23 @@
  * never commands.
  */
 
-const SCRIBE_LANGUAGES = Object.freeze(["English", "Traditional Chinese"]);
+const SCRIBE_LANGUAGE_TABLE = Object.freeze([
+  { label: "English", stt: "auto", aliases: ["en", "eng", "auto"] },
+  { label: "Traditional Chinese", stt: "zh", aliases: ["zh", "zh-tw", "zh-hant", "chinese", "trad"] },
+  { label: "Spanish", stt: "es", aliases: ["es", "espanol"] },
+  { label: "Malay", stt: "ms", aliases: ["ms", "bahasa"] },
+  { label: "Japanese", stt: "ja", aliases: ["ja", "jp"] },
+  { label: "Korean", stt: "ko", aliases: ["ko", "kr"] },
+  { label: "French", stt: "fr", aliases: ["fr"] },
+  { label: "German", stt: "de", aliases: ["de"] },
+  { label: "Portuguese", stt: "pt", aliases: ["pt"] },
+  { label: "Italian", stt: "it", aliases: ["it"] },
+  { label: "Hindi", stt: "hi", aliases: ["hi"] },
+  { label: "Arabic", stt: "ar", aliases: ["ar"] },
+]);
+
+const SCRIBE_LANGUAGES = Object.freeze(SCRIBE_LANGUAGE_TABLE.map((row) => row.label));
+const HOTKEY_LANGUAGES = Object.freeze(["English", "Traditional Chinese"]);
 
 /** Standing rewrite. Voice/typed take stays USER INSTRUCTION. First-party English. */
 const DEFAULT_SCRIBE_INSTRUCTION =
@@ -20,22 +36,31 @@ function resolveScribeInstruction(value) {
 
 function normalizeScribeLanguage(value) {
   const raw = String(value || "").trim();
-  if (/zh|chinese|trad/i.test(raw)) return "Traditional Chinese";
+  if (!raw) return "English";
+  const lower = raw.toLowerCase();
+  for (const row of SCRIBE_LANGUAGE_TABLE) {
+    if (row.label.toLowerCase() === lower) return row.label;
+    if (row.aliases.some((a) => a === lower || lower.startsWith(a + "-"))) return row.label;
+  }
+  if (/chinese|traditional/i.test(raw)) return "Traditional Chinese";
   return "English";
 }
 
 function nextScribeLanguage(current) {
   const now = normalizeScribeLanguage(current);
-  const i = SCRIBE_LANGUAGES.indexOf(now);
-  return SCRIBE_LANGUAGES[(i + 1) % SCRIBE_LANGUAGES.length];
+  const i = HOTKEY_LANGUAGES.indexOf(now);
+  if (i < 0) return "English";
+  return HOTKEY_LANGUAGES[(i + 1) % HOTKEY_LANGUAGES.length];
 }
 
 /**
- * Whisper/OpenAI STT language. Traditional Chinese pins zh.
- * English stays auto so zh/en/ms mix is not forced to *.en.
+ * Whisper/OpenAI STT language. English stays auto so zh/en/ms mix is not
+ * forced to a single language. Other HUD picks pin an ISO code.
  */
 function sttLanguageCode(value) {
-  return normalizeScribeLanguage(value) === "Traditional Chinese" ? "zh" : "auto";
+  const label = normalizeScribeLanguage(value);
+  const row = SCRIBE_LANGUAGE_TABLE.find((r) => r.label === label);
+  return (row && row.stt) || "auto";
 }
 
 function buildScribeRequest(input = {}) {
@@ -206,7 +231,9 @@ async function runComputerScribe(params, deps = {}) {
 }
 
 module.exports = {
+  SCRIBE_LANGUAGE_TABLE,
   SCRIBE_LANGUAGES,
+  HOTKEY_LANGUAGES,
   DEFAULT_SCRIBE_INSTRUCTION,
   resolveScribeInstruction,
   normalizeScribeLanguage,

@@ -2,6 +2,15 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Cluely 12-language STT/Scribe list
+
+HUD language select lists 12 English labels (English, Traditional Chinese,
+Spanish, Malay, Japanese, Korean, French, German, Portuguese, Italian,
+Hindi, Arabic). English STT stays auto. Other picks pin an ISO code.
+Ctrl+Alt+L still flips only English / Traditional Chinese. Loopback
+`computer.status.scribe.languages` publishes the list. No GPLv3 dump.
+No third-party MCP.
+
 ## 2026-08-28 - Ask emits Clicky overlay tokens
 
 visionChat tells the model to include POINT/LINE/PATH/BOX percents so the

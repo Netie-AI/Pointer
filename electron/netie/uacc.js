@@ -8,6 +8,7 @@
  */
 
 const { spawnSync } = require("child_process");
+const { normalizeScribeLanguage, SCRIBE_LANGUAGES } = require("./scribe");
 
 /** READ / observe skills that match UACC MCP tool names. */
 const UACC_SKILLS = Object.freeze([
@@ -204,8 +205,8 @@ function computerStatus(opts = {}) {
       pending: opts.scribePending && opts.scribePending.present
         ? opts.scribePending
         : { present: false },
-      language:
-        opts.scribeLanguage === "Traditional Chinese" ? "Traditional Chinese" : "English",
+      language: normalizeScribeLanguage(opts.scribeLanguage),
+      languages: SCRIBE_LANGUAGES.slice(),
       retry: "POST /api/scribe {\"retry\":true}",
       dictate: "POST /api/scribe {\"dictate\":true}",
     },

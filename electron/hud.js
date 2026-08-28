@@ -408,7 +408,12 @@ async function loadSettings() {
   if ($("set-writing-style")) $("set-writing-style").value = settings.writingStyle || "";
   if ($("set-scribe-instruction")) $("set-scribe-instruction").value = settings.scribeInstruction || "";
   if ($("set-personal-context")) $("set-personal-context").value = settings.personalContext || "";
-  if ($("set-scribe-language")) $("set-scribe-language").value = settings.scribeLanguage === "Traditional Chinese" ? "Traditional Chinese" : "English";
+  if ($("set-scribe-language")) {
+    const sel = $("set-scribe-language");
+    const lang = String(settings.scribeLanguage || "English");
+    const known = [...sel.options].some((o) => o.value === lang);
+    sel.value = known ? lang : /chinese|trad|^zh/i.test(lang) ? "Traditional Chinese" : "English";
+  }
   hudSettings.autoSend = settings.autoSend === true;
   hudSettings.followCursor = settings.followCursor !== false;
   hudSettings.liveLines = Number(settings.liveLines) > 0 ? Number(settings.liveLines) : 5;

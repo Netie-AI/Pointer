@@ -30,6 +30,7 @@ const path = require("path");
 const { execFile } = require("child_process");
 const { encodeWav16, floatToPcm16 } = require("./audio");
 const { WinSpeech } = require("./winspeech");
+const { sttLanguageCode } = require("./scribe");
 
 const DEFAULT_OPENVAULT = "http://127.0.0.1:5000/v1/audio/transcriptions";
 const OPENVAULT_KEYS_URL = "http://127.0.0.1:5000/api/keys";
@@ -127,12 +128,10 @@ class Transcriber {
     return sanitizeSttUrl(process.env.NETIE_STT_URL);
   }
 
-  /** Whisper/OpenAI language. Empty or English stays auto (rojak). zh pins. */
+  /** Whisper/OpenAI language. Empty or English stays auto (rojak). HUD pins ISO. */
   sttLanguage() {
     const raw = typeof this._languageOpt === "function" ? this._languageOpt() : this._languageOpt;
-    const s = String(raw || "").trim().toLowerCase();
-    if (s === "zh" || s === "zh-tw" || s === "zh-hant" || s.includes("traditional")) return "zh";
-    return "auto";
+    return sttLanguageCode(raw);
   }
 
   _winSpeech() {
@@ -340,7 +339,7 @@ class Transcriber {
       const args = [
         "-m", this.whisperModel,
         "-f", wavPath,
-        "-l", this.sttLanguage(),   // auto unless the user pinned Traditional Chinese
+        "-l", this.sttLanguage(),   // auto for English; HUD pins an ISO code
         "-nt",          // no timestamps
         "-np",          // no progress prints
         "-t", String(Math.max(2, Math.min(8, os.cpus().length - 2))),

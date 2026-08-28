@@ -118,6 +118,9 @@ function test(name, fn) {
     assert.strictEqual(shown.session.state, "ready");
     assert.strictEqual(shown.session.text, "Ready");
     assert.strictEqual(shown.scribe.language, "English");
+    assert.strictEqual(shown.scribe.languages.length, 12);
+    assert.ok(shown.scribe.languages.includes("Spanish"));
+    assert.ok(shown.scribe.languages.includes("Portuguese"));
     assert.ok(shown.drive.instructions.includes("POST /api/computer {\"mode\":\"scribe\"}"));
     assert.strictEqual(shown.scribe.available, true);
     assert.strictEqual(shown.scribe.gated, true);
@@ -166,6 +169,8 @@ function test(name, fn) {
     });
     assert.strictEqual(live.mode, "meeting");
     assert.strictEqual(live.scribe.language, "Traditional Chinese");
+    const spanish = computerStatus({ scribeLanguage: "es-MX" });
+    assert.strictEqual(spanish.scribe.language, "Spanish");
     assert.strictEqual(live.hotkeys.recording, "Control+Shift+D");
     assert.strictEqual(live.stt.local, false);
     assert.strictEqual(live.stt.url, "https://stt.example.com");
