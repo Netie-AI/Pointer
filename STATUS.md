@@ -19,6 +19,8 @@
    Dictation auto-stops at 120s. LIVE captions peek the open utterance
    (partials replace the tail; notes/scribe/commands stay final-only).
    `GET /api/observe?captions=1` is the same lines for agents.
+   `computer.status.route` is Claude 5-hour vs Cursor plus token totals.
+   `use Claude` while that window is open; `use Cursor` when it is used.
    BYOK STT/LLM (keys stay OpenVault).
    P-04 parked.
 2. **Generative tools + coworker desks (DR-0004 / DR-0005).** Coordinator

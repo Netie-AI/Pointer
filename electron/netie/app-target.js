@@ -42,6 +42,7 @@ const APP_CATALOG = Object.freeze([
   { id: "edge", name: "Edge", launch: "msedge", aliases: ["edge", "microsoft edge"] },
   { id: "firefox", name: "Firefox", launch: "firefox", aliases: ["firefox", "mozilla"] },
   { id: "cursor", name: "Cursor", launch: "cursor", aliases: ["cursor", "cursor ide"] },
+  { id: "claude", name: "Claude Code", launch: "claude", aliases: ["claude", "claude code", "claude.ai"] },
   { id: "vscode", name: "VS Code", launch: "code", aliases: ["vs code", "vscode", "visual studio code"] },
   { id: "terminal", name: "Terminal", launch: "wt", aliases: ["terminal", "powershell", "command prompt", "cmd", "console", "shell"] },
   { id: "calculator", name: "Calculator", launch: "calc", aliases: ["calculator", "calc"] },
