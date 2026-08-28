@@ -3584,7 +3584,7 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
       }
     }
     try {
-      const local = await planLocalInstruction(routed);
+      const local = await planLocalInstruction(message);
       if (localPlanReady(local)) {
         showStage();
         setPresence(PresenceEvents.THINK);
