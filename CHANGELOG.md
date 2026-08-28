@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Live captions from growing utterances
+
+Cluely-class LIVE chrome now peeks the open utterance every 400ms and
+paints a partial that replaces the pending tail. Finals still own notes,
+scribe, and capture commands. Local engines only (no Deepgram stream,
+P-04). `computer.status.session.partials` advertises the capability.
+No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Hands-free double-tap dictation
 
 Willow-class: hold Ctrl+Alt+Space to talk, release to stop. A second press

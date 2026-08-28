@@ -120,6 +120,7 @@ function test(name, fn) {
     assert.strictEqual(shown.session.state, "ready");
     assert.strictEqual(shown.session.text, "Ready");
     assert.strictEqual(shown.session.maxMs, 120000);
+    assert.strictEqual(shown.session.partials, true);
     assert.strictEqual(shown.scribe.language, "English");
     assert.strictEqual(shown.scribe.languages.length, 12);
     assert.ok(shown.scribe.languages.includes("Spanish"));

@@ -15,7 +15,7 @@ Meeting: Recap, Follow-ups, Email, and Actions pills in fixed top chrome. `compu
 
 Privacy chip: `#privacy-chip` in fixed top chrome names On device / STT leaves / LLM leaves / STT+LLM leave. Empty STT/LLM URLs resolve to loopback before labeling. `computer.status.privacy` matches. Not an orb.
 
-Session chip: `#session-chip` names Ready / Recording / Transcribing / Scribing / Paused / Error. `computer.status.session` matches so agents can wait. Scribe in-flight wins over STT. Error wins until the next success. `computer.status.session.maxMs` is 120000. Global Ctrl+Alt+Space and HUD hold-to-talk both auto-stop at that cap (Linux tap-to-toggle included). Double-tap the recording hotkey within 400ms to keep going hands-free (Willow). `session.dictate` is hold / pending / handsfree / off.
+Session chip: `#session-chip` names Ready / Recording / Transcribing / Scribing / Paused / Error. `computer.status.session` matches so agents can wait. Scribe in-flight wins over STT. Error wins until the next success. `computer.status.session.maxMs` is 120000. Global Ctrl+Alt+Space and HUD hold-to-talk both auto-stop at that cap (Linux tap-to-toggle included). Double-tap the recording hotkey within 400ms to keep going hands-free (Willow). `session.dictate` is hold / pending / handsfree / off. LIVE captions peek the open utterance every 400ms (`session.partials`); HUD replaces the pending tail. Partials never notes, scribe, or capture commands. Not Deepgram streaming (P-04).
 
 Scribe pending: failed rewrite keeps transcript+hwnd. Retry re-runs; Paste as-is delivers raw dictation. `GET /api/scribe?pending=1`.
 

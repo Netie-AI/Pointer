@@ -34,6 +34,7 @@ const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
 const { Segmenter } = require("./netie/audio");
+const { createPartialPump } = require("./netie/live-partial");
 const { Transcriber, sanitizeSttUrl, isLoopbackSttUrl, DEFAULT_SIDECAR } = require("./netie/transcriber");
 const { detectModeSwitch, getMode, allowsActions, isKnownMode } = require("./netie/modes");
 const { NotesSession } = require("./netie/notes");
@@ -616,7 +617,32 @@ const features = new FeatureFlags({
 const nodGate = createNodGate({ timeoutMs: 25000 });
 /** One segmenter per audio source so mic and system speech never interleave. */
 const segmenters = new Map();
+const partialPumps = new Map();
 let sttBusy = 0;
+
+function partialPumpFor(source) {
+  if (!partialPumps.has(source)) {
+    partialPumps.set(
+      source,
+      createPartialPump({
+        transcribe: (pcm) => transcriber.transcribe(pcm),
+        busyFinal: () => sttBusy > 0,
+        send: (evt) => {
+          sendHud({
+            type: "transcript",
+            text: evt.text,
+            source,
+            engine: evt.engine,
+            partial: true,
+            mode: appMode,
+            modeSwitchOnly: false,
+          });
+        },
+      })
+    );
+  }
+  return partialPumps.get(source);
+}
 let scribeInFlight = false;
 let lastSessionError = "";
 /** @type {Array<{role:string,text:string,ts:number}>} */
@@ -4744,7 +4770,10 @@ ipcMain.on("hud:audioFrame", (_e, payload) => {
     ? payload.samples
     : new Float32Array(payload.samples || []);
   if (!samples.length) return;
-  handleUtterance(source, segmenterFor(source).push(samples));
+  const seg = segmenterFor(source);
+  const utt = seg.push(samples);
+  handleUtterance(source, utt);
+  if (!utt) partialPumpFor(source).onFrame(seg);
 });
 
 ipcMain.handle("hud:sttStatus", async (_e, payload) => {
@@ -4848,6 +4877,7 @@ function flushSource(source) {
 
 function handleUtterance(source, utt) {
   if (!utt) return;
+  partialPumpFor(source).onFinal();
   // Bound concurrency: a slow CPU engine must not build an unbounded backlog.
   if (sttBusy >= 2) return;
   sttBusy += 1;
