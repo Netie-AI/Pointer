@@ -204,11 +204,13 @@ function paintLiveCueRail(path) {
   });
   rail.hidden = !rows.length;
 }
+let lastCueDockCopy = "";
 function hideLiveCueDock() {
   const dock = $("live-cue-dock");
   if (!dock) return;
   while (dock.firstChild) dock.removeChild(dock.firstChild);
   dock.hidden = true;
+  lastCueDockCopy = "";
 }
 function cueDockSpec(event) {
   const desk = String((event && event.desk) || "");
@@ -287,6 +289,17 @@ function paintLiveCueDock(event) {
   close.id = "live-cue-dock-close";
   close.textContent = "Close";
   dock.appendChild(close);
+  const copy = document.createElement("button");
+  copy.type = "button";
+  copy.id = "live-cue-dock-copy";
+  copy.textContent = "Copy";
+  dock.appendChild(copy);
+  lastCueDockCopy = [
+    spec.kicker,
+    ...(spec.rows || []).map((row) => String((row && row.label) || "") + ": " + String((row && row.value) || "")),
+    spec.body || "",
+    spec.foot || "",
+  ].filter(Boolean).join("\n");
   dock.hidden = false;
 }
 function paintMeetingTalk(event, asked) {
@@ -1599,7 +1612,19 @@ function onCueAdvance(event) {
 if (cueRow) cueRow.addEventListener("click", onCueAdvance);
 if (liveCueBar) {
   liveCueBar.addEventListener("click", onCueAdvance);
-  liveCueBar.addEventListener("click", (event) => {
+  liveCueBar.addEventListener("click", async (event) => {
+    if (event.target.closest && event.target.closest("#live-cue-dock-copy")) {
+      event.preventDefault();
+      const btn = $("live-cue-dock-copy");
+      const text = String(lastCueDockCopy || "").trim();
+      if (!text || !btn) return;
+      const res = await invoke("hud:copyText", { text });
+      btn.textContent = res && res.ok ? "Copied" : "Copy failed";
+      setTimeout(() => {
+        if (btn) btn.textContent = "Copy";
+      }, 1200);
+      return;
+    }
     if (!event.target.closest || !event.target.closest("#live-cue-dock-close")) return;
     event.preventDefault();
     hideLiveCueDock();

@@ -45,8 +45,9 @@ Public and loopback `/overlay` is that same walk full-screen (demo
 online when APIs are empty; live path on the laptop). Overlay Draw
 stacks a BOX (cap 8, 0.4% fail-closed). Last BOX says Last step.
 Public overlay paints This computer (Unsent mail / Notes / Needs you /
-Live answer) under the walk; the live Electron overlay stays transparent
-on the real display.
+Live answer) under the walk; demo BOX highlights that window instead of
+covering it; Draw stays a pencil; dock Copy is clipboard never send;
+the live Electron overlay stays transparent on the real display.
 Overlay chrome keeps a remaining walk rail and Ask chips (Draft email /
 Notes / Needs you / Live answer). Walk chrome stacks Type in Email /
 Then / fill so the cue stays readable. Desk chips dock the filed file on the

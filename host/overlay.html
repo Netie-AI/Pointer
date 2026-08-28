@@ -84,13 +84,13 @@
       #draw-stroke polyline, #walk-ink polyline {
         fill: none;
         stroke: #9ad;
-        stroke-width: 0.55;
+        stroke-width: 1.35;
         stroke-linecap: round;
         stroke-linejoin: round;
       }
       #walk-ink polyline.then, #walk-ink polyline.done {
         stroke: #567;
-        stroke-width: 0.45;
+        stroke-width: 1.1;
       }
       #draw-ghost {
         position: absolute;
@@ -225,6 +225,12 @@
         border: 1px solid #9ad;
         border-radius: 4px;
         color: #111;
+      }
+      html.demo .point-face.field,
+      html.host .point-face.field {
+        background: transparent;
+        color: transparent;
+        border: 1px solid rgba(110, 168, 255, 0.85);
       }
       .point-face.button {
         background: #345;
@@ -691,6 +697,7 @@
         return null;
       }
 
+      let lastDockCopy = "";
       function paintWalkDock(href) {
         const dock = document.getElementById("walk-dock");
         if (!dock) return;
@@ -733,8 +740,41 @@
         close.id = "walk-dock-close";
         close.textContent = "Close";
         dock.appendChild(close);
+        const copy = document.createElement("button");
+        copy.type = "button";
+        copy.id = "walk-dock-copy";
+        copy.textContent = "Copy";
+        dock.appendChild(copy);
+        lastDockCopy = dockCopyText(spec);
         dock.hidden = false;
         dock.classList.add("show");
+      }
+
+      function dockCopyText(spec) {
+        const lines = [String((spec && spec.kicker) || "")];
+        ((spec && spec.rows) || []).forEach(function (row) {
+          lines.push(String((row && row.label) || "") + ": " + String((row && row.value) || ""));
+        });
+        if (spec && spec.body) lines.push(String(spec.body));
+        if (spec && spec.foot) lines.push(String(spec.foot));
+        return lines.filter(Boolean).join("\n");
+      }
+
+      function copyWalkDock() {
+        const text = String(lastDockCopy || "").trim();
+        const btn = document.getElementById("walk-dock-copy");
+        if (!text) return;
+        const done = function (ok) {
+          if (btn) btn.textContent = ok ? "Copied" : "Copy failed";
+          setTimeout(function () {
+            if (btn) btn.textContent = "Copy";
+          }, 1200);
+        };
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          navigator.clipboard.writeText(text).then(function () { done(true); }).catch(function () { done(false); });
+          return;
+        }
+        done(false);
       }
 
       function openDeskWindow(href) {
@@ -884,7 +924,12 @@
       function onAdvance(ev) {
         if (ev.target && ev.target.closest && ev.target.closest("#walk-draw")) {
           ev.preventDefault();
-          setDraw(true);
+          setDraw(!drawing);
+          return;
+        }
+        if (ev.target && ev.target.closest && ev.target.closest("#walk-dock-copy")) {
+          ev.preventDefault();
+          copyWalkDock();
           return;
         }
         if (ev.target && ev.target.closest && ev.target.closest("#walk-dock-close")) {
@@ -1075,23 +1120,23 @@
         document.documentElement.classList.remove("host");
         demoWalk = [
           {
-            leftPct: 18,
-            topPct: 28,
-            wPct: 48,
-            hPct: 14,
+            leftPct: 13,
+            topPct: 23,
+            wPct: 54,
+            hPct: 10,
             label: "Type in Email",
             face: "field",
             caption: "Email",
             fill: "Sarah Chen",
             stroke: [
-              { x: 18, y: 28 },
-              { x: 66, y: 28 },
-              { x: 66, y: 42 },
-              { x: 18, y: 42 },
-              { x: 18, y: 28 },
+              { x: 13, y: 23 },
+              { x: 67, y: 23 },
+              { x: 67, y: 33 },
+              { x: 13, y: 33 },
+              { x: 13, y: 23 },
             ],
           },
-          { leftPct: 52, topPct: 52, wPct: 22, hPct: 12, label: "Click Save", face: "button", caption: "Save" },
+          { leftPct: 46, topPct: 58, wPct: 22, hPct: 10, label: "Click Save", face: "button", caption: "Save" },
         ];
         demoStep = 0;
         demoAdvance = function (q) {
@@ -1101,6 +1146,7 @@
           paintDemoState();
         };
         paintWalkDesktop();
+        highlightWalkWindow("/workspace?id=live-inbox");
         paintDemoState();
       }
 
@@ -1111,7 +1157,6 @@
         drag = null;
         if (ghost) ghost.hidden = true;
         clearStroke();
-        setDraw(false);
         if (stroke.length < 2) return;
         onFrame(box);
       }
@@ -1120,7 +1165,6 @@
         drag = null;
         if (ghost) ghost.hidden = true;
         clearStroke();
-        setDraw(false);
       });
       document.addEventListener("keydown", function (ev) {
         if (ev.key === "Escape" && drawing) {

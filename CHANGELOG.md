@@ -1,3 +1,10 @@
+## 2026-08-28 - Overlay highlights the window; Draw stays a pencil
+
+Demo `/overlay` BOX is a highlight on This computer (To Sarah Chen
+shows through). Draw stays armed until Draw or Escape. Dock Copy is
+clipboard, never send. Live overlay keeps opaque faces on the real
+display. Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Overlay walk sits on This computer
 
 Public `/overlay` paints Unsent mail / Notes / Needs you / Live answer

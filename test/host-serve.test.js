@@ -477,6 +477,9 @@ function readAsset(file) {
     assert.match(overlayText, /Type in Email/);
     assert.match(overlayText, /Sarah Chen/);
     assert.match(overlayText, /id="walk-dock"/);
+    assert.match(overlayText, /id="walk-dock-copy"/);
+    assert.match(overlayText, /copyWalkDock/);
+    assert.match(overlayText, /html\.demo \.point-face\.field/);
     assert.match(overlayText, /id="walk-desktop"/);
     assert.match(overlayText, /paintWalkDesktop/);
     assert.match(overlayText, /walk-win-inbox/);
@@ -485,6 +488,9 @@ function readAsset(file) {
     assert.match(overlayText, /Unsent mail/);
     assert.match(overlayText, /not sent/);
     assert.match(overlayText, /spoken \+ "\. Then "/);
+    assert.match(overlayText, /spoken \+ "\. Last step"/);
+    assert.match(overlayText, /leftPct: 13/);
+    assert.match(overlayText, /navigator\.clipboard\.writeText/);
     assert.doesNotMatch(overlayText, /window\.open/);
     assert.doesNotMatch(overlayText, /innerHTML/);
     assert.doesNotMatch(overlayText, /Send mail|Approve/);

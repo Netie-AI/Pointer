@@ -100,7 +100,9 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   stays on the laptop). Public APIs stay 404. Overlay desk chips dock
   Unsent mail / Notes / Needs you / Live answer on the walk (no second
   tab). Public overlay paints This computer under that walk; live
-  Electron overlay stays transparent. Walk chrome stacks Type in Email / Then / fill. HUD cue bar
+  Electron overlay stays transparent. Demo BOX highlights the Unsent
+  mail To field. Draw stays a pencil. Dock Copy is clipboard, never send.
+  Walk chrome stacks Type in Email / Then / fill. HUD cue bar
   docks that same filed window. Home Ask stays on This screen and
   highlights that window.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.

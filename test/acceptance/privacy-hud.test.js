@@ -143,6 +143,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/id="live-cue-rail"/.test(read("electron/hud.html")), "remaining walk rail lives on the cue bar");
       assert.ok(/id="live-cue-chips"/.test(read("electron/hud.html")), "desk chips live on the cue bar");
       assert.ok(/id="live-cue-dock"/.test(read("electron/hud.html")), "filed desk docks on the cue bar");
+      assert.ok(/live-cue-dock-copy/.test(js) && /hud:copyText/.test(js), "HUD dock Copy is clipboard, never send");
       assert.ok(/paintLiveCueDock/.test(js) && /Unsent mail/.test(js), "HUD docks Unsent mail, never send");
       assert.ok(/Draft email/.test(read("electron/hud.html")) && !/Send mail|Approve/.test(read("electron/hud.html")), "cue chips Ask, never send");
       assert.ok(/id="btn-live-next"/.test(read("electron/hud.html")), "Got it lives in the top cue bar");

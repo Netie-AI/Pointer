@@ -34,8 +34,10 @@
    rail ticks jump by Ask. Overlay docks the filed file on the walk.
    Walk chrome stacks Type in Email / Then / fill so it stays readable.
    Public `/overlay` paints This computer under that walk (live overlay
-   stays a transparent display). Home Ask stays on This screen. Email
-   BOX types the Heard name. Last step is spoken. Never Act.
+   stays a transparent display). Demo BOX highlights the Unsent mail To
+   field instead of covering it. Draw stays a pencil until Draw or
+   Escape. Dock Copy is clipboard, never send. Home Ask stays on This
+   screen. Email BOX types the Heard name. Last step is spoken. Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

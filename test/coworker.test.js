@@ -942,6 +942,13 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /id="walk-copy"/);
   assert.match(teachOverlay, /id="walk-acts"/);
   assert.match(teachOverlay, /id="walk-dock"/);
+  assert.match(teachOverlay, /id="walk-dock-copy"/);
+  assert.match(teachOverlay, /copyWalkDock/);
+  assert.match(teachOverlay, /navigator\.clipboard\.writeText/);
+  assert.match(teachOverlay, /html\.demo \.point-face\.field/);
+  assert.match(teachOverlay, /stroke-width: 1\.35/);
+  assert.match(teachOverlay, /setDraw\(!drawing\)/);
+  assert.match(teachOverlay, /leftPct: 13/);
   assert.match(teachOverlay, /id="walk-desktop"/);
   assert.match(teachOverlay, /paintWalkDesktop/);
   assert.match(teachOverlay, /walk-win-inbox/);
@@ -1829,7 +1836,8 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /cueDockSpec/);
   assert.match(hud, /Unsent mail/);
   assert.match(hud, /not sent - send is parked/);
-  assert.match(hud, /live-cue-dock-close/);
+  assert.match(hud, /live-cue-dock-copy/);
+  assert.match(hud, /lastCueDockCopy/);
   assert.match(hud, /event\.path/);
   assert.match(hud, /Last step/);
   assert.match(hud, /got it, next/);
