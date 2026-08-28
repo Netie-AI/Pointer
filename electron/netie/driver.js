@@ -17,6 +17,9 @@
  * behaviour, and what unit tests assert).
  *
  * Set dryRun:true in tests to skip OS calls entirely.
+ *
+ * Clicks restore the real cursor after SendInput (HeyClicky). hover still
+ * travels. Pass action.warp true to keep the old animated pointer.
  */
 
 const { spawn } = require("child_process");
@@ -69,7 +72,9 @@ public class NetieInput {
     // Per-monitor DPI aware v2 — SetCursorPos/SendInput take physical pixels.
     try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch {}
   }
-  public static void Click(int x, int y, bool right) {
+  public static void Click(int x, int y, bool right, bool restore) {
+    POINT orig = new POINT();
+    bool haveOrig = restore && GetCursorPos(out orig);
     SetCursorPos(x,y);
     INPUT[] a = new INPUT[2];
     a[0].type=INPUT_MOUSE; a[1].type=INPUT_MOUSE;
@@ -77,6 +82,7 @@ public class NetieInput {
     uint up = right?MOUSEEVENTF_RIGHTUP:MOUSEEVENTF_LEFTUP;
     a[0].mkhi.mi.dwFlags=down; a[1].mkhi.mi.dwFlags=up;
     SendInput(2,a,Marshal.SizeOf(typeof(INPUT)));
+    if (haveOrig) SetCursorPos(orig.X, orig.Y);
   }
   public static void Wheel(int delta) {
     INPUT[] a = new INPUT[1];
@@ -151,7 +157,11 @@ while (-not $done) {
         [NetieInput]::GetCursorPos([ref]$pt) | Out-Null
         $r.x = $pt.X; $r.y = $pt.Y
       }
-      'click' { [NetieInput]::Click([int]$m.x, [int]$m.y, [bool]$m.right) }
+      'click' {
+        $restore = $true
+        if ($null -ne $m.restore) { $restore = [bool]$m.restore }
+        [NetieInput]::Click([int]$m.x, [int]$m.y, [bool]$m.right, $restore)
+      }
       'drag'  { [NetieInput]::Drag([int]$m.x1, [int]$m.y1, [int]$m.x2, [int]$m.y2) }
       'wheel' {
         if ($m.move) { [NetieInput]::SetCursorPos([int]$m.x, [int]$m.y) | Out-Null }
@@ -298,6 +308,14 @@ function parseKeyCombo(input) {
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Clicks restore the real cursor unless the action asks to warp. */
+function clickKeepsCursor(action) {
+  if (!action || typeof action !== "object") return true;
+  if (action.warp === true) return false;
+  if (action.keepCursor === false) return false;
+  return true;
 }
 
 /**
@@ -588,19 +606,32 @@ class InputDriver {
     return this.last;
   }
 
-  async clickAt(x, y, { button = "left", double = false } = {}) {
+  async clickAt(x, y, { button = "left", double = false, restore = true } = {}) {
     const xi = Math.round(Number(x));
     const yi = Math.round(Number(y));
     const right = button === "right";
-    this.last = { op: double ? "doubleclick" : "click", x: xi, y: yi, button };
+    const keep = restore !== false;
+    this.last = { op: double ? "doubleclick" : "click", x: xi, y: yi, button, restore: keep };
     if (this.dryRun) return this.last;
     const p = this._phys(xi, yi);
-    await this._send({ op: "click", x: p.x, y: p.y, right });
+    // Double-click: stay on the target for the second hit, then restore.
+    await this._send({ op: "click", x: p.x, y: p.y, right, restore: keep && !double });
     if (double) {
       await sleep(80);
-      await this._send({ op: "click", x: p.x, y: p.y, right });
+      await this._send({ op: "click", x: p.x, y: p.y, right, restore: keep });
     }
     return this.last;
+  }
+
+  /**
+   * Aimed click that does not fly the user's pointer across the screen.
+   * hover / warp:true still travel.
+   */
+  async _aimedClick(sx, sy, action, extra = {}) {
+    const keep = clickKeepsCursor(action);
+    if (!keep) await this.moveToAnimated(sx, sy, { durationMs: 220 });
+    await this.clickAt(sx, sy, { ...extra, restore: keep });
+    return keep;
   }
 
   async typeText(text) {
@@ -769,23 +800,23 @@ class InputDriver {
         await this.moveToAnimated(sx, sy);
         return { ok: true, type, x: sx, y: sy };
 
-      case "click":
+      case "click": {
         if (sx == null || sy == null) return { ok: false, error: "missing coordinates for click" };
-        await this.moveToAnimated(sx, sy, { durationMs: 220 });
-        await this.clickAt(sx, sy, { button: "left" });
-        return { ok: true, type, x: sx, y: sy };
+        const keepCursor = await this._aimedClick(sx, sy, action, { button: "left" });
+        return { ok: true, type, x: sx, y: sy, keepCursor };
+      }
 
-      case "doubleclick":
+      case "doubleclick": {
         if (sx == null || sy == null) return { ok: false, error: "missing coordinates" };
-        await this.moveToAnimated(sx, sy, { durationMs: 220 });
-        await this.clickAt(sx, sy, { double: true });
-        return { ok: true, type, x: sx, y: sy };
+        const keepCursor = await this._aimedClick(sx, sy, action, { double: true });
+        return { ok: true, type, x: sx, y: sy, keepCursor };
+      }
 
-      case "rightclick":
+      case "rightclick": {
         if (sx == null || sy == null) return { ok: false, error: "missing coordinates" };
-        await this.moveToAnimated(sx, sy, { durationMs: 220 });
-        await this.clickAt(sx, sy, { button: "right" });
-        return { ok: true, type, x: sx, y: sy };
+        const keepCursor = await this._aimedClick(sx, sy, action, { button: "right" });
+        return { ok: true, type, x: sx, y: sy, keepCursor };
+      }
 
       case "focus_hwnd":
         return this.focusHwnd(action.hwnd);
@@ -797,8 +828,7 @@ class InputDriver {
         // wrong window is the classic blind-agent failure.
         let focused = false;
         if (sx != null && sy != null) {
-          await this.moveToAnimated(sx, sy, { durationMs: 220 });
-          await this.clickAt(sx, sy, { button: "left" });
+          await this._aimedClick(sx, sy, action, { button: "left" });
           if (!this.dryRun) await sleep(120);
           focused = true;
         }
@@ -815,8 +845,7 @@ class InputDriver {
       case "clipboard_paste": {
         // Prefer clipboard + Ctrl+V (OpenClaw-style) — more reliable than Unicode typing.
         if (sx != null && sy != null) {
-          await this.moveToAnimated(sx, sy, { durationMs: 220 });
-          await this.clickAt(sx, sy, { button: "left" });
+          await this._aimedClick(sx, sy, action, { button: "left" });
           if (!this.dryRun) await sleep(80);
         }
         if (action.value != null && String(action.value).length) {
@@ -1011,4 +1040,13 @@ class InputDriver {
   }
 }
 
-module.exports = { InputDriver, coworkerOutcome, VK, MOD_VK, parseKeyCombo, vkOf, attachWindowBox };
+module.exports = {
+  InputDriver,
+  coworkerOutcome,
+  VK,
+  MOD_VK,
+  parseKeyCombo,
+  vkOf,
+  attachWindowBox,
+  clickKeepsCursor,
+};
