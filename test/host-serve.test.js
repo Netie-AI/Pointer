@@ -477,6 +477,10 @@ function readAsset(file) {
     assert.match(overlayText, /Type in Email/);
     assert.match(overlayText, /Sarah Chen/);
     assert.match(overlayText, /id="walk-dock"/);
+    assert.match(overlayText, /id="walk-desktop"/);
+    assert.match(overlayText, /paintWalkDesktop/);
+    assert.match(overlayText, /walk-win-inbox/);
+    assert.match(overlayText, /This computer - no runtime/);
     assert.match(overlayText, /paintWalkDock/);
     assert.match(overlayText, /Unsent mail/);
     assert.match(overlayText, /not sent/);

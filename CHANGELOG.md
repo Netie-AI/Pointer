@@ -1,3 +1,10 @@
+## 2026-08-28 - Overlay walk sits on This computer
+
+Public `/overlay` paints Unsent mail / Notes / Needs you / Live answer
+under the teach walk (Clicky on Computer). Live Electron overlay stays
+transparent on the real display. Draft email highlights that window.
+Never send. Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Overlay chrome wraps; HUD docks the filed file
 
 Walk chrome stacks Type in Email / Then / fill / filed (no ellipsis

@@ -942,11 +942,17 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /id="walk-copy"/);
   assert.match(teachOverlay, /id="walk-acts"/);
   assert.match(teachOverlay, /id="walk-dock"/);
+  assert.match(teachOverlay, /id="walk-desktop"/);
+  assert.match(teachOverlay, /paintWalkDesktop/);
+  assert.match(teachOverlay, /walk-win-inbox/);
+  assert.match(teachOverlay, /This computer - no runtime/);
+  assert.match(teachOverlay, /html\.demo #walk-desktop/);
   assert.match(teachOverlay, /paintWalkDock/);
   assert.match(teachOverlay, /Unsent mail/);
   assert.match(teachOverlay, /not sent/);
   const openFn = teachOverlay.slice(teachOverlay.indexOf("function openDeskWindow"), teachOverlay.indexOf("function onDesk"));
   assert.match(openFn, /paintWalkDock/);
+  assert.match(openFn, /highlightWalkWindow/);
   assert.doesNotMatch(openFn, /window\.open/);
   assert.doesNotMatch(openFn, /location\.href/);
   assert.match(teachOverlay, /walk-filed/);

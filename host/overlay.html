@@ -267,6 +267,48 @@
         pointer-events: auto;
         cursor: pointer;
       }
+      #walk-desktop {
+        display: none;
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+      }
+      html.demo #walk-desktop, html.host #walk-desktop { display: block; }
+      #walk-desktop-kicker {
+        position: absolute;
+        left: 16px;
+        top: 88px;
+        margin: 0;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #9ad;
+        font: 650 11px "Segoe UI", system-ui, sans-serif;
+      }
+      .walk-win {
+        position: absolute;
+        overflow: hidden;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #111;
+        border: 1px solid #345;
+        color: #eee;
+        font: 500 12px "Segoe UI", system-ui, sans-serif;
+      }
+      .walk-win.now {
+        outline: 2px solid #6ea8ff;
+        animation: teach-now-pulse 1.4s ease-in-out infinite;
+      }
+      .walk-win .dock-kicker {
+        margin: 0 0 4px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #9ad;
+        font-size: 11px;
+      }
+      .walk-win .dock-row, .walk-win .dock-body, .walk-win .dock-foot { margin: 0 0 6px; }
+      .walk-win .dock-foot { color: #f88; }
+      .walk-win .dock-body { white-space: pre-wrap; color: #ddd; }
     </style>
   </head>
   <body>
@@ -293,6 +335,7 @@
       </p>
     </div>
     <aside id="walk-dock" class="chrome" hidden></aside>
+    <div id="walk-desktop" aria-hidden="true"></div>
     <svg id="walk-ink" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
     <svg id="draw-stroke" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
     <div id="draw-ghost" class="point-mark point-box" hidden></div>
@@ -704,6 +747,110 @@
           filedEl.textContent = line;
         }
         paintWalkDock(next);
+        highlightWalkWindow(next);
+      }
+
+      function highlightWalkWindow(href) {
+        const root = document.getElementById("walk-desktop");
+        if (!root) return;
+        const map = {
+          "live-inbox": "walk-win-inbox",
+          "live-document": "walk-win-notes",
+          "live-security": "walk-win-security",
+          "live-meeting": "walk-win-meeting",
+        };
+        const id = map[String(href || "").replace(/^.*id=/, "")];
+        root.querySelectorAll(".walk-win.now").forEach(function (el) {
+          el.classList.remove("now");
+        });
+        const node = id && document.getElementById(id);
+        if (node) node.classList.add("now");
+      }
+
+      function appendDockBits(root, spec) {
+        const kick = document.createElement("p");
+        kick.className = "dock-kicker";
+        kick.textContent = spec.kicker;
+        root.appendChild(kick);
+        (spec.rows || []).forEach(function (row) {
+          const p = document.createElement("p");
+          p.className = "dock-row";
+          const lab = document.createElement("span");
+          lab.textContent = String(row.label || "") + " ";
+          const val = document.createElement("b");
+          val.textContent = String(row.value || "");
+          p.appendChild(lab);
+          p.appendChild(val);
+          root.appendChild(p);
+        });
+        if (spec.body) {
+          const body = document.createElement("p");
+          body.className = "dock-body";
+          body.textContent = spec.body;
+          root.appendChild(body);
+        }
+        if (spec.foot) {
+          const foot = document.createElement("p");
+          foot.className = "dock-foot";
+          foot.textContent = spec.foot;
+          root.appendChild(foot);
+        }
+      }
+
+      function paintWalkDesktop() {
+        const root = document.getElementById("walk-desktop");
+        if (!root) return;
+        while (root.firstChild) root.removeChild(root.firstChild);
+        const kicker = document.createElement("p");
+        kicker.id = "walk-desktop-kicker";
+        kicker.textContent = "This computer - no runtime";
+        root.appendChild(kicker);
+        [
+          {
+            id: "walk-win-inbox",
+            href: "/workspace?id=live-inbox",
+            left: "10%",
+            top: "18%",
+            width: "62%",
+            height: "52%",
+          },
+          {
+            id: "walk-win-notes",
+            href: "/workspace?id=live-document",
+            left: "74%",
+            top: "18%",
+            width: "22%",
+            height: "28%",
+          },
+          {
+            id: "walk-win-security",
+            href: "/workspace?id=live-security",
+            left: "74%",
+            top: "50%",
+            width: "22%",
+            height: "28%",
+          },
+          {
+            id: "walk-win-meeting",
+            href: "/workspace?id=live-meeting",
+            left: "10%",
+            top: "74%",
+            width: "40%",
+            height: "18%",
+          },
+        ].forEach(function (win) {
+          const spec = overlayDockSpec(win.href);
+          if (!spec) return;
+          const node = document.createElement("article");
+          node.id = win.id;
+          node.className = "walk-win";
+          node.style.left = win.left;
+          node.style.top = win.top;
+          node.style.width = win.width;
+          node.style.height = win.height;
+          appendDockBits(node, spec);
+          root.appendChild(node);
+        });
       }
 
       function onDesk(q) {
@@ -953,6 +1100,7 @@
           else if (demoStep < last) demoStep += 1;
           paintDemoState();
         };
+        paintWalkDesktop();
         paintDemoState();
       }
 
