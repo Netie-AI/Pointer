@@ -101,7 +101,7 @@ const CATALOG = Object.freeze([
   {
     name: "computer.act",
     description:
-      "Gated OS actions. instruction plans via recipes then type:/click:/click window:/focus:/open:/deliver:/replace:/wait/scroll/doubleclick/rightclick/hover. Chain local verbs with then: focus: notepad then type: hello or click window: notepad then type: hello. Clicks and launches need approved true. mode alone switches Agent/General/Transcribe/Scribe/Meeting like the tray (no Cortex).",
+      "Gated OS actions. instruction plans via recipes then type:/click:/click window:/wait for:/focus:/open:/deliver:/replace:/wait/scroll/doubleclick/rightclick/hover. wait for: Save polls the foreground UIA tree until that control exists (default 5000ms, cap 15000). Chain local verbs with then: focus: notepad then type: hello or open: notepad then wait for: Untitled then type: hello. Clicks and launches need approved true. mode alone switches Agent/General/Transcribe/Scribe/Meeting like the tray (no Cortex).",
     inputSchema: {
       type: "object",
       properties: {

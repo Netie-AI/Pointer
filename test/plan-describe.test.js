@@ -36,6 +36,12 @@ check("a click names the control", () => {
   assert.ok(d.text.includes("Send"));
 });
 
+check("uia_wait names the control", () => {
+  const d = describeAction({ type: "uia_wait", target: "Save" });
+  assert.ok(d.text.includes("Save"));
+  assert.ok(/wait for/i.test(d.text));
+});
+
 check("a secret value is never echoed", () => {
   const d = describeAction({
     type: "type",

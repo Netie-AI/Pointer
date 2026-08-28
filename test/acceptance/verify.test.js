@@ -47,6 +47,8 @@ const has = (action, opts) => shouldVerifyStep(action, { hasRegion: true, ...opt
         // nothing on screen, so a screenshot diff would report "nothing
         // happened" for a step that did its job.
         "clipboard_baseline",
+        // UIA wait_for_element polls the tree. The screen may not change.
+        "uia_wait",
         // The API-first coworker verbs (EPIC-P03). These deliberately change
         // nothing on screen — that is the whole point of writing .docx through
         // OOXML instead of driving Word's UI — so a screenshot diff would

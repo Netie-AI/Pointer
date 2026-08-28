@@ -26,7 +26,7 @@
 
 /** Verb → driver support. Mirrors the perform() switch in driver.js. */
 const DRIVER_ACTIONS = Object.freeze([
-  "observe", "read", "wait",
+  "observe", "read", "wait", "uia_wait",
   "movecursor", "hover", "click", "doubleclick", "rightclick",
   "type", "fill", "setvalue",
   "paste", "clipboard_paste", "clipboard_set", "clipboard_get",

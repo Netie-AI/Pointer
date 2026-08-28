@@ -217,6 +217,15 @@ function test(name, fn) {
     const waited = planFromInstruction("wait 400");
     assert.strictEqual(waited.actions[0].type, "wait");
     assert.strictEqual(waited.actions[0].ms, 400);
+    const waitFor = planFromInstruction("wait for: Save");
+    assert.strictEqual(waitFor.ok, true);
+    assert.strictEqual(waitFor.source, "wait-for");
+    assert.strictEqual(waitFor.actions[0].type, "uia_wait");
+    assert.strictEqual(waitFor.actions[0].target, "Save");
+    assert.strictEqual(waitFor.actions[0].ms, 5000);
+    const waitForMs = planFromInstruction("wait for: Untitled 8000");
+    assert.strictEqual(waitForMs.actions[0].target, "Untitled");
+    assert.strictEqual(waitForMs.actions[0].ms, 8000);
     const scrolled = planFromInstruction("scroll down");
     assert.strictEqual(scrolled.actions[0].type, "scroll");
     assert.strictEqual(scrolled.actions[0].deltaY, 120);
@@ -290,6 +299,13 @@ function test(name, fn) {
     assert.strictEqual(aimed.actions[0].y, 20);
     assert.strictEqual(aimed.actions[1].type, "type");
     assert.strictEqual(aimed.actions[1].value, "hello");
+    const waitThen = planFromInstruction("open: notepad then wait for: Untitled then type: hello");
+    assert.strictEqual(waitThen.ok, true);
+    assert.strictEqual(waitThen.source, "chain");
+    assert.strictEqual(waitThen.actions[0].type, "open");
+    assert.strictEqual(waitThen.actions[1].type, "uia_wait");
+    assert.strictEqual(waitThen.actions[1].target, "Untitled");
+    assert.strictEqual(waitThen.actions[2].type, "type");
   });
 
   await test("computer.act click window: uses observed rects and keeps named click: Save", async () => {
