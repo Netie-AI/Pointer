@@ -29,7 +29,7 @@ const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
 const { ensureActionCoords, hasScreenPoint } = require("./netie/targeting");
-const { dumpForeground, readSelection, listControls, toggleControl, expandControl, invokeControl } = require("./netie/uia");
+const { dumpForeground, readSelection, listControls, toggleControl, expandControl, invokeControl, setValueControl } = require("./netie/uia");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
@@ -939,6 +939,7 @@ const driver = new InputDriver({
   uiaToggle: (target, want) => toggleControl(target, { run: runUiaProbe, want }),
   uiaExpand: (target, want) => expandControl(target, { run: runUiaProbe, want }),
   uiaInvoke: (target) => invokeControl(target, { run: runUiaProbe }),
+  uiaSet: (target, value) => setValueControl(target, value, { run: runUiaProbe }),
 });
 let coreLive = { ok: false, engine: "none" };
 
@@ -2910,27 +2911,39 @@ async function executeApproved(actions, opts = {}) {
       }
 
       const started = Date.now();
-      // HeyClicky-class: InvokePattern on a named click before screenshot or
-      // SendInput. No SetCursorPos. Chrome often ignores Invoke; that miss
-      // falls through to the existing aim + driver path. Double-click,
-      // right-click, hover, and type stay SendInput (Invoke is one activation).
+      // HeyClicky-class: InvokePattern on a named click, ValuePattern on a
+      // named field, before screenshot or SendInput. No SetCursorPos. Chrome
+      // often ignores both; that miss falls through to aim. Double-click,
+      // right-click, hover stay SendInput. Password boxes refuse SetValue.
       const namedClick =
         String(action.type || "").toLowerCase() === "click" && String(action.target || "").trim();
+      const namedFill =
+        ["type", "fill", "setvalue"].includes(String(action.type || "").toLowerCase()) &&
+        String(action.target || "").trim() &&
+        String(action.value ?? "") !== "";
       let invokedEarly = null;
+      let setEarly = null;
       if (
-        namedClick &&
         !driver.dryRun &&
         UIA_ENABLED &&
         process.platform === "win32" &&
         uiaFailures < 3
       ) {
-        try {
-          invokedEarly = await invokeControl(action.target, { run: runUiaProbe });
-        } catch (err) {
-          invokedEarly = { ok: false, reason: String(err.message || err) };
+        if (namedClick) {
+          try {
+            invokedEarly = await invokeControl(action.target, { run: runUiaProbe });
+          } catch (err) {
+            invokedEarly = { ok: false, reason: String(err.message || err) };
+          }
+        } else if (namedFill) {
+          try {
+            setEarly = await setValueControl(action.target, action.value, { run: runUiaProbe });
+          } catch (err) {
+            setEarly = { ok: false, reason: String(err.message || err) };
+          }
         }
       }
-      const skipAim = Boolean(invokedEarly && invokedEarly.ok);
+      const skipAim = Boolean((invokedEarly && invokedEarly.ok) || (setEarly && setEarly.ok));
       // Refresh the screenshot before aiming, so targets created by earlier
       // steps (a launched app, an opened dialog) are actually visible.
       let refreshedView = false;
@@ -2952,8 +2965,9 @@ async function executeApproved(actions, opts = {}) {
       }
       const { region, dataUrl } = currentView();
       const aimSource = refreshedView ? stripAimCoords(action) : action;
+      const earlyVia = invokedEarly && invokedEarly.ok ? "uia-invoke" : setEarly && setEarly.ok ? "uia-set" : null;
       const enriched = skipAim
-        ? { ...action, _targetedVia: "uia-invoke" }
+        ? { ...action, _targetedVia: earlyVia }
         : await ensureActionCoords(aimSource, {
             dataUrl,
             eco,
@@ -2981,7 +2995,10 @@ async function executeApproved(actions, opts = {}) {
       if (skipAim) {
         sendHudQuiet({
           type: "insight",
-          text: `Invoked “${enriched.target}” without moving the cursor.`,
+          text:
+            invokedEarly && invokedEarly.ok
+              ? `Invoked “${enriched.target}” without moving the cursor.`
+              : `Set “${enriched.target}” without moving the cursor.`,
         });
       }
       sendStage({
@@ -3023,12 +3040,22 @@ async function executeApproved(actions, opts = {}) {
 
       let outcome;
       try {
-        if (skipAim) {
+        if (invokedEarly && invokedEarly.ok) {
           outcome = {
             ok: true,
             type: enriched.type,
             via: "uia-invoke",
             name: invokedEarly.name,
+            keepCursor: true,
+            keepFocus: true,
+          };
+        } else if (setEarly && setEarly.ok) {
+          outcome = {
+            ok: true,
+            type: enriched.type,
+            via: "uia-set",
+            name: setEarly.name,
+            typed: String(enriched.value ?? "").length,
             keepCursor: true,
             keepFocus: true,
           };

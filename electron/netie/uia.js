@@ -30,8 +30,12 @@ const INVOKE_CONTROL_TYPES = Object.freeze([
   "TabItem", "ListItem",
 ]);
 
+/** Fields that expose ValuePattern. Buttons get Invoke, not SetValue. */
+const VALUE_CONTROL_TYPES = Object.freeze(["Edit", "ComboBox", "Document"]);
+
 /** Bound the tree walk — a Chrome window can expose tens of thousands of nodes. */
 const MAX_CANDIDATES = 400;
+const MAX_SET_CHARS = 4000;
 
 function normalize(text) {
   return String(text || "")
@@ -303,6 +307,110 @@ async function invokeControl(label, opts = {}) {
     return { ok: false, reason: "invoke failed" };
   }
   return parseInvokeOutput(invoked);
+}
+
+function canSetValue(candidate) {
+  const t = String((candidate && candidate.controlType) || "");
+  if (!VALUE_CONTROL_TYPES.includes(t)) return false;
+  if (candidate && candidate.enabled === false) return false;
+  return true;
+}
+
+/**
+ * PowerShell that finds the named field in the foreground window and
+ * ValuePattern-sets it. No SetCursorPos. No SendInput. Password boxes
+ * refuse. Chrome often ignores this; those fills still fall back to type.
+ */
+function buildSetValueScript(name, controlType, value, opts = {}) {
+  const max = Number(opts.max) || MAX_CANDIDATES;
+  const type = String(controlType || "Edit").replace(/[^A-Za-z]/g, "") || "Edit";
+  const text = String(value || "").slice(0, MAX_SET_CHARS);
+  return [
+    "$ErrorActionPreference='Stop'",
+    "Add-Type -AssemblyName UIAutomationClient,UIAutomationTypes | Out-Null",
+    "Add-Type -Namespace Native -Name Win -MemberDefinition '[DllImport(\"user32.dll\")]public static extern System.IntPtr GetForegroundWindow();' | Out-Null",
+    "$h=[Native.Win]::GetForegroundWindow()",
+    "if($h -eq [System.IntPtr]::Zero){ '{\"ok\":false,\"reason\":\"no foreground\"}'; exit 0 }",
+    "$root=[System.Windows.Automation.AutomationElement]::FromHandle($h)",
+    "if($root -eq $null){ '{\"ok\":false,\"reason\":\"no element\"}'; exit 0 }",
+    `$want=${psLiteral(name)}`,
+    `$type=${psLiteral(type)}`,
+    `$val=${psLiteral(text)}`,
+    "$walker=[System.Windows.Automation.TreeWalker]::ControlViewWalker",
+    "$queue=New-Object System.Collections.Queue",
+    "$queue.Enqueue($root) | Out-Null",
+    "$seen=0",
+    `while($queue.Count -gt 0 -and $seen -lt ${max}){`,
+    "  $el=$queue.Dequeue(); $seen++",
+    "  try{",
+    "    $child=$walker.GetFirstChild($el)",
+    "    while($child -ne $null){ $queue.Enqueue($child) | Out-Null; $child=$walker.GetNextSibling($child) }",
+    "    $n=$el.Current.Name; $t=$el.Current.ControlType.ProgrammaticName -replace '^ControlType\\.',''",
+    "    if($n -eq $want -and $t -eq $type -and $el.Current.IsEnabled){",
+    "      if($el.Current.IsPassword){ '{\"ok\":false,\"reason\":\"password\"}'; exit 0 }",
+    "      $pat=$el.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)",
+    "      if($pat -eq $null){ '{\"ok\":false,\"reason\":\"no value\"}'; exit 0 }",
+    "      if($pat.Current.IsReadOnly){ '{\"ok\":false,\"reason\":\"readonly\"}'; exit 0 }",
+    "      $pat.SetValue($val)",
+    "      [pscustomobject]@{ok=$true;set=$true;name=$n;controlType=$t} | ConvertTo-Json -Compress",
+    "      exit 0",
+    "    }",
+    "  } catch {}",
+    "}",
+    "'{\"ok\":false,\"reason\":\"no matching control\"}'",
+  ].join("\n");
+}
+
+function parseSetValueOutput(stdout) {
+  const raw = String(stdout || "").trim();
+  if (!raw) return { ok: false, reason: "empty" };
+  try {
+    const data = JSON.parse(raw);
+    if (data && data.reason === "password") {
+      return { ok: false, reason: "password", blocked: true };
+    }
+    if (data && data.ok && data.set) {
+      return {
+        ok: true,
+        set: true,
+        via: "uia-set",
+        name: String(data.name || "").slice(0, 80),
+        controlType: String(data.controlType || "").slice(0, 40),
+      };
+    }
+    return { ok: false, reason: (data && data.reason) || "set failed" };
+  } catch {
+    return { ok: false, reason: "bad probe" };
+  }
+}
+
+/**
+ * HeyClicky-class type: ValuePattern on a named field. No cursor warp.
+ * Miss, Button, or password is a visible no so SendInput can still aim.
+ */
+async function setValueControl(label, value, opts = {}) {
+  const clean = String(label || "").trim();
+  if (!clean || typeof opts.run !== "function") return { ok: false, reason: "no runner" };
+  const text = String(value ?? "");
+  if (!text) return { ok: false, reason: "empty value" };
+  let stdout;
+  try {
+    stdout = await opts.run(buildProbeScript(clean, opts));
+  } catch {
+    return { ok: false, reason: "uia unavailable" };
+  }
+  const pool = parseProbeOutput(stdout).filter(canSetValue);
+  const best = chooseCandidate(clean, pool, opts);
+  if (!best) return { ok: false, reason: "no matching control" };
+  let set;
+  try {
+    set = await opts.run(
+      buildSetValueScript(best.candidate.name, best.candidate.controlType, text, opts)
+    );
+  } catch {
+    return { ok: false, reason: "set failed" };
+  }
+  return parseSetValueOutput(set);
 }
 
 /** CheckBox / RadioButton. A Button named "Remember me" is not a toggle. */
@@ -850,9 +958,11 @@ async function readSelection(opts = {}) {
 module.exports = {
   TARGET_CONTROL_TYPES,
   INVOKE_CONTROL_TYPES,
+  VALUE_CONTROL_TYPES,
   MAX_CANDIDATES,
   MAX_TEACH_POINTS,
   MAX_SELECTION_CHARS,
+  MAX_SET_CHARS,
   normalize,
   scoreCandidate,
   chooseCandidate,
@@ -866,6 +976,10 @@ module.exports = {
   buildInvokeScript,
   parseInvokeOutput,
   invokeControl,
+  canSetValue,
+  buildSetValueScript,
+  parseSetValueOutput,
+  setValueControl,
   TOGGLE_CONTROL_TYPES,
   canToggle,
   normalizeWant,

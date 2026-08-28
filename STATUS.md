@@ -14,10 +14,10 @@
    PowerShell is fallback. `computer.status.core` / `.home` publish it.
    Rest of the rust rewrite is P-08.
 2. **Named UIA verbs.** `click:`/`invoke:` (InvokePattern),
-   `toggle:`/`check:`/`uncheck:` (TogglePattern), and
-   `expand:`/`collapse:` (ExpandCollapsePattern) keep the cursor put.
-   Chrome Invoke miss falls back to SendInput. Leaf / non-toggleable is
-   a visible no. Act still Cortex then reviewPlan.
+   `fill:`/`type in:`/`set:` (ValuePattern), `toggle:`/`check:`/`uncheck:`
+   (TogglePattern), and `expand:`/`collapse:` (ExpandCollapsePattern)
+   keep the cursor put. Chrome miss falls back to SendInput. Password /
+   leaf / non-toggleable is a visible no. Act still Cortex then reviewPlan.
 3. **DR-0005 still holds.** Screenshotable HUD, UACC READ, IBM Plex,
    loopback `computer.status` / `observe` / `act` / `scribe` /
    `meeting_assist`. Act/scribe fail-closed without Cortex. Hands-free

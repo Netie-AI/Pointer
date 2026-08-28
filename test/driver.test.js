@@ -376,6 +376,36 @@ test("dry-run uia_invoke is a no-op success; live miss is a visible no", async (
   assert.match(String(miss.error || ""), /no matching/);
 });
 
+test("dry-run uia_set is a no-op success; live miss is a visible no", async () => {
+  const dry = new InputDriver({ dryRun: true });
+  const ok = await dry.perform({ type: "uia_set", target: "Search", value: "hello" });
+  assert.strictEqual(ok.ok, true);
+  assert.strictEqual(ok.via, "uia-set");
+  assert.strictEqual(ok.dryRun, true);
+  const missing = await dry.perform({ type: "uia_set", value: "hello" });
+  assert.strictEqual(missing.ok, false);
+  let called = "";
+  const live = new InputDriver({
+    uiaSet: async (target, value) => {
+      called = `${target}:${value}`;
+      return { ok: true, name: target, via: "uia-set" };
+    },
+  });
+  const hit = await live.perform({ type: "uia_set", target: "Search", value: "hello" });
+  assert.strictEqual(hit.ok, true);
+  assert.strictEqual(called, "Search:hello");
+  assert.strictEqual(hit.keepCursor, true);
+  const none = new InputDriver({});
+  const noFn = await none.perform({ type: "uia_set", target: "Search", value: "hello" });
+  assert.strictEqual(noFn.ok, false);
+  const failed = new InputDriver({
+    uiaSet: async () => ({ ok: false, reason: "no matching control" }),
+  });
+  const miss = await failed.perform({ type: "uia_set", target: "Search", value: "hello" });
+  assert.strictEqual(miss.ok, false);
+  assert.match(String(miss.error || ""), /no matching/);
+});
+
 test("keysHeld reports the worker down flag", async () => {
   const state = {};
   const d = new InputDriver({

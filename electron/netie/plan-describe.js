@@ -99,6 +99,12 @@ function describeAction(action) {
         ? `Type a stored secret into${where || " a field"} (value never shown)`
         : `Type ${a.value ? `"${clip(a.value, 40)}"` : "text"} into${where || " a field"}`;
       break;
+    case "uia_set":
+      verb = "Set";
+      text = secret
+        ? `Set a stored secret into${where || " a field"} without moving the cursor (value never shown)`
+        : `Set ${a.value ? `"${clip(a.value, 40)}"` : "text"} into${where || " a field"} without moving the cursor`;
+      break;
 
     case "paste":
     case "clipboard_paste":

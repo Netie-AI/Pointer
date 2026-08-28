@@ -331,6 +331,7 @@ class InputDriver {
     this.uiaToggle = opts.uiaToggle || null;
     this.uiaExpand = opts.uiaExpand || null;
     this.uiaInvoke = opts.uiaInvoke || null;
+    this.uiaSet = opts.uiaSet || null;
     this._spawn = opts.spawnImpl || spawn;
     this._coreSend = opts.coreSend || null;
     this._opTimeoutMs = opts.opTimeoutMs || 8000;
@@ -1107,6 +1108,34 @@ class InputDriver {
           target,
           via: "uia-invoke",
           name: r.name,
+          keepCursor: true,
+          keepFocus: true,
+        };
+      }
+
+      case "uia_set": {
+        const target = String(action.target || action.field || "").trim();
+        const value = String(action.value ?? "");
+        this.last = { op: "uia_set", target, len: value.length };
+        if (!target) return { ok: false, type, error: "missing set target" };
+        if (!value) return { ok: false, type, error: "empty value", target };
+        if (this.dryRun) {
+          return { ok: true, type, target, via: "uia-set", dryRun: true, typed: value.length };
+        }
+        if (typeof this.uiaSet !== "function") {
+          return { ok: false, type, error: "UIA set not available", target };
+        }
+        const r = await this.uiaSet(target, value);
+        if (!r || !r.ok) {
+          return { ok: false, type, error: (r && r.reason) || "set failed", target };
+        }
+        return {
+          ok: true,
+          type,
+          target,
+          via: "uia-set",
+          name: r.name,
+          typed: value.length,
           keepCursor: true,
           keepFocus: true,
         };

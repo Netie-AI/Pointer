@@ -43,6 +43,13 @@ check("uia_invoke names the control and does not claim a cursor warp", () => {
   assert.ok(/without moving the cursor/i.test(d.text));
 });
 
+check("uia_set names the field and does not claim a cursor warp", () => {
+  const d = describeAction({ type: "uia_set", target: "Search", value: "hello" });
+  assert.ok(d.text.includes("Search"));
+  assert.ok(d.text.includes("hello"));
+  assert.ok(/without moving the cursor/i.test(d.text));
+});
+
 check("uia_toggle names the box and the want", () => {
   const flip = describeAction({ type: "uia_toggle", target: "Remember me" });
   assert.ok(flip.text.includes("Remember me"));

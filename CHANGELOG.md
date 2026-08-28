@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - UIA ValuePattern for named fields
+
+`fill: Search: hello` and `type in:` try SetValue on the foreground
+Edit before SendInput so the cursor stays put. Chrome miss falls back
+to click then type. `set: Search: hello` is ValuePattern only.
+Password boxes refuse. Cortex `/dms/secure` then reviewPlan still
+gates Act. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - UIA InvokePattern for named clicks
 
 `click: Save` tries InvokePattern on the foreground control before

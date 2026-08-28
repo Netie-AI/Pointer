@@ -68,6 +68,22 @@ function parseNamedInstruction(type, text) {
   return { ok: true, source: type, actions: [{ type, target: hit[1].trim() }] };
 }
 
+/** fill: Search: hello / type in: Search: hello / set: Search: hello */
+function parseNamedFill(text) {
+  const hit = String(text || "").match(
+    /^(?:please\s+)?(fill|set|type\s+in)\s*:\s*([^:]{1,80})\s*:\s*([\s\S]+)$/i
+  );
+  if (!hit) return null;
+  const target = String(hit[2] || "").trim();
+  const value = String(hit[3] || "").trim();
+  if (!target || !value) return null;
+  const verb = String(hit[1] || "").toLowerCase().replace(/\s+/g, " ");
+  if (verb === "set") {
+    return { ok: true, source: "set", actions: [{ type: "uia_set", target, value }] };
+  }
+  return { ok: true, source: "fill", actions: [{ type: "fill", target, value }] };
+}
+
 function findWindow(windows, want) {
   const needle = String(want || "").trim().toLowerCase();
   if (!needle) return null;
@@ -101,7 +117,7 @@ function windowClickPoint(win) {
 const MAX_CHAIN = 8;
 
 function looksLocalStep(text) {
-  return /^(?:please\s+)?(?:observe|screenshot|screen info|type\s*:|dictate\s*:|click|doubleclick|rightclick|hover|invoke\s*:|toggle\s*:|check\s*:|uncheck\s*:|expand\s*:|collapse\s*:|wait|scroll|press\s+|open\s*:|focus|deliver\s*:|replace\s*:|copy|paste|select)/i.test(
+  return /^(?:please\s+)?(?:observe|screenshot|screen info|type\s+in\s*:|type\s*:|dictate\s*:|click|doubleclick|rightclick|hover|invoke\s*:|toggle\s*:|check\s*:|uncheck\s*:|expand\s*:|collapse\s*:|fill\s*:|set\s*:|wait|scroll|press\s+|open\s*:|focus|deliver\s*:|replace\s*:|copy|paste|select)/i.test(
     String(text || "").trim()
   );
 }
@@ -215,6 +231,8 @@ function planOneInstruction(instruction, opts = {}) {
     invoked.source = "invoke";
     return invoked;
   }
+  const filled = parseNamedFill(text);
+  if (filled) return filled;
   const toggled = text.match(/^(?:please\s+)?(toggle|check|uncheck)\s*:\s*(.+)$/i);
   if (toggled && String(toggled[2] || "").trim()) {
     const kind = String(toggled[1] || "toggle").toLowerCase();

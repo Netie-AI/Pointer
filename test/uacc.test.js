@@ -109,6 +109,7 @@ function test(name, fn) {
     assert.strictEqual(shown.act.uiaToggle, true);
     assert.strictEqual(shown.act.uiaExpand, true);
     assert.strictEqual(shown.act.uiaInvoke, true);
+    assert.strictEqual(shown.act.uiaSet, true);
     assert.strictEqual(shown.delivery.present, false);
     assert.strictEqual(shown.mode, "agent");
     assert.strictEqual(shown.hotkeys.recording, "Control+Alt+Space");
@@ -157,6 +158,9 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("focus: notepad then type: hello"));
     assert.ok(shown.drive.instructions.includes("click: Save"));
     assert.ok(shown.drive.instructions.includes("invoke: Save"));
+    assert.ok(shown.drive.instructions.includes("fill: Search: hello"));
+    assert.ok(shown.drive.instructions.includes("type in: Search: hello"));
+    assert.ok(shown.drive.instructions.includes("set: Search: hello"));
     assert.ok(shown.drive.instructions.includes("toggle: Remember me"));
     assert.ok(shown.drive.instructions.includes("check: Remember me"));
     assert.ok(shown.drive.instructions.includes("uncheck: Remember me"));

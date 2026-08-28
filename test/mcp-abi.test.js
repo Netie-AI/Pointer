@@ -89,6 +89,7 @@ function test(name, fn) {
     assert.match(act.description, /toggle:/);
     assert.match(act.description, /expand:/);
     assert.match(act.description, /invoke:/);
+    assert.match(act.description, /fill: Search: hello/);
     assert.match(act.description, /use Claude/);
     assert.match(act.description, /use Cursor/);
     assert.ok(act.inputSchema.properties.mode);
