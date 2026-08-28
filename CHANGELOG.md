@@ -1,3 +1,11 @@
+## 2026-08-28 - Overlay docks the filed file; home Ask stays
+
+Public `/overlay` Draft email / Notes / Needs you / Live answer docks
+Unsent mail (To Sarah Chen), Notes, Needs you, or Live answer on the
+walk. Close hides the dock. Home Ask highlights that window on This
+screen. Never a second tab. Never send. Never Act. P-05 and P-06 stay
+parked.
+
 ## 2026-08-28 - Overlay stays; Email types the Heard name
 
 Public `/overlay` keeps the walk when Draft email / Notes / Needs you /
@@ -38,28 +46,28 @@ Fixed cue bar chips Ask Got it, Draft email, Notes, Needs you, and
 Live answer. Same as typing Ask. Never send. Never approval. Run still
 refuses (P-06). Never Act. P-05 stays parked.
 
-
+## 2026-08-28 - Demo Ask opens the matching window
 
 Public/demo Ask files Unsent mail, Notes, Needs you, or Live answer
 on This computer. Teach Ask is still Got it. Unknown Ask stays on
 the laptop. Never send. Never a .docx. Never approval. Run still
 refuses (P-06). Never Act. P-05 stays parked.
 
-
+## 2026-08-28 - Demo Draw stacks a BOX on This screen
 
 Public/demo This screen Draw stores a freehand BOX (cap 8, 0.4%
 fail-closed), same rules as the laptop overlay. Home This screen is
 Draw + Got it. This computer window fills the desktop; files stay the
 dock. Run still refuses (P-06). Never Act. P-05 stays parked.
 
-
+## 2026-08-28 - This computer opens files as windows; home BOX is Got it
 
 Click a file on `/workspace` to open it as a window on This computer.
 Home This screen tap on the current BOX is Got it (Ask, never Act).
 Public catalog stays labeled demo. Run still refuses (P-06). Never Act.
 P-05 stays parked.
 
-
+## 2026-08-28 - Public host paints the sample coworker
 
 Public localFirst pages paint the labeled demo catalog (This screen,
 Live answer, Notes, Unsent mail, Needs you). Not your session. Live

@@ -30,9 +30,9 @@
    `/overlay` is the same teach walk (Draw stacks a BOX; Last step
    when nothing remains; walk rail plus Ask chips; Enter is Got it).
    HUD cue bar keeps that remaining rail and those chips when chrome
-   hides. Walk rail ticks jump by Ask. Overlay stays on the walk when a
-   desk window opens. Email BOX types the Heard name. Last step is
-   spoken. Never Act.
+   hides. Walk rail ticks jump by Ask. Overlay docks the filed file on
+   the walk. Home Ask stays on This screen. Email BOX types the Heard
+   name. Last step is spoken. Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

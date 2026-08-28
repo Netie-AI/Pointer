@@ -939,9 +939,13 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(openFrame, /closeTeachOverlay/);
   const teachOverlay = fs.readFileSync(path.join(__dirname, "..", "host", "overlay.html"), "utf8");
   assert.match(teachOverlay, /id="walk-chrome"/);
-  assert.match(teachOverlay, /window\.open/);
+  assert.match(teachOverlay, /id="walk-dock"/);
+  assert.match(teachOverlay, /paintWalkDock/);
+  assert.match(teachOverlay, /Unsent mail/);
+  assert.match(teachOverlay, /not sent/);
   const openFn = teachOverlay.slice(teachOverlay.indexOf("function openDeskWindow"), teachOverlay.indexOf("function onDesk"));
-  assert.match(openFn, /window\.open/);
+  assert.match(openFn, /paintWalkDock/);
+  assert.doesNotMatch(openFn, /window\.open/);
   assert.doesNotMatch(openFn, /location\.href/);
   assert.match(teachOverlay, /walk-filed/);
   assert.match(teachOverlay, /Sarah Chen/);
@@ -949,6 +953,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /onRailStep/);
   assert.match(teachOverlay, /data-rail/);
   assert.match(teachOverlay, /data-step/);
+  assert.match(teachOverlay, /spoken \+ "\. Then "/);
   assert.match(teachOverlay, /spoken \+ "\. Last step"/);
   assert.match(teachOverlay, /Got it/);
   assert.match(teachOverlay, /Then:/);
@@ -1650,8 +1655,11 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /demoAsk/);
   assert.match(hostApp, /Opened unsent mail/);
   assert.match(hostApp, /Ask stays on the laptop/);
+  assert.match(hostApp, /revealHomeWindow/);
+  assert.match(hostApp, /desk-window-now/);
   const demoAskFn = hostApp.slice(hostApp.indexOf("function demoAsk"), hostApp.indexOf("function postAsk"));
   assert.doesNotMatch(demoAskFn, /mode:\s*"meeting"/);
+  assert.doesNotMatch(demoAskFn, /location\.href/);
   assert.match(hostApp, /demoAskChips/);
   assert.match(hostApp, /host-ask-chips/);
   assert.match(hostApp, /Draft email/);

@@ -302,6 +302,9 @@ function readAsset(file) {
     assert.match(app, /Ask stays on the laptop/);
     const demoAskFn = app.slice(app.indexOf("function demoAsk"), app.indexOf("function postAsk"));
     assert.doesNotMatch(demoAskFn, /mode:\s*"meeting"/);
+    assert.doesNotMatch(demoAskFn, /location\.href/);
+    assert.match(app, /revealHomeWindow/);
+    assert.match(app, /desk-window-now/);
     assert.match(app, /if \(onTeach\) speakTeachCue/);
     assert.match(app, /Last step/);
     assert.match(app, /\. Last step/);
@@ -363,6 +366,7 @@ function readAsset(file) {
     assert.match(cssText, /desk-window/);
     assert.match(cssText, /desk-document/);
     assert.match(cssText, /desk-inbox/);
+    assert.match(cssText, /desk-window-now/);
     assert.match(app, /workspace-open-file/);
     assert.match(app, /paintOpenFileHero/);
     assert.match(app, /paintOpenFileTabs/);
@@ -470,7 +474,12 @@ function readAsset(file) {
     assert.match(overlayText, /demoFrame/);
     assert.match(overlayText, /Type in Email/);
     assert.match(overlayText, /Sarah Chen/);
-    assert.match(overlayText, /window\.open/);
+    assert.match(overlayText, /id="walk-dock"/);
+    assert.match(overlayText, /paintWalkDock/);
+    assert.match(overlayText, /Unsent mail/);
+    assert.match(overlayText, /not sent/);
+    assert.match(overlayText, /spoken \+ "\. Then "/);
+    assert.doesNotMatch(overlayText, /window\.open/);
     assert.doesNotMatch(overlayText, /innerHTML/);
     assert.doesNotMatch(overlayText, /Send mail|Approve/);
     assert.doesNotMatch(overlayText, /clicky-orb|stage-orb|chat-bubble/);

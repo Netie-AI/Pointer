@@ -951,6 +951,27 @@ function demoAskChips() {
   ];
 }
 
+function revealHomeWindow(id) {
+  const map = {
+    "live-inbox": ".desk-inbox",
+    "live-document": ".desk-document",
+    "live-security": ".desk-security",
+    "live-meeting": ".meeting-card",
+    "standing-today": ".today-plate",
+  };
+  const sel = map[String(id || "")];
+  const root = document.getElementById("stage");
+  if (!sel || !root) return false;
+  const node = root.querySelector(sel);
+  if (!node) return false;
+  root.querySelectorAll(".desk-window-now").forEach(function (el) {
+    el.classList.remove("desk-window-now");
+  });
+  node.classList.add("desk-window-now");
+  if (typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "nearest" });
+  return true;
+}
+
 function demoAsk(ask) {
   const desk = demoAskDesk(ask);
   if (desk === "teach") {
@@ -969,16 +990,16 @@ function demoAsk(ask) {
     showFiled("Demo catalog. Ask stays on the laptop. Never Act.");
     return;
   }
-  if (!isWorkspacePage()) {
-    location.href = "/workspace?id=" + encodeURIComponent(id);
-    return;
-  }
-  openDemoArtifact(id);
   if (desk === "inbox") showFiled("Demo catalog. Opened unsent mail. Never sent. Never Act.");
   else if (desk === "document") showFiled("Demo catalog. Opened Notes. Never a .docx. Never Act.");
   else if (desk === "security") showFiled("Demo catalog. Opened Needs you. Never approval. Never Act.");
   else if (desk === "meeting") showFiled("Demo catalog. Opened Live answer. Never a cheater overlay. Never Act.");
   else showFiled("Demo catalog. Opened Today. Never Act.");
+  if (isWorkspacePage()) {
+    openDemoArtifact(id);
+    return;
+  }
+  if (revealHomeWindow(id)) return;
 }
 
 function postAsk(ask) {

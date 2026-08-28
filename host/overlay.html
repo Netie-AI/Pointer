@@ -95,7 +95,36 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      #walk-chrome button {
+      #walk-dock {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 2;
+        display: none;
+        width: min(320px, 42vw);
+        max-height: 42vh;
+        overflow: auto;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #111;
+        border: 1px solid #345;
+        color: #eee;
+        font: 500 12px "Segoe UI", system-ui, sans-serif;
+        pointer-events: auto;
+      }
+      #walk-dock.show { display: block; }
+      #walk-dock .dock-kicker {
+        margin: 0 0 4px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #9ad;
+        font-size: 11px;
+      }
+      #walk-dock .dock-row, #walk-dock .dock-body, #walk-dock .dock-foot { margin: 0 0 6px; }
+      #walk-dock .dock-foot { color: #f88; }
+      #walk-dock .dock-body { white-space: pre-wrap; color: #ddd; }
+      #walk-chrome button,
+      #walk-dock button {
         pointer-events: auto;
         background: #1a1a1a;
         color: #9ad;
@@ -246,6 +275,7 @@
         <button type="button" data-desk="1" data-q="what should I say">Live answer</button>
       </p>
     </div>
+    <aside id="walk-dock" class="chrome" hidden></aside>
     <svg id="walk-ink" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
     <svg id="draw-stroke" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
     <div id="draw-ghost" class="point-mark point-box" hidden></div>
@@ -432,7 +462,8 @@
         }
         if (chromeBar) chromeBar.classList.toggle("show", Boolean(cue));
         const spoken = fill && /^type in\b/i.test(action) ? "Type " + fill : action;
-        speakTeachCue(rest ? spoken : spoken ? spoken + ". Last step" : "");
+        const restSpeak = String(rest || "").replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
+        speakTeachCue(restSpeak ? spoken + ". Then " + restSpeak : spoken ? spoken + ". Last step" : "");
       }
 
       let lastSpokenTeach = "";
@@ -564,6 +595,88 @@
         return "";
       }
 
+      function overlayDockSpec(href) {
+        if (/live-inbox/.test(href)) {
+          return {
+            kicker: "Unsent mail",
+            rows: [
+              { label: "To", value: "Sarah Chen" },
+              { label: "Subject", value: "Friday deck" },
+            ],
+            body: "Friday works if the deck is in tonight.",
+            foot: "not sent - send is parked (P-05)",
+          };
+        }
+        if (/live-document/.test(href)) {
+          return {
+            kicker: "Notes",
+            body: "Recap\nFriday works if the deck is in tonight.",
+            foot: "not a .docx - Word.app still needs Cortex",
+          };
+        }
+        if (/live-security/.test(href)) {
+          return {
+            kicker: "Needs you",
+            body: "Needs you. Never approval.",
+            foot: "not approval",
+          };
+        }
+        if (/live-meeting/.test(href)) {
+          return {
+            kicker: "Live answer",
+            body: "Friday works if the deck is in tonight.",
+            foot: "Don't say: Don't promise a send.",
+          };
+        }
+        return null;
+      }
+
+      function paintWalkDock(href) {
+        const dock = document.getElementById("walk-dock");
+        if (!dock) return;
+        const spec = overlayDockSpec(href);
+        while (dock.firstChild) dock.removeChild(dock.firstChild);
+        if (!spec) {
+          dock.hidden = true;
+          dock.classList.remove("show");
+          return;
+        }
+        const kick = document.createElement("p");
+        kick.className = "dock-kicker";
+        kick.textContent = spec.kicker;
+        dock.appendChild(kick);
+        (spec.rows || []).forEach(function (row) {
+          const p = document.createElement("p");
+          p.className = "dock-row";
+          const lab = document.createElement("span");
+          lab.textContent = String(row.label || "") + " ";
+          const val = document.createElement("b");
+          val.textContent = String(row.value || "");
+          p.appendChild(lab);
+          p.appendChild(val);
+          dock.appendChild(p);
+        });
+        if (spec.body) {
+          const body = document.createElement("p");
+          body.className = "dock-body";
+          body.textContent = spec.body;
+          dock.appendChild(body);
+        }
+        if (spec.foot) {
+          const foot = document.createElement("p");
+          foot.className = "dock-foot";
+          foot.textContent = spec.foot;
+          dock.appendChild(foot);
+        }
+        const close = document.createElement("button");
+        close.type = "button";
+        close.id = "walk-dock-close";
+        close.textContent = "Close";
+        dock.appendChild(close);
+        dock.hidden = false;
+        dock.classList.add("show");
+      }
+
       function openDeskWindow(href) {
         const next = String(href || "");
         if (!next || !/^\/workspace\?id=(live-inbox|live-document|live-security|live-meeting)$/.test(next)) return;
@@ -573,10 +686,7 @@
           filedEl.hidden = !line;
           filedEl.textContent = line;
         }
-        try {
-          const win = window.open(next, "_blank");
-          if (win) win.opener = null;
-        } catch (err) {}
+        paintWalkDock(next);
       }
 
       function onDesk(q) {
@@ -613,6 +723,16 @@
           setDraw(true);
           return;
         }
+        if (ev.target && ev.target.closest && ev.target.closest("#walk-dock-close")) {
+          ev.preventDefault();
+          const dock = document.getElementById("walk-dock");
+          if (dock) {
+            while (dock.firstChild) dock.removeChild(dock.firstChild);
+            dock.hidden = true;
+            dock.classList.remove("show");
+          }
+          return;
+        }
         const railBtn = ev.target && ev.target.closest ? ev.target.closest("button[data-rail]") : null;
         if (railBtn) {
           ev.preventDefault();
@@ -628,6 +748,8 @@
       }
 
       if (chromeBar) chromeBar.addEventListener("click", onAdvance);
+      const dockBar = document.getElementById("walk-dock");
+      if (dockBar) dockBar.addEventListener("click", onAdvance);
       document.addEventListener("pointerdown", function (ev) {
         if (!drawing || (ev.button != null && ev.button !== 0)) return;
         if (ev.target && ev.target.closest && ev.target.closest(".chrome")) return;

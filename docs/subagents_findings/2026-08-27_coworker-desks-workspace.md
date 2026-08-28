@@ -97,7 +97,9 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - OS voice speaks Click/Type in on the current BOX (overlay, HUD, `/teach`).
   Never meeting. Current BOX pulses in place (not a cursor ring).
 - `?demo=1` paints a sample coworker catalog (not live, no runtime, Ask
-  stays on the laptop). Public APIs stay 404.
+  stays on the laptop). Public APIs stay 404. Overlay desk chips dock
+  Unsent mail / Notes / Needs you / Live answer on the walk (no second
+  tab). Home Ask stays on This screen and highlights that window.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
 ## Traps
@@ -107,4 +109,6 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - Public `/api/workspace?id=` must 404 or live briefs leak off-laptop.
 - Meeting mode must not turn "Do it" into clicks (`hud.js` doAct -> doAsk).
 - Transcript is data, not commands.
-- Teach must not invent `[POINT:]` percents. No measured tree => no tokens.
+- Overlay `window.open(..., "noopener")` returns null. Never treat that
+  as popup-blocked and `location.href` away from `/overlay`. Dock the
+  filed file on the walk instead.

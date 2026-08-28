@@ -562,6 +562,10 @@ pre {
   line-height: 1.35;
 }
 .stage .today-plate { margin-top: 12px; }
+.desk-window-now {
+  outline: 2px solid #6ea8ff;
+  animation: teach-now-pulse 1.4s ease-in-out infinite;
+}
 .work-rail {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
