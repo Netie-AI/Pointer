@@ -180,6 +180,26 @@ const RECIPES = Object.freeze({
     ]),
   }),
 
+  /** Prefer Claude Code while the 5-hour window is open. */
+  use_claude: Object.freeze({
+    id: "use_claude",
+    label: "Open Claude Code",
+    actions: Object.freeze([
+      { type: "open", target: "claude" },
+      { type: "wait", ms: 1200 },
+    ]),
+  }),
+
+  /** When Claude's 5-hour limit is used, continue in Cursor. */
+  use_cursor: Object.freeze({
+    id: "use_cursor",
+    label: "Open Cursor",
+    actions: Object.freeze([
+      { type: "open", target: "Cursor" },
+      { type: "wait", ms: 1200 },
+    ]),
+  }),
+
   // ── Excel ───────────────────────────────────────────────────────────────
   /** AutoSum the selection (Alt, H, U, S) — ribbon keys, stable since 2007. */
   excel_autosum: Object.freeze({
@@ -461,6 +481,17 @@ function matchRecipe(text) {
     /(?:copy|paste|put).{0,40}(?:into|to)\s+(?:powerpoint|ppt|slides?)\b/.test(normalized)
   ) {
     return cloneRecipe(RECIPES.create_slides);
+  }
+  if (
+    /^(?:please\s+)?(?:use|open|switch\s+to)\s+claude(?:\s*code)?(?:\s+please)?$/.test(normalized)
+  ) {
+    return cloneRecipe(RECIPES.use_claude);
+  }
+  if (
+    /^(?:please\s+)?(?:use|open|switch\s+to)\s+cursor(?:\s*ide)?(?:\s+please)?$/.test(normalized) ||
+    /(?:5[\s-]*hour|five[\s-]*hour).{0,24}(?:limit|done|hit|over|exhausted)/.test(normalized)
+  ) {
+    return cloneRecipe(RECIPES.use_cursor);
   }
   if (
     /(?:claude|chat).{0,30}(?:to|into|->|→)\s*cursor/.test(normalized) ||
