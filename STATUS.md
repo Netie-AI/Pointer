@@ -15,7 +15,7 @@
    fail-closed without Cortex. Transcribe types into the remembered window.
    Scribe rewrites then pastes. Optional screen context. Esc cancels
    listening. Hold Ctrl+Alt+Space (release to stop; Linux stays toggle).
-   Ctrl+Alt+M/L. Meeting Suggest, Recap, Follow-ups, Email pills. Live notes
+   Ctrl+Alt+M/L. Meeting Suggest, Recap, Follow-ups, Email, Actions pills. Live notes
    at `GET /api/meeting?notes=1`. Failed Scribe keeps a pending transcript
    so Retry or Paste as-is can finish (`POST /api/scribe` retry/dictate).
    Teach LINE and PATH marks. `focus:` matches a window title; `click: Save`
@@ -26,7 +26,7 @@
    chains local verbs. Ask captures a fresh screen (Clicky sees-what-you-see). Ctrl+Enter is
    Cluely Assist (meeting say, or "what am I looking at"). Copy notes and
    `GET /api/meeting?export=1` share live markdown. Copy recap / Copy say /
-   Copy email plus `?recap=1` `?say=1` `?email=1` share from main. MCP meeting
+   Copy email / Copy actions plus `?recap=1` `?say=1` `?email=1` `?actions=1` from main. MCP meeting
    assist captures a fresh screen unless `screenshot: false` (live suggest
    opts out). Live Say refreshes as notes grow. Meeting LIVE captions are
    fixed chrome, not cursor-following. Follow-ups land as clickable Ask chips (Cortex gated).

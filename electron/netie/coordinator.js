@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { TOOLS, CATALOG } = require("./mcp-abi");
-const { publicMeetingNotes, exportMeetingNotes, publicMeetingRecap, exportMeetingRecap, publicMeetingSay, exportMeetingSay, publicMeetingEmail, exportMeetingEmail } = require("./meeting");
+const { publicMeetingNotes, exportMeetingNotes, publicMeetingRecap, exportMeetingRecap, publicMeetingSay, exportMeetingSay, publicMeetingEmail, exportMeetingEmail, publicMeetingActions, exportMeetingActions } = require("./meeting");
 const { publicPendingTranscript } = require("./pending-scribe");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
@@ -172,6 +172,21 @@ function createCoordinator(opts = {}) {
       const email = publicMeetingEmail(raw);
       const exp = exportMeetingEmail(email.text);
       const body = { ok: true, email, markdown: exp.markdown, exported: exp.ok };
+      if (!exp.ok) body.reason = exp.reason;
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(body));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/meeting" && queryFlag(url, "actions")) {
+      let raw = null;
+      try {
+        raw = typeof opts.meetingActions === "function" ? opts.meetingActions() : null;
+      } catch {
+        raw = null;
+      }
+      const actions = publicMeetingActions(raw);
+      const exp = exportMeetingActions(actions.text);
+      const body = { ok: true, actions, markdown: exp.markdown, exported: exp.ok };
       if (!exp.ok) body.reason = exp.reason;
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(body));

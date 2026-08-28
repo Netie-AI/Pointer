@@ -81,6 +81,7 @@ function test(name, fn) {
       meetingRecap: () => "Ship Friday. Sam owns QA.",
       meetingSay: () => "Confirm Friday.",
       meetingEmail: () => "Hi team,\nShip Friday.",
+      meetingActions: () => "1. Sam owns QA.",
       scribePending: () => ({ transcript: "rewrite this email", title: "Notepad", hwnd: "1" }),
     });
     const bad = await Promise.resolve(c.listen({ host: "0.0.0.0", port: 0 }));
@@ -272,6 +273,19 @@ function test(name, fn) {
     assert.match(meetEmail.markdown, /# Meeting follow-up/);
     assert.match(meetEmail.markdown, /Hi team/);
     assert.match(meetEmail.email.note, /untrusted model text/);
+
+    const meetActions = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/meeting?actions=1" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      }).on("error", reject);
+    });
+    assert.strictEqual(meetActions.ok, true);
+    assert.strictEqual(meetActions.exported, true);
+    assert.match(meetActions.markdown, /# Meeting action items/);
+    assert.match(meetActions.markdown, /Sam owns QA/);
+    assert.match(meetActions.actions.note, /untrusted model text/);
 
     const pending = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/scribe?pending=1" }, (res) => {

@@ -449,13 +449,18 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/id="btn-copy-say"/.test(html), "Copy say pill missing from HUD");
       assert.ok(/id="btn-email"/.test(html), "Email pill missing from HUD");
       assert.ok(/id="btn-copy-email"/.test(html), "Copy email pill missing from HUD");
+      assert.ok(/id="btn-actions"/.test(html), "Actions pill missing from HUD");
+      assert.ok(/id="btn-copy-actions"/.test(html), "Copy actions pill missing from HUD");
       assert.ok(/id="privacy-chip"/.test(html), "privacy chip missing from HUD");
       assert.ok(/id="session-chip"/.test(html), "session chip missing from HUD");
       assert.ok(/action:\s*"recap"/.test(js), "Copy recap must not send renderer text");
       assert.ok(/action:\s*"say"/.test(js), "Copy say must not send renderer text");
       assert.ok(/action:\s*"email"/.test(js), "Copy email must not send renderer text");
+      assert.ok(/action:\s*"actions"/.test(js), "Copy actions must not send renderer text");
       assert.ok(/doAsk\(\{\s*kind:\s*"email"/.test(js), "Email pill must Ask through Cortex");
+      assert.ok(/doAsk\(\{\s*kind:\s*"actions"/.test(js), "Actions pill must Ask through Cortex");
       assert.ok(/kind === "email"/.test(js), "empty Email click must still send kind");
+      assert.ok(/kind === "actions"/.test(js), "empty Actions click must still send kind");
     }),
 
     T("Cluely meeting LIVE captions are fixed chrome, not cursor-following", () => {
@@ -499,6 +504,10 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(
         !/kind === "email"[\s\S]{0,40}applySuggest/.test(js),
         "Email must stay in the answer pane, not Follow-ups chips"
+      );
+      assert.ok(
+        !/kind === "actions"[\s\S]{0,40}applySuggest/.test(js),
+        "Actions must stay in the answer pane, not Follow-ups chips"
       );
       const css = read("electron/hud.css");
       assert.ok(/\.followup-chip/.test(css), "chips need a classy type rule");

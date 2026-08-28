@@ -65,7 +65,7 @@ const {
   isUsableTarget,
   pickWindowSource,
 } = require("./netie/delivery");
-const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetingNotes, exportMeetingRecap, exportMeetingSay, exportMeetingEmail, normalizeMeetingKind } = require("./netie/meeting");
+const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetingNotes, exportMeetingRecap, exportMeetingSay, exportMeetingEmail, exportMeetingActions, normalizeMeetingKind } = require("./netie/meeting");
 const { createHoldMonitor, DICTATE_HOLD_VKS, comboVks, normalizeDictateHotkeys } = require("./netie/holdkey");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
@@ -220,6 +220,7 @@ const pendingScribe = createPendingScribe();
 let lastMeetingRecap = "";
 let lastMeetingSay = "";
 let lastMeetingEmail = "";
+let lastMeetingActions = "";
 function rememberMeetingShare(kind, text) {
   const k = normalizeMeetingKind(kind);
   const body = String(text || "").trim();
@@ -227,6 +228,7 @@ function rememberMeetingShare(kind, text) {
   if (k === "recap") lastMeetingRecap = body;
   if (k === "say") lastMeetingSay = body;
   if (k === "email") lastMeetingEmail = body;
+  if (k === "actions") lastMeetingActions = body;
 }
 
 /** Worker GetWindowRect is physical. Clicks use DIP. Convert when Electron screen is up. */
@@ -455,6 +457,7 @@ const liveCoordinator = createCoordinator({
   meetingRecap: () => lastMeetingRecap || null,
   meetingSay: () => lastMeetingSay || null,
   meetingEmail: () => lastMeetingEmail || null,
+  meetingActions: () => lastMeetingActions || null,
   scribePending: () => pendingScribe.peek(),
 });
 const brain = new PersonalBrain({
@@ -3541,7 +3544,9 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
           ? "Meeting follow-ups"
           : assist.kind === "email"
             ? "Meeting email"
-            : "Meeting assist";
+            : assist.kind === "actions"
+              ? "Meeting actions"
+              : "Meeting assist";
     sendHud({
       type: "answer",
       meta: rMeet.ok ? meetMeta : shortError(rMeet.text || rMeet.error),
@@ -4769,6 +4774,20 @@ ipcMain.handle("hud:meetingNotes", async (_e, payload) => {
     try {
       await driver.clipboardSet(exp.markdown);
       sendHud({ type: "answer", meta: "Email", text: "Meeting email copied." });
+      return { ok: true, copied: true };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  }
+  if (action === "actions" || action === "copy-actions") {
+    const exp = exportMeetingActions(lastMeetingActions);
+    if (!exp.ok) {
+      sendHud({ type: "answer", meta: "Actions", text: exp.reason });
+      return { ok: false, error: exp.reason };
+    }
+    try {
+      await driver.clipboardSet(exp.markdown);
+      sendHud({ type: "answer", meta: "Actions", text: "Meeting action items copied." });
       return { ok: true, copied: true };
     } catch (err) {
       return { ok: false, error: String(err.message || err) };

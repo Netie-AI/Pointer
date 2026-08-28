@@ -53,11 +53,17 @@ function test(name, fn) {
     assert.strictEqual(mail.kind, "email");
     assert.match(mail.asked, /follow-up email/i);
     assert.match(mail.system, /follow-up email/i);
+    const acts = buildMeetingAssist({ kind: "action-items", notes: "We ship Friday. Sam owns QA." });
+    assert.strictEqual(acts.kind, "actions");
+    assert.match(acts.asked, /action items/i);
+    assert.match(acts.system, /action-item list/i);
     const { publicMeetingNotes, normalizeMeetingKind } = require("../electron/netie/meeting");
     assert.strictEqual(normalizeMeetingKind("FOLLOW_UPS"), "followups");
     assert.strictEqual(normalizeMeetingKind("email"), "email");
     assert.strictEqual(normalizeMeetingKind("mail"), "email");
     assert.strictEqual(normalizeMeetingKind("follow-up-email"), "email");
+    assert.strictEqual(normalizeMeetingKind("action-items"), "actions");
+    assert.strictEqual(normalizeMeetingKind("todos"), "actions");
     assert.strictEqual(normalizeMeetingKind("unknown"), "say");
     const missing = publicMeetingNotes(null);
     assert.strictEqual(missing.present, false);
@@ -110,6 +116,23 @@ function test(name, fn) {
     assert.strictEqual(liveEmail.present, true);
     assert.match(liveEmail.note, /untrusted model text/);
     assert.match(liveEmail.text, /Hi team/);
+    const { exportMeetingActions, publicMeetingActions } = require("../electron/netie/meeting");
+    const noActions = exportMeetingActions("");
+    assert.strictEqual(noActions.ok, false);
+    const actionsWs = exportMeetingActions("   ");
+    assert.strictEqual(actionsWs.ok, false);
+    const actionsShare = exportMeetingActions("1. Sam - QA by Friday");
+    assert.strictEqual(actionsShare.ok, true);
+    assert.match(actionsShare.markdown, /^# Meeting action items/m);
+    assert.match(actionsShare.markdown, /Untrusted model text/);
+    assert.match(actionsShare.markdown, /Sam/);
+    assert.match(actionsShare.note, /untrusted model text/);
+    const missingActions = publicMeetingActions(null);
+    assert.strictEqual(missingActions.present, false);
+    const liveActions = publicMeetingActions("1. Sam owns QA.");
+    assert.strictEqual(liveActions.present, true);
+    assert.match(liveActions.note, /untrusted model text/);
+    assert.match(liveActions.text, /Sam owns QA/);
   });
 
   await test("notes.tail returns the live file without leaking after stop", () => {
@@ -177,6 +200,14 @@ function test(name, fn) {
     });
     assert.ok(mail.result);
     assert.strictEqual(mail.result.kind, "email");
+    const items = await mcp.handle({
+      jsonrpc: "2.0",
+      id: 34,
+      method: "computer.meeting_assist",
+      params: { notes: "ship Friday", kind: "actions" },
+    });
+    assert.ok(items.result);
+    assert.strictEqual(items.result.kind, "actions");
   });
 
   await test("live suggest waits for enough new notes and debounce", () => {

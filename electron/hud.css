@@ -216,7 +216,9 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 #btn-copy-recap,
 #btn-copy-say,
 #btn-email,
-#btn-copy-email { display: none; }
+#btn-copy-email,
+#btn-actions,
+#btn-copy-actions { display: none; }
 .hud.mode-meeting #btn-suggest,
 .hud.mode-meeting #btn-recap,
 .hud.mode-meeting #btn-followups,
@@ -224,7 +226,9 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .hud.mode-meeting #btn-copy-recap,
 .hud.mode-meeting #btn-copy-say,
 .hud.mode-meeting #btn-email,
-.hud.mode-meeting #btn-copy-email { display: inline-flex; }
+.hud.mode-meeting #btn-copy-email,
+.hud.mode-meeting #btn-actions,
+.hud.mode-meeting #btn-copy-actions { display: inline-flex; }
 #btn-scribe-retry,
 #btn-scribe-paste { display: none; }
 .hud.mode-scribe.has-pending #btn-scribe-retry,

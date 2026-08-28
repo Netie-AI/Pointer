@@ -2,6 +2,15 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Meeting action items from main
+
+Cluely-class Actions: meeting-only Actions / Copy actions pills. `kind`
+actions lists owner, task, and due date. `GET /api/meeting?actions=1`
+shares the last list from main, not the renderer. Empty stays a refusal.
+Still Cortex-gated to produce. GitHub CI on this account is still a
+spending-limit cutoff (0 steps), not a product fail. No GPLv3 dump. No
+third-party MCP.
+
 ## 2026-08-27 - Meeting follow-up email from main
 
 Cluely-class Email: meeting-only Email / Copy email pills. `kind` email
