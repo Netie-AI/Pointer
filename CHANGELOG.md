@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - UIA toggle and expand without moving the cursor
+
+`toggle:` / `check:` / `uncheck:` use TogglePattern on a named CheckBox.
+`expand:` / `collapse:` use ExpandCollapsePattern on TreeItem / ComboBox /
+Group. Neither warps the cursor. Leaf nodes and non-toggleable Buttons
+stay a visible no. Cortex `/dms/secure` then reviewPlan still gates Act.
+No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Rust type/combo plus Perplexity listening pill
 
 `pointer-core` now owns type/tap/combo/keys as well as click/move/wheel.

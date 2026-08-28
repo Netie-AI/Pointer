@@ -29,7 +29,7 @@ const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
 const { ensureActionCoords, hasScreenPoint } = require("./netie/targeting");
-const { dumpForeground, readSelection, listControls } = require("./netie/uia");
+const { dumpForeground, readSelection, listControls, toggleControl, expandControl } = require("./netie/uia");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
@@ -936,6 +936,8 @@ const driver = new InputDriver({
   dryRun: process.env.NETIE_CLICK_DRY_RUN === "1",
   // Worker is per-monitor DPI aware → feed it physical pixels, not DIPs.
   toPhysical: (pt) => screen.dipToScreenPoint(pt),
+  uiaToggle: (target, want) => toggleControl(target, { run: runUiaProbe, want }),
+  uiaExpand: (target, want) => expandControl(target, { run: runUiaProbe, want }),
 });
 let coreLive = { ok: false, engine: "none" };
 

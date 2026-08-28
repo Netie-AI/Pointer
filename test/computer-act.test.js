@@ -145,6 +145,44 @@ function test(name, fn) {
     assert.strictEqual(executed.length, 1);
   });
 
+  await test("toggle computer.act needs approved:true", async () => {
+    const r = await prepareComputerAct(
+      { instruction: "toggle: Remember me" },
+      { secure: async () => ({ ok: true }) }
+    );
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.needsApproval, true);
+    assert.strictEqual(r.actions[0].type, "uia_toggle");
+    const ok = await runComputerAct(
+      { instruction: "check: Remember me", approved: true },
+      {
+        secure: async () => ({ ok: true }),
+        execute: async (a) => [{ ok: true, type: a[0].type, want: a[0].want }],
+      }
+    );
+    assert.strictEqual(ok.ran, true);
+    assert.strictEqual(ok.actions[0].want, "on");
+  });
+
+  await test("expand computer.act needs approved:true", async () => {
+    const r = await prepareComputerAct(
+      { instruction: "expand: Documents" },
+      { secure: async () => ({ ok: true }) }
+    );
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.needsApproval, true);
+    assert.strictEqual(r.actions[0].type, "uia_expand");
+    const ok = await runComputerAct(
+      { instruction: "collapse: Documents", approved: true },
+      {
+        secure: async () => ({ ok: true }),
+        execute: async (a) => [{ ok: true, type: a[0].type, want: a[0].want }],
+      }
+    );
+    assert.strictEqual(ok.ran, true);
+    assert.strictEqual(ok.actions[0].want, "collapse");
+  });
+
   await test("MCP computer.act with a runner still fail-closes by default", async () => {
     const mcp = createMcpAbi();
     const act = await mcp.handle({
@@ -220,6 +258,27 @@ function test(name, fn) {
     const named = planFromInstruction("click: Save");
     assert.strictEqual(named.actions[0].type, "click");
     assert.strictEqual(named.actions[0].target, "Save");
+    const toggled = planFromInstruction("toggle: Remember me");
+    assert.strictEqual(toggled.ok, true);
+    assert.strictEqual(toggled.source, "toggle");
+    assert.strictEqual(toggled.actions[0].type, "uia_toggle");
+    assert.strictEqual(toggled.actions[0].target, "Remember me");
+    assert.strictEqual(toggled.actions[0].want, "flip");
+    const checked = planFromInstruction("check: Remember me");
+    assert.strictEqual(checked.actions[0].type, "uia_toggle");
+    assert.strictEqual(checked.actions[0].want, "on");
+    const unchecked = planFromInstruction("please uncheck: Remember me");
+    assert.strictEqual(unchecked.actions[0].type, "uia_toggle");
+    assert.strictEqual(unchecked.actions[0].want, "off");
+    const expanded = planFromInstruction("expand: Documents");
+    assert.strictEqual(expanded.ok, true);
+    assert.strictEqual(expanded.source, "expand");
+    assert.strictEqual(expanded.actions[0].type, "uia_expand");
+    assert.strictEqual(expanded.actions[0].target, "Documents");
+    assert.strictEqual(expanded.actions[0].want, "expand");
+    const collapsed = planFromInstruction("please collapse: Documents");
+    assert.strictEqual(collapsed.actions[0].type, "uia_expand");
+    assert.strictEqual(collapsed.actions[0].want, "collapse");
     const waited = planFromInstruction("wait 400");
     assert.strictEqual(waited.actions[0].type, "wait");
     assert.strictEqual(waited.actions[0].ms, 400);
@@ -296,6 +355,18 @@ function test(name, fn) {
     assert.strictEqual(aimed.actions[0].y, 20);
     assert.strictEqual(aimed.actions[1].type, "type");
     assert.strictEqual(aimed.actions[1].value, "hello");
+    const toggleThen = planFromInstruction("toggle: Word wrap then type: hello");
+    assert.strictEqual(toggleThen.ok, true);
+    assert.strictEqual(toggleThen.source, "chain");
+    assert.strictEqual(toggleThen.actions[0].type, "uia_toggle");
+    assert.strictEqual(toggleThen.actions[0].target, "Word wrap");
+    assert.strictEqual(toggleThen.actions[1].type, "type");
+    const expandThen = planFromInstruction("expand: Documents then type: hello");
+    assert.strictEqual(expandThen.ok, true);
+    assert.strictEqual(expandThen.source, "chain");
+    assert.strictEqual(expandThen.actions[0].type, "uia_expand");
+    assert.strictEqual(expandThen.actions[0].target, "Documents");
+    assert.strictEqual(expandThen.actions[1].type, "type");
   });
 
   await test("computer.act click window: uses observed rects and keeps named click: Save", async () => {

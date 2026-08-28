@@ -206,6 +206,259 @@ function parseProbeOutput(stdout) {
   }
 }
 
+/** CheckBox / RadioButton. A Button named "Remember me" is not a toggle. */
+const TOGGLE_CONTROL_TYPES = Object.freeze(["CheckBox", "RadioButton"]);
+
+function canToggle(candidate) {
+  const t = String((candidate && candidate.controlType) || "");
+  if (!TOGGLE_CONTROL_TYPES.includes(t)) return false;
+  if (candidate && candidate.enabled === false) return false;
+  return true;
+}
+
+function normalizeWant(want) {
+  const w = String(want || "flip").toLowerCase().trim();
+  if (w === "on" || w === "check" || w === "checked") return "on";
+  if (w === "off" || w === "uncheck" || w === "unchecked") return "off";
+  return "flip";
+}
+
+function pickToggleCandidate(label, candidates, opts) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  const toggles = list.filter(canToggle);
+  return chooseCandidate(label, toggles.length ? toggles : list, opts);
+}
+
+/**
+ * PowerShell that finds the named control in the foreground window and
+ * TogglePattern-flips it. No SetCursorPos. No SendInput. check:/uncheck:
+ * Toggle until On/Off (at most twice for Indeterminate). Radio cannot
+ * uncheck.
+ */
+function buildToggleScript(name, controlType, want, opts = {}) {
+  const max = Number(opts.max) || MAX_CANDIDATES;
+  const type = String(controlType || "CheckBox").replace(/[^A-Za-z]/g, "") || "CheckBox";
+  const goal = normalizeWant(want);
+  return [
+    "$ErrorActionPreference='Stop'",
+    "Add-Type -AssemblyName UIAutomationClient,UIAutomationTypes | Out-Null",
+    "Add-Type -Namespace Native -Name Win -MemberDefinition '[DllImport(\"user32.dll\")]public static extern System.IntPtr GetForegroundWindow();' | Out-Null",
+    "$h=[Native.Win]::GetForegroundWindow()",
+    "if($h -eq [System.IntPtr]::Zero){ '{\"ok\":false,\"reason\":\"no foreground\"}'; exit 0 }",
+    "$root=[System.Windows.Automation.AutomationElement]::FromHandle($h)",
+    "if($root -eq $null){ '{\"ok\":false,\"reason\":\"no element\"}'; exit 0 }",
+    `$wantName=${psLiteral(name)}`,
+    `$type=${psLiteral(type)}`,
+    `$want=${psLiteral(goal)}`,
+    "$walker=[System.Windows.Automation.TreeWalker]::ControlViewWalker",
+    "$queue=New-Object System.Collections.Queue",
+    "$queue.Enqueue($root) | Out-Null",
+    "$seen=0",
+    `while($queue.Count -gt 0 -and $seen -lt ${max}){`,
+    "  $el=$queue.Dequeue(); $seen++",
+    "  try{",
+    "    $child=$walker.GetFirstChild($el)",
+    "    while($child -ne $null){ $queue.Enqueue($child) | Out-Null; $child=$walker.GetNextSibling($child) }",
+    "    $n=$el.Current.Name; $t=$el.Current.ControlType.ProgrammaticName -replace '^ControlType\\.',''",
+    "    if($n -eq $wantName -and $t -eq $type -and $el.Current.IsEnabled){",
+    "      $pat=$el.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)",
+    "      if($pat -eq $null){ '{\"ok\":false,\"reason\":\"no toggle\"}'; exit 0 }",
+    "      $before=$pat.ToggleState.ToString()",
+    "      if($t -eq 'RadioButton' -and $want -eq 'off'){ '{\"ok\":false,\"reason\":\"cannot uncheck radio\"}'; exit 0 }",
+    "      if($want -eq 'on' -and $before -eq 'On'){ [pscustomobject]@{ok=$true;toggled=$true;changed=$false;name=$n;controlType=$t;state=$before;want=$want} | ConvertTo-Json -Compress; exit 0 }",
+    "      if($want -eq 'off' -and $before -eq 'Off'){ [pscustomobject]@{ok=$true;toggled=$true;changed=$false;name=$n;controlType=$t;state=$before;want=$want} | ConvertTo-Json -Compress; exit 0 }",
+    "      $pat.Toggle()",
+    "      $after=$pat.ToggleState.ToString()",
+    "      if($want -eq 'on' -and $after -ne 'On'){ $pat.Toggle(); $after=$pat.ToggleState.ToString() }",
+    "      if($want -eq 'off' -and $after -ne 'Off'){ $pat.Toggle(); $after=$pat.ToggleState.ToString() }",
+    "      if($want -eq 'on' -and $after -ne 'On'){ '{\"ok\":false,\"reason\":\"toggle stuck\"}'; exit 0 }",
+    "      if($want -eq 'off' -and $after -ne 'Off'){ '{\"ok\":false,\"reason\":\"toggle stuck\"}'; exit 0 }",
+    "      [pscustomobject]@{ok=$true;toggled=$true;changed=$true;name=$n;controlType=$t;state=$after;want=$want} | ConvertTo-Json -Compress",
+    "      exit 0",
+    "    }",
+    "  } catch {}",
+    "}",
+    "'{\"ok\":false,\"reason\":\"no matching control\"}'",
+  ].join("\n");
+}
+
+function parseToggleOutput(stdout) {
+  const raw = String(stdout || "").trim();
+  if (!raw) return { ok: false, reason: "empty" };
+  try {
+    const data = JSON.parse(raw);
+    if (data && data.ok && data.toggled) {
+      return {
+        ok: true,
+        toggled: true,
+        changed: data.changed !== false,
+        via: "uia-toggle",
+        name: String(data.name || "").slice(0, 80),
+        controlType: String(data.controlType || "").slice(0, 40),
+        state: String(data.state || "").slice(0, 24),
+        want: normalizeWant(data.want),
+      };
+    }
+    return { ok: false, reason: (data && data.reason) || "toggle failed" };
+  } catch {
+    return { ok: false, reason: "bad probe" };
+  }
+}
+
+/**
+ * HeyClicky-class checkbox: TogglePattern on a named control. No cursor warp.
+ * Miss or non-toggleable is a visible no so SendInput can still aim.
+ */
+async function toggleControl(label, opts = {}) {
+  const clean = String(label || "").trim();
+  if (!clean || typeof opts.run !== "function") return { ok: false, reason: "no runner" };
+  const want = normalizeWant(opts.want);
+  let stdout;
+  try {
+    stdout = await opts.run(buildProbeScript(clean, opts));
+  } catch {
+    return { ok: false, reason: "uia unavailable" };
+  }
+  const best = pickToggleCandidate(clean, parseProbeOutput(stdout), opts);
+  if (!best) return { ok: false, reason: "no matching control" };
+  if (!canToggle(best.candidate)) return { ok: false, reason: "not toggleable" };
+  let out;
+  try {
+    out = await opts.run(buildToggleScript(best.candidate.name, best.candidate.controlType, want, opts));
+  } catch {
+    return { ok: false, reason: "toggle failed" };
+  }
+  return parseToggleOutput(out);
+}
+
+/**
+ * TreeItem / ComboBox / Group and friends. An Edit named "Documents" is not
+ * expandable. TreeItem and Group are missing from TARGET_CONTROL_TYPES, so
+ * expandControl probes with this list.
+ */
+const EXPAND_CONTROL_TYPES = Object.freeze([
+  "TreeItem", "ListItem", "ComboBox", "Button", "Group",
+  "SplitButton", "MenuItem", "HeaderItem", "DataItem",
+]);
+
+function canExpand(candidate) {
+  const t = String((candidate && candidate.controlType) || "");
+  if (!EXPAND_CONTROL_TYPES.includes(t)) return false;
+  if (candidate && candidate.enabled === false) return false;
+  return true;
+}
+
+function normalizeExpandWant(want) {
+  const w = String(want || "expand").toLowerCase().trim();
+  if (w === "collapse" || w === "close" || w === "collapsed") return "collapse";
+  return "expand";
+}
+
+function pickExpandCandidate(label, candidates, opts) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  const expandable = list.filter(canExpand);
+  return chooseCandidate(label, expandable.length ? expandable : list, opts);
+}
+
+/**
+ * PowerShell that ExpandCollapsePattern-opens or -closes a named control.
+ * No SetCursorPos. No SendInput. LeafNode refuses. Already Expanded /
+ * Collapsed is ok with changed:false.
+ */
+function buildExpandScript(name, controlType, want, opts = {}) {
+  const max = Number(opts.max) || MAX_CANDIDATES;
+  const type = String(controlType || "TreeItem").replace(/[^A-Za-z]/g, "") || "TreeItem";
+  const goal = normalizeExpandWant(want);
+  return [
+    "$ErrorActionPreference='Stop'",
+    "Add-Type -AssemblyName UIAutomationClient,UIAutomationTypes | Out-Null",
+    "Add-Type -Namespace Native -Name Win -MemberDefinition '[DllImport(\"user32.dll\")]public static extern System.IntPtr GetForegroundWindow();' | Out-Null",
+    "$h=[Native.Win]::GetForegroundWindow()",
+    "if($h -eq [System.IntPtr]::Zero){ '{\"ok\":false,\"reason\":\"no foreground\"}'; exit 0 }",
+    "$root=[System.Windows.Automation.AutomationElement]::FromHandle($h)",
+    "if($root -eq $null){ '{\"ok\":false,\"reason\":\"no element\"}'; exit 0 }",
+    `$wantName=${psLiteral(name)}`,
+    `$type=${psLiteral(type)}`,
+    `$want=${psLiteral(goal)}`,
+    "$walker=[System.Windows.Automation.TreeWalker]::ControlViewWalker",
+    "$queue=New-Object System.Collections.Queue",
+    "$queue.Enqueue($root) | Out-Null",
+    "$seen=0",
+    `while($queue.Count -gt 0 -and $seen -lt ${max}){`,
+    "  $el=$queue.Dequeue(); $seen++",
+    "  try{",
+    "    $child=$walker.GetFirstChild($el)",
+    "    while($child -ne $null){ $queue.Enqueue($child) | Out-Null; $child=$walker.GetNextSibling($child) }",
+    "    $n=$el.Current.Name; $t=$el.Current.ControlType.ProgrammaticName -replace '^ControlType\\.',''",
+    "    if($n -eq $wantName -and $t -eq $type -and $el.Current.IsEnabled){",
+    "      $pat=$el.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern)",
+    "      if($pat -eq $null){ '{\"ok\":false,\"reason\":\"no expand\"}'; exit 0 }",
+    "      $before=$pat.ExpandCollapseState.ToString()",
+    "      if($before -eq 'LeafNode'){ '{\"ok\":false,\"reason\":\"leaf\"}'; exit 0 }",
+    "      if($want -eq 'expand' -and $before -eq 'Expanded'){ [pscustomobject]@{ok=$true;expanded=$true;changed=$false;name=$n;controlType=$t;state=$before;want=$want} | ConvertTo-Json -Compress; exit 0 }",
+    "      if($want -eq 'collapse' -and $before -eq 'Collapsed'){ [pscustomobject]@{ok=$true;expanded=$true;changed=$false;name=$n;controlType=$t;state=$before;want=$want} | ConvertTo-Json -Compress; exit 0 }",
+    "      if($want -eq 'expand'){ $pat.Expand() } else { $pat.Collapse() }",
+    "      $after=$pat.ExpandCollapseState.ToString()",
+    "      if($want -eq 'expand' -and $after -eq 'Collapsed'){ '{\"ok\":false,\"reason\":\"expand stuck\"}'; exit 0 }",
+    "      if($want -eq 'collapse' -and $after -eq 'Expanded'){ '{\"ok\":false,\"reason\":\"collapse stuck\"}'; exit 0 }",
+    "      [pscustomobject]@{ok=$true;expanded=$true;changed=$true;name=$n;controlType=$t;state=$after;want=$want} | ConvertTo-Json -Compress",
+    "      exit 0",
+    "    }",
+    "  } catch {}",
+    "}",
+    "'{\"ok\":false,\"reason\":\"no matching control\"}'",
+  ].join("\n");
+}
+
+function parseExpandOutput(stdout) {
+  const raw = String(stdout || "").trim();
+  if (!raw) return { ok: false, reason: "empty" };
+  try {
+    const data = JSON.parse(raw);
+    if (data && data.ok && data.expanded) {
+      return {
+        ok: true,
+        expanded: true,
+        changed: data.changed !== false,
+        via: "uia-expand",
+        name: String(data.name || "").slice(0, 80),
+        controlType: String(data.controlType || "").slice(0, 40),
+        state: String(data.state || "").slice(0, 24),
+        want: normalizeExpandWant(data.want),
+      };
+    }
+    return { ok: false, reason: (data && data.reason) || "expand failed" };
+  } catch {
+    return { ok: false, reason: "bad probe" };
+  }
+}
+
+/**
+ * HeyClicky-class tree/combo: ExpandCollapsePattern on a named control.
+ * No cursor warp. Miss, leaf, or non-expandable is a visible no.
+ */
+async function expandControl(label, opts = {}) {
+  const clean = String(label || "").trim();
+  if (!clean || typeof opts.run !== "function") return { ok: false, reason: "no runner" };
+  const want = normalizeExpandWant(opts.want);
+  let stdout;
+  try {
+    stdout = await opts.run(buildProbeScript(clean, { ...opts, types: EXPAND_CONTROL_TYPES }));
+  } catch {
+    return { ok: false, reason: "uia unavailable" };
+  }
+  const best = pickExpandCandidate(clean, parseProbeOutput(stdout), opts);
+  if (!best) return { ok: false, reason: "no matching control" };
+  if (!canExpand(best.candidate)) return { ok: false, reason: "not expandable" };
+  let out;
+  try {
+    out = await opts.run(buildExpandScript(best.candidate.name, best.candidate.controlType, want, opts));
+  } catch {
+    return { ok: false, reason: "expand failed" };
+  }
+  return parseExpandOutput(out);
+}
+
 /**
  * Locate a control through UIA.
  *
@@ -509,6 +762,20 @@ module.exports = {
   formatBoxToken,
   buildProbeScript,
   parseProbeOutput,
+  TOGGLE_CONTROL_TYPES,
+  canToggle,
+  normalizeWant,
+  pickToggleCandidate,
+  buildToggleScript,
+  parseToggleOutput,
+  toggleControl,
+  EXPAND_CONTROL_TYPES,
+  canExpand,
+  normalizeExpandWant,
+  pickExpandCandidate,
+  buildExpandScript,
+  parseExpandOutput,
+  expandControl,
   findControl,
   listControls,
   listForegroundControls,

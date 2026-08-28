@@ -279,6 +279,72 @@ test("dry-run supports drag/open/clipboard without spawning", async () => {
   assert.strictEqual((await d.perform({ type: "open", path: "C:\\Windows\\notepad.exe" })).ok, true);
 });
 
+test("dry-run uia_toggle is a no-op success; live miss is a visible no", async () => {
+  const dry = new InputDriver({ dryRun: true });
+  const ok = await dry.perform({ type: "uia_toggle", target: "Remember me", want: "on" });
+  assert.strictEqual(ok.ok, true);
+  assert.strictEqual(ok.via, "uia-toggle");
+  assert.strictEqual(ok.dryRun, true);
+  assert.strictEqual(ok.keepCursor, true);
+  assert.strictEqual(ok.keepFocus, true);
+  const missing = await dry.perform({ type: "uia_toggle" });
+  assert.strictEqual(missing.ok, false);
+  let called = "";
+  const live = new InputDriver({
+    uiaToggle: async (target, want) => {
+      called = `${target}:${want}`;
+      return { ok: true, name: target, via: "uia-toggle", state: "On", want };
+    },
+  });
+  const hit = await live.perform({ type: "uia_toggle", target: "Remember me", want: "on" });
+  assert.strictEqual(hit.ok, true);
+  assert.strictEqual(called, "Remember me:on");
+  assert.strictEqual(hit.keepCursor, true);
+  assert.strictEqual(hit.keepFocus, true);
+  const none = new InputDriver({});
+  const noFn = await none.perform({ type: "uia_toggle", target: "Remember me" });
+  assert.strictEqual(noFn.ok, false);
+  const failed = new InputDriver({
+    uiaToggle: async () => ({ ok: false, reason: "no matching control" }),
+  });
+  const miss = await failed.perform({ type: "uia_toggle", target: "Remember me" });
+  assert.strictEqual(miss.ok, false);
+  assert.match(String(miss.error || ""), /no matching/);
+});
+
+test("dry-run uia_expand is a no-op success; live miss is a visible no", async () => {
+  const dry = new InputDriver({ dryRun: true });
+  const ok = await dry.perform({ type: "uia_expand", target: "Documents", want: "expand" });
+  assert.strictEqual(ok.ok, true);
+  assert.strictEqual(ok.via, "uia-expand");
+  assert.strictEqual(ok.dryRun, true);
+  assert.strictEqual(ok.keepCursor, true);
+  assert.strictEqual(ok.keepFocus, true);
+  const missing = await dry.perform({ type: "uia_expand" });
+  assert.strictEqual(missing.ok, false);
+  let called = "";
+  const live = new InputDriver({
+    uiaExpand: async (target, want) => {
+      called = `${target}:${want}`;
+      return { ok: true, name: target, via: "uia-expand", state: "Expanded", want };
+    },
+  });
+  const hit = await live.perform({ type: "uia_expand", target: "Documents", want: "collapse" });
+  assert.strictEqual(hit.ok, true);
+  assert.strictEqual(called, "Documents:collapse");
+  assert.strictEqual(hit.keepCursor, true);
+  assert.strictEqual(hit.keepFocus, true);
+  const none = new InputDriver({});
+  const noFn = await none.perform({ type: "uia_expand", target: "Documents" });
+  assert.strictEqual(noFn.ok, false);
+  const failed = new InputDriver({
+    uiaExpand: async () => ({ ok: false, reason: "leaf" }),
+  });
+  const miss = await failed.perform({ type: "uia_expand", target: "Documents" });
+  assert.strictEqual(miss.ok, false);
+  assert.match(String(miss.error || ""), /leaf/);
+});
+
 test("keysHeld reports the worker down flag", async () => {
   const state = {};
   const d = new InputDriver({
