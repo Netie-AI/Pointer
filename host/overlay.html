@@ -115,12 +115,12 @@
         border-radius: 8px;
         pointer-events: none;
       }
-      #walk-cue, #walk-then, #walk-fill, #walk-asked, #walk-you, #walk-live, #walk-filed {
+      #walk-cue, #walk-then, #walk-fill, #walk-asked, #walk-you, #walk-live, #walk-also, #walk-heard, #walk-avoid, #walk-filed {
         margin: 0;
         white-space: normal;
         overflow: visible;
       }
-      #walk-then, #walk-fill, #walk-asked, #walk-you, #walk-live, #walk-filed {
+      #walk-then, #walk-fill, #walk-asked, #walk-you, #walk-live, #walk-also, #walk-heard, #walk-avoid, #walk-filed {
         color: #9ad;
         font-weight: 500;
       }
@@ -348,6 +348,9 @@
           <p id="walk-asked" hidden></p>
           <p id="walk-you" hidden></p>
           <p id="walk-live" hidden></p>
+          <p id="walk-also" hidden></p>
+          <p id="walk-heard" hidden></p>
+          <p id="walk-avoid" hidden></p>
           <p id="walk-filed" hidden></p>
         </div>
         <div id="walk-acts">
@@ -767,9 +770,15 @@
         const spec = on ? overlayDockSpec("/workspace?id=live-meeting") : null;
         const asked = overlayRow(spec, "They asked");
         const you = overlayRow(spec, "You");
+        const also = overlayRow(spec, "Also");
+        const heard = overlayRow(spec, "Heard");
+        const avoid = String((spec && spec.foot) || "").replace(/\s*Never a cheater overlay\.?/i, "").replace(/\s*-\s*$/, "").trim();
         const askedEl = document.getElementById("walk-asked");
         const youEl = document.getElementById("walk-you");
         const liveEl = document.getElementById("walk-live");
+        const alsoEl = document.getElementById("walk-also");
+        const heardEl = document.getElementById("walk-heard");
+        const avoidEl = document.getElementById("walk-avoid");
         if (askedEl) {
           askedEl.hidden = !asked;
           askedEl.textContent = asked ? "They asked: " + asked : "";
@@ -781,6 +790,18 @@
         if (liveEl) {
           liveEl.hidden = !asked;
           liveEl.textContent = asked ? "Live: " + asked : "";
+        }
+        if (alsoEl) {
+          alsoEl.hidden = !also;
+          alsoEl.textContent = also ? "Also: " + also : "";
+        }
+        if (heardEl) {
+          heardEl.hidden = !heard;
+          heardEl.textContent = heard ? "Heard: " + heard : "";
+        }
+        if (avoidEl) {
+          avoidEl.hidden = !avoid;
+          avoidEl.textContent = avoid;
         }
       }
 
@@ -973,10 +994,10 @@
           {
             id: "walk-win-meeting",
             href: "/workspace?id=live-meeting",
-            left: "10%",
+            left: saved ? "10%" : "74%",
             top: saved ? "18%" : "72%",
-            width: saved ? "62%" : "86%",
-            height: saved ? "52%" : "26%",
+            width: saved ? "62%" : "22%",
+            height: saved ? "52%" : "20%",
           },
         ].forEach(function (win) {
           const spec = overlayDockSpec(win.href);

@@ -949,6 +949,9 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /overlayDockSpec\("\/workspace\?id=live-meeting"\)/);
   assert.match(teachOverlay, /id="walk-asked"/);
   assert.match(teachOverlay, /id="walk-live"/);
+  assert.match(teachOverlay, /id="walk-also"/);
+  assert.match(teachOverlay, /id="walk-heard"/);
+  assert.match(teachOverlay, /id="walk-avoid"/);
   assert.match(teachOverlay, /paintLiveChrome/);
   assert.match(teachOverlay, /if \(saved \|\| wasSaved \|\| liveAsked\) hideWalkDock\(\)/);
   assert.match(teachOverlay, /navigator\.clipboard\.writeText/);
@@ -1839,6 +1842,7 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /speakTeachCue/);
   assert.match(hud, /kind === "point"/);
   assert.match(hud, /kind === "point" \? lastCueAsked/);
+  assert.match(hud, /kind === "point" \? lastCueAlso/);
   assert.match(hud, /kind === "point"\) hideLiveCueDock/);
   assert.match(hud, /Type " \+ nowFill/);
   assert.match(hud, /classList.add\("now"\)/);

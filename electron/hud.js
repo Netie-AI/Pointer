@@ -109,6 +109,8 @@ let lastCueKind = "say";
 let lastCueAsked = "";
 let lastThemLine = "";
 let lastCueTurns = [];
+let lastCueAlso = "";
+let lastCueAvoid = "";
 let cueBarHasBrief = false;
 function cueCopyLabel(kind) {
   if (kind === "point") return "Copy next";
@@ -472,6 +474,8 @@ function paintLiveBrief(event) {
     lastCueAsked = "";
     lastThemLine = "";
     lastCueTurns = [];
+    lastCueAlso = "";
+    lastCueAvoid = "";
     cueBarHasBrief = false;
     hideLiveCueDock();
     paintLiveCueRail([]);
@@ -493,8 +497,12 @@ function paintLiveBrief(event) {
     cueEl.hidden = !cue;
     cueEl.textContent = cueLine;
   }
-  const also = String((event && event.also) || "").trim().slice(0, 160);
-  const avoid = String((event && event.avoid) || "").trim().slice(0, 160);
+  const alsoRaw = String((event && event.also) || "").trim().slice(0, 160);
+  const avoidRaw = String((event && event.avoid) || "").trim().slice(0, 160);
+  const also = alsoRaw || (kind === "point" ? lastCueAlso : "");
+  const avoid = avoidRaw || (kind === "point" ? lastCueAvoid : "");
+  lastCueAlso = also;
+  lastCueAvoid = avoid;
   if (alsoEl) {
     alsoEl.hidden = !also || kind === "point" || kind === "warn";
     alsoEl.textContent = also && kind === "say" ? "Also: " + also : "";
@@ -530,12 +538,12 @@ function paintLiveBrief(event) {
   }
   if (barText) barText.textContent = cueLine;
   if (barAlso) {
-    barAlso.hidden = !also || kind === "point" || kind === "warn";
-    barAlso.textContent = also && kind === "say" ? "Also: " + also : "";
+    barAlso.hidden = !also || kind === "warn" || (kind === "point" && !asked);
+    barAlso.textContent = also && (kind === "say" || (kind === "point" && asked)) ? "Also: " + also : "";
   }
   if (barAvoid) {
-    barAvoid.hidden = !avoid || kind === "point" || kind === "warn";
-    barAvoid.textContent = avoid && kind === "say" ? "Don't say: " + avoid : "";
+    barAvoid.hidden = !avoid || kind === "warn" || (kind === "point" && !asked);
+    barAvoid.textContent = avoid && (kind === "say" || (kind === "point" && asked)) ? "Don't say: " + avoid : "";
   }
   if (barBack) barBack.hidden = !(kind === "point" && cue);
   if (barNext) barNext.hidden = !(kind === "point" && cue);

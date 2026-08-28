@@ -520,6 +520,9 @@ function readAsset(file) {
     assert.match(overlayText, /overlayDockSpec\("\/workspace\?id=live-meeting"\)/);
     assert.match(overlayText, /id="walk-asked"/);
     assert.match(overlayText, /id="walk-live"/);
+    assert.match(overlayText, /id="walk-also"/);
+    assert.match(overlayText, /id="walk-heard"/);
+    assert.match(overlayText, /id="walk-avoid"/);
     assert.match(overlayText, /paintLiveChrome/);
     assert.match(overlayText, /html\.demo \.point-face\.field/);
     assert.match(overlayText, /id="walk-desktop"/);

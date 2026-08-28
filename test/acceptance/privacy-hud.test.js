@@ -173,6 +173,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/paintMeetingTalk/.test(liveFn));
       assert.ok(/paintLiveCueCaptions/.test(liveFn));
       assert.ok(/kind === "point" \? lastCueAsked/.test(js), "HUD keeps They asked during a teach walk after Live answer");
+      assert.ok(/kind === "point" \? lastCueAlso/.test(js), "HUD keeps Also / Don't say during a teach walk after Live answer");
       assert.ok(/kind === "point"\) hideLiveCueDock/.test(liveFn), "HUD teach walk does not cover the BOX with a Live answer dock");
       assert.ok(/event\.turns/.test(js));
       assert.ok(!/innerHTML/.test(liveFn));

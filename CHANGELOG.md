@@ -1,3 +1,11 @@
+## 2026-08-28 - Overlay chrome keeps the honest stack on Email
+
+Ask Live answer puts Also / Heard / Don't say in overlay chrome with
+They asked / You / Live (never spoken). Live answer stays a side tile
+until Save so Type in Email still points. HUD teach walks keep Also /
+Don't say the same way. Never send. Never Act. P-05 and P-06 stay
+parked.
+
 ## 2026-08-28 - Ask Live answer keeps Email pointing
 
 Ask Live answer keeps Unsent mail as the current window and drops the
