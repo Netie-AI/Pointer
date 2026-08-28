@@ -1,3 +1,9 @@
+## 2026-08-28 - This computer opens teach and meeting windows
+
+Opening a Teach walk on `/workspace` paints This screen (field / button
+faces at measured percents). Opening a Meeting paints the Live answer.
+Got it still Asks. Never Act. Never a runtime. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Overlay paints measured field and button faces
 
 Laptop teach overlay and HUD paint field / button faces at measured

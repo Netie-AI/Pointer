@@ -89,7 +89,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   security review (never Act, never send, never approval, never exec).
   Public `/api/session.zip` stays 404.
 - Loopback `/workspace` paints those files as a desktop grid on This
-  computer (click to open, Run still refused). Public catalog stays empty.
+  computer (click to open, Run still refused). Opening a Teach walk paints
+  This screen. Opening a Meeting paints the Live answer. Public catalog stays empty.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
 ## Traps

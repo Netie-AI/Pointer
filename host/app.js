@@ -299,6 +299,70 @@ function setFinishedDownloads(art, flags) {
   }
 }
 
+function paintOpenPre(root, text) {
+  if (!root) return;
+  const pre = el("pre");
+  pre.textContent = String(text || "");
+  root.appendChild(pre);
+}
+
+function applyOpenTeach(root, m) {
+  if (!root) return false;
+  root.replaceChildren();
+  paintTeachMap(root, m, {
+    draw: true,
+    apply: function (next) {
+      applyOpenTeach(root, next);
+    },
+  });
+  paintOpenPre(root, String((m && m.deliverable) || ""));
+  lastArtifactText = String((m && m.deliverable) || lastArtifactText || "");
+  return !(m && m.localFirst);
+}
+
+function applyOpenMeeting(root, m) {
+  if (!root) return false;
+  root.replaceChildren();
+  paintMeetingCard(root, m);
+  paintTalk(root, m);
+  paintOpenPre(root, String((m && m.deliverable) || ""));
+  lastArtifactText = String((m && m.deliverable) || lastArtifactText || "");
+  return !(m && m.localFirst);
+}
+
+function paintOpenFileBody(root, body, text) {
+  const art = body && body.artifact;
+  const desk = String((art && art.desk) || "").toLowerCase();
+  const id = String((art && art.id) || "").toLowerCase();
+  if (desk === "teach" || id === "live-teach") {
+    fetch("/api/teach")
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (m) {
+        applyOpenTeach(root, m);
+      })
+      .catch(function () {
+        paintOpenPre(root, text);
+      });
+    return;
+  }
+  if (desk === "meeting" || id === "live-meeting") {
+    fetch("/api/meeting")
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (m) {
+        applyOpenMeeting(root, m);
+      })
+      .catch(function () {
+        paintOpenPre(root, text);
+      });
+    return;
+  }
+  paintOpenPre(root, text);
+}
+
 function openArtifact(id) {
   const root = document.getElementById("artifact-body");
   if (!root || !id) return;
@@ -314,9 +378,7 @@ function openArtifact(id) {
           ? String(body.artifact.body || "")
           : (body && body.reason) || "live artifacts stay on the laptop";
       root.replaceChildren();
-      const pre = el("pre");
-      pre.textContent = text;
-      root.appendChild(pre);
+      paintOpenFileBody(root, body, text);
       const ok = Boolean(body && body.ok && body.artifact && String(body.artifact.body || "").trim());
       setWorkingSet(ok ? String(body.artifact.id || id) : "", ok ? String(body.artifact.title || body.artifact.id || id) : "");
       lastArtifactText = ok ? String(body.artifact.body) : "";

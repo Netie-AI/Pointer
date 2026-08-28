@@ -293,9 +293,16 @@ function readAsset(file) {
     assert.match(cssText, /session-tile-kind/);
     assert.match(app, /work-card-open/);
     assert.match(cssText, /workspace-open-file/);
+    assert.match(cssText, /#artifact-body \.teach-map/);
+    assert.match(cssText, /#artifact-body \.meeting-card/);
     assert.match(app, /workspace-open-file/);
     assert.match(app, /paintOpenFileHero/);
     assert.match(app, /paintOpenFileTabs/);
+    assert.match(app, /paintOpenFileBody/);
+    assert.match(app, /applyOpenTeach/);
+    assert.match(app, /applyOpenMeeting/);
+    assert.match(app, /\/api\/teach/);
+    assert.match(app, /\/api\/meeting/);
     assert.match(cssText, /open-file-tabs/);
     assert.match(cssText, /open-file-tab\.open/);
     assert.match(app, /Finished file/);

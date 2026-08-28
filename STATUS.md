@@ -38,7 +38,9 @@
    review.md there (never approval). Download packet zips those files.
    The open file leads `/workspace` with This session files as tabs.
    `/workspace` paints those files as a desktop grid on This computer.
-   Home theater cards include Open in workspace. Public those paths stay 404.
+   Opening Teach walk paints This screen. Opening Meeting paints the
+   Live answer. Home theater cards include Open in workspace. Public those
+   paths stay 404.
    `/workspace` Run is a named refuse (P-06). Public catalog empty.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
