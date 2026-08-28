@@ -181,6 +181,20 @@ function paintLiveCueCaptions() {
   if (bar) bar.hidden = !cueBarHasBrief && rows.length === 0;
   return rows.length > 0;
 }
+function paintLiveCueRail(path) {
+  const rail = $("live-cue-rail");
+  if (!rail) return;
+  rail.replaceChildren();
+  const rows = Array.isArray(path) ? path.slice(0, 8) : [];
+  rows.forEach((row) => {
+    const tick = document.createElement("span");
+    const later = Boolean(row && row.later);
+    tick.className = "live-cue-tick" + ((row && row.now) ? " now" : later ? " later" : " done");
+    tick.textContent = overlayControlCaption((row && (row.caption || row.label || row.cue)) || "");
+    rail.appendChild(tick);
+  });
+  rail.hidden = !rows.length;
+}
 function paintMeetingTalk(event, asked) {
   const root = $("meeting-talk");
   if (!root) return;
@@ -318,6 +332,7 @@ function paintLiveBrief(event) {
     lastThemLine = "";
     lastCueTurns = [];
     cueBarHasBrief = false;
+    paintLiveCueRail([]);
     paintMeetingTalk({ desk: "", turns: [] }, "");
     paintLiveCueCaptions();
     return;
@@ -353,9 +368,10 @@ function paintLiveBrief(event) {
     copyBtn.hidden = !cue;
     copyBtn.textContent = cueCopyLabel(kind);
   }
-  cueBarHasBrief = Boolean(cue || askedLine || themShow || youShow);
+  cueBarHasBrief = Boolean(cue || askedLine || themShow || youShow || (Array.isArray(event.path) && event.path.length));
   if (bar) bar.hidden = !cueBarHasBrief;
   paintLiveCueCaptions();
+  paintLiveCueRail(kind === "point" ? event.path : []);
   if (barAsked) {
     barAsked.hidden = !askedLine;
     barAsked.textContent = askedLine;
@@ -383,7 +399,7 @@ function paintLiveBrief(event) {
     barCopy.hidden = !cue;
     barCopy.textContent = cueCopyLabel(kind);
   }
-  if (kind === "point") speakTeachCue(cue);
+  if (kind === "point") speakTeachCue(rest ? cueLine : cueLine ? cueLine + ". Last step" : "");
   paintMeetingTalk(event, asked);
 }
 
@@ -1417,6 +1433,12 @@ askInput.addEventListener("input", () => {
 });
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && autoSend.armed) autoSend.cancel("escape");
+  if (event.key !== "Enter" || event.repeat) return;
+  if (lastCueKind !== "point") return;
+  if (event.target && event.target.closest && event.target.closest("input, textarea, button, [contenteditable]")) return;
+  event.preventDefault();
+  askInput.value = "got it, next";
+  doAsk();
 });
 $("btn-clean-yes").addEventListener("click", () => {
   if (!pendingClean) return;

@@ -1759,6 +1759,10 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(html, /id="live-cue-them"/);
   assert.match(html, /id="live-cue-you"/);
   assert.match(html, /id="live-cue-captions"/);
+  assert.match(html, /id="live-cue-rail"/);
+  assert.match(html, /id="live-cue-chips"/);
+  assert.match(html, /Draft email/);
+  assert.doesNotMatch(html, /Send mail|Approve/);
   assert.match(html, /id="btn-live-next"/);
   assert.doesNotMatch(html, /clicky-orb|stage-orb/);
   const mainCue = main.slice(main.indexOf("function publishLiveCoworker"), main.indexOf("function publishTeachOverlay"));
@@ -1767,6 +1771,7 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(mainCue, /heard:/);
   assert.match(mainCue, /turns:/);
   assert.match(mainCue, /cueKind/);
+  assert.match(mainCue, /path:/);
   assert.match(mainCue, /teachActionCue/);
   assert.match(hud, /cueDisplay/);
   assert.match(hud, /Next:/);
@@ -1774,6 +1779,10 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /Copy review/);
   assert.match(hud, /brief\.textContent/);
   assert.match(hud, /live-cue-bar/);
+  assert.match(hud, /paintLiveCueRail/);
+  assert.match(hud, /event\.path/);
+  assert.match(hud, /Last step/);
+  assert.match(hud, /got it, next/);
   assert.match(hud, /cue-advance/);
   assert.doesNotMatch(hud, /coworker-brief[\s\S]{0,80}innerHTML/);
   const css = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.css"), "utf8");
@@ -1781,6 +1790,9 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(css, /\.live-cue-also/);
   assert.match(css, /\.live-cue-them/);
   assert.match(css, /\.live-cue-caption/);
+  assert.match(css, /\.live-cue-rail/);
+  assert.match(css, /\.live-cue-chips/);
+  assert.match(css, /live-cue-rail\[hidden\]/);
   assert.match(css, /\.hud\.morph-hidden \.live-cue-bar/);
   assert.doesNotMatch(css, /chat-open \.live-cue-bar/);
   assert.doesNotMatch(css, /\.hud\.morph-hidden \.live-cue-bar[\s\S]{0,80}display:\s*none/);

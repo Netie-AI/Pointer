@@ -198,3 +198,5 @@ online, live on loopback). Overlay Draw stacks a BOX (cap 8, 0.4%
 fail-closed). Last BOX says Last step, not an empty Then. Overlay chrome
 keeps a remaining walk rail and Ask chips (Draft email / Notes / Needs
 you / Live answer). Enter is Got it. Never send. Never approval.
+The laptop HUD cue bar paints that same remaining rail and those chips
+when chrome hides. OS voice says Last step on the last BOX.

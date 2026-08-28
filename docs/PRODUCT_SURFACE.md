@@ -46,6 +46,8 @@ online when APIs are empty; live path on the laptop). Overlay Draw
 stacks a BOX (cap 8, 0.4% fail-closed). Last BOX says Last step.
 Overlay chrome keeps a remaining walk rail and Ask chips (Draft email /
 Notes / Needs you / Live answer). Enter is Got it. Never send.
+The laptop HUD cue bar paints that same remaining rail and those chips
+when chrome hides. OS voice says Last step on the last BOX.
 Loopback `/meeting` Ask chips file an unsent follow-up
 and a Word draft from the stored transcript (never send, never Word.app,
 teach walks stay on `/teach`). Loopback sticky chrome has a fixed Ask bar

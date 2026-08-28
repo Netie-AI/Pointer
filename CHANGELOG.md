@@ -1,3 +1,10 @@
+## 2026-08-28 - HUD cue bar keeps the remaining walk
+
+Laptop live cue bar paints the remaining teach rail and Ask chips
+(Draft email / Notes / Needs you / Live answer) when HUD chrome hides.
+Enter is Got it. OS voice says Last step on the last BOX. Never send.
+Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Overlay chrome Asks the next desk
 
 Public `/overlay` keeps a remaining walk rail and Ask chips (Draft
