@@ -142,6 +142,9 @@ function readAsset(file) {
     assert.match(page, /id="artifact-chips"/);
     assert.match(page, /id="session"/);
     assert.match(page, /id="session-files"/);
+    assert.match(page, /id="computer-files-kicker"/);
+    assert.match(page, /session-grid/);
+    assert.match(page, /Files on this computer/);
     assert.match(page, /id="session-md"/);
     assert.match(page, /id="session-copy"/);
     assert.match(page, /id="session-download"/);
@@ -169,6 +172,7 @@ function readAsset(file) {
     assert.match(homeText, /id="stage"/);
     assert.match(homeText, /id="session"/);
     assert.match(homeText, /id="session-files"/);
+    assert.match(homeText, /session-grid/);
     assert.match(homeText, /id="session-md"/);
     assert.match(homeText, /id="session-copy"/);
     assert.match(homeText, /id="session-download"/);
@@ -218,6 +222,9 @@ function readAsset(file) {
     assert.match(app, /workspaceQueryId/);
     assert.match(app, /replaceState/);
     assert.match(app, /sessionLinkHref/);
+    assert.match(app, /paintSessionTile/);
+    assert.match(app, /sessionTileKind/);
+    assert.match(app, /session-tile/);
     assert.match(app, /\/workspace\?id=/);
     const paint = app.slice(app.indexOf("function paintSession"), app.indexOf("const roomsPage"));
     assert.match(paint, /session-md/);
@@ -276,6 +283,9 @@ function readAsset(file) {
     assert.match(cssText, /work-rail/);
     assert.match(cssText, /work-card-kicker/);
     assert.match(cssText, /work-card-open/);
+    assert.match(cssText, /session-grid/);
+    assert.match(cssText, /session-tile/);
+    assert.match(cssText, /session-tile-kind/);
     assert.match(app, /work-card-open/);
     assert.match(cssText, /workspace-open-file/);
     assert.match(app, /workspace-open-file/);

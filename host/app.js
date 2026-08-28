@@ -116,6 +116,42 @@ function isWorkspacePage() {
   return p === "/workspace";
 }
 
+function sessionTileKind(row) {
+  const id = String((row && row.id) || "").toLowerCase();
+  const desk = String((row && row.desk) || "").toLowerCase();
+  if (desk === "document" || id === "live-document") return "Word file";
+  if (desk === "inbox" || id === "live-inbox") return "Unsent mail";
+  if (desk === "security" || id === "live-security") return "Review";
+  if (desk === "teach") return "Teach walk";
+  if (desk === "meeting") return "Meeting";
+  if (desk === "today") return "Today";
+  return desk || "File";
+}
+
+function paintSessionTile(row) {
+  const id = String((row && row.id) || "").trim();
+  if (!/^[A-Za-z0-9._-]+$/.test(id)) return null;
+  const tile = el("button", id === lastOpenId ? "session-tile open" : "session-tile");
+  tile.type = "button";
+  const kind = el("p", "session-tile-kind");
+  kind.textContent = sessionTileKind(row);
+  const title = el("p", "session-tile-title");
+  title.textContent = String((row && row.title) || id).slice(0, 48);
+  tile.appendChild(kind);
+  tile.appendChild(title);
+  const cueText = String((row && row.cue) || "").trim();
+  if (cueText) {
+    const extra = el("p", "muted");
+    extra.textContent = cueText.slice(0, 80);
+    tile.appendChild(extra);
+  }
+  tile.addEventListener("click", function () {
+    if (isWorkspacePage()) openArtifact(id);
+    else location.href = sessionLinkHref(row);
+  });
+  return tile;
+}
+
 function sessionLinkHref(row) {
   const href = String((row && row.href) || "").trim();
   if (/^\/(workspace|meeting|teach|today|document|security|inbox)(\?id=[A-Za-z0-9._-]+)?$/.test(href)) {
@@ -973,8 +1009,8 @@ function paintChrome(home) {
   else if (showMeeting && asked && meetingCue) cueLine = "Say this: " + meetingCue;
   else if (onTeach) cueLine = teachAction || String(teachCue).replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
   else if (showMeeting && meetingCue) cueLine = "Say this: " + meetingCue;
-  else if (teachAction) cueLine = teachAction;
   else if (plate) cueLine = "Plate: " + plate;
+  else if (meetingCue) cueLine = "Say this: " + meetingCue;
   const askedEl = document.getElementById("live-cue-asked");
   const heardEl = document.getElementById("live-cue-heard");
   const textEl = document.getElementById("live-cue-text");
@@ -1031,7 +1067,7 @@ function paintChrome(home) {
     cap.hidden = !cap.childNodes.length;
   }
   if (textEl) textEl.textContent = cueLine;
-  lastChromeCue = onTeach ? teachAction || teachCue : meetingCue || teachAction || plate;
+  lastChromeCue = onTeach ? teachAction || teachCue : meetingCue || plate;
   bar.hidden = false;
   const canWalk = onTeach && Boolean(teach.advance);
   const back = document.getElementById("live-cue-back");
@@ -1585,9 +1621,9 @@ function paintSession(session, localFirst) {
     setCopy(false);
     if (filesEl) {
       filesEl.replaceChildren();
-      const li = el("li", "muted");
-      li.textContent = "Live session stays on the laptop. Open 127.0.0.1:18010 while Pointer is running.";
-      filesEl.appendChild(li);
+      const note = el("p", "muted");
+      note.textContent = "Live session stays on the laptop. Open 127.0.0.1:18010 while Pointer is running.";
+      filesEl.appendChild(note);
     }
     paintOpenFileTabs([]);
     return;
@@ -1602,25 +1638,15 @@ function paintSession(session, localFirst) {
   if (!filesEl) return;
   filesEl.replaceChildren();
   if (!files.length) {
-    const li = el("li", "muted");
-    li.textContent = empty ? "No live session yet." : "No filed artifacts yet.";
-    filesEl.appendChild(li);
+    const note = el("p", "muted");
+    note.textContent = empty ? "No live session yet." : "No filed artifacts yet.";
+    filesEl.appendChild(note);
     paintOpenFileTabs([]);
     return;
   }
   files.forEach((row) => {
-    const li = el("li");
-    const a = el("a");
-    a.href = sessionLinkHref(row);
-    a.textContent = String(row.title || row.id || "artifact");
-    li.appendChild(a);
-    const cueText = String(row.cue || "").trim();
-    if (cueText) {
-      const extra = el("span", "muted");
-      extra.textContent = " - " + cueText;
-      li.appendChild(extra);
-    }
-    filesEl.appendChild(li);
+    const tile = paintSessionTile(row);
+    if (tile) filesEl.appendChild(tile);
   });
   paintOpenFileTabs(files);
 }

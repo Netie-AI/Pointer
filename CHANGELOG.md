@@ -1,3 +1,9 @@
+## 2026-08-28 - Workspace files sit on This computer
+
+Loopback `/workspace` paints This session files as a desktop grid on
+This computer. Click a tile to open the file. Run is still a named
+refuse (P-06). Never Act. Public catalog stays empty. P-05 stays parked.
+
 ## 2026-08-28 - Download packet is the finished session zip
 
 Loopback GET `/api/session.zip` packs This session markdown plus meeting /

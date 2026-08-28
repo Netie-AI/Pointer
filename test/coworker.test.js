@@ -1553,8 +1553,16 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /Finished file/);
   assert.match(hostApp, /paintOpenFileTabs/);
   assert.match(hostApp, /open-file-tab/);
+  assert.match(hostApp, /paintSessionTile/);
+  assert.match(hostApp, /sessionTileKind/);
+  assert.match(hostApp, /session-tile/);
+  assert.match(hostApp, /Word file/);
+  assert.match(hostApp, /Unsent mail/);
   const hostWorkspace = fs.readFileSync(path.join(__dirname, "..", "host", "workspace.html"), "utf8");
   assert.match(hostWorkspace, /id="report-download"/);
+  assert.match(hostWorkspace, /id="computer-files-kicker"/);
+  assert.match(hostWorkspace, /session-grid/);
+  assert.match(hostWorkspace, /workspace-page/);
   assert.match(fs.readFileSync(path.join(__dirname, "..", "host", "security.html"), "utf8"), /id="report-download"/);
   assert.match(hostApp, /live-cue-next/);
   assert.match(hostApp, /live-cue-captions/);

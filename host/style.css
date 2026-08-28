@@ -5,6 +5,9 @@ body {
   color: #eee;
 }
 header, main, .live-cue-bar { max-width: 720px; margin: 0 auto; padding: 16px; }
+body.workspace-page header,
+body.workspace-page main,
+body.workspace-page .live-cue-bar { max-width: 960px; }
 main.workspace-open-file {
   display: flex;
   flex-direction: column;
@@ -12,6 +15,45 @@ main.workspace-open-file {
 main.workspace-open-file #open-file {
   order: -3;
 }
+main.workspace-open-file #computer-dock {
+  order: -2;
+}
+.session-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.session-tile {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-height: 92px;
+  text-align: left;
+  background: #151515;
+  color: #eee;
+  border: 1px solid #345;
+  padding: 10px;
+  cursor: pointer;
+  font: inherit;
+}
+.session-tile.open {
+  background: #243044;
+  border-color: #9ad;
+}
+.session-tile-kind {
+  margin: 0;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: #9ad;
+}
+.session-tile-title {
+  margin: 0;
+  font-weight: 650;
+}
+.session-tile .muted { margin: 0; font-size: 12px; }
 .open-file-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -51,12 +93,13 @@ pre {
 .muted { color: #9ad; }
 .refuse { color: #f88; }
 #computer-dock {
-  max-width: 720px;
+  max-width: 960px;
   margin: 0 auto 16px;
   padding: 12px 16px;
   border: 1px solid #345;
   background: #1a1a1a;
 }
+#computer-files-kicker { margin: 12px 0 0; }
 #computer-status { margin: 0 0 8px; }
 #computer-run { color: #f88; border-color: #633; }
 .meeting-asked {

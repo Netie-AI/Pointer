@@ -616,6 +616,7 @@ function test(name, fn) {
     assert.match(homePage.body, /id="stage"/);
     assert.match(homePage.body, /id="session"/);
     assert.match(homePage.body, /id="session-files"/);
+    assert.match(homePage.body, /session-grid/);
     assert.match(homePage.body, /id="session-md"/);
     assert.match(homePage.body, /id="session-copy"/);
     assert.match(homePage.body, /id="session-download"/);
