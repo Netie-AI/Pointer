@@ -942,7 +942,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /id="walk-copy"/);
   assert.match(teachOverlay, /id="walk-acts"/);
   assert.match(teachOverlay, /id="walk-dock"/);
-  assert.match(teachOverlay, /id="walk-dock-copy"/);
+  assert.match(teachOverlay, /copy\.id = "walk-dock-copy"/);
   assert.match(teachOverlay, /copyWalkDock/);
   assert.match(teachOverlay, /navigator\.clipboard\.writeText/);
   assert.match(teachOverlay, /html\.demo \.point-face\.field/);

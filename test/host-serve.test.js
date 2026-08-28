@@ -477,7 +477,7 @@ function readAsset(file) {
     assert.match(overlayText, /Type in Email/);
     assert.match(overlayText, /Sarah Chen/);
     assert.match(overlayText, /id="walk-dock"/);
-    assert.match(overlayText, /id="walk-dock-copy"/);
+    assert.match(overlayText, /copy\.id = "walk-dock-copy"/);
     assert.match(overlayText, /copyWalkDock/);
     assert.match(overlayText, /html\.demo \.point-face\.field/);
     assert.match(overlayText, /id="walk-desktop"/);
