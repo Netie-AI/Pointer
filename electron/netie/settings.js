@@ -165,6 +165,27 @@ function defaultPath() {
 }
 
 /**
+ * OpenWorker-shaped standing home (DR-0006). Core pid/logs live here.
+ * POINTER_HOME wins. Existing settings stay at defaultPath() so old installs
+ * do not vanish.
+ */
+function pointerHome(env = process.env) {
+  const forced = String((env && env.POINTER_HOME) || "").trim();
+  if (forced) return path.resolve(forced);
+  return path.join(os.homedir(), ".pointer");
+}
+
+function ensurePointerHome(env = process.env) {
+  const home = pointerHome(env);
+  try {
+    fs.mkdirSync(home, { recursive: true });
+  } catch {
+    /* best effort */
+  }
+  return home;
+}
+
+/**
  * Bump when a stored value must change for existing installs.
  *
  * Stored settings win over DEFAULTS -- that is the whole point of storing them --
@@ -286,4 +307,4 @@ class SettingsStore {
   }
 }
 
-module.exports = { SettingsStore, DEFAULTS, defaultPath };
+module.exports = { SettingsStore, DEFAULTS, defaultPath, pointerHome, ensurePointerHome };

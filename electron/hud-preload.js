@@ -6,6 +6,7 @@ const INVOKE = [
   "hud:act",
   "hud:hide",
   "hud:frameRegion",
+  "hud:pickFolder",
   "hud:toggleListen",
   "hud:toggleSystemAudio",
   "hud:setPaused",

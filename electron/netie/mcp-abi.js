@@ -81,7 +81,7 @@ const CATALOG = Object.freeze([
   },
   {
     name: "computer.status",
-    description: "Detectability, live mode, session, token totals, Claude 5-hour vs Cursor route, hotkeys, STT/LLM URL, on-device vs off-device, UACC probe, delivery target, and instruction verbs.",
+    description: "Detectability, live mode, session, token totals, Claude 5-hour vs Cursor route, hotkeys, STT/LLM URL, on-device vs off-device, UACC probe, delivery target, standing ~/.pointer home, rust pointer-core, and instruction verbs.",
     inputSchema: { type: "object", properties: {} },
   },
   {

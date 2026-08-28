@@ -329,6 +329,7 @@ class InputDriver {
     this.dryRun = Boolean(opts.dryRun);
     this.toPhysical = opts.toPhysical || null;
     this._spawn = opts.spawnImpl || spawn;
+    this._coreSend = opts.coreSend || null;
     this._opTimeoutMs = opts.opTimeoutMs || 8000;
     this._startTimeoutMs = opts.startTimeoutMs || 15000;
     this.last = null;
@@ -337,6 +338,11 @@ class InputDriver {
     this._pending = new Map(); // id → { resolve, reject, timer }
     this._seq = 0;
     this._buf = "";
+  }
+
+  /** Prefer the standing Rust core for click/move/wheel (DR-0006). */
+  setCoreSend(fn) {
+    this._coreSend = typeof fn === "function" ? fn : null;
   }
 
   _phys(x, y) {
@@ -439,6 +445,15 @@ class InputDriver {
 
   async _send(cmd, { timeoutMs } = {}) {
     if (this.dryRun) return { ok: true, dryRun: true };
+    const op = String((cmd && cmd.op) || "");
+    if (this._coreSend && (op === "click" || op === "move" || op === "wheel" || op === "pos")) {
+      try {
+        const rust = await this._coreSend(cmd);
+        if (rust && rust.ok) return rust;
+      } catch {
+        /* PowerShell fallback */
+      }
+    }
     const worker = this._ensureWorker();
     await this._ready;
     const id = ++this._seq;

@@ -163,6 +163,10 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("observe windows include x y width height cx cy"));
     assert.ok(shown.drive.instructions.includes("use Claude"));
     assert.ok(shown.drive.instructions.includes("use Cursor"));
+    assert.ok(shown.drive.instructions.includes("GET http://127.0.0.1:18011/health"));
+    assert.ok(shown.home.includes(".pointer") || shown.home.length > 0);
+    assert.strictEqual(shown.core.persistent, true);
+    assert.strictEqual(shown.core.engine, "none");
     assert.strictEqual(shown.act.review, "observe then reviewPlan then click/copy/paste");
     assert.strictEqual(shown.route.claude, "open");
     assert.strictEqual(shown.route.cursor, "ready");

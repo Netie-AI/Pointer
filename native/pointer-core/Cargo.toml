@@ -1,0 +1,10 @@
+[package]
+name = "pointer-core"
+version = "0.1.0"
+edition = "2021"
+description = "Persistent loopback input core for Netie Pointer (DR-0006)"
+publish = false
+
+[[bin]]
+name = "pointer-core"
+path = "src/main.rs"

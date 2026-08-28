@@ -2,6 +2,17 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Willow + Perplexity Computer HUD + Rust core
+
+Founder DR-0006: Pointer is Willow + Perplexity Computer + OpenWorker home,
+not OpenWillow-only. Command bar matches the founder screenshots (Ask
+anything, Attach Files, Folders, Active Apps, Screenshots, Clipboard
+History) with a Computer mint/white theme. Solid fills only (no
+backdrop-filter). Standing home is `~/.pointer`. `native/pointer-core`
+listens on `127.0.0.1:18011` and takes click/move/wheel; PowerShell is
+the fallback. `computer.status.core` / `.home` publish that. Act still
+needs Cortex then reviewPlan. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Token-aware Claude 5-hour then Cursor
 
 Prefer Claude Code while the 5-hour window is open; instruction or

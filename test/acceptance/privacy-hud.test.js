@@ -106,6 +106,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/Pointer Display/.test(css), "classy display face must be declared");
       assert.ok(/IBMPlexSerif/.test(css), "IBM Plex Serif files must be referenced");
       assert.ok(/background:\s*var\(--panel\)/.test(css), "panels use a solid fill");
+      assert.ok(/theme-computer/.test(css), "Computer theme is the Perplexity mint/white HUD");
+      assert.ok(/command-ask/.test(css), "Ask capsule matches founder command-bar refs");
     }),
 
     T("the HUD stays tight: CSP unweakened, no floating companion", async () => {
@@ -126,6 +128,11 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(html.includes('id="btn-copy-actions"'), "Copy actions stays in fixed top chrome");
       assert.ok(html.includes('id="privacy-chip"'), "privacy chip stays in fixed top chrome");
       assert.ok(html.includes('id="session-chip"'), "session chip stays in fixed top chrome");
+      assert.ok(html.includes('data-cmd="folders"'), "Perplexity Folders lives on the command bar");
+      assert.ok(html.includes('data-cmd="shots"'), "Perplexity Screenshots lives on the command bar");
+      assert.ok(html.includes('Ask anything'), "command bar placeholder matches the refs");
+      assert.ok(html.includes('data-theme="computer"'), "Computer theme matches founder screenshots");
+      assert.ok(html.includes('id="command-ask"'), "Ask capsule is fixed chrome, not an orb");
       assert.ok(html.includes('id="btn-scribe-retry"'), "Scribe Retry stays in fixed top chrome");
       assert.ok(html.includes('id="btn-scribe-paste"'), "Scribe Paste as-is stays in fixed top chrome");
       const langSel = html.slice(

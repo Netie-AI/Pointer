@@ -967,6 +967,8 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.doesNotMatch(overlayAsk, /hud:act/);
   const hudHtml = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");
   assert.match(hudHtml, /data-cmd="walk"/);
+  assert.match(hudHtml, /data-cmd="folders"/);
+  assert.match(hudHtml, /data-cmd="shots"/);
   const hudJs = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
   assert.match(hudJs, /cmd === "walk"/);
 });

@@ -9,6 +9,8 @@
 
 const { spawnSync } = require("child_process");
 const { normalizeScribeLanguage, SCRIBE_LANGUAGES } = require("./scribe");
+const { pointerHome } = require("./settings");
+const { publicCore } = require("./pointer-core");
 
 /** READ / observe skills that match UACC MCP tool names. */
 const UACC_SKILLS = Object.freeze([
@@ -156,6 +158,13 @@ function computerStatus(opts = {}) {
     bind: "127.0.0.1",
     mcp: "/mcp",
     api: "/api/computer",
+    home: String(opts.home || pointerHome()).slice(0, 240),
+    core: publicCore({
+      live: opts.core,
+      home: opts.home,
+      port: opts.corePort,
+      env: opts.env,
+    }),
     uacc: {
       installed: Boolean(uacc && uacc.installed),
       version: (uacc && uacc.version) || null,
@@ -269,6 +278,7 @@ function computerStatus(opts = {}) {
         "observe windows include x y width height cx cy",
         "use Claude",
         "use Cursor",
+        "GET http://127.0.0.1:18011/health",
         "GET /api/meeting?notes=1",
         "GET /api/meeting?export=1",
         "GET /api/meeting?recap=1",

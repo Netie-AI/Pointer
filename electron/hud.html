@@ -100,6 +100,7 @@
                 <button type="button" data-theme="dark">Dark</button>
                 <button type="button" data-theme="light">Light</button>
                 <button type="button" data-theme="gra">Gra</button>
+                <button type="button" data-theme="computer">Computer</button>
               </div>
               <h3>Agent settings</h3>
               <label>Auto-run sensible <input type="checkbox" id="set-auto" /></label>
@@ -260,15 +261,29 @@
           <button type="button" class="act-button" id="btn-clean-yes">Clean it up</button>
         </div>
         <div class="composer">
+          <div class="command-ask" id="command-ask">
+            <span class="command-search" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l5 5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            </span>
+            <button type="button" class="agent-chip" id="btn-agent-chip" title="Agent" aria-label="Agent">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="11" r="1.1"/><circle cx="15" cy="11" r="1.1"/><path d="M9 15h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M8 20h8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            </button>
+            <textarea id="ask-input" rows="2" placeholder="Ask anything..." aria-label="Ask AI"></textarea>
+            <button type="button" class="route-chip" id="btn-route-auto" title="Auto">Auto</button>
+            <button type="button" class="mic-chip" id="btn-command-mic" title="Microphone" aria-label="Microphone">
+              <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 17v4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            </button>
+          </div>
           <div class="command-bar-tools" id="command-bar-tools">
-            <button type="button" class="text-btn" data-cmd="attach" title="Attach files">Attach</button>
-            <button type="button" class="text-btn" data-cmd="apps" title="Active apps">Apps</button>
+            <button type="button" class="text-btn" data-cmd="attach" title="Attach files">Attach Files</button>
+            <button type="button" class="text-btn" data-cmd="folders" title="Folders">Folders</button>
+            <button type="button" class="text-btn" data-cmd="apps" title="Active apps">Active Apps</button>
+            <button type="button" class="text-btn" data-cmd="shots" title="Screenshots">Screenshots</button>
+            <button type="button" class="text-btn" data-cmd="clipboard" title="Clipboard history">Clipboard History</button>
             <button type="button" class="text-btn" data-cmd="walk" title="Walk this region">Walk</button>
-            <button type="button" class="text-btn" data-cmd="clipboard" title="Clipboard history">Clipboard</button>
             <input type="file" id="file-attach" hidden multiple />
             <div class="file-chips" id="file-chips"></div>
           </div>
-          <textarea id="ask-input" rows="2" placeholder="Ask anything… recognize an app name, then confirm" aria-label="Ask AI"></textarea>
           <div class="composer-actions">
             <button type="button" class="text-btn" id="btn-hold-hint" title="Hold Clicky or Ctrl+Shift+Space">Hold to talk</button>
             <button type="button" class="act-button" id="btn-act">Do it</button>

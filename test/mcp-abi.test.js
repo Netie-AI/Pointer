@@ -91,6 +91,8 @@ function test(name, fn) {
     assert.ok(act.inputSchema.properties.mode);
     const status = r.result.catalog.find((t) => t.name === "computer.status");
     assert.match(status.description, /token totals/);
+    assert.match(status.description, /pointer-core/);
+    assert.match(status.description, /home/);
     assert.match(status.description, /Claude 5-hour/);
   });
 
