@@ -573,13 +573,10 @@
           filedEl.hidden = !line;
           filedEl.textContent = line;
         }
-        let win = null;
         try {
-          win = window.open(next, "_blank", "noopener");
-        } catch (err) {
-          win = null;
-        }
-        if (!win) location.href = next;
+          const win = window.open(next, "_blank");
+          if (win) win.opener = null;
+        } catch (err) {}
       }
 
       function onDesk(q) {

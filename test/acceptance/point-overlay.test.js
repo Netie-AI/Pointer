@@ -154,6 +154,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/createElementNS/.test(walk), "stroke is SVG, not innerHTML");
       assert.ok(/teach-overlay:frame/.test(walk), "drawn overlay boxes POST a region, never Act");
       assert.ok(/window\.open/.test(walk) && /walk-filed/.test(walk), "overlay desk chips keep the walk and open a window");
+      const openFn = walk.slice(walk.indexOf("function openDeskWindow"), walk.indexOf("function onDesk"));
+      assert.ok(!/location\.href/.test(openFn), "desk chips must not leave the overlay");
       assert.ok(/Sarah Chen/.test(walk) && /Type " \+ fill/.test(walk), "overlay Email BOX types the Heard name");
       assert.ok(/onRailStep/.test(walk) && /data-rail/.test(walk) && /data-step/.test(walk), "overlay rail ticks jump by Ask");
       assert.ok(/spoken \+ "\. Last step"/.test(walk), "overlay speaks Last step on the last BOX");

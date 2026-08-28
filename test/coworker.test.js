@@ -940,6 +940,9 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   const teachOverlay = fs.readFileSync(path.join(__dirname, "..", "host", "overlay.html"), "utf8");
   assert.match(teachOverlay, /id="walk-chrome"/);
   assert.match(teachOverlay, /window\.open/);
+  const openFn = teachOverlay.slice(teachOverlay.indexOf("function openDeskWindow"), teachOverlay.indexOf("function onDesk"));
+  assert.match(openFn, /window\.open/);
+  assert.doesNotMatch(openFn, /location\.href/);
   assert.match(teachOverlay, /walk-filed/);
   assert.match(teachOverlay, /Sarah Chen/);
   assert.match(teachOverlay, /Type " \+ fill/);
