@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - UIA SelectionItemPattern for named tabs
+
+HeyClicky-class tab/list pick without a cursor warp: `select: Home`
+calls SelectionItemPattern on the foreground TabItem/ListItem/Radio.
+Button/Edit/CheckBox stay not selectable. Cortex gate unchanged. No
+GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Observe LIVE captions for agents
 
 Loopback `computer.observe` and `GET /api/observe?captions=1` return the

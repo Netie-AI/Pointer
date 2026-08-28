@@ -101,7 +101,7 @@ function windowClickPoint(win) {
 const MAX_CHAIN = 8;
 
 function looksLocalStep(text) {
-  return /^(?:please\s+)?(?:observe|screenshot|screen info|type\s*:|dictate\s*:|click|doubleclick|rightclick|hover|wait|scroll|press\s+|open\s*:|focus|deliver\s*:|replace\s*:|copy|paste|select)/i.test(
+  return /^(?:please\s+)?(?:observe|screenshot|screen info|type\s*:|dictate\s*:|click|doubleclick|rightclick|hover|select\s*:|wait|scroll|press\s+|open\s*:|focus|deliver\s*:|replace\s*:|copy|paste|select)/i.test(
     String(text || "").trim()
   );
 }
@@ -208,6 +208,12 @@ function planOneInstruction(instruction, opts = {}) {
   for (const kind of ["click", "doubleclick", "rightclick", "hover"]) {
     const named = parseNamedInstruction(kind, text);
     if (named) return named;
+  }
+  const selected = parseNamedInstruction("select", text);
+  if (selected && selected.actions && selected.actions[0]) {
+    selected.actions[0].type = "uia_select";
+    selected.source = "select";
+    return selected;
   }
   const delivered = text.match(/^(?:please\s+)?deliver\s*:\s*([\s\S]+)$/i);
   if (delivered && delivered[1].trim()) {

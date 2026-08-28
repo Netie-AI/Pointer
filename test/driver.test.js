@@ -279,6 +279,36 @@ test("dry-run supports drag/open/clipboard without spawning", async () => {
   assert.strictEqual((await d.perform({ type: "open", path: "C:\\Windows\\notepad.exe" })).ok, true);
 });
 
+test("dry-run uia_select is a no-op success; live miss is a visible no", async () => {
+  const dry = new InputDriver({ dryRun: true });
+  const ok = await dry.perform({ type: "uia_select", target: "Home" });
+  assert.strictEqual(ok.ok, true);
+  assert.strictEqual(ok.via, "uia-select");
+  assert.strictEqual(ok.keepCursor, true);
+  assert.strictEqual(ok.keepFocus, true);
+  const missing = await dry.perform({ type: "uia_select" });
+  assert.strictEqual(missing.ok, false);
+  let called = "";
+  const live = new InputDriver({
+    uiaSelect: async (target) => {
+      called = target;
+      return { ok: true, name: target, via: "uia-select", controlType: "TabItem" };
+    },
+  });
+  const hit = await live.perform({ type: "uia_select", target: "Home" });
+  assert.strictEqual(hit.ok, true);
+  assert.strictEqual(called, "Home");
+  const none = new InputDriver({});
+  const noFn = await none.perform({ type: "uia_select", target: "Home" });
+  assert.strictEqual(noFn.ok, false);
+  const failed = new InputDriver({
+    uiaSelect: async () => ({ ok: false, reason: "no matching control" }),
+  });
+  const miss = await failed.perform({ type: "uia_select", target: "Home" });
+  assert.strictEqual(miss.ok, false);
+  assert.match(String(miss.error || ""), /no matching/);
+});
+
 test("keysHeld reports the worker down flag", async () => {
   const state = {};
   const d = new InputDriver({

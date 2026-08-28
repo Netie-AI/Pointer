@@ -328,6 +328,7 @@ class InputDriver {
   constructor(opts = {}) {
     this.dryRun = Boolean(opts.dryRun);
     this.toPhysical = opts.toPhysical || null;
+    this.uiaSelect = opts.uiaSelect || null;
     this._spawn = opts.spawnImpl || spawn;
     this._opTimeoutMs = opts.opTimeoutMs || 8000;
     this._startTimeoutMs = opts.startTimeoutMs || 15000;
@@ -1003,6 +1004,40 @@ class InputDriver {
         }
         const check = clipboardMatchesSource(String(source), text);
         return { ok: check.ok, type, ...check, text };
+      }
+
+      case "uia_select": {
+        const target = String(action.target || action.value || "").trim();
+        this.last = { op: "uia_select", target };
+        if (!target) return { ok: false, type, error: "missing select target" };
+        if (this.dryRun) {
+          return {
+            ok: true,
+            type,
+            target,
+            via: "uia-select",
+            dryRun: true,
+            keepCursor: true,
+            keepFocus: true,
+          };
+        }
+        if (typeof this.uiaSelect !== "function") {
+          return { ok: false, type, error: "UIA select not available", target };
+        }
+        const r = await this.uiaSelect(target);
+        if (!r || !r.ok) {
+          return { ok: false, type, error: (r && r.reason) || "select failed", target };
+        }
+        return {
+          ok: true,
+          type,
+          target,
+          via: "uia-select",
+          name: r.name,
+          controlType: r.controlType,
+          keepCursor: true,
+          keepFocus: true,
+        };
       }
 
       default:
