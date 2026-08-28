@@ -1,6 +1,6 @@
 "use strict";
 const assert = require("assert");
-const { matchRecipe, expandRecipe } = require("../electron/netie/recipes");
+const { matchRecipe, expandRecipe, RECIPES } = require("../electron/netie/recipes");
 
 let pass = 0;
 const fails = [];
@@ -200,6 +200,14 @@ test("Excel SOPs match", () => {
   assert.strictEqual(matchRecipe("format this as currency").actions[0].value, "ctrl+shift+4");
   assert.strictEqual(matchRecipe("select column").actions[0].value, "ctrl+space");
   assert.strictEqual(matchRecipe("select row").actions[0].value, "shift+space");
+});
+
+test("OpenWillow scribe phrases copy the selection, they do not type a URL", () => {
+  assert.strictEqual(matchRecipe("rewrite this").id, "rewrite_selection");
+  assert.strictEqual(matchRecipe("shorten this").id, "rewrite_selection");
+  assert.strictEqual(matchRecipe("make this formal").id, "rewrite_selection");
+  assert.ok(RECIPES.rewrite_selection.actions.some((a) => a.type === "clipboard_baseline"));
+  assert.ok(!RECIPES.rewrite_selection.actions.some((a) => a.type === "open" || a.type === "navigate"));
 });
 
 test("browser SOPs match, and never navigate by typing a URL", () => {

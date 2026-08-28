@@ -1,8 +1,10 @@
 "use strict";
 /**
- * Generative lookup: search Cortex + local recipes, then craft a hint.
+ * Generative lookup: search Cortex + local recipes + UACC skills, then craft a hint.
  * A miss never becomes hit.actions (DR-0003 / DR-0004).
  */
+
+const { searchUaccSkills } = require("./uacc");
 
 function slugGoal(goal) {
   return String(goal || "")
@@ -74,9 +76,10 @@ async function searchThenCraft(goal, opts = {}) {
     }
   }
   const local = searchLocal(g, opts.recipes);
+  const extra = Array.isArray(opts.extraHits) ? opts.extraHits : searchUaccSkills(g);
   const seen = new Set();
   const hits = [];
-  for (const h of [...cortexHits, ...local]) {
+  for (const h of [...cortexHits, ...local, ...extra]) {
     const id = String((h && (h.id || h.name)) || "");
     if (!id || seen.has(id)) continue;
     seen.add(id);

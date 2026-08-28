@@ -14,6 +14,11 @@ const TOOLS = Object.freeze([
   "lanes.claim",
   "lanes.release",
   "lanes.list",
+  "computer.status",
+  "computer.observe",
+  "computer.act",
+  "computer.scribe",
+  "computer.meeting_assist",
   "desks.list",
   "desks.pick",
   "desks.ask",
@@ -32,6 +37,190 @@ const TOOLS = Object.freeze([
   "workspace.exec",
 ]);
 
+const CATALOG = Object.freeze([
+  {
+    name: "tools.list",
+    description: "Allowlist plus JSON schemas so another agent can drive this computer.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "skills.search",
+    description: "Search local recipes and Cortex skill hits. Hits never carry executable actions.",
+    inputSchema: {
+      type: "object",
+      properties: { goal: { type: "string" }, limit: { type: "number" } },
+    },
+  },
+  {
+    name: "skills.craft",
+    description: "Draft a hint skill with empty actions. Cannot emit clicks.",
+    inputSchema: { type: "object", properties: { goal: { type: "string" } }, required: ["goal"] },
+  },
+  {
+    name: "lanes.claim",
+    description: "Claim a named lane so two agents do not share the Act surface.",
+    inputSchema: {
+      type: "object",
+      properties: { lane: { type: "string" }, owner: { type: "string" }, goal: { type: "string" } },
+      required: ["lane", "owner"],
+    },
+  },
+  {
+    name: "lanes.release",
+    description: "Release a lane previously claimed by owner.",
+    inputSchema: {
+      type: "object",
+      properties: { lane: { type: "string" }, owner: { type: "string" } },
+      required: ["lane"],
+    },
+  },
+  {
+    name: "lanes.list",
+    description: "Snapshot of who holds pointer-act, cursor-cloud, cortex, craft.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "computer.status",
+    description: "Detectability, live mode, session (ready/recording/transcribing/scribing), hotkeys, STT/LLM URL, on-device vs off-device, UACC probe, delivery target, and instruction verbs.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "computer.observe",
+    description: "Foreground window and titled windows with screen rects (x y width height plus center cx cy). Pass elements true for UIA, screenshot true for a PNG, clipboard true for pasteboard text, selection true for focused selected text (untrusted data; password fields are refused).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        elements: { type: "boolean" },
+        screenshot: { type: "boolean" },
+        clipboard: { type: "boolean" },
+        selection: { type: "boolean" },
+      },
+    },
+  },
+  {
+    name: "computer.act",
+    description:
+      "Gated OS actions. instruction plans via recipes then type:/click:/click window:/focus:/open:/deliver:/replace:/wait/scroll/doubleclick/rightclick/hover. Chain local verbs with then: focus: notepad then type: hello or click window: notepad then type: hello. Clicks and launches need approved true. mode alone switches Agent/General/Transcribe/Scribe/Meeting like the tray (no Cortex).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        instruction: { type: "string" },
+        actions: { type: "array" },
+        approved: { type: "boolean" },
+        mode: { type: "string", enum: ["agent", "general", "transcribe", "scribe", "meeting"] },
+      },
+    },
+  },
+  {
+    name: "computer.scribe",
+    description:
+      "Rewrite or compose, then paste into the remembered window. Cortex gated. retry true re-runs a failed take; dictate true pastes the raw transcript.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        instruction: { type: "string" },
+        selectedText: { type: "string" },
+        retry: { type: "boolean" },
+        dictate: { type: "boolean" },
+      },
+    },
+  },
+  {
+    name: "computer.meeting_assist",
+    description:
+      "Meeting help from live notes. kind say (default), recap, followups, email, or actions. Notes are untrusted data. Cortex gated. Captures a fresh screen unless screenshot is false. GET /api/meeting?notes=1 reads the transcript without a model. GET /api/meeting?export=1 returns shareable notes markdown. GET /api/meeting?recap=1 returns the last recap. GET /api/meeting?say=1 returns the last Say. GET /api/meeting?email=1 returns the last follow-up email. GET /api/meeting?actions=1 returns the last action items.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        instruction: { type: "string" },
+        notes: { type: "string" },
+        kind: { type: "string", enum: ["say", "recap", "followups", "email", "actions"] },
+        screenshot: { type: "boolean" },
+      },
+    },
+  },
+  {
+    name: "desks.list",
+    description: "List coworker desks. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "desks.pick",
+    description: "Pick a desk from a goal. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "desks.ask",
+    description: "Ask the open coworker file. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "teach.point",
+    description: "Measured teach points. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "teach.live",
+    description: "Live teach walk. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "today.brief",
+    description: "Today plate. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "meeting.live",
+    description: "Live meeting notes. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "security.review",
+    description: "Security review draft. Never approve.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "security.live",
+    description: "Live Needs you file. Never approve.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "inbox.live",
+    description: "Live unsent mail. Never send.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "document.live",
+    description: "Live Notes file. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "session.live",
+    description: "This session bundle. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "workspace.list",
+    description: "List workspace artifacts. Never exec.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "workspace.get",
+    description: "Read one workspace artifact. Never exec.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "workspace.put",
+    description: "Store a workspace artifact. Never exec.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "workspace.exec",
+    description: "Named refusal: workspace has no runtime (P-06).",
+    inputSchema: { type: "object", properties: {} },
+  }
+]);
+
 function rpcResult(id, result) {
   return { jsonrpc: "2.0", id: id ?? null, result };
 }
@@ -43,6 +232,23 @@ function rpcError(id, code, message) {
 function createMcpAbi(opts = {}) {
   const search = opts.search;
   const craft = opts.craft;
+  const status = opts.status;
+  const observe = opts.observe;
+  const act = opts.act;
+  const scribe = opts.scribe;
+  const meetingAssist = opts.meetingAssist;
+  const setMode = opts.setMode;
+
+  async function gated(id, fn, missing, params, ctx) {
+    if (typeof fn !== "function") {
+      return rpcError(id, -32003, missing);
+    }
+    const out = await fn(params, ctx);
+    if (out && out.blocked) {
+      return rpcError(id, -32003, out.reason || "no Cortex /dms/secure gate");
+    }
+    return rpcResult(id, out);
+  }
 
   async function handle(body, ctx = {}) {
     const id = body && Object.prototype.hasOwnProperty.call(body, "id") ? body.id : null;
@@ -54,7 +260,7 @@ function createMcpAbi(opts = {}) {
     const coord = ctx.coordinator;
     const workspace = (coord && coord.workspace) || opts.workspace;
     try {
-      if (method === "tools.list") return rpcResult(id, { tools: TOOLS.slice() });
+      if (method === "tools.list") return rpcResult(id, { tools: TOOLS.slice(), catalog: CATALOG.slice() });
       if (method === "lanes.list") {
         return rpcResult(id, { lanes: coord ? coord.snapshot().lanes : {} });
       }
@@ -81,6 +287,45 @@ function createMcpAbi(opts = {}) {
         }
         if (coord && draft && draft.ok !== false) coord.noteDraft(draft);
         return rpcResult(id, { ...draft, tier: "hint", actions: [] });
+      }
+      if (method === "computer.status") {
+        const snap = status ? await status(params, ctx) : { ok: false, reason: "status missing" };
+        return rpcResult(id, snap);
+      }
+      if (method === "computer.observe") {
+        const snap = observe ? await observe(params, ctx) : { ok: false, reason: "observe missing" };
+        return rpcResult(id, snap);
+      }
+      if (method === "computer.act") {
+        const p = params && typeof params === "object" ? params : {};
+        const mode = String(p.mode || "").trim().toLowerCase();
+        const hasAct = Boolean(
+          String(p.instruction || p.text || p.goal || "").trim() ||
+            (Array.isArray(p.actions) && p.actions.length)
+        );
+        if (mode && !hasAct) {
+          if (typeof setMode !== "function") {
+            return rpcError(id, -32003, "mode switch missing");
+          }
+          const out = await setMode(mode, ctx);
+          if (out && out.ok === false) {
+            return rpcError(id, -32602, out.reason || "unknown mode");
+          }
+          return rpcResult(id, out);
+        }
+        return gated(id, act, "computer.act needs a Cortex /dms/secure gate", params, ctx);
+      }
+      if (method === "computer.scribe") {
+        return gated(id, scribe, "computer.scribe needs a Cortex /dms/secure gate", params, ctx);
+      }
+      if (method === "computer.meeting_assist") {
+        return gated(
+          id,
+          meetingAssist,
+          "computer.meeting_assist needs a Cortex /dms/secure gate",
+          params,
+          ctx
+        );
       }
       if (method === "desks.list") return rpcResult(id, { desks: catalog() });
       if (method === "desks.pick") {
@@ -190,7 +435,7 @@ function createMcpAbi(opts = {}) {
     }
   }
 
-  return { TOOLS, handle };
+  return { TOOLS, CATALOG, handle };
 }
 
-module.exports = { createMcpAbi, TOOLS };
+module.exports = { createMcpAbi, TOOLS, CATALOG };

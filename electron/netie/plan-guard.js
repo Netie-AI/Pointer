@@ -37,6 +37,8 @@ const DRIVER_ACTIONS = Object.freeze([
   // Records what was on the clipboard BEFORE a copy, so the copy can be proven
   // to have happened (#16). Read-only.
   "clipboard_baseline",
+  // Restore the remembered user window before dictation/scribe paste.
+  "focus_hwnd",
 ]);
 
 /** Verbs that hand control to another application. */

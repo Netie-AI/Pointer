@@ -54,6 +54,36 @@ function test(name, fn) {
     assert.ok(r.result.tools.includes("document.live"));
     assert.ok(r.result.tools.includes("session.live"));
     assert.ok(r.result.tools.includes("workspace.get"));
+    assert.ok(Array.isArray(r.result.catalog));
+    assert.deepStrictEqual(
+      r.result.catalog.map((t) => t.name),
+      TOOLS.slice()
+    );
+    assert.ok(r.result.catalog.every((t) => t.name && t.description && t.inputSchema));
+    const observe = r.result.catalog.find((t) => t.name === "computer.observe");
+    assert.ok(observe.inputSchema.properties.screenshot);
+    assert.ok(observe.inputSchema.properties.clipboard);
+    assert.ok(observe.inputSchema.properties.selection);
+    const meeting = r.result.catalog.find((t) => t.name === "computer.meeting_assist");
+    assert.ok(meeting.inputSchema.properties.kind);
+    assert.ok(meeting.inputSchema.properties.screenshot);
+    assert.match(meeting.description, /export=1/);
+    assert.match(meeting.description, /say=1/);
+    assert.match(meeting.description, /email=1/);
+    assert.match(meeting.description, /actions=1/);
+    assert.deepStrictEqual(meeting.inputSchema.properties.kind.enum, [
+      "say",
+      "recap",
+      "followups",
+      "email",
+      "actions",
+    ]);
+    const scribe = r.result.catalog.find((t) => t.name === "computer.scribe");
+    assert.ok(scribe.inputSchema.properties.retry);
+    assert.ok(scribe.inputSchema.properties.dictate);
+    const act = r.result.catalog.find((t) => t.name === "computer.act");
+    assert.match(act.description, /focus: notepad then type: hello/);
+    assert.ok(act.inputSchema.properties.mode);
   });
 
   await test("lanes.claim goes through MCP and conflicts", async () => {
@@ -417,6 +447,53 @@ function test(name, fn) {
     });
     assert.ok(found.hits.some((h) => h.id === "fill_right" || /fill/.test(h.id)));
     assert.strictEqual(found.draft, null);
+  });
+
+  await test("mode-only computer.act switches without a Cortex gate", async () => {
+    const seen = [];
+    const mcp = createMcpAbi({
+      setMode: (mode) => {
+        if (mode !== "scribe" && mode !== "meeting") {
+          return { ok: false, reason: "unknown mode" };
+        }
+        seen.push(mode);
+        return { ok: true, mode, gated: false };
+      },
+    });
+    const r = await mcp.handle({
+      jsonrpc: "2.0",
+      id: 40,
+      method: "computer.act",
+      params: { mode: "scribe" },
+    });
+    assert.ok(r.result);
+    assert.strictEqual(r.result.ok, true);
+    assert.strictEqual(r.result.mode, "scribe");
+    assert.strictEqual(r.result.gated, false);
+    assert.deepStrictEqual(seen, ["scribe"]);
+    const gatedStill = await mcp.handle({
+      jsonrpc: "2.0",
+      id: 41,
+      method: "computer.act",
+      params: { mode: "scribe", instruction: "type: hi" },
+    });
+    assert.ok(gatedStill.error);
+    assert.match(gatedStill.error.message, /dms\/secure|gate/i);
+    const missing = await createMcpAbi().handle({
+      jsonrpc: "2.0",
+      id: 42,
+      method: "computer.act",
+      params: { mode: "meeting" },
+    });
+    assert.ok(missing.error);
+    const bad = await mcp.handle({
+      jsonrpc: "2.0",
+      id: 43,
+      method: "computer.act",
+      params: { mode: "doom" },
+    });
+    assert.ok(bad.error);
+    assert.match(bad.error.message, /unknown mode/);
   });
 
   console.log(`\n${pass} passed, ${fails.length} failed`);

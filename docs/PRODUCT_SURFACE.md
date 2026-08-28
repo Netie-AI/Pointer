@@ -100,7 +100,7 @@ Baseline probe: `node scripts/stt_baseline.js`. Notes: [`docs/STT_OCR.md`](STT_O
 
 ## Windows-safe visual direction
 
-No `backdrop-filter` in core HUD surfaces (Windows Electron corruption risk). Netie Pointer uses solid frosted panels, spring-style transitions, and press-on-down feedback.
+No `backdrop-filter` in core HUD surfaces (Windows Electron corruption risk). Netie Pointer uses solid panels, IBM Plex Serif + Sans, spring-style transitions, and press-on-down feedback. The HUD is screenshotable by default (DR-0005) so UACC and other agents can detect it.
 
 ## Lag stance
 

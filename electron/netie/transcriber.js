@@ -30,10 +30,44 @@ const path = require("path");
 const { execFile } = require("child_process");
 const { encodeWav16, floatToPcm16 } = require("./audio");
 const { WinSpeech } = require("./winspeech");
+const { sttLanguageCode } = require("./scribe");
 
 const DEFAULT_OPENVAULT = "http://127.0.0.1:5000/v1/audio/transcriptions";
 const OPENVAULT_KEYS_URL = "http://127.0.0.1:5000/api/keys";
 const OPENVAULT_PROBE_TIMEOUT_MS = 800;
+const DEFAULT_SIDECAR = "http://127.0.0.1:8766";
+
+/** OpenAI-shaped STT base URL. Strips /v1/audio/transcriptions so /health still works. */
+function sanitizeSttUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw || raw.length > 300) return "";
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return "";
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+  parsed.username = "";
+  parsed.password = "";
+  parsed.search = "";
+  parsed.hash = "";
+  let pathname = String(parsed.pathname || "").replace(/\/+$/, "");
+  if (/\/v1\/audio\/transcriptions$/i.test(pathname)) {
+    pathname = pathname.replace(/\/v1\/audio\/transcriptions$/i, "");
+  }
+  parsed.pathname = pathname || "/";
+  return parsed.toString().replace(/\/$/, "");
+}
+
+function isLoopbackSttUrl(value) {
+  try {
+    const host = new URL(sanitizeSttUrl(value) || value).hostname;
+    return host === "127.0.0.1" || host === "localhost" || host === "::1";
+  } catch {
+    return false;
+  }
+}
 
 class Transcriber {
   constructor(opts = {}) {
@@ -44,7 +78,13 @@ class Transcriber {
     // and probe() would still reach for 127.0.0.1:5000.
     this.openvaultUrl =
       opts.openvaultUrl ?? process.env.NETIE_STT_OPENVAULT_URL ?? DEFAULT_OPENVAULT;
-    this.sidecarUrl = String(opts.sidecarUrl ?? process.env.NETIE_STT_URL ?? "").replace(/\/$/, "");
+    this._sidecarUrlOpt = opts.sidecarUrl;
+    this._hasSidecarOpt = Object.prototype.hasOwnProperty.call(opts, "sidecarUrl");
+    this._languageOpt = opts.language;
+    // A live function may close over `settings` declared after this constructor
+    // (same trick as allowDeepgramCloud). Do not call it here.
+    this.sidecarUrl =
+      typeof this._sidecarUrlOpt === "function" ? "" : this.resolveSidecarUrl();
     this.model = opts.model || process.env.NETIE_STT_MODEL || "whisper-1";
     this.tempDir = opts.tempDir || path.join(os.tmpdir(), "netie-clicks", "stt");
     this._fetch = opts.fetchImpl || ((...a) => globalThis.fetch(...a));
@@ -75,6 +115,23 @@ class Transcriber {
     this.engine = null; // resolved on first probe
     this.lastError = null;
     this.lastConfidence = null;
+    this._sidecarUrlSeen = this.sidecarUrl;
+  }
+
+  resolveSidecarUrl() {
+    if (typeof this._sidecarUrlOpt === "function") {
+      return sanitizeSttUrl(this._sidecarUrlOpt());
+    }
+    if (this._hasSidecarOpt) {
+      return sanitizeSttUrl(this._sidecarUrlOpt);
+    }
+    return sanitizeSttUrl(process.env.NETIE_STT_URL);
+  }
+
+  /** Whisper/OpenAI language. Empty or English stays auto (rojak). HUD pins ISO. */
+  sttLanguage() {
+    const raw = typeof this._languageOpt === "function" ? this._languageOpt() : this._languageOpt;
+    return sttLanguageCode(raw);
   }
 
   _winSpeech() {
@@ -100,8 +157,9 @@ class Transcriber {
     const form = new FormData();
     form.append("file", new Blob([wav], { type: "audio/wav" }), "audio.wav");
     form.append("model", this.model);
-    // Multilingual / Malaysian rojak — never force a single language.
-    if (!("language" in extra)) form.append("language", "auto");
+    // Default auto so zh/en/ms mix is not forced to a single language.
+    // Callers may pass language:"zh" when the user picked Traditional Chinese.
+    if (!("language" in extra)) form.append("language", this.sttLanguage());
     for (const [k, v] of Object.entries(extra)) form.append(k, v);
     const ctrl = new AbortController();
     // Whisper on CPU can take ~10s for a few seconds of speech; a 20s ceiling
@@ -143,6 +201,11 @@ class Transcriber {
       // next opt-in re-fetch it rather than reuse a secret from before.
       this._deepgramKeyCache = null;
     }
+    this.sidecarUrl = this.resolveSidecarUrl();
+    if (this.engine === "sidecar" && this.sidecarUrl !== this._sidecarUrlSeen) {
+      this.engine = null;
+    }
+    this._sidecarUrlSeen = this.sidecarUrl;
     if (this.engine && !force) return this.engine;
     if (this.hasLocalWhisper()) {
       this.engine = "whisper-cli";
@@ -276,7 +339,7 @@ class Transcriber {
       const args = [
         "-m", this.whisperModel,
         "-f", wavPath,
-        "-l", "auto",   // zh/en/ms mix — never pin *.en model
+        "-l", this.sttLanguage(),   // auto for English; HUD pins an ISO code
         "-nt",          // no timestamps
         "-np",          // no progress prints
         "-t", String(Math.max(2, Math.min(8, os.cpus().length - 2))),
@@ -376,12 +439,16 @@ class Transcriber {
         return { engine: this.engine, label: "Local Whisper (offline)", local: true };
       case "openvault":
         return { engine: this.engine, label: "OpenVault STT (127.0.0.1)", local: true };
-      case "sidecar":
+      case "sidecar": {
+        const remote = Boolean(this.sidecarUrl) && !isLoopbackSttUrl(this.sidecarUrl);
         return {
           engine: this.engine,
-          label: "Faster-Whisper sidecar (zh/en/ms rojak)",
-          local: true,
+          label: remote
+            ? "BYOK STT (audio leaves this device)"
+            : "Faster-Whisper sidecar (zh/en/ms rojak)",
+          local: !remote,
         };
+      }
       case "deepgram-cloud":
         return {
           engine: this.engine,
@@ -424,4 +491,4 @@ function cleanup(text) {
     .trim();
 }
 
-module.exports = { Transcriber, cleanup };
+module.exports = { Transcriber, cleanup, sanitizeSttUrl, isLoopbackSttUrl, DEFAULT_SIDECAR };

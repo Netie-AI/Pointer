@@ -1,3 +1,14 @@
+# CHANGELOG
+
+Append-only. Never edited, only added to. Newest first.
+
+## 2026-08-28 - Merge main into detectable HUD branch
+
+Keeps loopback `computer.*` (UACC, 12 languages, meeting email/actions) plus
+coworker desks / This computer from main. GitHub CI is still a spending-limit
+cutoff; local `npm test` and `npm run test:acceptance` are the gate. No GPLv3
+dump. No third-party MCP.
+
 ## 2026-08-28 - Home is windows; This computer holds the catalog
 
 Loopback `/` no longer paints the desks catalog dump. Workspace poller
@@ -598,6 +609,340 @@ Do it to Ask. Loopback workspace stores briefs; public
 MCP adds `desks.*` and `workspace.*`; `workspace.exec` is a named
 refusal. P-05 and P-06 stay parked. Fail-closed Act and fixed HUD
 chrome are unchanged.
+
+## 2026-08-28 - Cluely 12-language STT/Scribe list
+
+HUD language select lists 12 English labels (English, Traditional Chinese,
+Spanish, Malay, Japanese, Korean, French, German, Portuguese, Italian,
+Hindi, Arabic). English STT stays auto. Other picks pin an ISO code.
+Ctrl+Alt+L still flips only English / Traditional Chinese. Loopback
+`computer.status.scribe.languages` publishes the list. No GPLv3 dump.
+No third-party MCP.
+
+## 2026-08-28 - Ask emits Clicky overlay tokens
+
+visionChat tells the model to include POINT/LINE/PATH/BOX percents so the
+HUD can draw a teach frame. Tokens stay stripped from chat. Still never
+acts from screen text. GitHub CI on this account is still a spending-limit
+cutoff (0 steps), not a product fail. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-28 - Clicky BOX teach frames on the HUD
+
+HeyClicky-class overlay: Ask answers may include `[BOX:x,y,w,h:Save]` (or RECT)
+to frame a control. Click-through, solid type, no glass. POINT/LINE/PATH stay.
+GitHub CI on this account is still a spending-limit cutoff (0 steps), not a
+product fail. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-28 - Meeting action items from main
+
+Cluely-class Actions: meeting-only Actions / Copy actions pills. `kind`
+actions lists owner, task, and due date. `GET /api/meeting?actions=1`
+shares the last list from main, not the renderer. Empty stays a refusal.
+Still Cortex-gated to produce. GitHub CI on this account is still a
+spending-limit cutoff (0 steps), not a product fail. No GPLv3 dump. No
+third-party MCP.
+
+## 2026-08-27 - Meeting follow-up email from main
+
+Cluely-class Email: meeting-only Email / Copy email pills. `kind` email
+drafts a pasteable follow-up. `GET /api/meeting?email=1` shares the last
+draft from main, not the renderer. Empty stays a refusal. Still Cortex-
+gated to produce. GitHub CI on this account is still a spending-limit
+cutoff (0 steps), not a product fail. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Meeting LIVE captions as fixed chrome
+
+Cluely-class captions: in Meeting mode the LIVE bar shows system-audio
+transcripts under the top bar. Agent boot stays empty. No cursor-follow
+and no drag grip in meeting (DR-0002). Insights still keep the roll.
+GitHub CI on this account is still a spending-limit cutoff (0 steps),
+not a product fail. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Copy last meeting Say from main
+
+Cluely-class Copy say copies the last Suggest/Say from main, not the
+renderer. `GET /api/meeting?say=1` shares the same text. Empty stays a
+refusal. Still Cortex-gated to produce. GitHub CI on this account is
+still a spending-limit cutoff (0 steps), not a product fail. No GPLv3
+dump. No third-party MCP.
+
+## 2026-08-27 - HUD Ask plans click window: locally
+
+Ask and clicks:go use the same local verb planner as MCP. Recipes still
+win. A window miss is a visible no, not an LLM guess. Plans from the
+Ask text, not attached file bodies (#23). Still Cortex-gated. GitHub CI
+on this account is still a spending-limit cutoff (0 steps), not a
+product fail. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - click window: uses observed screen rects
+
+Agents can say `click window: notepad` (also doubleclick/rightclick/hover).
+The local planner finds the titled window and clicks its center. Needs a
+rect from observe/GetWindowRect. Absolute x/y skips vision re-aim so the
+center is not thrown away. Still Cortex-gated. GitHub CI on this
+account is still a spending-limit cutoff (0 steps), not a product fail.
+No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Observe window screen rects for agents
+
+UACC-class list_windows: computer.observe windows and foreground now
+carry x y width height plus center cx cy. GetWindowRect on the input
+worker; DIP conversion in main so clicks match. GitHub CI on this
+account is still a spending-limit cutoff (0 steps), not a product
+fail. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - HUD session chip Ready/Recording/Scribing
+
+OpenWillow-class session: fixed top chrome names Ready, Recording,
+Transcribing, Scribing, Paused, or Error. computer.status.session
+matches so other agents can wait. Not an orb. GitHub CI on this
+account is still a spending-limit cutoff (0 steps), not a product
+fail. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - HUD privacy chip for STT and LLM
+
+R-0011: fixed top chrome names on-device vs off-device STT and LLM.
+Empty URLs stay loopback OpenVault/sidecar, not a silent cloud hop.
+computer.status.privacy matches the chip. GitHub CI on this account
+is still a spending-limit cutoff (0 steps), not a product fail. No
+GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Copy last meeting recap from main
+
+Cluely-class Recap copy: HUD Copy recap and GET /api/meeting?recap=1
+read the last Cortex-gated recap in main. The renderer cannot supply
+the paste payload. Empty stays a refusal. GitHub CI on this account
+is still a spending-limit cutoff (0 steps), not a product fail. No
+GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Language hotkey pins STT too
+
+OpenWillow-class language: Ctrl+Alt+L / HUD Dictation+Scribe language
+pins Whisper and sidecar STT to zh when Traditional Chinese is selected.
+English stays auto so zh/en/ms mix is not forced to a single language.
+GitHub CI on this account is still a spending-limit cutoff (0 steps),
+not a product fail. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Clickable meeting follow-ups
+
+Cluely-class Follow-ups: numbered questions become Ask chips on the
+Say strip. A click sends the question through doAsk (Cortex gated).
+Chip labels are text, not HTML. GitHub CI on this account is still a
+spending-limit cutoff (0 steps), not a product fail. No GPLv3 dump.
+No third-party MCP.
+
+## 2026-08-27 - BYOK LLM URL in settings
+
+OpenWillow-class HTTP chat: HUD `llmUrl` / `llmModel` feed the OpenVault
+chat hop (same pattern as NETIE_OPENVAULT_URL). Empty keeps loopback
+OpenVault, not Groq. Remote URLs are labeled off-device. Custody inject
+stays on OpenVault. Keys are never stored in settings.json. GitHub CI
+on this account is still a spending-limit cutoff (0 steps), not a
+product fail. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Loopback mode switch and live status
+
+Agents on 127.0.0.1 can read live mode, hotkeys, and STT URL from
+`computer.status`, and switch Agent/General/Transcribe/Scribe/Meeting
+with `POST /api/computer {"mode":"scribe"}` like the tray. Mode-only
+is HUD state, not Cortex-gated. Clicks still fail-closed. GitHub CI
+on this account is still a spending-limit cutoff (0 steps), not a
+product fail. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Customizable dictation hotkeys
+
+OpenWillow-class shortcuts: recording, Transcribe/Scribe, and language
+hotkeys persist in settings and rebind on save. They must stay distinct
+and cannot steal Assist/Clicky/Escape. Hold-to-talk polls the recording
+combo. GitHub CI on this account is still a spending-limit cutoff
+(0 steps), not a product fail. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - BYOK STT URL in settings
+
+OpenWillow-class HTTP STT: HUD `sttUrl` feeds the sidecar slot (same
+pattern as NETIE_STT_URL). Remote URLs are labeled off-device. Default
+stays the loopback sidecar, not Deepgram (P-04). GitHub CI on this
+account is still a spending-limit cutoff (0 steps), not a product fail.
+No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Scribe screen captures the remembered window
+
+OpenWillow-class screen context: Scribe matches the remembered hwnd/title
+via Electron window sources and falls back to a display crop. Observe and
+Ask stay full-display so agents can still see the HUD. No PrintWindow
+dump. No GPLv3. GitHub CI on this account is still a spending-limit
+cutoff (0 steps), not a product fail. No third-party MCP.
+
+## 2026-08-27 - Standing Scribe rewrite instruction
+
+OpenWillow-class Scribe: a persisted `scribeInstruction` applies to every
+rewrite. The spoken or typed take stays USER INSTRUCTION. Default is
+first-party English (no GPLv3 dump, no CJK in governed files). HUD field
+next to writing style. GitHub CI on this account is still a
+spending-limit cutoff (0 steps), not a product fail. No third-party MCP.
+
+## 2026-08-27 - Tray switches Transcribe, Scribe, and Meeting
+
+OpenWillow-class tray: radio items for Agent / General / Transcribe /
+Scribe / Meeting call applyAppMode without opening the HUD. Mode
+changes refresh the menu. GitHub CI on this account is still a
+spending-limit cutoff (0 steps), not a product fail. No GPLv3 dump.
+No third-party MCP.
+
+## 2026-08-27 - Read selected text without copying a password
+
+Scribe and `GET /api/observe?selection=1` read the focused selection
+through UIA TextPattern. Password fields return empty and never get
+Ctrl+C. Ctrl+C is only the fallback when UIA has no selection. GitHub
+CI on this account is still a spending-limit cutoff (0 steps), not a
+product fail. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Meeting assist sees this screen unless asked not to
+
+`computer.meeting_assist` and `POST /api/meeting` capture a fresh crop
+so agents can ask about the call and the display. Live Suggest passes
+`screenshot: false` so an 8s debounce does not screenshot the room on
+a loop. GitHub CI on this account is still a spending-limit cutoff
+(0 steps), not a product fail. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Shareable meeting notes as markdown
+
+Cluely notes: `GET /api/meeting?export=1` returns markdown tagged as
+untrusted data. HUD Copy notes pastes from the live file in main, not
+from renderer text. Notes live opens that file. Public Worker still
+404s `/api/meeting`. No GPLv3 dump. No third-party MCP servers.
+
+## 2026-08-27 - Ctrl+Enter Assist asks about this screen or the live notes
+
+Cluely Assist: global Ctrl+Enter shows the HUD and asks. Meeting mode
+runs Suggest. An empty general Ask becomes "what am I looking at" with
+a fresh crop. Shift+Enter stays a newline in the box. No GPLv3 dump.
+No third-party MCP servers.
+
+## 2026-08-27 - Chain local act verbs and capture the live screen on Ask
+
+`computer.act` plans `focus: notepad then type: hello` as two local steps
+(semicolon and newlines too). `type: hello then world` stays one type.
+Ask (meeting and general) grabs a fresh display crop so the model sees
+this screen, not a stale region. Retry/dictate Scribe still skip capture.
+No GPLv3 dump. No third-party MCP servers.
+
+## 2026-08-27 - Retry failed Scribe or paste the raw transcript
+
+If Scribe cannot rewrite (no Cortex, empty model, paste miss), Pointer keeps
+the voice take and remembered window. Retry re-runs the rewrite. Paste as-is
+inserts the raw transcript. `POST /api/scribe {"retry":true}` /
+`{"dictate":true}` plus `GET /api/scribe?pending=1`. Esc still cancels.
+No GPLv3 dump. No third-party MCP servers.
+
+## 2026-08-27 - Meeting recap, follow-ups, and live notes for agents
+
+Meeting mode adds Recap and Follow-ups pills next to Suggest (fixed top
+chrome, not a companion). `computer.meeting_assist` accepts `kind` say /
+recap / followups. `GET /api/meeting?notes=1` returns the live transcript
+as untrusted data, no model hop. Public Worker still 404s `/api/meeting`.
+No GPLv3 dump. No third-party MCP servers.
+
+## 2026-08-27 - Observe screenshot/clipboard and PATH teach strokes
+
+`GET /api/observe?screenshot=1` plus MCP `computer.observe` with
+`screenshot:true` return a PNG data URL so other agents can see this
+screen. `?clipboard=1` returns pasteboard text tagged as untrusted data.
+Teach overlay parses `[PATH:x,y;x,y]` freehand strokes (click-through).
+No GPLv3 dump. No third-party MCP servers.
+
+## 2026-08-27 - replace: backspaces then pastes into the remembered window
+
+`replace: hello` restores the last user hwnd, sends Backspace, then clipboard
+pastes. Unicode goes through paste, not a GPLv3 SendInput dump. CI on this
+branch still never starts (GitHub billing / spending limit).
+
+## 2026-08-27 - Hold Ctrl+Alt+Space to talk, release to stop
+
+OpenWillow hold-to-talk: Electron still only sees the press, then a
+GetAsyncKeyState poll stops listen when Ctrl+Alt+Space lifts. Dry-run and
+Linux never report a physical hold, so those stay tap-to-toggle. Esc still
+cancels. No GPLv3 dump.
+
+## 2026-08-27 - Live meeting suggest and more agent drive verbs
+
+`GET /api/tools` returns the MCP catalog over HTTP. `computer.act` plans
+`wait`, `scroll up/down`, `doubleclick`, `rightclick`, and `hover` without a
+second Cortex hop. Meeting mode refreshes a fixed Say line as notes grow
+(debounce, fail-closed without Cortex). Public Worker still 404s `/api/tools`.
+No GPLv3 dump. No third-party MCP servers.
+
+## 2026-08-27 - Tool catalog so other agents know how to drive Pointer
+
+`tools.list` still returns the name allowlist and now also a `catalog`
+of descriptions plus JSON schemas. `computer.status.drive` lists the
+loopback URLs and instruction verbs (`focus: notepad`, `click: Save`).
+No third-party MCP servers.
+
+## 2026-08-27 - Focus by title, named clicks, autostart
+
+`focus: notepad` restores a matching window from the observe list.
+`click: Save` aims by control name (UIA then vision). Observe can dump
+foreground UIA controls when `elements:true`. Autostart at Windows
+sign-in is a setting (OpenWillow pattern). No GPLv3 dump.
+
+## 2026-08-27 - Live observe, Esc cancel, Scribe screen, meeting Suggest
+
+`GET /api/observe` plus MCP `computer.observe` now return the foreground
+window and a titled-window list so other agents can see this computer.
+`open:` and `focus hwnd:` plan locally. Esc cancels Transcribe/Scribe
+listen without a lifetime global grab. Optional Scribe screen context
+(off by default, OpenWillow-class). Meeting mode has a Suggest pill.
+Teach overlay parses LINE/ARROW strokes. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Loopback scribe and meeting APIs for other agents
+
+MCP `computer.scribe` and `computer.meeting_assist` plus
+`POST /api/scribe` `/api/meeting` on `127.0.0.1:18010`. Same Cortex
+`/dms/secure` fail-closed gate as `computer.act`. Public Worker still
+404s those paths. Ctrl+Alt+M flips Transcribe/Scribe; Ctrl+Alt+L
+flips English / Traditional Chinese. `deliver:` restores the
+remembered hwnd then pastes. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Global dictation hotkey and meeting assist
+
+Ctrl+Alt+Space snapshots the current app then toggles Transcribe
+listen (Electron cannot true-hold a shortcut). HUD hold-to-talk
+refreshes that target. Meeting mode Ask (empty = what should I say)
+uses live notes as untrusted data. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-27 - Remembered-window delivery, Scribe mode, instruction plans
+
+Dictation and Scribe restore the last non-Pointer window (focus_hwnd)
+then type or paste. Scribe is a first-class HUD mode: copy selection,
+rewrite through the Scribe prompt, paste. `computer.act` turns an
+instruction into a recipe or type/click/observe plan after Cortex
+`/dms/secure`. Writing style and personal notes are settings, not a
+GPLv3 dump. No third-party MCP servers.
+
+## 2026-08-27 - Gated computer.act and OpenWillow dictation delivery
+
+Loopback `computer.act` (MCP + `POST /api/computer`) now runs Cortex
+`/dms/secure` then plan-guard then reviewPlan. Observe can auto-run.
+Clicks still need `approved:true`. MCP execution ignores the HUD mode
+pill so other agents can drive the desktop. Transcribe dictation types
+mic speech into the focused app after a session gate. Scribe prompt
+grounds rewrite requests. No GPLv3 dump. No third-party MCP servers.
+
+## 2026-08-27 - UACC skills, screenshotable HUD, classy type (DR-0005)
+
+Founder amendment. `captureVisible` defaults on and migrates existing
+installs (settings v3) so UACC and other agents can see Pointer.
+First-party UACC READ skill catalog + observe recipes. Loopback MCP
+tools `computer.status` / `computer.observe` and `GET /api/computer`.
+`computer.act` is on the allowlist and refuses without Cortex
+`/dms/secure`. HUD drops `backdrop-filter` liquid glass for IBM Plex
+Serif + Sans solid panels. Windows install: `scripts/install_uacc.ps1`.
+Does not bundle OpenWillow (P-04). Does not load third-party MCP
+servers. P-05 coworker verbs stay parked.
+
+Dictation mode aliases transcribe. "rewrite this" / "scribe this"
+copies the selection (OpenWillow Scribe pattern, no GPLv3 dump).
 
 ## 2026-08-26 - Public host.netie.ai Worker shell (DR-0004)
 

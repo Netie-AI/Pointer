@@ -906,7 +906,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.doesNotMatch(commit, /driver\./);
   const cancel = main.slice(main.indexOf('ipcMain.handle("clicks:cancelRegion"'), main.indexOf('ipcMain.handle("click:askBuddy"'));
   assert.match(cancel, /frameForTeach = false/);
-  const tray = main.slice(main.indexOf("function createTray"), main.indexOf("function registerHotkey"));
+  const tray = main.slice(main.indexOf("function trayTemplate"), main.indexOf("function registerHotkey"));
   assert.match(tray, /openOverlay\(\)/);
   assert.doesNotMatch(tray, /teach: true/);
   const overlay = fs.readFileSync(path.join(__dirname, "..", "electron", "overlay.html"), "utf8");
@@ -1689,7 +1689,7 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /overlayControlFace/);
   assert.match(hud, /later/);
   assert.match(hud, /event\.hold/);
-  assert.match(hud, /renderPoints\(event\.points, event\.ttlMs, event\.hold\)/);
+  assert.match(hud, /renderPoints\(event\.points, event\.ttlMs, event\.lines, event\.paths, event\.boxes, event\.hold\)/);
   const html = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");
   assert.match(html, /id="meeting-cue"/);
   assert.match(html, /id="meeting-asked"/);

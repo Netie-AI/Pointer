@@ -29,6 +29,7 @@ const OBSERVABLE = Object.freeze([
   // not even with settings.verifySteps on, and reported "n/a" rather than
   // "skipped". Kept in step with plan-guard's DRIVER_ACTIONS.
   "paste", "clipboard_paste", "setvalue", "press", "keypress", "navigate", "open",
+  "focus_hwnd",
 ]);
 
 function isObservable(type) {

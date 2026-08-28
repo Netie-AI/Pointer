@@ -32,6 +32,8 @@ public class NetieInput {
   [StructLayout(LayoutKind.Sequential)]
   public struct POINT { public int X; public int Y; }
   [StructLayout(LayoutKind.Sequential)]
+  public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+  [StructLayout(LayoutKind.Sequential)]
   public struct INPUT { public uint type; public MOUSEKEYBDHARDWAREINPUT mkhi; }
   [StructLayout(LayoutKind.Explicit)]
   public struct MOUSEKEYBDHARDWAREINPUT {
@@ -52,9 +54,12 @@ public class NetieInput {
   [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT pt);
   [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
   [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   [DllImport("user32.dll")] public static extern IntPtr SetProcessDpiAwarenessContext(IntPtr value);
+  [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int vKey);
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
   public const uint INPUT_MOUSE=0; public const uint INPUT_KEYBOARD=1;
   public const uint MOUSEEVENTF_LEFTDOWN=0x0002; public const uint MOUSEEVENTF_LEFTUP=0x0004;
   public const uint MOUSEEVENTF_RIGHTDOWN=0x0008; public const uint MOUSEEVENTF_RIGHTUP=0x0010;
@@ -117,7 +122,13 @@ public class NetieInput {
     var sb = new System.Text.StringBuilder(512);
     GetWindowText(h, sb, sb.Capacity);
     uint pid = 0; GetWindowThreadProcessId(h, out pid);
-    return pid.ToString() + "|" + sb.ToString();
+    return h.ToInt64().ToString() + "|" + pid.ToString() + "|" + sb.ToString();
+  }
+  public static bool FocusHwnd(long hwnd) {
+    return SetForegroundWindow((IntPtr)hwnd);
+  }
+  public static bool KeyDown(int vk) {
+    return (GetAsyncKeyState(vk) & 0x8000) != 0;
   }
 }
 "@
@@ -163,10 +174,40 @@ while (-not $done) {
       }
       'fg'    {
         $info = [NetieInput]::FgInfo()
-        $parts = $info -split '\\|', 2
+        $parts = $info -split '\\|', 3
         $pname = '?'
-        try { $pname = (Get-Process -Id ([int]$parts[0]) -ErrorAction Stop).ProcessName } catch {}
-        $r.title = $parts[1]; $r.proc = $pname
+        try { $pname = (Get-Process -Id ([int]$parts[1]) -ErrorAction Stop).ProcessName } catch {}
+        $r.hwnd = $parts[0]; $r.title = $parts[2]; $r.proc = $pname
+        $rect = New-Object NetieInput+RECT
+        if ($parts[0] -and [NetieInput]::GetWindowRect([IntPtr][int64]$parts[0], [ref]$rect)) {
+          $r.x = $rect.Left; $r.y = $rect.Top
+          $r.width = $rect.Right - $rect.Left; $r.height = $rect.Bottom - $rect.Top
+        }
+      }
+      'focus' {
+        $ok = [NetieInput]::FocusHwnd([int64]$m.hwnd)
+        if (-not $ok) { throw 'focus failed' }
+      }
+      'windows' {
+        $list = New-Object System.Collections.ArrayList
+        Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle } | Select-Object -First 40 | ForEach-Object {
+          $hwnd = [int64]$_.MainWindowHandle
+          $row = @{ hwnd = [string]$hwnd; title = [string]$_.MainWindowTitle; proc = [string]$_.ProcessName }
+          $rect = New-Object NetieInput+RECT
+          if ([NetieInput]::GetWindowRect([IntPtr]$hwnd, [ref]$rect)) {
+            $row.x = $rect.Left; $row.y = $rect.Top
+            $row.width = $rect.Right - $rect.Left; $row.height = $rect.Bottom - $rect.Top
+          }
+          [void]$list.Add($row)
+        }
+        $r.windows = @($list)
+      }
+      'keys' {
+        $down = $true
+        foreach ($vk in @($m.vks)) {
+          if (-not [NetieInput]::KeyDown([int]$vk)) { $down = $false; break }
+        }
+        $r.down = [bool]$down
       }
       'exit'  { $done = $true }
       default { $r.ok = $false; $r.error = "unknown op: $($m.op)" }
@@ -216,6 +257,20 @@ function vkOf(key) {
     if (c >= 0x30 && c <= 0x39) return c; // 0-9
   }
   return null;
+}
+
+/** Screen box from GetWindowRect. Omitted when the worker did not return one. */
+function attachWindowBox(row, src = {}) {
+  const x = Number(src.x);
+  const y = Number(src.y);
+  const width = Number(src.width);
+  const height = Number(src.height);
+  if (!(width > 0 && height > 0 && Number.isFinite(x) && Number.isFinite(y))) return row;
+  row.x = Math.round(x);
+  row.y = Math.round(y);
+  row.width = Math.round(width);
+  row.height = Math.round(height);
+  return row;
 }
 
 /**
@@ -428,11 +483,60 @@ class InputDriver {
     }
   }
 
-  /** Foreground window { title, proc } via the same worker — no process spawn per tick. */
+  /** Foreground window { hwnd, title, proc, optional screen box } via the same worker. */
   async foreground() {
-    if (this.dryRun) return { title: "?", proc: "?" };
+    if (this.dryRun) return { hwnd: "0", title: "?", proc: "?" };
     const r = await this._send({ op: "fg" }, { timeoutMs: 2500 });
-    return { title: r.title || "?", proc: r.proc || "?" };
+    return attachWindowBox(
+      { hwnd: String(r.hwnd || "0"), title: r.title || "?", proc: r.proc || "?" },
+      r
+    );
+  }
+
+  async focusHwnd(hwnd) {
+    const h = String(hwnd || "").trim();
+    this.last = { op: "focus", hwnd: h };
+    if (!h || h === "0") return { ok: false, error: "no hwnd", ...this.last };
+    if (this.dryRun) return { ok: true, ...this.last };
+    await this._send({ op: "focus", hwnd: h });
+    return { ok: true, ...this.last };
+  }
+
+  /** Visible titled windows for computer.observe. Dry-run stays empty. */
+  async listWindows() {
+    this.last = { op: "windows" };
+    if (this.dryRun) return [];
+    const r = await this._send({ op: "windows" }, { timeoutMs: 4000 });
+    const raw = Array.isArray(r.windows) ? r.windows : [];
+    return raw
+      .filter((w) => w && (w.title || w.hwnd))
+      .slice(0, 40)
+      .map((w) =>
+        attachWindowBox(
+          {
+            hwnd: String(w.hwnd || "0"),
+            title: String(w.title || "").slice(0, 120),
+            proc: String(w.proc || "").slice(0, 40),
+          },
+          w
+        )
+      );
+  }
+
+  /**
+   * True when every VK in the list is currently down (GetAsyncKeyState).
+   * Dry-run reports down:false so hold-to-talk falls back to toggle.
+   */
+  async keysHeld(vks) {
+    const list = (Array.isArray(vks) ? vks : [])
+      .map((n) => Number(n))
+      .filter((n) => Number.isInteger(n) && n > 0 && n < 256)
+      .slice(0, 8);
+    this.last = { op: "keys", vks: list };
+    if (this.dryRun) return { ok: true, down: false, dryRun: true, ...this.last };
+    if (!list.length) return { ok: true, down: false, ...this.last };
+    const r = await this._send({ op: "keys", vks: list }, { timeoutMs: 1500 });
+    return { ok: true, down: r.down === true, ...this.last };
   }
 
   async moveTo(x, y) {
@@ -683,6 +787,9 @@ class InputDriver {
         await this.clickAt(sx, sy, { button: "right" });
         return { ok: true, type, x: sx, y: sy };
 
+      case "focus_hwnd":
+        return this.focusHwnd(action.hwnd);
+
       case "type":
       case "fill":
       case "setvalue": {
@@ -904,4 +1011,4 @@ class InputDriver {
   }
 }
 
-module.exports = { InputDriver, coworkerOutcome, VK, MOD_VK, parseKeyCombo, vkOf };
+module.exports = { InputDriver, coworkerOutcome, VK, MOD_VK, parseKeyCombo, vkOf, attachWindowBox };

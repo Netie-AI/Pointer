@@ -141,6 +141,26 @@ const UPSTREAM_NOISE =
       fsx.rmSync(dir, { recursive: true, force: true });
     }),
 
+    T("stored captureVisible:false is migrated on for existing installs", async () => {
+      const os = require("os");
+      const fsx = require("fs");
+      const pathx = require("path");
+      const { SettingsStore } = require("../../electron/netie/settings");
+      const dir = fsx.mkdtempSync(pathx.join(os.tmpdir(), "netie-settings-"));
+      const file = pathx.join(dir, "settings.json");
+      fsx.writeFileSync(
+        file,
+        JSON.stringify({ settingsVersion: 2, captureVisible: false, autoRunSensible: false }),
+        "utf8"
+      );
+      const s1 = new SettingsStore({ path: file });
+      assert.strictEqual(s1.get("captureVisible"), true, "v3 must un-hide the HUD");
+      s1.set({ captureVisible: false });
+      const s2 = new SettingsStore({ path: file });
+      assert.strictEqual(s2.get("captureVisible"), false, "the user's later hide must stick");
+      fsx.rmSync(dir, { recursive: true, force: true });
+    }),
+
     T("the LIVE bar carries system audio only", async () => {
       // It is what the SCREEN is saying. Your own voice belongs in the Ask box,
       // not mixed into the thing you are reading to follow a video.
@@ -156,6 +176,15 @@ const UPSTREAM_NOISE =
         "mic speech must not be echoed into the chat log — it reads as already sent"
       );
       assert.ok(/askInput\.value = existing/.test(body), "…it goes to the composer instead");
+    }),
+
+    T("meeting LIVE captions stay put and ignore the cursor", async () => {
+      const js = read("electron/hud.js");
+      assert.ok(/function syncMeetingCaption/.test(js), "meeting captions missing");
+      assert.ok(
+        /event\.type === "cursor"[^;]+appMode !== "meeting"/.test(js),
+        "cursor-follow must not run in Meeting mode"
+      );
     }),
 
     T("speech lands in the Ask box whether or not auto-send is on", async () => {
@@ -267,8 +296,8 @@ const UPSTREAM_NOISE =
     }),
 
     // ── capture visibility ─────────────────────────────────────────────────
-    T("content protection is off by default and toggleable live", async () => {
-      assert.strictEqual(DEFAULTS.captureVisible, false, "hidden from screen shares by default");
+    T("content protection is off unless captureVisible is on, and it is toggleable live", async () => {
+      assert.strictEqual(DEFAULTS.captureVisible, true, "visible to screen capture so agents can detect Pointer");
       const main = read("electron/main.js");
       assert.ok(main.includes("function applyContentProtection"), "one place flips all windows");
       const fn = main.slice(main.indexOf("function applyContentProtection"));

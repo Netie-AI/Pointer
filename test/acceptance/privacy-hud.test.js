@@ -78,6 +78,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.strictEqual(MODES.agent.listens, false, "the default mode must not listen");
       assert.strictEqual(MODES.general.listens, true);
       assert.strictEqual(MODES.transcribe.listens, true);
+      assert.strictEqual(MODES.scribe.listens, true);
       assert.strictEqual(MODES.meeting.listens, true);
     }),
 
@@ -98,15 +99,13 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       );
     }),
 
-    // ── glass HUD ──────────────────────────────────────────────────────────
-    T("glass degrades to something readable where backdrop-filter is missing", async () => {
+    // ── solid HUD (no liquid glass) ────────────────────────────────────────
+    T("core HUD panels are solid type, not backdrop-filter glass", async () => {
       const css = read("electron/hud.css");
-      assert.ok(/backdrop-filter/.test(css), "the liquid-glass look needs backdrop-filter");
-      assert.ok(
-        /@supports not \(\(backdrop-filter/.test(css),
-        "…and a fallback, or the HUD is unreadable text on a transparent window"
-      );
-      assert.ok(/-webkit-backdrop-filter/.test(css), "Chromium in Electron still wants the prefix");
+      assert.ok(!/backdrop-filter/.test(css), "PRODUCT_SURFACE forbids backdrop-filter on core HUD");
+      assert.ok(/Pointer Display/.test(css), "classy display face must be declared");
+      assert.ok(/IBMPlexSerif/.test(css), "IBM Plex Serif files must be referenced");
+      assert.ok(/background:\s*var\(--panel\)/.test(css), "panels use a solid fill");
     }),
 
     T("the HUD stays tight: CSP unweakened, no floating companion", async () => {
@@ -117,6 +116,54 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
         !/id="clicky-orb"|class="[^"]*clicky-orb|stage-orb|peek-drop/.test(html),
         "the floating Clicky ring / stage orb must not come back as identity"
       );
+      assert.ok(html.includes('id="btn-recap"'), "meeting Recap stays in fixed top chrome");
+      assert.ok(html.includes('id="btn-copy-notes"'), "Copy notes stays in fixed top chrome");
+      assert.ok(html.includes('id="btn-copy-recap"'), "Copy recap stays in fixed top chrome");
+      assert.ok(html.includes('id="btn-copy-say"'), "Copy say stays in fixed top chrome");
+      assert.ok(html.includes('id="btn-email"'), "Email stays in fixed top chrome");
+      assert.ok(html.includes('id="btn-copy-email"'), "Copy email stays in fixed top chrome");
+      assert.ok(html.includes('id="btn-actions"'), "Actions stays in fixed top chrome");
+      assert.ok(html.includes('id="btn-copy-actions"'), "Copy actions stays in fixed top chrome");
+      assert.ok(html.includes('id="privacy-chip"'), "privacy chip stays in fixed top chrome");
+      assert.ok(html.includes('id="session-chip"'), "session chip stays in fixed top chrome");
+      assert.ok(html.includes('id="btn-scribe-retry"'), "Scribe Retry stays in fixed top chrome");
+      assert.ok(html.includes('id="btn-scribe-paste"'), "Scribe Paste as-is stays in fixed top chrome");
+      const langSel = html.slice(
+        html.indexOf('id="set-scribe-language"'),
+        html.indexOf("</select>", html.indexOf('id="set-scribe-language"'))
+      );
+      assert.strictEqual((langSel.match(/<option /g) || []).length, 12, "Cluely 12-language HUD list");
+      assert.ok(langSel.includes('value="English"'));
+      assert.ok(langSel.includes('value="Traditional Chinese"'));
+      assert.ok(langSel.includes('value="Spanish"'));
+      assert.ok(langSel.includes('value="Portuguese"'));
+      const css = read("electron/hud.css");
+      assert.ok(/\.hud\.mode-meeting #btn-recap/.test(css), "Recap is meeting-only");
+      assert.ok(/\.hud\.mode-meeting #btn-followups/.test(css), "Follow-ups is meeting-only");
+      assert.ok(/\.hud\.mode-meeting #btn-copy-recap/.test(css), "Copy recap is meeting-only");
+      assert.ok(/\.hud\.mode-meeting #btn-copy-say/.test(css), "Copy say is meeting-only");
+      assert.ok(/\.hud\.mode-meeting #btn-email/.test(css), "Email is meeting-only");
+      assert.ok(/\.hud\.mode-meeting #btn-copy-email/.test(css), "Copy email is meeting-only");
+      assert.ok(/\.hud\.mode-meeting #btn-actions/.test(css), "Actions is meeting-only");
+      assert.ok(/\.hud\.mode-meeting #btn-copy-actions/.test(css), "Copy actions is meeting-only");
+      assert.ok(/\.hud\.mode-scribe\.has-pending #btn-scribe-retry/.test(css), "Retry is pending-Scribe only");
+      assert.ok(/\.privacy-chip/.test(css), "privacy chip is fixed top chrome, not an orb");
+      assert.ok(/\.privacy-chip\.off-device/.test(css), "off-device privacy uses the accent color");
+      assert.ok(/\.session-chip/.test(css), "session chip is fixed top chrome, not an orb");
+      assert.ok(/\.session-chip\.is-scribing/.test(css), "scribing session uses the accent color");
+      assert.ok(/\.session-chip\.is-error/.test(css), "error session uses the rec color");
+      const js = read("electron/hud.js");
+      assert.ok(/function applyPrivacy/.test(js), "privacy events must paint the chip");
+      assert.ok(/privacyChip\.textContent = text/.test(js), "privacy label must be text, not HTML");
+      assert.ok(!/privacyChip\.innerHTML/.test(js), "privacy chip must never take HTML");
+      assert.ok(/function applySession/.test(js), "session events must paint the chip");
+      assert.ok(/sessionChip\.textContent = text/.test(js), "session label must be text, not HTML");
+      assert.ok(!/sessionChip\.innerHTML/.test(js), "session chip must never take HTML");
+      const main = read("electron/main.js");
+      assert.ok(/type:\s*"privacy"/.test(main), "main must push privacy to the HUD");
+      assert.ok(/privacy:\s*livePrivacy\(\)/.test(main), "hud:ready must return live privacy");
+      assert.ok(/type:\s*"session"/.test(main), "main must push session to the HUD");
+      assert.ok(/session:\s*liveSession\(\)/.test(main), "hud:ready must return live session");
     }),
 
     T("meeting Do it cannot reach Act - it asks instead", async () => {

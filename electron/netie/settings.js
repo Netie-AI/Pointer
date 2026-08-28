@@ -8,6 +8,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { SECRET_KEYS, PROFILE_FIELDS } = require("./vault-fill");
+const { DEFAULT_SCRIBE_INSTRUCTION } = require("./scribe");
 
 const DEFAULTS = Object.freeze({
   /**
@@ -41,13 +42,12 @@ const DEFAULTS = Object.freeze({
   /**
    * Let screenshots and screen-capture see Netie's windows.
    *
-   * Off by default: setContentProtection(true) keeps the HUD out of screen
-   * shares and out of its own screenshots. Turn on to record a demo or to drive
-   * the app from an automation tool — it is a testing affordance, not a mode.
+   * On by default (DR-0005): agents, UACC, and demos must be able to see
+   * Pointer before they can drive it. Turn off to hide the HUD from shares.
    */
-  captureVisible: false,
+  captureVisible: true,
   /** Schema version for one-time stored-value corrections. See migrate(). */
-  settingsVersion: 2,
+  settingsVersion: 3,
   /** Wait for nod / "yes" / Y before irreversible or when autoRun is off. */
   nodConfirm: true,
   /** Future: webcam nod detection (off until calibrated). */
@@ -95,6 +95,65 @@ const DEFAULTS = Object.freeze({
    * privacy for accuracy over the offline Windows dictation floor.
    */
   cloudStt: false,
+  /**
+   * OpenWillow BYOK STT: OpenAI-shaped HTTP base URL (same slot as
+   * NETIE_STT_URL). Empty keeps the env default loopback sidecar.
+   * Not a Deepgram default (P-04). Remote URLs send mic audio off-device.
+   */
+  sttUrl: "",
+  /**
+   * OpenWillow BYOK LLM: OpenAI-shaped HTTP base (same slot as
+   * NETIE_OPENVAULT_URL for chat). Empty keeps loopback OpenVault.
+   * Not a Groq default (P-04). Keys stay in OpenVault, never here.
+   * Remote URLs send prompts and screenshots off-device.
+   */
+  llmUrl: "",
+  /** Optional chat model id. Empty keeps NETIE_CLICK_MODEL / OpenVault default. */
+  llmModel: "",
+  /**
+   * OpenWillow dictation: type mic speech into the focused app in Transcribe
+   * mode. Off only if the user hides it. Session still fail-closes without
+   * Cortex /dms/secure when the mode is armed.
+   */
+  dictateIntoFocus: true,
+  /**
+   * OpenWillow Scribe: rewrite/compose from voice or typed instruction and
+   * paste into the remembered app. Same Cortex gate as dictation.
+   */
+  scribeIntoFocus: true,
+  /** Optional Scribe writing-style notes (plain text, not a skill dump). */
+  writingStyle: "",
+  /**
+   * OpenWillow-class standing rewrite. Applies to every Scribe take.
+   * The spoken/typed take stays USER INSTRUCTION. Empty stored value
+   * falls back to DEFAULT_SCRIBE_INSTRUCTION at rewrite time.
+   */
+  scribeInstruction: DEFAULT_SCRIBE_INSTRUCTION,
+  /** Optional Scribe personal reference (company, links). Data, not commands. */
+  personalContext: "",
+  /** OpenWillow-class Scribe + STT language. HUD lists 12 labels.
+   *  Ctrl+Alt+L still flips English / Traditional Chinese. English
+   *  keeps STT on auto; other HUD picks pin an ISO code. */
+  scribeLanguage: "English",
+  /**
+   * OpenWillow screen context: attach a screenshot to Scribe. Off by default
+   * because the screen is untrusted data and leaves the device with the LLM.
+   */
+  scribeScreenContext: false,
+  /**
+   * Cluely-class: refresh a spoken-reply line as meeting notes grow.
+   * Still fail-closed without Cortex. Off to keep the HUD quiet.
+   */
+  meetingAutoSuggest: true,
+  /** Launch Pointer at Windows sign-in (OpenWillow autostart pattern). */
+  autostart: false,
+  /**
+   * OpenWillow-class global shortcuts. Electron accelerators.
+   * Recording is hold-to-talk. The three must stay distinct.
+   */
+  recordingHotkey: "Control+Alt+Space",
+  modeHotkey: "Control+Alt+M",
+  languageHotkey: "Control+Alt+L",
 });
 
 function defaultPath() {
@@ -109,7 +168,7 @@ function defaultPath() {
  * only way to change behaviour for an existing install is to rewrite the stored
  * value once, which is what this does.
  */
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 3;
 
 /**
  * One-time corrections to stored settings.
@@ -132,6 +191,12 @@ function migrate(data, storedVersion) {
     // available in the settings menu; it is just no longer the default, and
     // that has to reach installs that already stored `true`.
     out.autoRunSensible = false;
+  }
+
+  if (from < 3) {
+    // v3: Pointer must be screenshotable so UACC and other agents can detect
+    // it (DR-0005). Older installs stored the previous default of false.
+    out.captureVisible = true;
   }
 
   out.settingsVersion = SETTINGS_VERSION;
