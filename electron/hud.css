@@ -305,6 +305,26 @@ button.live-cue-tick { cursor: pointer; font: inherit; }
 /* P3-POINT-OVERLAY — a thin teach layer. pointer-events stays none so the
    crosshair can never intercept the click it is pointing at. */
 .point-layer { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+#hud-fly {
+  position: absolute;
+  inset: 0;
+  z-index: 41;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+#hud-fly path {
+  fill: none;
+  stroke: var(--accent, #6ea8ff);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 140;
+  stroke-dashoffset: 140;
+  animation: hud-fly-draw 640ms ease-out forwards;
+}
+@keyframes hud-fly-draw {
+  to { stroke-dashoffset: 0; }
+}
 .point-mark {
   position: absolute; transform: translate(-50%, -50%);
   display: grid; place-items: center; pointer-events: none;

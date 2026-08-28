@@ -284,6 +284,8 @@ function readAsset(file) {
     assert.match(app, /teach-map-stroke/);
     assert.match(app, /paintTeachInk/);
     assert.match(app, /teach-map-ink/);
+    assert.match(app, /paintTeachFly/);
+    assert.match(app, /teach-map-fly/);
     assert.match(app, /teachActionLine/);
     assert.match(app, /speakTeachCue/);
     assert.match(app, /isDemoPage/);
@@ -340,6 +342,7 @@ function readAsset(file) {
     assert.match(cssText, /#host-ask-chips/);
     assert.match(cssText, /teach-map-stroke/);
     assert.match(cssText, /teach-map-ink/);
+    assert.match(cssText, /teach-map-fly/);
     assert.match(cssText, /teach-map-cue/);
     assert.match(cssText, /teach-map-mark/);
     assert.match(cssText, /teach-map-rail/);

@@ -1389,6 +1389,9 @@ let hostShowMeOn = false;
 let hostShowMeTimer = 0;
 let hostShowMeTick = false;
 let hostShowMeLeft = 0;
+let lastTeachFlyKey = "";
+let lastTeachFlyAt = null;
+let lastTeachFlyD = "";
 
 function stopHostShowMe() {
   hostShowMeOn = false;
@@ -1905,6 +1908,60 @@ function teachControlCaption(p) {
     .slice(0, 24) || "control";
 }
 
+function teachBoxCenter(p) {
+  if (!p) return null;
+  if (Number(p.wPct) > 0 && Number(p.hPct) > 0) {
+    return {
+      x: Number(p.leftPct) + Number(p.wPct) / 2,
+      y: Number(p.topPct) + Number(p.hPct) / 2,
+    };
+  }
+  const x = Number(p.xPct);
+  const y = Number(p.yPct);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return { x: x, y: y };
+}
+
+function appendTeachFly(map, d, held) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "teach-map-fly");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", d);
+  if (held) path.setAttribute("class", "held");
+  svg.appendChild(path);
+  map.appendChild(svg);
+}
+
+function paintTeachFly(map, boxes) {
+  if (!map) return;
+  const now = (boxes || []).find(function (p) {
+    return p && p.now;
+  });
+  const to = teachBoxCenter(now);
+  const key = to ? [to.x.toFixed(2), to.y.toFixed(2)].join(",") : "";
+  if (!to) {
+    lastTeachFlyKey = "";
+    lastTeachFlyD = "";
+    return;
+  }
+  if (!lastTeachFlyAt || key === lastTeachFlyKey) {
+    lastTeachFlyKey = key;
+    lastTeachFlyAt = to;
+    if (lastTeachFlyD) appendTeachFly(map, lastTeachFlyD, true);
+    return;
+  }
+  const from = lastTeachFlyAt;
+  lastTeachFlyKey = key;
+  lastTeachFlyAt = to;
+  if (from.x === to.x && from.y === to.y) return;
+  const mx = (from.x + to.x) / 2;
+  const my = Math.max(2, Math.min(from.y, to.y) - 10);
+  lastTeachFlyD = "M " + from.x + " " + from.y + " Q " + mx + " " + my + " " + to.x + " " + to.y;
+  appendTeachFly(map, lastTeachFlyD, false);
+}
+
 function paintTeachInk(map, boxes) {
   if (!map) return;
   const inked = (boxes || []).filter(function (p) {
@@ -2034,6 +2091,7 @@ function paintTeachMap(root, m, opts) {
     map.appendChild(box);
   });
   paintTeachInk(map, boxes);
+  paintTeachFly(map, boxes);
   dots.forEach((p) => {
     const mark = el("div", "teach-map-mark");
     mark.style.left = Number(p.xPct) + "%";

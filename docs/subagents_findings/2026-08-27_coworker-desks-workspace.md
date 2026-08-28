@@ -106,7 +106,9 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   Got it on Save files that draft then docks Live answer on overlay and home (never send, never speak meeting). After Save, home This screen yields to Live answer. Back restores the walk. Workspace Save opens Live answer. Cue Copy clips the honest stack.
   Walk chrome stacks Type in Email / Then / fill. HUD cue bar
   docks that same filed window (Live answer is They asked / You / Say
-  this / Also / Don't say, never a cheater overlay). Home Ask stays on This screen and
+  this / Also / Don't say, never a cheater overlay). HUD Show me / Talk
+  / fly match overlay (Ask, never Act, no Chromium SpeechRecognition).
+  Home This screen flies Email to Save the same way. Home Ask stays on This screen and
   highlights that window.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 

@@ -112,6 +112,109 @@ let lastCueTurns = [];
 let lastCueAlso = "";
 let lastCueAvoid = "";
 let cueBarHasBrief = false;
+let hudShowMeOn = false;
+let hudShowMeTimer = 0;
+let hudShowMeTick = false;
+let hudShowMeLeft = 0;
+let lastHudFlyKey = "";
+let lastHudFlyAt = null;
+
+function stopHudShowMe() {
+  hudShowMeOn = false;
+  if (hudShowMeTimer) {
+    clearTimeout(hudShowMeTimer);
+    hudShowMeTimer = 0;
+  }
+  const btn = $("btn-live-show");
+  if (btn) btn.textContent = "Show me";
+}
+
+function hudTalkAboutNow() {
+  const text = String(($("live-cue-text") || {}).textContent || "").trim();
+  if (/^type in\b/i.test(text)) return "what should I type?";
+  return "what should I say?";
+}
+
+async function hudShowMeStep() {
+  if (!hudShowMeOn || hudShowMeLeft <= 0) {
+    stopHudShowMe();
+    return;
+  }
+  const next = $("btn-live-next");
+  if (next && next.hidden) {
+    stopHudShowMe();
+    return;
+  }
+  hudShowMeLeft -= 1;
+  hudShowMeTick = true;
+  askInput.value = "got it, next";
+  await doAsk();
+  hudShowMeTick = false;
+  const still = $("btn-live-next");
+  if (!hudShowMeOn || (still && still.hidden) || hudShowMeLeft <= 0) {
+    stopHudShowMe();
+    return;
+  }
+  hudShowMeTimer = setTimeout(hudShowMeStep, 1700);
+}
+
+function toggleHudShowMe() {
+  if (hudShowMeOn) {
+    stopHudShowMe();
+    return;
+  }
+  const next = $("btn-live-next");
+  if (next && next.hidden) return;
+  hudShowMeOn = true;
+  hudShowMeLeft = 8;
+  const btn = $("btn-live-show");
+  if (btn) btn.textContent = "Stop";
+  hudShowMeTimer = setTimeout(hudShowMeStep, 1700);
+}
+
+function hudTalk() {
+  stopHudShowMe();
+  askInput.value = hudTalkAboutNow();
+  doAsk();
+}
+
+function boxCenter(point) {
+  if (!point) return null;
+  if (Number(point.wPct) > 0 && Number(point.hPct) > 0) {
+    return {
+      x: Number(point.leftPct) + Number(point.wPct) / 2,
+      y: Number(point.topPct) + Number(point.hPct) / 2,
+    };
+  }
+  const x = Number(point.xPct);
+  const y = Number(point.yPct);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return { x: x, y: y };
+}
+
+function paintHudFly(points) {
+  const fly = $("hud-fly");
+  if (!fly) return;
+  while (fly.firstChild) fly.removeChild(fly.firstChild);
+  const now = (points || []).find((p) => p && !p.later && !p.done);
+  const to = boxCenter(now);
+  const key = to ? [to.x.toFixed(2), to.y.toFixed(2)].join(",") : "";
+  if (!to || !lastHudFlyAt || key === lastHudFlyKey) {
+    lastHudFlyKey = key;
+    if (to) lastHudFlyAt = to;
+    fly.hidden = true;
+    return;
+  }
+  const from = lastHudFlyAt;
+  lastHudFlyKey = key;
+  lastHudFlyAt = to;
+  const mx = (from.x + to.x) / 2;
+  const my = Math.max(2, Math.min(from.y, to.y) - 10);
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M " + from.x + " " + from.y + " Q " + mx + " " + my + " " + to.x + " " + to.y);
+  fly.appendChild(path);
+  fly.hidden = false;
+}
 function cueCopyLabel(kind) {
   if (kind === "point") return "Copy next";
   if (kind === "warn") return "Copy review";
@@ -382,6 +485,8 @@ function paintLiveBrief(event) {
   const barAvoid = $("live-cue-avoid");
   const barBack = $("btn-live-back");
   const barNext = $("btn-live-next");
+  const barShow = $("btn-live-show");
+  const barTalk = $("btn-live-talk");
   const barCopy = $("btn-live-copy");
   if (!brief) return;
   const text = String((event && event.text) || "").slice(0, 4000);
@@ -547,6 +652,9 @@ function paintLiveBrief(event) {
   }
   if (barBack) barBack.hidden = !(kind === "point" && cue);
   if (barNext) barNext.hidden = !(kind === "point" && cue);
+  if (barShow) barShow.hidden = !(kind === "point" && cue);
+  if (barTalk) barTalk.hidden = !(kind === "point" && cue);
+  if (!(kind === "point" && cue)) stopHudShowMe();
   if (barCopy) {
     barCopy.hidden = !cue;
     barCopy.textContent = cueCopyLabel(kind);
@@ -1645,10 +1753,21 @@ $("desk-pill").addEventListener("click", (event) => {
 const cueRow = $("cue-row");
 const liveCueBar = $("live-cue-bar");
 function onCueAdvance(event) {
+  if (event.target && event.target.closest && event.target.closest("#btn-live-show")) {
+    event.preventDefault();
+    toggleHudShowMe();
+    return;
+  }
+  if (event.target && event.target.closest && event.target.closest("#btn-live-talk")) {
+    event.preventDefault();
+    hudTalk();
+    return;
+  }
   const button = event.target.closest(".cue-advance");
   if (!button) return;
   const q = String(button.dataset.q || "");
   if (!q) return;
+  if (!hudShowMeTick) stopHudShowMe();
   askInput.value = q;
   doAsk();
 }
@@ -2211,6 +2330,7 @@ function renderPoints(points, ttlMs, hold) {
     }
     layer.appendChild(mark);
   }
+  paintHudFly(points);
   clearTimeout(renderPoints._fadeTimer);
   clearTimeout(renderPoints._wipeTimer);
   if (hold || !(Number(ttlMs) > 0) || !(points || []).length) return;
@@ -2219,6 +2339,13 @@ function renderPoints(points, ttlMs, hold) {
     layer.querySelectorAll(".point-mark").forEach((el) => el.classList.add("fading"));
     renderPoints._wipeTimer = setTimeout(() => {
       layer.innerHTML = "";
+      lastHudFlyKey = "";
+      lastHudFlyAt = null;
+      const fly = $("hud-fly");
+      if (fly) {
+        while (fly.firstChild) fly.removeChild(fly.firstChild);
+        fly.hidden = true;
+      }
     }, 450);
   }, ttl);
 }

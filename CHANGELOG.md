@@ -1,3 +1,10 @@
+## 2026-08-28 - HUD and home This screen fly the BOX
+
+HUD cue bar Show me / Talk match overlay (Ask, never Act, no
+Chromium SpeechRecognition). HUD laser is a sibling of the point
+layer. Home This screen flies Email to Save the same way. Never
+send. Never speak meeting. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Talk asks about this BOX
 
 Talk in overlay/home chrome Asks about the current BOX (what should I

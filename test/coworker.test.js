@@ -1086,8 +1086,17 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.doesNotMatch(overlayAsk, /hud:act/);
   const hudHtml = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.html"), "utf8");
   assert.match(hudHtml, /data-cmd="walk"/);
+  assert.match(hudHtml, /id="btn-live-show"/);
+  assert.match(hudHtml, /id="btn-live-talk"/);
+  assert.match(hudHtml, /id="hud-fly"/);
   const hudJs = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
   assert.match(hudJs, /cmd === "walk"/);
+  assert.match(hudJs, /toggleHudShowMe/);
+  assert.match(hudJs, /hudTalk/);
+  assert.match(hudJs, /paintHudFly/);
+  assert.match(hudJs, /hudShowMeLeft = 8/);
+  assert.match(hudJs, /hudTalkAboutNow/);
+  assert.doesNotMatch(hudJs, /SpeechRecognition/);
 });
 
 test("inbox assist drafts and never sends", () => {
@@ -1798,6 +1807,9 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /chromeBtn\("live-cue-show", "Show me"\)/);
   assert.match(hostApp, /host-ask-talk/);
   assert.match(hostApp, /function talkAboutNow/);
+  assert.match(hostApp, /paintTeachFly/);
+  assert.match(hostApp, /teach-map-fly/);
+  assert.match(hostApp, /lastTeachFlyD/);
   assert.doesNotMatch(hostApp, /SpeechRecognition/);
   assert.match(hostApp, /live-cue-captions/);
   assert.match(hostApp, /Live:/);
