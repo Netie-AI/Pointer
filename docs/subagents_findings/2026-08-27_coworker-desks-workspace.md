@@ -108,7 +108,7 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   docks that same filed window (Live answer is They asked / You / Say
   this / Also / Don't say, never a cheater overlay). HUD Show me / Talk
   / fly match overlay (Ask, never Act, no Chromium SpeechRecognition).
-  Home This screen flies Email to Save the same way. Home Ask stays on This screen and
+  HUD Draw pencils a BOX on the display (never Act). Home This screen flies Email to Save the same way. Home Ask stays on This screen and
   highlights that window.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 

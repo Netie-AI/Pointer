@@ -118,6 +118,8 @@ let hudShowMeTick = false;
 let hudShowMeLeft = 0;
 let lastHudFlyKey = "";
 let lastHudFlyAt = null;
+let hudDrawOn = false;
+let hudDrawDrag = null;
 
 function stopHudShowMe() {
   hudShowMeOn = false;
@@ -174,8 +176,107 @@ function toggleHudShowMe() {
 
 function hudTalk() {
   stopHudShowMe();
+  stopHudDraw();
   askInput.value = hudTalkAboutNow();
   doAsk();
+}
+
+function hudPctFromEvent(ev) {
+  const w = window.innerWidth || 1;
+  const h = window.innerHeight || 1;
+  return {
+    x: Math.max(0, Math.min(100, (ev.clientX / w) * 100)),
+    y: Math.max(0, Math.min(100, (ev.clientY / h) * 100)),
+  };
+}
+
+function hudPushStroke(pts, p) {
+  const last = pts[pts.length - 1];
+  if (!last) {
+    pts.push(p);
+    return;
+  }
+  const dx = p.x - last.x;
+  const dy = p.y - last.y;
+  if (dx * dx + dy * dy < 0.12) return;
+  if (pts.length >= 80) pts[pts.length - 1] = p;
+  else pts.push(p);
+}
+
+function clearHudDrawStroke() {
+  const stroke = $("hud-draw-stroke");
+  if (!stroke) return;
+  while (stroke.firstChild) stroke.removeChild(stroke.firstChild);
+  stroke.hidden = true;
+}
+
+function paintHudDrawGhost() {
+  const ghost = $("hud-draw-ghost");
+  const stroke = $("hud-draw-stroke");
+  if (!hudDrawDrag || !ghost) return;
+  const pts = hudDrawDrag.stroke || [];
+  let x0 = hudDrawDrag.x0;
+  let y0 = hudDrawDrag.y0;
+  let x1 = hudDrawDrag.x1;
+  let y1 = hudDrawDrag.y1;
+  for (let i = 0; i < pts.length; i++) {
+    x0 = Math.min(x0, pts[i].x);
+    y0 = Math.min(y0, pts[i].y);
+    x1 = Math.max(x1, pts[i].x);
+    y1 = Math.max(y1, pts[i].y);
+  }
+  ghost.style.left = x0 + "%";
+  ghost.style.top = y0 + "%";
+  ghost.style.width = Math.abs(x1 - x0) + "%";
+  ghost.style.height = Math.abs(y1 - y0) + "%";
+  ghost.hidden = false;
+  if (!stroke) return;
+  while (stroke.firstChild) stroke.removeChild(stroke.firstChild);
+  if (pts.length < 2) {
+    stroke.hidden = true;
+    return;
+  }
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  let points = "";
+  for (let i = 0; i < pts.length; i++) {
+    points += (i ? " " : "") + pts[i].x + "," + pts[i].y;
+  }
+  line.setAttribute("points", points);
+  stroke.appendChild(line);
+  stroke.hidden = false;
+}
+
+function stopHudDraw() {
+  hudDrawOn = false;
+  hudDrawDrag = null;
+  if (hudRoot) hudRoot.classList.remove("draw");
+  const ghost = $("hud-draw-ghost");
+  if (ghost) ghost.hidden = true;
+  clearHudDrawStroke();
+  invoke("hud:setIgnoreMouse", { ignore: !mouseOverChrome });
+}
+
+function toggleHudDraw() {
+  if (hudDrawOn) {
+    stopHudDraw();
+    return;
+  }
+  stopHudShowMe();
+  hudDrawOn = true;
+  if (hudRoot) hudRoot.classList.add("draw");
+  invoke("hud:setIgnoreMouse", { ignore: false });
+}
+
+function endHudDraw() {
+  if (!hudDrawOn || !hudDrawDrag) return;
+  const stroke = hudDrawDrag.stroke ? hudDrawDrag.stroke.slice() : [];
+  const box = { x0: hudDrawDrag.x0, y0: hudDrawDrag.y0, x1: hudDrawDrag.x1, y1: hudDrawDrag.y1, stroke: stroke };
+  hudDrawDrag = null;
+  const ghost = $("hud-draw-ghost");
+  if (ghost) ghost.hidden = true;
+  clearHudDrawStroke();
+  if (stroke.length < 2) return;
+  invoke("hud:frameRegion", { region: box, act: false });
 }
 
 function boxCenter(point) {
@@ -487,6 +588,7 @@ function paintLiveBrief(event) {
   const barNext = $("btn-live-next");
   const barShow = $("btn-live-show");
   const barTalk = $("btn-live-talk");
+  const barDraw = $("btn-live-draw");
   const barCopy = $("btn-live-copy");
   if (!brief) return;
   const text = String((event && event.text) || "").slice(0, 4000);
@@ -573,7 +675,12 @@ function paintLiveBrief(event) {
     }
     if (barBack) barBack.hidden = true;
     if (barNext) barNext.hidden = true;
+    if (barShow) barShow.hidden = true;
+    if (barTalk) barTalk.hidden = true;
+    if (barDraw) barDraw.hidden = true;
     if (barCopy) barCopy.hidden = true;
+    stopHudShowMe();
+    stopHudDraw();
     lastCueText = "";
     lastCueKind = "say";
     lastCueAsked = "";
@@ -654,7 +761,11 @@ function paintLiveBrief(event) {
   if (barNext) barNext.hidden = !(kind === "point" && cue);
   if (barShow) barShow.hidden = !(kind === "point" && cue);
   if (barTalk) barTalk.hidden = !(kind === "point" && cue);
-  if (!(kind === "point" && cue)) stopHudShowMe();
+  if (barDraw) barDraw.hidden = !(kind === "point" && cue);
+  if (!(kind === "point" && cue)) {
+    stopHudShowMe();
+    stopHudDraw();
+  }
   if (barCopy) {
     barCopy.hidden = !cue;
     barCopy.textContent = cueCopyLabel(kind);
@@ -1063,9 +1174,9 @@ async function armCapture({ mic = false, system = false, resume = true } = {}) {
 }
 
 function syncClickThrough(over) {
-  if (over === mouseOverChrome) return;
+  if (!hudDrawOn && over === mouseOverChrome) return;
   mouseOverChrome = over;
-  invoke("hud:setIgnoreMouse", { ignore: !over });
+  invoke("hud:setIgnoreMouse", { ignore: hudDrawOn ? false : !over });
 }
 
 function hitChrome(target) {
@@ -1075,6 +1186,17 @@ function hitChrome(target) {
 document.addEventListener(
   "pointermove",
   (event) => {
+    if (hudDrawOn) {
+      syncClickThrough(hitChrome(event.target));
+      if (hudDrawDrag && !(event.target && hitChrome(event.target))) {
+        const p = hudPctFromEvent(event);
+        hudDrawDrag.x1 = p.x;
+        hudDrawDrag.y1 = p.y;
+        hudPushStroke(hudDrawDrag.stroke, p);
+        paintHudDrawGhost();
+      }
+      return;
+    }
     if (hudRoot.classList.contains("morph-hidden")) {
       // Compact HUD: only the live cue strip is chrome. Rest stays click-through.
       // No peek orb — Ctrl+` / Show restores the rest.
@@ -1087,7 +1209,21 @@ document.addEventListener(
   },
   true
 );
-document.addEventListener("pointerdown", (event) => syncClickThrough(hitChrome(event.target)), true);
+document.addEventListener("pointerdown", (event) => {
+  if (hudDrawOn) {
+    if (event.button != null && event.button !== 0) return;
+    if (hitChrome(event.target)) {
+      syncClickThrough(true);
+      return;
+    }
+    const p = hudPctFromEvent(event);
+    hudDrawDrag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y, stroke: [p] };
+    paintHudDrawGhost();
+    event.preventDefault();
+    return;
+  }
+  syncClickThrough(hitChrome(event.target));
+}, true);
 document.addEventListener("pointerleave", () => {
   if (!drag.dragging && hudRoot.classList.contains("morph-hidden")) {
     clearTimeout(peekTimer);
@@ -1098,6 +1234,7 @@ document.addEventListener("pointerleave", () => {
   } else if (!drag.dragging) syncClickThrough(false);
 }, true);
 document.addEventListener("pointerup", () => {
+  if (hudDrawOn) endHudDraw();
   drag.end();
 });
 
@@ -1698,6 +1835,10 @@ askInput.addEventListener("input", () => {
 });
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && autoSend.armed) autoSend.cancel("escape");
+  if (event.key === "Escape" && hudDrawOn) {
+    stopHudDraw();
+    return;
+  }
   if (event.key !== "Enter" || event.repeat) return;
   if (lastCueKind !== "point") return;
   if (event.target && event.target.closest && event.target.closest("input, textarea, button, [contenteditable]")) return;
@@ -1753,6 +1894,11 @@ $("desk-pill").addEventListener("click", (event) => {
 const cueRow = $("cue-row");
 const liveCueBar = $("live-cue-bar");
 function onCueAdvance(event) {
+  if (event.target && event.target.closest && event.target.closest("#btn-live-draw")) {
+    event.preventDefault();
+    toggleHudDraw();
+    return;
+  }
   if (event.target && event.target.closest && event.target.closest("#btn-live-show")) {
     event.preventDefault();
     toggleHudShowMe();

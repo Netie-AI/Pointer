@@ -105,6 +105,7 @@
           <button type="button" class="text-btn cue-advance" id="btn-live-next" data-q="got it, next" hidden>Got it</button>
           <button type="button" class="text-btn" id="btn-live-show" hidden>Show me</button>
           <button type="button" class="text-btn" id="btn-live-talk" title="Ask about this BOX (never Act)" hidden>Talk</button>
+          <button type="button" class="text-btn" id="btn-live-draw" title="Draw a BOX on this display (never Act)" hidden>Draw</button>
           <button type="button" class="text-btn" id="btn-live-copy" hidden>Copy</button>
         </div>
         <div class="live-cue-rail" id="live-cue-rail" hidden></div>
@@ -290,6 +291,8 @@
            back into a floating companion. Never .chrome — it must not eat clicks. -->
       <div class="point-layer" id="point-layer" aria-hidden="true"></div>
       <svg id="hud-fly" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
+      <svg id="hud-draw-stroke" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
+      <div id="hud-draw-ghost" class="point-mark point-box" hidden></div>
 
       <div class="bg-status chrome" id="bg-status">
         <span id="bg-status-text"></span>

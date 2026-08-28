@@ -1,3 +1,11 @@
+## 2026-08-28 - HUD Draw pencils a BOX on the display
+
+HUD cue bar Draw arms a freehand pencil on the laptop display and
+stacks a BOX (0.4% fail-closed, cap 8) through `hud:frameRegion`.
+Never Act. Escape or Draw again drops the pencil. Overlay Draw
+hides after Save. Never send. Never speak meeting. P-05 and P-06
+stay parked.
+
 ## 2026-08-28 - HUD and home This screen fly the BOX
 
 HUD cue bar Show me / Talk match overlay (Ask, never Act, no

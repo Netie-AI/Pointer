@@ -1344,11 +1344,14 @@
         const back = document.getElementById("walk-back");
         const next = document.getElementById("walk-next");
         const show = document.getElementById("walk-show");
+        const drawBtn = document.getElementById("walk-draw");
         if (back) back.hidden = !(saved || demoStep > 0);
         if (next) next.hidden = saved;
         if (show) show.hidden = saved;
+        if (drawBtn) drawBtn.hidden = saved;
         if (saved) {
           stopShowMe();
+          setDraw(false);
           liveAsked = true;
           paint([]);
           paintLiveChrome(true);

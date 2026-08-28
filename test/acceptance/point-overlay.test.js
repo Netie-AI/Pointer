@@ -152,6 +152,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/layoutWalkUnderChrome/.test(walk) && /!hasApi && shown/.test(walk), "demo overlay sits This computer and the BOX below chrome; live overlay keeps display percents");
       assert.ok(/#walk-cue, #walk-then, #walk-fill, #walk-asked, #walk-you, #walk-live, #walk-also, #walk-heard, #walk-avoid, #walk-filed/.test(walk) && /white-space:\s*normal/.test(walk), "overlay cue lines wrap");
       assert.ok(/id="walk-draw"/.test(walk) && />Draw</.test(walk), "overlay can stack a drawn BOX");
+      assert.ok(/drawBtn\.hidden = saved/.test(walk) && /setDraw\(false\)/.test(walk), "overlay Draw drops after Save");
       assert.ok(/id="draw-stroke"/.test(walk), "overlay paints the freehand stroke");
       assert.ok(/id="walk-ink"/.test(walk), "overlay keeps stored freehand ink");
       assert.ok(/id="walk-fly"/.test(walk) && /paintWalkFly/.test(walk), "overlay flies the BOX from the last control to the current one");

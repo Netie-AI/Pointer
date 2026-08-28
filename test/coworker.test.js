@@ -916,7 +916,10 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   const frameHud = main.slice(main.indexOf('ipcMain.handle("hud:frameRegion"'), main.indexOf('ipcMain.handle("hud:toggleListen"'));
   assert.match(frameHud, /openOverlay\(\{ teach: true \}\)/);
   assert.match(frameHud, /act: false/);
+  assert.match(frameHud, /frameLiveTeach/);
+  assert.match(frameHud, /payload\.region/);
   assert.doesNotMatch(frameHud, /driver\./);
+  assert.doesNotMatch(frameHud, /hud:act/);
   const commit = main.slice(main.indexOf('ipcMain.handle("clicks:commitRegion"'), main.indexOf('ipcMain.handle("clicks:cancelRegion"'));
   assert.match(commit, /armTeachWalk\(FRAME_TEACH_TEXT\)/);
   assert.doesNotMatch(commit, /hud:act/);
@@ -1052,6 +1055,8 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.doesNotMatch(teachPreload, /hud:act/);
   assert.match(teachOverlay, /id="walk-draw"/);
   assert.match(teachOverlay, />Draw</);
+  assert.match(teachOverlay, /drawBtn.hidden = saved/);
+  assert.match(teachOverlay, /setDraw\(false\)/);
   assert.match(teachOverlay, /id="draw-stroke"/);
   assert.match(teachOverlay, /id="walk-ink"/);
   assert.match(teachOverlay, /id="walk-fly"/);
@@ -1088,7 +1093,9 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(hudHtml, /data-cmd="walk"/);
   assert.match(hudHtml, /id="btn-live-show"/);
   assert.match(hudHtml, /id="btn-live-talk"/);
+  assert.match(hudHtml, /id="btn-live-draw"/);
   assert.match(hudHtml, /id="hud-fly"/);
+  assert.match(hudHtml, /id="hud-draw-stroke"/);
   const hudJs = fs.readFileSync(path.join(__dirname, "..", "electron", "hud.js"), "utf8");
   assert.match(hudJs, /cmd === "walk"/);
   assert.match(hudJs, /toggleHudShowMe/);
@@ -1096,6 +1103,9 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(hudJs, /paintHudFly/);
   assert.match(hudJs, /hudShowMeLeft = 8/);
   assert.match(hudJs, /hudTalkAboutNow/);
+  assert.match(hudJs, /toggleHudDraw/);
+  assert.match(hudJs, /endHudDraw/);
+  assert.match(hudJs, /hud:frameRegion/);
   assert.doesNotMatch(hudJs, /SpeechRecognition/);
 });
 

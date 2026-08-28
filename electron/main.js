@@ -3581,7 +3581,22 @@ ipcMain.handle("hud:openPanel", async () => {
   return { ok: true, surface: "hud" };
 });
 
-ipcMain.handle("hud:frameRegion", async () => {
+ipcMain.handle("hud:frameRegion", async (_e, payload) => {
+  const region = payload && (payload.region || payload.frame);
+  if (region && typeof region === "object") {
+    const ws = liveCoordinator && liveCoordinator.workspace;
+    if (!ws || typeof ws.put !== "function") {
+      return { ok: false, act: false, exec: false, desk: "teach", reason: "workspace missing" };
+    }
+    liveTeachPump.reset();
+    const drawn = frameLiveTeach(ws, region);
+    if (drawn && drawn.ok && !drawn.act) {
+      teachLive = true;
+      if (Number.isInteger(drawn.step)) teachStep = drawn.step;
+      publishTeachOverlay(drawn);
+    }
+    return { ...(drawn || { ok: false }), live: undefined, act: false, exec: false };
+  }
   // HUD Frame is Ask: walk the framed region. Tray Frame stays capture for Act.
   openOverlay({ teach: true });
   return { ok: true, desk: "teach", act: false };
