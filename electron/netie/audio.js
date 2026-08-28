@@ -124,6 +124,33 @@ class Segmenter {
     return Math.max(this.absFloor, this.noiseFloor * this.factor);
   }
 
+  /** Voiced duration of the open utterance (ms). 0 when idle. */
+  get voicedMs() {
+    return this.speaking ? this._voicedMs : 0;
+  }
+
+  /**
+   * Snapshot the growing utterance without closing it. LIVE captions peek
+   * this; hangover / maxlen / end() still own the final.
+   */
+  peek() {
+    if (!this.speaking || !this._buf.length) return null;
+    let total = 0;
+    for (const f of this._buf) total += f.length;
+    const pcm = new Float32Array(total);
+    let off = 0;
+    for (const f of this._buf) {
+      pcm.set(f, off);
+      off += f.length;
+    }
+    return {
+      pcm,
+      ms: Math.round(this._bufMs),
+      voicedMs: Math.round(this._voicedMs),
+      reason: "peek",
+    };
+  }
+
   /** @param {Float32Array} frame 16 kHz mono */
   push(frame) {
     if (!frame || !frame.length) return null;

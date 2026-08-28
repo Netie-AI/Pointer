@@ -16,7 +16,9 @@
    (English STT stays auto; Ctrl+Alt+L still English/Traditional Chinese).
    Teach LINE/PATH/BOX. `click window:` uses observed rects. Privacy
    and session chips. `GET /api/meeting?pack=1` is one shareable pack.
-   Dictation auto-stops at 120s. BYOK STT/LLM (keys stay OpenVault).
+   Dictation auto-stops at 120s. LIVE captions peek the open utterance
+   (partials replace the tail; notes/scribe/commands stay final-only).
+   BYOK STT/LLM (keys stay OpenVault).
    P-04 parked.
 2. **Generative tools + coworker desks (DR-0004 / DR-0005).** Coordinator
    `127.0.0.1:18010`. Public Worker is pages only; `/mcp` stays local.

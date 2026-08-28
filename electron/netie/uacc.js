@@ -201,6 +201,7 @@ function computerStatus(opts = {}) {
         : sessionLabel({})),
       maxMs: Number(opts.sessionMaxMs) > 0 ? Number(opts.sessionMaxMs) : 120000,
       dictate: String(opts.dictateMode || "off").slice(0, 24),
+      partials: opts.sessionPartials !== false,
     },
     scribe: {
       available: opts.scribeAvailable === true || opts.actAvailable === true,
