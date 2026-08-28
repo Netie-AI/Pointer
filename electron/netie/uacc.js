@@ -257,6 +257,7 @@ function computerStatus(opts = {}) {
         "GET /api/meeting?say=1",
         "GET /api/meeting?email=1",
         "GET /api/meeting?actions=1",
+        "overlay [BOX:10,20,30,12:Save]",
         "POST /api/meeting kind recap",
         "POST /api/meeting kind followups",
         "POST /api/meeting kind email",

@@ -139,6 +139,7 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?say=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?email=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?actions=1"));
+    assert.ok(shown.drive.instructions.includes("overlay [BOX:10,20,30,12:Save]"));
     assert.ok(shown.drive.instructions.includes("POST /api/meeting screenshot false"));
     assert.ok(shown.drive.instructions.includes("focus: notepad"));
     assert.ok(shown.drive.instructions.includes("focus: notepad then type: hello"));

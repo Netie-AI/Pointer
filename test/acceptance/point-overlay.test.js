@@ -52,7 +52,14 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.deepStrictEqual(out.lines, []);
       assert.strictEqual(po.hasPoints("nothing here"), false);
       assert.strictEqual(po.hasPoints("[POINT:1,2:x]"), true);
-      assert.deepStrictEqual(po.parsePoints(null), { text: "", points: [], lines: [], paths: [], dropped: 0 });
+      assert.deepStrictEqual(po.parsePoints(null), {
+        text: "",
+        points: [],
+        lines: [],
+        paths: [],
+        boxes: [],
+        dropped: 0,
+      });
     }),
 
     T("LINE tokens draw a teach stroke without becoming a companion", async () => {
@@ -82,6 +89,37 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(hud.includes("polyline"), "HUD must stroke PATH as a polyline");
       const css = read("electron/hud.css");
       assert.ok(/\.point-line polyline/.test(css), "PATH strokes stay in the click-through layer");
+    }),
+
+    T("BOX tokens frame a control without becoming a companion", async () => {
+      const out = po.parsePoints("Click [BOX:10,20,30,12:Save] in the toolbar.");
+      assert.strictEqual(out.boxes.length, 1);
+      assert.strictEqual(out.boxes[0].xPct, 10);
+      assert.strictEqual(out.boxes[0].yPct, 20);
+      assert.strictEqual(out.boxes[0].wPct, 30);
+      assert.strictEqual(out.boxes[0].hPct, 12);
+      assert.strictEqual(out.boxes[0].label, "Save");
+      assert.ok(!out.text.includes("[BOX"));
+      assert.strictEqual(out.text, "Click Save in the toolbar.");
+      assert.strictEqual(po.hasPoints("[BOX:10,20,30,12]"), true);
+      assert.strictEqual(po.hasPoints("[RECT:10,20,30,12:Save]"), true);
+      const zero = po.parsePoints("[BOX:10,20,0,12:Save]");
+      assert.strictEqual(zero.boxes.length, 0);
+      assert.strictEqual(zero.dropped, 1);
+      const many = Array.from({ length: 10 }, (_, i) => `[BOX:${i},${i},8,8:b${i}]`).join(" ");
+      const capped = po.parsePoints(many);
+      assert.strictEqual(capped.boxes.length, po.MAX_BOXES);
+      const event = po.toOverlayEvent("[BOX:5,5,20,10:OK]");
+      assert.ok(Array.isArray(event.boxes));
+      assert.strictEqual(event.boxes[0].label, "OK");
+      const hud = read("electron/hud.js");
+      assert.ok(/className = "point-box"/.test(hud), "HUD must draw BOX as a click-through frame");
+      assert.ok(/event\.boxes/.test(hud), "point events must carry boxes");
+      const css = read("electron/hud.css");
+      const boxAt = css.indexOf(".point-box");
+      const boxRule = boxAt >= 0 ? css.slice(boxAt, boxAt + 280) : "";
+      assert.ok(/\.point-box/.test(css), "BOX frames stay in the click-through layer");
+      assert.ok(!/backdrop-filter/.test(boxRule), "BOX must stay solid, not glass");
     }),
 
     T("the overlay event carries its own lifetime", async () => {

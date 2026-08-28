@@ -6,8 +6,9 @@
  * The answer text may contain `[POINT:42.1,31:Save]` tokens; this pulls them
  * out and hands back clean prose plus the coordinates to draw.
  *
- * Clicky-class teaching also uses `[LINE:x1,y1,x2,y2:label]` or ARROW, and
- * `[PATH:x,y;x,y;...]` freehand strokes. Deliberately not a companion: no
+ * Clicky-class teaching also uses `[LINE:x1,y1,x2,y2:label]` or ARROW,
+ * `[PATH:x,y;x,y;...]` freehand strokes, and `[BOX:x,y,w,h:label]` (or RECT)
+ * to frame a control. Deliberately not a companion: no
  * orb, no ring, no bubble, no character.
  *
  * Pure parsing - the renderer only draws what comes out of here.
@@ -20,12 +21,16 @@ const LINE_RE =
   /\[(?:LINE|ARROW):\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*(?::\s*([^\]]*?))?\s*\]/gi;
 /** `[PATH:x,y;x,y;...]` or with a trailing `:label`. */
 const PATH_RE = /\[PATH:\s*([^\]]+?)\]/gi;
+/** `[BOX:x,y,w,h]` or RECT, percentages, optional label. */
+const BOX_RE =
+  /\[(?:BOX|RECT):\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*(?::\s*([^\]]*?))?\s*\]/gi;
 
 /** A teach layer that covers the screen in dots is not teaching anything. */
 const MAX_POINTS = 8;
 const MAX_LINES = 6;
 const MAX_PATHS = 4;
 const MAX_PATH_PTS = 24;
+const MAX_BOXES = 6;
 /** Long enough to look at, short enough not to become furniture. */
 const DEFAULT_TTL_MS = 6000;
 
@@ -34,7 +39,7 @@ function inRange(value) {
 }
 
 function emptyParse() {
-  return { text: "", points: [], lines: [], paths: [], dropped: 0 };
+  return { text: "", points: [], lines: [], paths: [], boxes: [], dropped: 0 };
 }
 
 function splitPathLabel(inner) {
@@ -74,6 +79,7 @@ function parsePoints(raw) {
   const points = [];
   const lines = [];
   const paths = [];
+  const boxes = [];
   let dropped = 0;
 
   let text = input.replace(POINT_RE, (_token, x, y, label) => {
@@ -114,13 +120,40 @@ function parsePoints(raw) {
     return clean;
   });
 
-  return { text: text.replace(/[ \t]{2,}/g, " ").trim(), points, lines, paths, dropped };
+  text = text.replace(BOX_RE, (_token, x, y, w, h, label) => {
+    const xPct = Number(x);
+    const yPct = Number(y);
+    const wPct = Number(w);
+    const hPct = Number(h);
+    const clean = String(label || "").trim();
+    if (
+      !inRange(xPct) ||
+      !inRange(yPct) ||
+      !inRange(wPct) ||
+      !inRange(hPct) ||
+      wPct <= 0 ||
+      hPct <= 0 ||
+      boxes.length >= MAX_BOXES
+    ) {
+      dropped += 1;
+      return clean;
+    }
+    boxes.push({ xPct, yPct, wPct, hPct, label: clean });
+    return clean;
+  });
+
+  return { text: text.replace(/[ \t]{2,}/g, " ").trim(), points, lines, paths, boxes, dropped };
 }
 
 /** True when the text is worth sending to the overlay at all. */
 function hasPoints(raw) {
   const parsed = parsePoints(raw);
-  return parsed.points.length > 0 || parsed.lines.length > 0 || parsed.paths.length > 0;
+  return (
+    parsed.points.length > 0 ||
+    parsed.lines.length > 0 ||
+    parsed.paths.length > 0 ||
+    parsed.boxes.length > 0
+  );
 }
 
 /**
@@ -134,6 +167,7 @@ function toOverlayEvent(raw, opts = {}) {
     points: parsed.points,
     lines: parsed.lines,
     paths: parsed.paths,
+    boxes: parsed.boxes,
     ttlMs: Number(opts.ttlMs) > 0 ? Number(opts.ttlMs) : DEFAULT_TTL_MS,
   };
 }
@@ -142,10 +176,12 @@ module.exports = {
   POINT_RE,
   LINE_RE,
   PATH_RE,
+  BOX_RE,
   MAX_POINTS,
   MAX_LINES,
   MAX_PATHS,
   MAX_PATH_PTS,
+  MAX_BOXES,
   DEFAULT_TTL_MS,
   parsePoints,
   hasPoints,

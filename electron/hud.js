@@ -1653,7 +1653,7 @@ function onHudEvent(event) {
     subtitleText.textContent = event.text;
   }
   if (event.type === "enquire") renderEnquire(event);
-  if (event.type === "point") renderPoints(event.points, event.ttlMs, event.lines, event.paths);
+  if (event.type === "point") renderPoints(event.points, event.ttlMs, event.lines, event.paths, event.boxes);
   if (event.type === "bg") renderBgStatus(event);
   if (event.type === "pointer") {
     answerMeta.textContent = event.mode ? `Pointer · ${event.mode}` : answerMeta.textContent;
@@ -1800,7 +1800,7 @@ if (enquirePanel) {
  * A crosshair and a label that fade. Not a companion, not a ring that lives on
  * screen; the floating Clicky chrome was removed for good reasons.
  */
-function renderPoints(points, ttlMs, lines, paths) {
+function renderPoints(points, ttlMs, lines, paths, boxes) {
   const layer = $("point-layer");
   if (!layer) return;
   layer.innerHTML = "";
@@ -1808,6 +1808,22 @@ function renderPoints(points, ttlMs, lines, paths) {
   const marks = Array.isArray(points) ? points : [];
   const strokes = Array.isArray(lines) ? lines : [];
   const trails = Array.isArray(paths) ? paths : [];
+  const frames = Array.isArray(boxes) ? boxes : [];
+  for (const box of frames) {
+    const el = document.createElement("div");
+    el.className = "point-box";
+    el.style.left = `${box.xPct}%`;
+    el.style.top = `${box.yPct}%`;
+    el.style.width = `${box.wPct}%`;
+    el.style.height = `${box.hPct}%`;
+    if (box.label) {
+      const label = document.createElement("span");
+      label.className = "point-box-label";
+      label.textContent = box.label;
+      el.appendChild(label);
+    }
+    layer.appendChild(el);
+  }
   if (strokes.length || trails.length) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("class", "point-line");
@@ -1869,7 +1885,7 @@ function renderPoints(points, ttlMs, lines, paths) {
   clearTimeout(renderPoints._fadeTimer);
   clearTimeout(renderPoints._wipeTimer);
   renderPoints._fadeTimer = setTimeout(() => {
-    layer.querySelectorAll(".point-mark, .point-line, .point-line-label").forEach((el) => el.classList.add("fading"));
+    layer.querySelectorAll(".point-mark, .point-line, .point-line-label, .point-box").forEach((el) => el.classList.add("fading"));
     renderPoints._wipeTimer = setTimeout(() => {
       layer.innerHTML = "";
     }, 450);

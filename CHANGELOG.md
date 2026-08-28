@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Clicky BOX teach frames on the HUD
+
+HeyClicky-class overlay: Ask answers may include `[BOX:x,y,w,h:Save]` (or RECT)
+to frame a control. Click-through, solid type, no glass. POINT/LINE/PATH stay.
+GitHub CI on this account is still a spending-limit cutoff (0 steps), not a
+product fail. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Meeting action items from main
 
 Cluely-class Actions: meeting-only Actions / Copy actions pills. `kind`

@@ -18,7 +18,7 @@
    Ctrl+Alt+M/L. Meeting Suggest, Recap, Follow-ups, Email, Actions pills. Live notes
    at `GET /api/meeting?notes=1`. Failed Scribe keeps a pending transcript
    so Retry or Paste as-is can finish (`POST /api/scribe` retry/dictate).
-   Teach LINE and PATH marks. `focus:` matches a window title; `click: Save`
+   Teach LINE, PATH, and BOX marks. `focus:` matches a window title; `click: Save`
    aims by name; `click window: notepad` aims at the window center.
    HUD Ask and MCP plan those verbs locally (still Cortex-gated).
    Autostart is a setting. `wait` / `scroll` / `doubleclick` / `rightclick` /
