@@ -2,6 +2,614 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Merge main into detectable HUD branch
+
+Keeps loopback `computer.*` (UACC, 12 languages, meeting email/actions) plus
+coworker desks / This computer from main. GitHub CI is still a spending-limit
+cutoff; local `npm test` and `npm run test:acceptance` are the gate. No GPLv3
+dump. No third-party MCP.
+
+## 2026-08-28 - Home is windows; This computer holds the catalog
+
+Loopback `/` no longer paints the desks catalog dump. Workspace poller
+runs on `/workspace` only. Session markdown stays copy-only. Today plate
+is the standing brief (copy still files the markdown). Never Act. P-05
+and P-06 stay parked.
+
+## 2026-08-28 - Home paints filed windows and a room dock
+
+Loopback `/` paints Notes / Unsent mail / Needs you as windows on the
+rail. Rooms is a dock of links, not a markdown dump. Meeting and teach
+rooms no longer dump the brief under the card. Never Act. P-05 and P-06
+stay parked.
+
+## 2026-08-28 - Unsent mail To is a Heard name
+
+Inbox drafts put `To:` from their Heard name, or `not sent` when the
+ring has none. Never invent. Never send. Notes paper skips recap
+metadata. Home cards use the same kickers. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Desk rooms paint Notes, unsent mail, and Needs you
+
+Loopback `/document` paints a Notes window. `/inbox` paints Unsent
+mail (never send). `/security` paints Needs you (never approve). Same
+windows as This computer. Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - This computer opens Notes, unsent mail, and Needs you
+
+Opening a Word file on `/workspace` paints a Notes window. Opening
+unsent mail paints To / Subject / body (never send). Opening a review
+paints Needs you (never approve). Never Act. Never a runtime. P-05 and
+P-06 stay parked.
+
+## 2026-08-28 - This computer opens teach and meeting windows
+
+Opening a Teach walk on `/workspace` paints This screen (field / button
+faces at measured percents). Opening a Meeting paints the Live answer.
+Got it still Asks. Never Act. Never a runtime. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Overlay paints measured field and button faces
+
+Laptop teach overlay and HUD paint field / button faces at measured
+BOX percents (same catalog as `/teach` This screen). Never invented
+coords. Tap current BOX is still Got it. Never Act. Never a buddy.
+P-05 and P-06 stay parked.
+
+## 2026-08-28 - Teach This screen shows measured controls
+
+Loopback `/teach` paints field and button faces at measured BOX percents
+(This screen). Never invented coords. Click current BOX is still Got it.
+Opening a Word or unsent file offers the generated download from the
+draft body, not only `preview`. Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Workspace files sit on This computer
+
+Loopback `/workspace` paints This session files as a desktop grid on
+This computer. Click a tile to open the file. Run is still a named
+refuse (P-06). Never Act. Public catalog stays empty. P-05 stays parked.
+
+## 2026-08-28 - Download packet is the finished session zip
+
+Loopback GET `/api/session.zip` packs This session markdown plus meeting /
+teach briefs, generated `.docx`, unsent `.eml`, and the security review.
+Never Act. Never send. Never approval. Never exec. Public catalog stays
+404. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Teach chrome stays teach-only
+
+Loopback `/teach` sticky chrome hides meeting They asked / Live captions
+/ Don't say. Then / Got it stay. `/meeting` and home keep the live
+answer. HUD teach briefs skip Live captions. Never Act. Never a buddy.
+Never a cheater overlay. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Meeting live answer and teach action labels
+
+Loopback `/meeting` paints a Live answer card: They asked, last You/Them,
+Live captions, and say-this. `/teach` stage and overlay chrome show
+Click/Type in on the current BOX (not `Next: N of M`). Never Act. Never
+a stealth overlay. Never a buddy. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Teach walk keeps the freehand stroke
+
+Loopback `/teach` and the overlay keep the drawn polyline on each BOX
+(not only the bounding rect). Later ink stays dashed. Never Act. Never
+a buddy. Public catalog stays empty. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Loopback /security downloads a generated review
+
+Loopback GET `/api/security.md` returns a redacted markdown review from
+the live security desk (never approval, never Act, no disk walk). Empty
+review is 404. Public catalog stays 404. Cue still says not approval.
+P-05 and P-06 stay parked.
+
+## 2026-08-27 - Workspace open file keeps This session as tabs
+
+Loopback `/workspace?id=` paints This session files as tabs on the open
+file. Switching tabs opens that file. Never exec. Never Act. Public
+catalog stays 404. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Click the current teach BOX to Got it
+
+Loopback `/teach` treats a tap inside the current BOX as `i clicked`
+(Ask, never Act). A drag still stacks a drawn step. Overlay `?demo=1`
+does the same on the hold BOX. Real overlay stays click-through.
+Never a buddy. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Open workspace file leads the Computer catalog
+
+Loopback `/workspace?id=` hoists the open file above desks and Run.
+Finished .docx / unsent .eml stay on that file. Never Act. Never send.
+Public catalog stays 404. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Workspace opens finished .docx and .eml files
+
+Loopback `/workspace?id=live-document` downloads the generated .docx.
+`/workspace?id=live-inbox` downloads the unsent .eml. Home work cards
+link Open in workspace. Never Act. Never send. Public catalog stays 404.
+P-05 and P-06 stay parked.
+
+## 2026-08-27 - Host chrome keeps Live captions and Click/Type in
+
+Loopback host cue bar paints Live captions from the stored meeting ring
+(skips They asked / last Them). `/teach` chrome shows Click/Type in on
+the current BOX. HUD compact cue falls back to the same ring when STT
+is quiet, and strips N of M from the teach action. Never Act. Not a
+stealth overlay. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Loopback /inbox downloads a generated .eml
+
+Loopback GET `/api/inbox.eml` returns an unsent RFC822 draft from the
+live inbox (never send, never Act). Empty draft is 404. Public catalog
+stays 404. Cue still says not sent. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Loopback /document downloads a generated .docx
+
+Loopback GET `/api/document.docx` returns a Word-openable package from
+the live document draft (never Act, never Word.app). Empty draft is 404.
+Public catalog stays 404. Cue still says not a .docx. P-05 and P-06 stay
+parked.
+
+## 2026-08-27 - Teach overlay labels Click/Type in on the current BOX
+
+Click-through teach overlay paints Click / Type in / Look at on the
+current hold BOX (Tab/Enter when measured). Later boxes stay numbered
+and dashed. BOX tokens stay `1 Save`. Never Act. Not a buddy.
+P-05 and P-06 stay parked.
+
+## 2026-08-27 - Compact HUD keeps Live captions from system STT
+
+HUD live cue bar paints last system STT lines as Live captions when
+the rest of HUD hides. Duplicate They asked / Them lines stay off.
+Not a floating LIVE bar, not a stealth overlay. P-05 and P-06 stay
+parked.
+
+## 2026-08-27 - Workspace Run is a named Computer refuse
+
+Loopback `/workspace` keeps a This computer dock. Run POSTs
+`/api/workspace/exec` and always fails closed (P-06). Public catalog
+shows the same refuse. Never Act. Never a runtime. P-05 stays parked.
+
+## 2026-08-27 - Meeting cue keeps last You/Them when HUD hides
+
+HUD live cue bar keeps last You/Them with They asked / Say this /
+Also / Don't say as fixed top chrome when the rest of HUD hides.
+Not a bubble, not a peek orb, not a stealth overlay. P-05 and P-06
+stay parked.
+
+## 2026-08-27 - Teach Draw is a freehand stroke that stores a BOX
+
+Click-through teach overlay Draw traces a stroke; Pointer stores the
+bounding BOX (current hold, later dashed). Tiny scratches fail closed.
+Cap 8. Loopback `/teach` draws the same way. Never Act. Not a buddy,
+not a ring, not a stealth meeting overlay. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Meeting cue stays when HUD chrome hides
+
+HUD live cue bar keeps They asked / Say this / Also / Don't say as
+fixed top chrome when the rest of HUD hides (Ask, never Act). Not a
+bubble, not a peek orb, not a stealth overlay. P-05 and P-06 stay
+parked.
+
+## 2026-08-27 - Teach overlay Add box stacks a drawn step
+
+Click-through teach overlay Add box lets you drag the next BOX on
+the live display (current hold, later dashed). Tiny drags fail
+closed. Cap 8. Overlay Got it advances the stored walk. Never Act.
+Not a buddy, not a ring, not a stealth meeting overlay. P-05 and
+P-06 stay parked.
+
+## 2026-08-27 - Teach overlay Back / Got it Ask without HUD
+
+Click-through teach overlay keeps a fixed Next / Then bar with
+Back / Got it (Ask, never Act). The rest of the display stays
+click-through. Not a buddy, not a ring, not a stealth meeting
+overlay. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Teach BOX overlay stays click-through on the display
+
+Held teach walks paint current BOX and later dashed boxes on a
+click-through display overlay (Ask, never Act). HUD hide does not
+clear it; reset / empty walk does. Frame drag still owns the mouse.
+Not a buddy, not a ring, not a stealth meeting overlay. P-05 and
+P-06 stay parked.
+
+## 2026-08-27 - Teach stacks drawn BOX steps
+
+Loopback `/teach` stacks each drag as the next numbered BOX
+(current hold, later dashed, Got it Ask). Cap 8. Tiny drags
+fail closed. HUD Frame empty tree stays this region. Public
+POST stays 404. Overlay stays on the laptop HUD. P-05 and
+P-06 stay parked.
+
+## 2026-08-27 - Teach stage is a drawable BOX walk
+
+Loopback `/teach` lets you drag a box on the stage. That region becomes
+the current BOX in display percents (never invented, never Act). Tiny
+drags fail closed. Public POST `/api/teach` stays 404. Overlay stays on
+the laptop HUD. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Meeting OpenVault enrich stays grounded
+
+OpenVault may refine meeting say-this in 300ms. Timeout, missing
+OpenVault, or an ungrounded line keeps the local Say this / Also /
+Don't say heuristic. Never invents. Never a stealth overlay. Never
+Acts. Public copies stay empty. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Meeting assist is Say this / Also / Don't say
+
+Loopback `/meeting` and HUD insight paint a grounded suggestion stack
+(Say this, Also from Heard, Don't say / don't send). Never invents.
+Never a last-you dump. Never a stealth overlay. Never Acts. Public
+copies stay empty. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Home paints filed inbox, Word, and security cards
+
+Loopback `/` paints unsent follow-up, Word draft, and security review
+cards next to the teach path, meeting say-this, and Today plate (Ask,
+never Act, never a runtime, never send, never a .docx, never self-approve).
+Desk rooms `/inbox` `/document` `/security` show the same cards.
+Public copies stay empty. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Home paints the Today plate
+
+Loopback `/` paints On your plate next to the teach path and meeting
+say-this (Ask, never Act, never a runtime). `/today` shows the same
+hero. Open-file notes stay facts-only and label From the open file.
+Public copies stay empty. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Home paints the live session theater
+
+Loopback `/` paints the live teach path and meeting say-this card from
+`/api/home` (Ask, never Act, never a runtime). Public copies stay empty.
+P-05 and P-06 stay parked.
+
+## 2026-08-27 - Meeting answer card; open file grounds Heard
+
+Loopback `/meeting` paints a say-this answer card (They asked / say-this /
+Heard). An open workspace file grounds Heard facts only, never talk turns,
+never a stealth overlay, never Act. Public copies stay empty. P-05 and
+P-06 stay parked.
+
+## 2026-08-27 - Teach walk path (current hold, later dashed)
+
+Loopback `/teach` paints the measured walk path: current BOX held,
+later dashed, numbered rail, Tab/Enter/Space key on the current step
+(Ask, never Act, never invented coords). HUD overlay dashes later boxes
+the same way. Public copies stay empty. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Teach walk stage on loopback /teach
+
+Loopback `/teach` paints a large walk stage from measured BOX/POINT
+(Ask, never Act, never invented coords). Next/Then sit on the stage.
+Public copies stay empty. P-05 and P-06 stay parked.
+
+## 2026-08-27 - HUD paints You/Them talk in insight chrome
+
+HUD insight panel paints the stored You/Them talk track (Ask, never Act,
+never a bubble, never a cheater overlay). Say-this stays grounded.
+Public copies stay empty. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Meeting talk track; say-this stays grounded
+
+Loopback `/meeting` paints You/Them turns from the stored ring (Ask,
+never Act, never a cheater overlay). Say-this reuses your overlapping
+line or Heard facts, never an unrelated last-you dump. Public copies
+stay empty. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Workspace file links are the working set
+
+Loopback This session files open `/workspace?id=` as the working set.
+Chrome shows Open: the file title. Review file / Draft email Ask that
+body (never Act). Public `?id=` stays 404. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Open workspace file Ask chips
+
+Loopback `/workspace` opens a file as the working set. Review file /
+Draft email / Write in Word Ask against that body (never Act). Desk
+rooms `/security` `/document` `/inbox` get the same chips. `this file`
+scans only the open artifact. Public `?id=` stays 404. P-05 and P-06
+stay parked.
+
+## 2026-08-27 - Host Ask bar and Today chips
+
+Loopback sticky chrome keeps a fixed Ask bar on every page (never Act,
+never a floating buddy). `got it` / `back` still advance a stored teach
+walk. `/today` chips file Recap / mail / Word / security the same way.
+Public POST `/api/ask` stays 404. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Host meeting chips file inbox and Word
+
+Loopback `/meeting` Ask chips (Assist / Draft email / Write in Word)
+file unsent mail and a Word draft from the stored transcript. Teach
+walks stay on `/teach`. Public POST `/api/meeting` stays 404. Never
+sends. Never a .docx. Never Acts. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Fixed live cue bar on loopback host pages
+
+Loopback host pages paint They asked / Heard / Next in sticky chrome
+from `/api/home`, with Back/Got it Ask (never Act). Public copies hide
+the bar. Today plate stays commitments only. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Host teach Got it; Today plate is commitments
+
+Loopback `/teach` Back/Got it Ask the next measured control from a
+stored walk (never Act, never invents coords). Public POST `/api/teach`
+stays 404. Copy next / Copy say-this / Copy plate copy the cue line.
+Today plate reads your commitments, not the meeting say-this dump.
+Never Acts. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Teach keys, downloadable briefs, named Word notes
+
+Teach cues name the key (`Type in Email then Tab`, `Click Save or press
+Enter`). Loopback desk pages and workspace artifacts copy/download as
+markdown files. Meeting spawn Word notes title `Notes with Sarah Chen`.
+Never a .docx without Cortex. Never Acts. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Heard orgs, download session, copy teach walk
+
+Meeting Heard lists spoken orgs (`from Acme` / `I work at Stripe`) from
+the ring. Who-asks say `Sarah Chen at Acme`. Unsent mail confirms
+`with Acme`. Loopback `/` and `/workspace` download the session file.
+`/teach` copies the walk SOP. Never Acts. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Inbox greets Heard names; Copy session file
+
+Unsent follow-up drafts greet with their name from the ring (`Hi Sarah
+Chen,`) and confirm Heard dates/amounts. Copy session copies the This
+session markdown from `/` and `/workspace` (clipboard, never Act).
+Never sends. Never invents. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Session file on the page and Heard names
+
+Loopback `/` and `/workspace` paint the This session markdown as a
+readable file (`#session-md`, textContent only). Meeting Heard also
+lists spoken names (`I'm Alex` / `this is Sarah`) from the ring and
+never treats `I'm going Friday` as a name. Never Acts. P-05 and P-06
+stay parked.
+
+## 2026-08-27 - session.live MCP and spawn security review
+
+Loopback MCP `session.live` returns the This session catalog as markdown
+plus file links. Meeting spawn also files a security review of those
+injected briefs (redacted, no disk). Public `/mcp` stays 404. Never Acts.
+P-05 and P-06 stay parked.
+
+## 2026-08-27 - This session catalog on home and workspace
+
+Loopback `/` and `/workspace` show a This session catalog: They asked,
+Heard, say-this, plate, and links to filed meeting/inbox/Word briefs.
+Public copies stay empty. No runtime. Never Acts. P-05 and P-06 stay
+parked.
+
+## 2026-08-27 - Say-this weaves Heard; Today lists filed drafts
+
+Meeting say-this folds Heard clock times and amounts into the speakable
+line (`We'll ship Friday for $40k`). A date or budget question with no
+answer still uses Heard facts from the ring, never invents. Today plate
+lists filed inbox/Word drafts from a meeting spawn. Never Acts. P-05
+and P-06 stay parked.
+
+## 2026-08-27 - Heard clock times and meeting spawn recap
+
+Live meeting Heard strip also lists clock times (`3pm` / `15:00`) from
+the ring. Bare spawn during Meeting/Transcribe recaps the call (and
+still files unsent mail plus a Word draft). Never Acts. P-05 and P-06
+stay parked.
+
+## 2026-08-27 - Meeting spawn files mail and Word drafts
+
+Spawn of a meeting recap also ships an unsent follow-up and a Word
+draft as workspace artifacts. HUD cue stays on They asked / Heard.
+Never sends (P-05). Never a .docx without Cortex. Never Acts. P-06
+stays parked.
+
+## 2026-08-27 - Meeting Heard strip from the ring
+
+Live meeting extracts dates and amounts from the transcript into a Heard
+strip (`Friday / $40k`). HUD top bar and loopback `/meeting` show it.
+Never invents. Never Acts. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Live cue stays in the top bar with chat closed
+
+Walk and meeting say-this paint Next / Then / They asked / Got it in
+fixed top chrome, not only in the insight panel. Chat can stay compact
+so the screen stays usable. Never Acts. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Framed Walk boxes the region without UIA
+
+HUD Walk still points when the control tree is empty: the overlay boxes
+the framed region in display percents, not invented control coords.
+UIA points stay display-relative so a crop walk lands on the HUD.
+Never Acts. P-05 and P-06 stay parked.
+
+## 2026-08-27 - HUD Walk frames a region then teaches it
+
+HUD Walk/Frame captures a region and starts a teach walk (Ask, never
+Act). Tray Frame stays capture for Act. Remaining steps persist as
+`rest` and `/teach` shows `Then:`. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Word drafts from live recap and They asked insight
+
+Bare `write in Word` reuses the live meeting recap or Today plate as a
+draft, not a `.docx`. Insight chrome prefers They asked / Plate. Never
+Acts. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Teach Then-path and spawn Today plate
+
+Teach HUD shows `Then: Click Save / Click Cancel` for remaining steps.
+Bare `spawn a coworker` runs the Today plate in the background, never Act.
+P-05 and P-06 stay parked.
+
+## 2026-08-27 - They asked chrome and Today plate
+
+Fixed HUD and loopback `/meeting` show `They asked` above say-this. Today
+lists On your plate from live commitments and never invents work on the
+public catalog. Never Acts. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Teach Click/Type walk and 300ms question cue
+
+Teach walks fields, then the primary CTA, then dismiss (`Type in Email` then
+`Click Save`). Meeting questions land a say-this in 300ms. Never Acts.
+P-05 and P-06 stay parked.
+
+## 2026-08-27 - Primary teach walk and speakable say-this
+
+Teach walks the primary CTA first (Save before Cancel). Meeting say-this is a
+speakable line (`We'll ship Friday`) from your answer, never sent. Never Acts.
+P-05 and P-06 stay parked.
+
+## 2026-08-27 - Teach Got it chrome and due-tagged recap
+
+Fixed insight chrome shows Back / Got it during a teach walk (Ask, never Act).
+Teach cue is `N of M Label`. Recap tags You/Them with a weekday when heard.
+Never Acts. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Speaker recap, hold teach overlay, teach map
+
+Meeting recap labels You vs Them. Say-this prefers what you said after they
+asked, and stays honest when you have not answered. Teach overlay holds the
+current measured control until `got it` or a mode change. Loopback `/teach`
+draws a read-only box map from measured markers (not a runtime). Never Acts.
+P-05 and P-06 stay parked.
+
+## 2026-08-27 - Live inbox and document rooms
+
+Home lists every desk. Loopback `/inbox` is an unsent draft grounded in
+meeting commitments and decisions (P-05). `/document` is a Word draft,
+not a `.docx`. Public catalog stays empty. MCP `inbox.live` and
+`document.live` never Act. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Live coworker home, security room, meeting decisions
+
+Home `/api/home` lists live teach/meeting/today/security rooms. Loopback
+`/security` shows injected-file review (`live-security`); public
+`/api/security` stays empty. Recap lists `## Decisions`. HUD Review cue
+is `cueKind: warn` (never Act, never self-approve). MCP `security.live`
+is first-party. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Teach walks one control at a time
+
+Teach overlay shows the current measured control only. `got it` / `next`
+advances, `back` goes back. Live coworker cue also paints the insight
+summary (fixed chrome, not a bubble). Never Acts. P-05 and P-06 stay
+parked.
+
+## 2026-08-27 - Live HUD cues, meeting coaching, desk handoffs
+
+Teach paints a Next cue (`1 Save`) in fixed HUD chrome with the live
+brief; meeting recap keeps say-this when a question is still open.
+Suggest chips hand off to a follow-up email draft and a Word recap
+draft (never send, never write without Cortex). Loopback `/teach`
+shows the next-control cue. Never Acts. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Injected secret review, numbered teach, /teach room
+
+Security desk scans HUD attachments and workspace bodies only, redacts
+hits, never walks disk, never self-approves. Measured teach labels are
+numbered (`1 Save`). Recap lists `## Commitments`; next-steps stays a
+separate ask. Loopback `/teach` shows `live-teach`; public `/api/teach`
+stays empty. First-party MCP `security.review` and `teach.live` never
+Act. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Live teach pump, copy say-this, standing Today clock, /meeting room
+
+Teach keeps redrawing measured BOX overlays while the desk is live.
+Meeting cue copies to the clipboard from fixed HUD chrome (never Acts).
+A standing Today clock republishes the session brief. Loopback `/meeting`
+shows the live brief; public `/api/meeting` stays empty. P-05 and P-06
+stay parked.
+
+## 2026-08-27 - Measured BOX overlay, live say-this cue, loopback catalog poll
+
+Teach draws around measured UIA rects (`[BOX:left,top,w,h:label]`) plus the
+existing POINT crosshair. Empty trees still invent nothing. Meeting assist
+puts a say-this cue in the fixed insight panel (not a floating bubble).
+Loopback host pages poll while live; public localFirst snapshots do not.
+Never Acts. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Teach points from measured controls, never invented
+
+Teach walkthroughs emit `[POINT:x,y:label]` from UI Automation bounding
+rects (percent of the capture). No tree, no coordinates, vision still
+runs. Overlay is the existing crosshair. Never Acts. First-party MCP
+`teach.point` is the same rule with injected controls; unknown tools
+still refuse. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Live assist on questions, desk chips, coworker home
+
+A question on the transcript ring switches the live meeting pump to
+assist and drafts a grounded reply (never sent). Fixed HUD desk chips
+Ask, never Act. Home paints the standing brief instead of a JSON dump.
+Workspace artifacts filter by title/desk. P-05 and P-06 stay parked.
+
+## 2026-08-27 - Live meeting brief and read-only artifact browser
+
+Meeting/Transcribe utterances debounce into a live recap in the fixed
+insight panel (`live-brief`). Empty transcript fails closed. Agent mode
+does not pump. Loopback `/api/workspace?id=` opens an artifact body;
+public id fetches 404. `/lanes` and `/skills` paint cards, not JSON.
+MCP `workspace.get` is first-party and never Acts. P-05 and P-06 stay
+parked.
+
+## 2026-08-27 - Standing Today brief and fail-closed coworker spawn
+
+`/today` is a standing brief of this session (lanes, events, artifacts,
+parked send/exec), not a JSON dump. Public `/api/today` stays local-first
+and empty. Voice "spawn a coworker" queues a background brief behind the
+LIVE bar and never claims pointer-act. Document desk drafts without
+writing Word. MCP `today.brief` is first-party and never Acts. P-05 and
+P-06 stay parked.
+
+## 2026-08-27 - Teach walkthroughs, unsent inbox drafts, live follow-up chips
+
+Teach requests publish a POINT-format walkthrough and still go to vision;
+the brief never invents coordinates or restores a floating buddy. Inbox
+drafts say not sent (P-05). Meeting recap paints follow-up questions into
+the fixed HUD suggest row (`suggests` event). Still never Acts.
+
+## 2026-08-27 - Public home is the coworker, not a coordinator dump
+
+host.netie.ai paints the desk catalog on `/` as well as `/workspace`.
+GitHub Actions still cannot start (org billing); CI watch on this branch
+was dropped so billing failures stop paging the run.
+
+## 2026-08-27 - Security desk ships a review brief, never a self-approved fix
+
+`security review` produces a local checklist: hard floors, checks to run,
+and an explicit "Pointer will not execute this." It publishes to the
+workspace. The fixer is not the only checker. GitHub Actions still
+cannot start (org billing).
+
+## 2026-08-27 - Public /workspace is a desk catalog, not a JSON dump
+
+host.netie.ai/workspace now paints teach/meeting/document/security cards
+and an artifact list with textContent only. Exec true is refused in the
+page. Live briefs still require the laptop coordinator. GitHub Actions
+still cannot start (org billing).
+
+## 2026-08-27 - Meeting stop writes a recap into notes and workspace
+
+Stopping Meeting or Transcribe now runs `finishListeningSession`: a local
+recap from the transcript ring, published to the loopback workspace and
+appended as a Netie block in the markdown notes. Empty transcript fails
+closed. Agent mode is not auto-recapped. Still never Acts.
+
+## 2026-08-27 - Coworker desks and online workspace catalog (DR-0005)
+
+Founder goal: Pointer as the coworker that replaces Clicky and Cluely,
+stronger than OpenWorker, usable online like a Computer workspace.
+Routed as a PRD amendment. Original code only - those repos were
+studied, not vendored, and no license was stripped.
+
+Four first-party desks (`teach`, `meeting`, `document`, `security`) pick
+a job and a finished deliverable. Meeting Recap / Assist / Next run
+from the armed transcript ring and never Act. Listening modes route
+Do it to Ask. Loopback workspace stores briefs; public
+`host.netie.ai/workspace` is a catalog with `exec: false`. First-party
+MCP adds `desks.*` and `workspace.*`; `workspace.exec` is a named
+refusal. P-05 and P-06 stay parked. Fail-closed Act and fixed HUD
+chrome are unchanged.
+
 ## 2026-08-28 - Cluely 12-language STT/Scribe list
 
 HUD language select lists 12 English labels (English, Traditional Chinese,
@@ -337,6 +945,7 @@ Dictation mode aliases transcribe. "rewrite this" / "scribe this"
 copies the selection (OpenWillow Scribe pattern, no GPLv3 dump).
 
 ## 2026-08-26 - Public host.netie.ai Worker shell (DR-0004)
+
 
 Same pages as the loopback coordinator (`/` `/today` `/lanes` `/skills`).
 The Cloudflare Worker (`workers/netie-host.js`, `wrangler.jsonc`) serves

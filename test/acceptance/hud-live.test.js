@@ -216,6 +216,38 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(out.startsWith("…"), out);
     }),
 
+    T("compact cue captions skip They asked / Them and ignore mic", async () => {
+      const feed = live.createLiveTranscript({ maxLines: 5 });
+      feed.push("mic", "I can do Friday");
+      feed.push("system", "Can we ship Friday?");
+      feed.push("system", "Do not send the contract yet.");
+      feed.push("system", "Can we also do London?", { partial: true });
+      const rows = live.cueCaptionLines(feed.lines(), {
+        asked: "Can we ship Friday?",
+        them: "Can we ship Friday?",
+        max: 2,
+      });
+      assert.strictEqual(rows.length, 2);
+      assert.strictEqual(rows[0].text, "Do not send the contract yet.");
+      assert.strictEqual(rows[0].partial, false);
+      assert.strictEqual(rows[1].text, "Can we also do London?");
+      assert.strictEqual(rows[1].partial, true);
+      assert.deepStrictEqual(
+        live.cueCaptionLines([{ source: "mic", text: "hello" }], { max: 2 }),
+        []
+      );
+      const fromTurns = live.cueCaptionTurns(
+        [
+          { speaker: "them", text: "We shipped last week." },
+          { speaker: "you", text: "I can do Friday." },
+          { speaker: "them", text: "Can we ship Friday?" },
+        ],
+        { asked: "Can we ship Friday?", them: "Can we ship Friday?", max: 2 }
+      );
+      assert.strictEqual(fromTurns.length, 1);
+      assert.strictEqual(fromTurns[0].text, "We shipped last week.");
+    }),
+
     // ── wiring ─────────────────────────────────────────────────────────────
     T("HUD-01..06: the renderer actually loads and uses hud-live", async () => {
       const html = read("electron/hud.html");
@@ -233,6 +265,9 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
         "createDragController",
         "createAutoSend",
         "createLiveLine",
+        "createLiveTranscript",
+        "cueCaptionLines",
+        "cueCaptionTurns",
         "createInsightFeed",
         "shouldRearmAfterAct",
       ]) {

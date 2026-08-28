@@ -10,7 +10,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "pointer-docx-"));
 // in test/safe-path.test.js.
 process.env.NETIE_WORD_OUT_DIR = tmp;
 
-const { writeDocx, clipboardMatchesSource } = require("../electron/netie/word-coworker");
+const { writeDocx, buildDocx, clipboardMatchesSource } = require("../electron/netie/word-coworker");
 const { InputDriver } = require("../electron/netie/driver");
 
 const out = path.join(tmp, "sample.docx");
@@ -127,6 +127,14 @@ function assertWordShell(buf, label) {
   const styles = unzipEntry(buf, "word/styles.xml").toString("utf8");
   assert.ok(/w:styleId="Normal"/.test(styles), `${label}: styles.xml has no Normal style`);
 }
+
+const mem = buildDocx("Hello Pointer\nLine 2");
+assert.ok(mem.ok);
+assert.strictEqual(mem.buffer.subarray(0, 2).toString("binary"), "PK");
+assertWordShell(mem.buffer, "buildDocx");
+assert.match(docxText(mem.buffer).text, /Hello Pointer/);
+const blankMem = buildDocx(" \n\t ");
+assert.strictEqual(blankMem.ok, false);
 
 for (const c of CORPUS) {
   const p = path.join(tmp, `corpus-${CORPUS.indexOf(c)}.docx`);

@@ -166,6 +166,58 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/session:\s*liveSession\(\)/.test(main), "hud:ready must return live session");
     }),
 
+    T("meeting Do it cannot reach Act - it asks instead", async () => {
+      const js = read("electron/hud.js");
+      const act = js.slice(js.indexOf("async function doAct"), js.indexOf("async function doAct") + 900);
+      assert.ok(/appMode !== "agent"/.test(act), "non-agent modes must not call hud:act");
+      assert.ok(/doAsk\(\)/.test(act), "meeting Do it must assist, not click");
+      assert.ok(/MEETING_SUGGESTS/.test(js), "meeting mode needs Recap/Assist/Next");
+      assert.ok(/Recap this meeting/.test(js));
+      assert.ok(/What should I say\?/.test(js));
+      assert.ok(/event\.type === "live-brief"/.test(js), "live meeting brief must paint in HUD");
+      assert.ok(/paintLiveBrief/.test(js));
+      assert.ok(/coworker-brief/.test(read("electron/hud.html")), "live brief lives in fixed insight chrome");
+      assert.ok(/id="meeting-cue"/.test(read("electron/hud.html")), "say-this cue is fixed chrome, not a bubble");
+      assert.ok(/id="meeting-also"/.test(read("electron/hud.html")), "Also lives in fixed insight chrome");
+      assert.ok(/id="meeting-avoid"/.test(read("electron/hud.html")), "Don't say lives in fixed insight chrome");
+      assert.ok(/id="meeting-talk"/.test(read("electron/hud.html")), "You/Them talk lives in fixed insight chrome");
+      assert.ok(/id="live-cue-bar"/.test(read("electron/hud.html")), "live cue bar is fixed top chrome, not a bubble");
+      assert.ok(/id="live-cue-also"/.test(read("electron/hud.html")), "Also lives on the live cue bar");
+      assert.ok(/id="live-cue-avoid"/.test(read("electron/hud.html")), "Don't say lives on the live cue bar");
+      assert.ok(/id="live-cue-them"/.test(read("electron/hud.html")), "Them lives on the live cue bar");
+      assert.ok(/id="live-cue-you"/.test(read("electron/hud.html")), "You lives on the live cue bar");
+      assert.ok(/id="live-cue-captions"/.test(read("electron/hud.html")), "Live captions live on the cue bar");
+      assert.ok(/id="btn-live-next"/.test(read("electron/hud.html")), "Got it lives in the top cue bar");
+      const css = read("electron/hud.css");
+      assert.ok(/\.live-cue-bar/.test(css), "live cue bar has chrome");
+      assert.ok(/\.live-cue-caption/.test(css), "Live captions have chrome");
+      assert.ok(!/\.hud\.chat-open \.live-cue-bar/.test(css), "live cue bar must not wait for chat");
+      assert.ok(/\.hud\.morph-hidden \.live-cue-bar/.test(css), "compact HUD still positions the cue bar");
+      assert.ok(
+        !/\.hud\.morph-hidden \.live-cue-bar[\s\S]{0,80}display:\s*none/.test(css),
+        "cue bar stays when HUD chrome hides"
+      );
+      assert.ok(/\.hud\.morph-hidden \.subtitle-live/.test(css), "floating LIVE bar stays hidden when compact");
+      assert.ok(/id="btn-copy-cue"/.test(read("electron/hud.html")), "copy say-this is a button in the insight panel");
+      const copy = js.slice(js.indexOf("const btnCopyCue"), js.indexOf('$("mode-pill")'));
+      assert.ok(/hud:copyText/.test(copy), "copy uses clipboard, not Act");
+      assert.ok(!/hud:act/.test(copy), "copy must not Act");
+      assert.ok(/id="desk-pill"/.test(read("electron/hud.html")), "desk chips are fixed chrome");
+      const desk = js.slice(js.indexOf('$("desk-pill")'), js.indexOf('$("mode-pill")'));
+      assert.ok(/doAsk\(\)/.test(desk), "desk chips must Ask");
+      assert.ok(!/doAct\(\)/.test(desk), "desk chips must not Act");
+      const liveFn = js.slice(js.indexOf("function paintLiveBrief"), js.indexOf("const hudSettings"));
+      assert.ok(/textContent/.test(liveFn));
+      assert.ok(/paintMeetingTalk/.test(liveFn));
+      assert.ok(/paintLiveCueCaptions/.test(liveFn));
+      assert.ok(/event\.turns/.test(js));
+      assert.ok(!/innerHTML/.test(liveFn));
+      const capFn = js.slice(js.indexOf("function paintLiveCueCaptions"), js.indexOf("function paintMeetingTalk"));
+      assert.ok(/cueCaptionLines/.test(capFn));
+      assert.ok(/textContent/.test(capFn));
+      assert.ok(!/innerHTML/.test(capFn));
+    }),
+
     T("every enquire input is labelled and reachable", async () => {
       // Accessibility is not a rung on any laziness ladder.
       const js = read("electron/hud.js");

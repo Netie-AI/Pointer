@@ -253,6 +253,22 @@ function defaultDocxPath(stem) {
 }
 
 /**
+ * Build a .docx package in memory. Never writes disk. Never Acts.
+ * Loopback /document can download this; Word.app write still needs Cortex.
+ */
+function buildDocx(text) {
+  if (!visibleDocxText(text)) {
+    return { ok: false, reason: emptyWriteReason() };
+  }
+  const documentXml =
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
+    `<w:body>${paragraphsXml(text)}<w:sectPr/></w:body></w:document>`;
+  const buffer = zipStore(wordPackageParts(documentXml));
+  return { ok: true, buffer, bytes: buffer.length, ...writtenEvidence(text) };
+}
+
+/**
  * @param {{ text: string, path?: string, dryRun?: boolean, stem?: string }} opts
  * @returns {{ ok: boolean, path: string, bytes: number, dryRun?: boolean, sha256?: string }
  *          |{ ok: false, reason: string, path: string }}
@@ -278,24 +294,20 @@ function writeDocx(opts = {}) {
   // must refuse rather than pollute the folder the customer opens (R-0001).
   const uncontained = refuseUncontainedTest(outPath);
   if (uncontained) return uncontained;
-  if (!visibleDocxText(text)) {
-    return { ok: false, reason: emptyWriteReason(), path: outPath, bytes: 0 };
+  const built = buildDocx(text);
+  if (!built.ok) {
+    return { ok: false, reason: built.reason, path: outPath, bytes: 0 };
   }
-  const documentXml =
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-    `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
-    `<w:body>${paragraphsXml(text)}<w:sectPr/></w:body></w:document>`;
-  const buf = zipStore(wordPackageParts(documentXml));
   if (opts.dryRun) {
-    return { ok: true, path: outPath, bytes: buf.length, dryRun: true, ...writtenEvidence(text) };
+    return { ok: true, path: outPath, bytes: built.bytes, dryRun: true, ...writtenEvidence(text) };
   }
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  fs.writeFileSync(outPath, buf);
+  fs.writeFileSync(outPath, built.buffer);
   return {
     ok: true,
     path: outPath,
-    bytes: buf.length,
-    sha256: crypto.createHash("sha256").update(buf).digest("hex"),
+    bytes: built.bytes,
+    sha256: crypto.createHash("sha256").update(built.buffer).digest("hex"),
     ...writtenEvidence(text),
   };
 }
@@ -533,7 +545,9 @@ function clipboardMatchesSource(source, clip) {
 
 module.exports = {
   writeDocx,
+  buildDocx,
   appendDocx,
+  zipStore,
   zipRead,
   clipboardMatchesSource,
   defaultDocxPath,

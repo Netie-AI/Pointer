@@ -40,6 +40,13 @@
     <div id="box"></div>
     <script>
       const box = document.getElementById("box");
+      const hint = document.getElementById("hint");
+      const teach = /(?:^|[?&])teach=1(?:&|$)/.test(location.search);
+      if (hint) {
+        hint.textContent = teach
+          ? "Drag to frame a walkthrough - Esc cancel - release to point"
+          : "Drag to frame a region - Esc cancel - release to capture";
+      }
       let start = null;
 
       function toScreen(e) {

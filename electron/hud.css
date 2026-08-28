@@ -148,6 +148,48 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .top-cluster { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .top-actions { margin-left: 4px; }
 
+/* Live coworker cue in fixed top chrome. Visible with chat closed and when
+   the rest of HUD hides, so Walk and meeting say-this stay on screen
+   (not a bubble, not a peek orb, not a stealth overlay). */
+.live-cue-bar {
+  position: absolute; top: 62px; left: 50%; transform: translateX(-50%);
+  z-index: 29; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+  max-width: min(720px, 92vw); padding: 6px 10px; border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+.hud.morph-hidden .live-cue-bar { top: 14px; }
+.live-cue-asked {
+  margin: 0; max-width: 28vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11px; color: var(--muted);
+}
+.live-cue-them, .live-cue-you {
+  margin: 0; max-width: 28vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11px; color: var(--muted);
+}
+.live-cue-you { color: var(--text); }
+.live-cue-captions {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0;
+}
+.live-cue-caption {
+  margin: 0; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11px; color: var(--muted);
+}
+.live-cue-text {
+  margin: 0; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px; font-weight: 650; color: var(--text);
+}
+.live-cue-also {
+  margin: 0; max-width: 24vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11px; font-weight: 550; color: var(--text);
+}
+.live-cue-avoid {
+  margin: 0; max-width: 24vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11px; font-weight: 550; color: var(--muted);
+}
+.live-cue-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+.live-cue-actions .text-btn { margin: 0; padding: 5px 10px; border-radius: 999px; }
+
 .icon-btn {
   width: 34px; height: 34px; display: grid; place-items: center; padding: 0;
   border: 1px solid var(--line-soft); border-radius: 10px; background: var(--surface); color: var(--muted);
@@ -263,6 +305,11 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   border: 1px solid var(--line-soft); border-radius: 8px;
   background: var(--field); color: var(--text); font: inherit;
 }
+.desk-pill button { font-size: 11px; }
+.hud.agent-busy .desk-pill { opacity: 0.55; }
+.hud.agent-busy .desk-pill button { pointer-events: none; }
+/* General is a companion, not an agent — no act affordance at all. */
+.hud.mode-general .act-button { display: none; }
 
 /* The Shot button had no rule at all, so it was the one non-positioned child of
    .hud — a UA-default button parked at (0,0), eating clicks and outliving Hide. */
@@ -354,6 +401,51 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 }
 .point-box.fading { opacity: 0; transition: opacity 420ms ease; }
 @keyframes box-in { from { opacity: 0; } }
+.point-mark.point-box {
+  transform: none;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent), transparent 88%);
+  animation: point-box-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+.point-mark.point-box .point-label { top: -22px; }
+.point-key {
+  position: absolute; top: -22px; right: 6px;
+  padding: 2px 6px; border-radius: 6px; white-space: nowrap;
+  background: var(--surface); border: 1px solid var(--line-soft);
+  color: var(--accent); font-size: 10px; font-weight: 650;
+}
+.point-mark.point-box .point-key { top: -22px; }
+.point-mark.point-box::before, .point-mark.point-box::after { display: none; }
+.point-face {
+  position: absolute; inset: 6px;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; font-size: 11px; font-weight: 650;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.point-face.field {
+  background: #e8eef4; border: 1px solid #9ad; border-radius: 4px; color: #111;
+}
+.point-face.button {
+  background: #345; border: 1px solid #6be; border-radius: 6px; color: #eee;
+}
+.point-face.region {
+  background: #15202c; border: 1px dashed #567; border-radius: 6px; color: #eee;
+}
+.point-mark.later::before, .point-mark.later::after,
+.point-mark.done::before, .point-mark.done::after { display: none; }
+.point-mark.point-box.later {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--accent), transparent 40%);
+  background: transparent;
+}
+.point-mark.point-box.done {
+  border-color: color-mix(in srgb, var(--text), transparent 72%);
+  background: transparent;
+  opacity: 0.4;
+}
+@keyframes point-box-in { from { opacity: 0; } }
 
 /* P4-BG-AGENTS — background work is a status line, not a stage orb. */
 .bg-status {
@@ -576,6 +668,56 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .panel-head:active { cursor: grabbing; }
 .spark { color: var(--accent); }
 .insight-summary { margin: 6px 0 12px; color: var(--text); font-size: 12px; line-height: 1.5; opacity: 0.92; }
+.coworker-brief {
+  margin: 0 0 12px; padding: 8px 10px; max-height: 160px; overflow: auto;
+  font-size: 11px; line-height: 1.45; white-space: pre-wrap;
+  border: 1px solid var(--line-soft); border-radius: 12px;
+  background: color-mix(in srgb, var(--surface), #000 18%);
+}
+.meeting-asked {
+  margin: 0 0 6px; padding: 0;
+  font-size: 11px; line-height: 1.4; font-weight: 500;
+  color: var(--muted, #9aa3b5);
+}
+.meeting-cue {
+  margin: 0 0 8px; padding: 10px 12px;
+  font-size: 16px; line-height: 1.35; font-weight: 650;
+  border: 1px solid var(--line-soft); border-radius: 12px;
+  background: color-mix(in srgb, var(--accent), transparent 88%);
+}
+.meeting-also {
+  margin: 0 0 6px; padding: 0;
+  font-size: 13px; line-height: 1.4; font-weight: 550;
+  color: var(--text, #eee);
+}
+.meeting-avoid {
+  margin: 0 0 8px; padding: 0;
+  font-size: 12px; line-height: 1.4; font-weight: 550;
+  color: var(--muted, #9aa3b5);
+}
+.meeting-talk {
+  list-style: none; margin: 0 0 10px; padding: 0;
+  max-height: 140px; overflow: auto;
+  border: 1px solid var(--line-soft); border-radius: 12px;
+  background: color-mix(in srgb, var(--surface), #000 18%);
+}
+.meeting-talk li {
+  display: flex; gap: 8px; padding: 6px 8px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 11px; line-height: 1.4;
+}
+.meeting-talk li:last-child { border-bottom: 0; }
+.talk-who {
+  flex: 0 0 44px; font-weight: 650; color: var(--accent);
+  padding-right: 8px;
+}
+.talk-them .talk-who { color: var(--muted, #9aa3b5); }
+.talk-now { background: color-mix(in srgb, var(--accent), transparent 88%); }
+.talk-text { min-width: 0; }
+.cue-row {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px;
+}
+.cue-row .text-btn { margin: 0; }
 .quick-actions { display: grid; gap: 6px; }
 .quick-actions button {
   text-align: left; border-radius: 14px; padding: 10px 12px;

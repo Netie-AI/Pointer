@@ -59,6 +59,8 @@ const {
   createAutoSend,
   createLiveLine,
   createLiveTranscript,
+  cueCaptionLines,
+  cueCaptionTurns,
   createInsightFeed,
   createHoldToTalk,
   shouldRearmAfterAct,
@@ -68,6 +70,302 @@ const {
 const drag = createDragController();
 const liveLine = createLiveLine();
 const liveFeed = createLiveTranscript({ maxLines: 5 });
+
+const AGENT_SUGGESTS = [
+  { q: "Summarize what I am looking at", ico: "✦", label: "Summarize screen" },
+  { q: "What should I click next?", ico: "›", label: "What next?" },
+  { q: "Suggest follow-up questions", ico: "?", label: "Suggest follow-ups" },
+  { confirm: "Type this into Notes?", ico: "N", label: "Type in Notes?" },
+];
+const MEETING_SUGGESTS = [
+  { q: "Recap this meeting", ico: "✦", label: "Recap" },
+  { q: "What should I say?", ico: "›", label: "Assist" },
+  { q: "List next steps", ico: "?", label: "Next steps" },
+];
+
+function paintSuggestItems(items) {
+  const root = $("insight-actions");
+  if (!root || !Array.isArray(items) || !items.length) return;
+  root.replaceChildren();
+  for (const row of items.slice(0, 6)) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    if (row.confirm) btn.dataset.confirm = String(row.confirm).slice(0, 160);
+    else btn.dataset.q = String(row.q || "").slice(0, 160);
+    const ico = document.createElement("span");
+    ico.className = "q-ico";
+    ico.textContent = String(row.ico || "?").slice(0, 2);
+    btn.appendChild(ico);
+    btn.appendChild(document.createTextNode(" " + String(row.label || row.q || "").slice(0, 48)));
+    root.appendChild(btn);
+  }
+}
+
+function paintSuggests(mode) {
+  const rows = mode === "meeting" || mode === "transcribe" ? MEETING_SUGGESTS : AGENT_SUGGESTS;
+  paintSuggestItems(rows);
+}
+
+let lastCueText = "";
+let lastCueKind = "say";
+let lastCueAsked = "";
+let lastThemLine = "";
+let lastCueTurns = [];
+let cueBarHasBrief = false;
+function cueCopyLabel(kind) {
+  if (kind === "point") return "Copy next";
+  if (kind === "warn") return "Copy review";
+  return "Copy say-this";
+}
+function cueDisplay(kind, cue) {
+  if (!cue) return "";
+  if (kind === "point") {
+    const action = String(cue).replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
+    return action || `Next: ${cue}`;
+  }
+  if (kind === "warn") return `Review: ${cue}`;
+  return `Say this: ${cue}`;
+}
+function lastTalkLine(turns, speaker) {
+  const want = speaker === "you" ? "you" : "them";
+  const rows = Array.isArray(turns) ? turns : [];
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i];
+    if (!row || (row.speaker === "you" ? "you" : "them") !== want) continue;
+    const text = String(row.text || "").trim();
+    if (text) return text.slice(0, 160);
+  }
+  return "";
+}
+function paintLiveCueCaptions() {
+  const cap = $("live-cue-captions");
+  if (!cap) return false;
+  if (lastCueKind === "point" || lastCueKind === "warn") {
+    cap.replaceChildren();
+    cap.hidden = true;
+    const bar = $("live-cue-bar");
+    if (bar) bar.hidden = !cueBarHasBrief;
+    return false;
+  }
+  cap.replaceChildren();
+  let rows = typeof cueCaptionLines === "function"
+    ? cueCaptionLines(liveFeed.lines(), { asked: lastCueAsked, them: lastThemLine, max: 2 })
+    : [];
+  if (!rows.length && typeof cueCaptionTurns === "function") {
+    rows = cueCaptionTurns(lastCueTurns, { asked: lastCueAsked, them: lastThemLine, max: 2 });
+  }
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const p = document.createElement("p");
+    p.className = "live-cue-caption";
+    p.textContent = (row.partial ? "Live... " : "Live: ") + row.text;
+    cap.appendChild(p);
+  }
+  cap.hidden = rows.length === 0;
+  const bar = $("live-cue-bar");
+  if (bar) bar.hidden = !cueBarHasBrief && rows.length === 0;
+  return rows.length > 0;
+}
+function paintMeetingTalk(event, asked) {
+  const root = $("meeting-talk");
+  if (!root) return;
+  root.replaceChildren();
+  const desk = String((event && event.desk) || "");
+  const rows = Array.isArray(event && event.turns) ? event.turns : [];
+  if (!rows.length || desk !== "meeting" || (event && event.act)) {
+    root.hidden = true;
+    return;
+  }
+  rows.forEach((row) => {
+    const text = String((row && row.text) || "").trim();
+    if (!text) return;
+    const you = row.speaker === "you";
+    const now = Boolean(row.asked) && asked && text === asked;
+    const li = document.createElement("li");
+    li.className = "talk-" + (you ? "you" : "them") + (now ? " talk-now" : "");
+    const who = document.createElement("span");
+    who.className = "talk-who";
+    who.textContent = you ? "You:" : "Them:";
+    const body = document.createElement("span");
+    body.className = "talk-text";
+    body.textContent = text;
+    li.appendChild(who);
+    li.appendChild(body);
+    root.appendChild(li);
+  });
+  root.hidden = !root.childNodes.length;
+}
+function paintLiveBrief(event) {
+  const brief = $("coworker-brief");
+  const meta = $("coworker-brief-meta");
+  const cueEl = $("meeting-cue");
+  const alsoEl = $("meeting-also");
+  const avoidEl = $("meeting-avoid");
+  const askedEl = $("meeting-asked");
+  const copyBtn = $("btn-copy-cue");
+  const cueRow = $("cue-row");
+  const teachBack = $("btn-teach-back");
+  const teachNext = $("btn-teach-next");
+  const bar = $("live-cue-bar");
+  const barAsked = $("live-cue-asked");
+  const barThem = $("live-cue-them");
+  const barYou = $("live-cue-you");
+  const barText = $("live-cue-text");
+  const barAlso = $("live-cue-also");
+  const barAvoid = $("live-cue-avoid");
+  const barBack = $("btn-live-back");
+  const barNext = $("btn-live-next");
+  const barCopy = $("btn-live-copy");
+  if (!brief) return;
+  const text = String((event && event.text) || "").slice(0, 4000);
+  const cue = String((event && event.cue) || "").trim().slice(0, 240);
+  const rawKind = String((event && event.cueKind) || "").toLowerCase();
+  const kind = rawKind === "point" || rawKind === "warn" ? rawKind : "say";
+  lastCueText = cue;
+  lastCueKind = kind;
+  const asked = String((event && event.asked) || "").trim().slice(0, 160);
+  const rest = String((event && event.rest) || "").trim().slice(0, 160);
+  const heard = String((event && event.heard) || "").trim().slice(0, 160);
+  const askedLine =
+    kind === "point" && rest
+      ? `Then: ${rest}`
+      : [
+          asked ? `They asked: ${asked}` : "",
+          heard ? `Heard: ${heard}` : "",
+        ]
+          .filter(Boolean)
+          .join(" / ")
+          .slice(0, 220);
+  const cueLine = cueDisplay(kind, cue);
+  const meetingDesk = String((event && event.desk) || "") === "meeting" && kind === "say";
+  const themLine = meetingDesk ? lastTalkLine(event.turns, "them") : "";
+  const youLine = meetingDesk ? lastTalkLine(event.turns, "you") : "";
+  const themShow = Boolean(themLine && themLine !== asked);
+  const youShow = Boolean(youLine);
+  lastCueAsked = asked;
+  lastThemLine = themLine;
+  lastCueTurns = meetingDesk && Array.isArray(event && event.turns) ? event.turns : [];
+  if (!text || (event && event.act)) {
+    brief.hidden = true;
+    if (meta) meta.hidden = true;
+    if (cueEl) {
+      cueEl.hidden = true;
+      cueEl.textContent = "";
+    }
+    if (alsoEl) {
+      alsoEl.hidden = true;
+      alsoEl.textContent = "";
+    }
+    if (avoidEl) {
+      avoidEl.hidden = true;
+      avoidEl.textContent = "";
+    }
+    if (askedEl) {
+      askedEl.hidden = true;
+      askedEl.textContent = "";
+    }
+    if (cueRow) cueRow.hidden = true;
+    if (copyBtn) copyBtn.hidden = true;
+    if (teachBack) teachBack.hidden = true;
+    if (teachNext) teachNext.hidden = true;
+    if (bar) bar.hidden = true;
+    if (barAsked) {
+      barAsked.hidden = true;
+      barAsked.textContent = "";
+    }
+    if (barThem) {
+      barThem.hidden = true;
+      barThem.textContent = "";
+    }
+    if (barYou) {
+      barYou.hidden = true;
+      barYou.textContent = "";
+    }
+    if (barText) barText.textContent = "";
+    if (barAlso) {
+      barAlso.hidden = true;
+      barAlso.textContent = "";
+    }
+    if (barAvoid) {
+      barAvoid.hidden = true;
+      barAvoid.textContent = "";
+    }
+    if (barBack) barBack.hidden = true;
+    if (barNext) barNext.hidden = true;
+    if (barCopy) barCopy.hidden = true;
+    lastCueText = "";
+    lastCueKind = "say";
+    lastCueAsked = "";
+    lastThemLine = "";
+    lastCueTurns = [];
+    cueBarHasBrief = false;
+    paintMeetingTalk({ desk: "", turns: [] }, "");
+    paintLiveCueCaptions();
+    return;
+  }
+  brief.hidden = false;
+  brief.textContent = text;
+  if (meta) {
+    meta.hidden = false;
+    meta.textContent = `${(event && event.desk) || "meeting"} coworker · live · never acts`;
+  }
+  if (askedEl) {
+    askedEl.hidden = !askedLine;
+    askedEl.textContent = askedLine;
+  }
+  if (cueEl) {
+    cueEl.hidden = !cue;
+    cueEl.textContent = cueLine;
+  }
+  const also = String((event && event.also) || "").trim().slice(0, 160);
+  const avoid = String((event && event.avoid) || "").trim().slice(0, 160);
+  if (alsoEl) {
+    alsoEl.hidden = !also || kind === "point" || kind === "warn";
+    alsoEl.textContent = also && kind === "say" ? "Also: " + also : "";
+  }
+  if (avoidEl) {
+    avoidEl.hidden = !avoid || kind === "point" || kind === "warn";
+    avoidEl.textContent = avoid && kind === "say" ? "Don't say: " + avoid : "";
+  }
+  if (cueRow) cueRow.hidden = !cue;
+  if (teachBack) teachBack.hidden = !(kind === "point" && cue);
+  if (teachNext) teachNext.hidden = !(kind === "point" && cue);
+  if (copyBtn) {
+    copyBtn.hidden = !cue;
+    copyBtn.textContent = cueCopyLabel(kind);
+  }
+  cueBarHasBrief = Boolean(cue || askedLine || themShow || youShow);
+  if (bar) bar.hidden = !cueBarHasBrief;
+  paintLiveCueCaptions();
+  if (barAsked) {
+    barAsked.hidden = !askedLine;
+    barAsked.textContent = askedLine;
+  }
+  if (barThem) {
+    barThem.hidden = !themShow;
+    barThem.textContent = themShow ? "Them: " + themLine : "";
+  }
+  if (barYou) {
+    barYou.hidden = !youShow;
+    barYou.textContent = youShow ? "You: " + youLine : "";
+  }
+  if (barText) barText.textContent = cueLine;
+  if (barAlso) {
+    barAlso.hidden = !also || kind === "point" || kind === "warn";
+    barAlso.textContent = also && kind === "say" ? "Also: " + also : "";
+  }
+  if (barAvoid) {
+    barAvoid.hidden = !avoid || kind === "point" || kind === "warn";
+    barAvoid.textContent = avoid && kind === "say" ? "Don't say: " + avoid : "";
+  }
+  if (barBack) barBack.hidden = !(kind === "point" && cue);
+  if (barNext) barNext.hidden = !(kind === "point" && cue);
+  if (barCopy) {
+    barCopy.hidden = !cue;
+    barCopy.textContent = cueCopyLabel(kind);
+  }
+  paintMeetingTalk(event, asked);
+}
 
 /** Mirrors the main-process settings the renderer needs each frame. */
 const hudSettings = { autoSend: false, followCursor: true, liveLines: 5 };
@@ -117,6 +415,7 @@ function renderSubtitle() {
     }
   }
   syncMeetingCaption();
+  paintLiveCueCaptions();
 }
 
 /**
@@ -318,6 +617,10 @@ function applyModeUi(mode, notesPath) {
   autoSend.cancel("mode-change");
   hudRoot.classList.remove("mode-agent", "mode-general", "mode-transcribe", "mode-scribe", "mode-meeting");
   hudRoot.classList.add(`mode-${appMode}`);
+  paintSuggests(appMode);
+  if (appMode !== "meeting" && appMode !== "transcribe") {
+    paintLiveBrief({ text: "", act: false });
+  }
   document.querySelectorAll("#mode-pill button").forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === appMode);
   });
@@ -573,8 +876,9 @@ document.addEventListener(
   "pointermove",
   (event) => {
     if (hudRoot.classList.contains("morph-hidden")) {
-      // No peek orb — use Ctrl+` / Show/Hide to restore. Ignore hover chrome.
-      syncClickThrough(false);
+      // Compact HUD: only the live cue strip is chrome. Rest stays click-through.
+      // No peek orb — Ctrl+` / Show restores the rest.
+      syncClickThrough(hitChrome(event.target));
       return;
     }
     syncClickThrough(hitChrome(event.target));
@@ -706,7 +1010,7 @@ $("command-bar-tools")?.addEventListener("click", (event) => {
   else if (cmd === "apps") {
     askInput.value = "List active apps and suggest what I can do next";
     doAsk();
-  } else if (cmd === "shots") invoke("hud:frameRegion");
+  } else if (cmd === "walk" || cmd === "shots") invoke("hud:frameRegion");
   else if (cmd === "clipboard") {
     askInput.value = "Summarize my clipboard and offer paste targets";
     doAsk();
@@ -976,7 +1280,14 @@ async function doAsk(opts = {}) {
   answerBody.textContent = "…";
   if (window.NetieSound) NetieSound.think();
   const sent = attachmentPayload();
-  const result = await invoke("hud:ask", { message: asked, attachments: sent, kind });
+  const transcript = typeof liveFeed.render === "function" ? liveFeed.render() : "";
+  const result = await invoke("hud:ask", {
+    message: asked,
+    attachments: sent,
+    kind,
+    transcript,
+    mode: appMode,
+  });
   if (sent.length) clearAttachments();
   answerMeta.textContent = result.degraded ? "Answered (degraded)" : "AI response";
   appendMessage("assistant", result.ok ? result.reply || "" : result.error || "Failed");
@@ -986,11 +1297,10 @@ async function doAsk(opts = {}) {
 }
 
 async function doAct() {
-  // General is a companion, not an agent. Hiding the button is cosmetics; this
-  // is the line that means a stray "do it" cannot move the mouse.
-  if (appMode === "general" || appMode === "scribe") {
-    answerMeta.textContent =
-      appMode === "scribe" ? "Scribe — rewriting, not clicking" : "General mode — answering, not acting";
+  // Listening modes are coworkers, not agents. Hiding the button is cosmetics;
+  // this is the line that means a stray "do it" cannot move the mouse.
+  if (appMode !== "agent") {
+    answerMeta.textContent = `${appMode} mode — answering, not acting`;
     await doAsk();
     return;
   }
@@ -1334,6 +1644,47 @@ $("insight-actions").addEventListener("click", (event) => {
 if (btnShowTranscript) {
   btnShowTranscript.addEventListener("click", () => setInsightView("transcripts"));
 }
+$("desk-pill").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-desk]");
+  if (!button) return;
+  const q = String(button.dataset.q || "");
+  if (!q) return;
+  document.querySelectorAll("#desk-pill button").forEach((b) => {
+    b.classList.toggle("active", b === button);
+  });
+  askInput.value = q;
+  if (button.dataset.autoask === "1") doAsk();
+  else askInput.focus();
+});
+const cueRow = $("cue-row");
+const liveCueBar = $("live-cue-bar");
+function onCueAdvance(event) {
+  const button = event.target.closest(".cue-advance");
+  if (!button) return;
+  const q = String(button.dataset.q || "");
+  if (!q) return;
+  askInput.value = q;
+  doAsk();
+}
+if (cueRow) cueRow.addEventListener("click", onCueAdvance);
+if (liveCueBar) liveCueBar.addEventListener("click", onCueAdvance);
+const btnCopyCue = $("btn-copy-cue");
+const btnLiveCopy = $("btn-live-copy");
+async function onCueCopy(button) {
+  const text = String(lastCueText || "").trim();
+  if (!text || !button) return;
+  const res = await invoke("hud:copyText", { text });
+  button.textContent = res && res.ok ? "Copied" : "Copy failed";
+  setTimeout(() => {
+    button.textContent = cueCopyLabel(lastCueKind);
+  }, 1200);
+}
+if (btnCopyCue) {
+  btnCopyCue.addEventListener("click", () => onCueCopy(btnCopyCue));
+}
+if (btnLiveCopy) {
+  btnLiveCopy.addEventListener("click", () => onCueCopy(btnLiveCopy));
+}
 $("mode-pill").addEventListener("click", async (event) => {
   if (agentBusy) {
     answerMeta.textContent = "Agent busy — mode locked";
@@ -1615,6 +1966,8 @@ function onHudEvent(event) {
   if (event.type === "scribe-pending") {
     hudRoot.classList.toggle("has-pending", Boolean(event.pending && event.pending.present));
   }
+  if (event.type === "suggests") paintSuggestItems(event.items || []);
+  if (event.type === "live-brief") paintLiveBrief(event);
   if (event.type === "auto-listen") {
     armCapture({
       mic: Boolean(event.mic),
@@ -1658,7 +2011,7 @@ function onHudEvent(event) {
     subtitleText.textContent = event.text;
   }
   if (event.type === "enquire") renderEnquire(event);
-  if (event.type === "point") renderPoints(event.points, event.ttlMs, event.lines, event.paths, event.boxes);
+  if (event.type === "point") renderPoints(event.points, event.ttlMs, event.lines, event.paths, event.boxes, event.hold);
   if (event.type === "bg") renderBgStatus(event);
   if (event.type === "pointer") {
     answerMeta.textContent = event.mode ? `Pointer · ${event.mode}` : answerMeta.textContent;
@@ -1805,7 +2158,26 @@ if (enquirePanel) {
  * A crosshair and a label that fade. Not a companion, not a ring that lives on
  * screen; the floating Clicky chrome was removed for good reasons.
  */
-function renderPoints(points, ttlMs, lines, paths, boxes) {
+function overlayControlFace(cue) {
+  const t = String(cue || "").toLowerCase();
+  if (/\btype in\b|\bedit\b|\bemail\b|\bfield\b|\binput\b/.test(t)) return "field";
+  if (/\bclick\b|\bsave\b|\bcancel\b|\bbutton\b|\bsubmit\b/.test(t)) return "button";
+  return "region";
+}
+
+function overlayControlCaption(cue) {
+  return (
+    String(cue || "control")
+      .replace(/^\d+\s+of\s+\d+\s+/i, "")
+      .replace(/^\d+\s+/, "")
+      .replace(/^(type in|click|look at)\s+/i, "")
+      .replace(/\s+then\s+tab$/i, "")
+      .trim()
+      .slice(0, 24) || "control"
+  );
+}
+
+function renderPoints(points, ttlMs, lines, paths, boxes, hold) {
   const layer = $("point-layer");
   if (!layer) return;
   layer.innerHTML = "";
@@ -1871,24 +2243,51 @@ function renderPoints(points, ttlMs, lines, paths, boxes) {
   }
   for (const point of marks) {
     const mark = document.createElement("div");
-    mark.className = "point-mark";
-    mark.style.left = `${point.xPct}%`;
-    mark.style.top = `${point.yPct}%`;
-    const ring = document.createElement("div");
-    ring.className = "point-ring";
-    mark.appendChild(ring);
+    const boxed = Number(point.wPct) > 0 && Number(point.hPct) > 0;
+    const later = Boolean(point.later);
+    const done = Boolean(point.done);
+    mark.className = boxed ? "point-mark point-box" : "point-mark";
+    if (later) mark.classList.add("later");
+    if (done) mark.classList.add("done");
+    if (boxed) {
+      mark.style.left = `${point.leftPct}%`;
+      mark.style.top = `${point.topPct}%`;
+      mark.style.width = `${point.wPct}%`;
+      mark.style.height = `${point.hPct}%`;
+    } else {
+      mark.style.left = `${point.xPct}%`;
+      mark.style.top = `${point.yPct}%`;
+    }
+    if (!later && !done && !boxed) {
+      const ring = document.createElement("div");
+      ring.className = "point-ring";
+      mark.appendChild(ring);
+    }
+    if (boxed) {
+      const kind = point.face || overlayControlFace(point.label);
+      const face = document.createElement("div");
+      face.className = "point-face " + (kind === "field" ? "field" : kind === "button" ? "button" : "region");
+      face.textContent = point.caption || overlayControlCaption(point.label);
+      mark.appendChild(face);
+    }
     if (point.label) {
       const label = document.createElement("span");
       label.className = "point-label";
-      label.textContent = point.label;
+      label.textContent = String(point.label || "").slice(0, 40);
       mark.appendChild(label);
+    }
+    if (!later && !done && point.key) {
+      const kbd = document.createElement("span");
+      kbd.className = "point-key";
+      kbd.textContent = String(point.key).slice(0, 12);
+      mark.appendChild(kbd);
     }
     layer.appendChild(mark);
   }
-  // Both timers have to be cancellable: a new point set arriving during the
-  // 450ms fade would otherwise be wiped by the previous set's cleanup.
   clearTimeout(renderPoints._fadeTimer);
   clearTimeout(renderPoints._wipeTimer);
+  const hasInk = marks.length || strokes.length || trails.length || frames.length;
+  if (hold || !(ttl > 0) || !hasInk) return;
   renderPoints._fadeTimer = setTimeout(() => {
     layer.querySelectorAll(".point-mark, .point-line, .point-line-label, .point-box").forEach((el) => el.classList.add("fading"));
     renderPoints._wipeTimer = setTimeout(() => {

@@ -87,6 +87,35 @@ function rectToPct(rect, screen) {
   return { xPct, yPct };
 }
 
+/**
+ * Screen-pixel rect -> overlay box percents (top-left + size).
+ * Fully off-screen boxes are refused so we do not invent an edge highlight.
+ */
+function rectToBoxPct(rect, screen) {
+  if (!rect || !screen) return null;
+  const width = Number(screen.width);
+  const height = Number(screen.height);
+  if (!(width > 0) || !(height > 0)) return null;
+  const left = Number(rect.x) - (Number(screen.x) || 0);
+  const top = Number(rect.y) - (Number(screen.y) || 0);
+  const w = Number(rect.width);
+  const h = Number(rect.height);
+  if (!(w > 0) || !(h > 0) || !Number.isFinite(left) || !Number.isFinite(top)) return null;
+  let leftPct = (left / width) * 100;
+  let topPct = (top / height) * 100;
+  let wPct = (w / width) * 100;
+  let hPct = (h / height) * 100;
+  if (leftPct + wPct <= 0 || topPct + hPct <= 0 || leftPct >= 100 || topPct >= 100) return null;
+  const right = Math.min(100, leftPct + wPct);
+  const bottom = Math.min(100, topPct + hPct);
+  leftPct = Math.max(0, leftPct);
+  topPct = Math.max(0, topPct);
+  wPct = right - leftPct;
+  hPct = bottom - topPct;
+  if (wPct < 0.4 || hPct < 0.4) return null;
+  return { leftPct, topPct, wPct, hPct };
+}
+
 /** Smaller is more specific: a Button inside a Pane, not the Pane. */
 function area(candidate) {
   const r = candidate && candidate.rect;
@@ -203,6 +232,172 @@ async function findControl(label, opts = {}) {
   return { ...pct, via: "uia", name: best.candidate.name, score: best.score };
 }
 
+/**
+ * Dump the foreground tree. Same probe as findControl, no winner.
+ * Inject `run` so Linux tests never spawn PowerShell.
+ */
+async function listControls(opts = {}) {
+  if (typeof opts.run !== "function") return [];
+  let stdout;
+  try {
+    stdout = await opts.run(buildProbeScript(opts.label || ".", opts));
+  } catch {
+    return [];
+  }
+  return parseProbeOutput(stdout);
+}
+
+/** Overlay cap. A screen full of dots is not teaching. */
+const MAX_TEACH_POINTS = 8;
+
+function pointLabel(name) {
+  const clean = String(name || "")
+    .replace(/[\[\]]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 40);
+  return clean || "control";
+}
+
+function numberedLabel(name, index) {
+  const base = pointLabel(name);
+  if (!Number.isInteger(index) || index < 0) return base;
+  return `${index + 1} ${base}`.slice(0, 40);
+}
+
+function formatPointToken(pct, name, index) {
+  const x = Math.round(Number(pct.xPct) * 10) / 10;
+  const y = Math.round(Number(pct.yPct) * 10) / 10;
+  return `[POINT:${x},${y}:${numberedLabel(name, index)}]`;
+}
+
+function formatBoxToken(box, name, index) {
+  const l = Math.round(Number(box.leftPct) * 10) / 10;
+  const t = Math.round(Number(box.topPct) * 10) / 10;
+  const w = Math.round(Number(box.wPct) * 10) / 10;
+  const h = Math.round(Number(box.hPct) * 10) / 10;
+  return `[BOX:${l},${t},${w},${h}:${numberedLabel(name, index)}]`;
+}
+
+function interactivity(candidate) {
+  const t = String((candidate && candidate.controlType) || "");
+  if (t === "Button" || t === "Hyperlink" || t === "MenuItem" || t === "SplitButton") return 0;
+  if (
+    t === "Edit" ||
+    t === "CheckBox" ||
+    t === "RadioButton" ||
+    t === "ComboBox" ||
+    t === "TabItem" ||
+    t === "ListItem"
+  ) {
+    return 1;
+  }
+  return 2;
+}
+
+/** Lower is earlier in a teach walk. Save before Cancel. Never clicks. */
+function ctaRank(name) {
+  const n = String(name || "")
+    .replace(/&/g, "")
+    .trim()
+    .toLowerCase();
+  if (
+    /^(save|ok|okay|yes|next|continue|submit|send|done|apply|create|open|start|install|connect)$/.test(n)
+  ) {
+    return 0;
+  }
+  if (/^(cancel|close|no|back|skip|dismiss|not now|later)$/.test(n)) return 2;
+  return 1;
+}
+
+/** Fill fields, then the primary CTA, then dismiss. Never clicks. */
+function walkRank(candidate) {
+  const t = String((candidate && candidate.controlType) || "");
+  const cta = ctaRank(candidate && candidate.name);
+  if (t === "Edit" || t === "Document" || t === "ComboBox") return 0;
+  if (cta === 0) return 1;
+  if (cta === 2) return 3;
+  if (
+    t === "Button" ||
+    t === "Hyperlink" ||
+    t === "MenuItem" ||
+    t === "SplitButton" ||
+    t === "CheckBox" ||
+    t === "RadioButton" ||
+    t === "TabItem" ||
+    t === "ListItem"
+  ) {
+    return 2;
+  }
+  return 4;
+}
+
+/**
+ * Measured POINT tokens from a control tree. Never invents coordinates.
+ * Missing rect, missing screen, off-screen, or disabled => skipped.
+ */
+function pointControls(controls, screen, opts = {}) {
+  const maxRaw = Number(opts.max);
+  const max = Number.isFinite(maxRaw)
+    ? Math.min(MAX_TEACH_POINTS, Math.max(0, Math.floor(maxRaw)))
+    : MAX_TEACH_POINTS;
+  const want = String(opts.want || "").trim();
+  const list = Array.isArray(controls) ? controls : [];
+  const out = [];
+  const seen = new Set();
+
+  function add(candidate) {
+    if (!candidate || out.length >= max) return false;
+    if (candidate.enabled === false || candidate.offscreen === true) return false;
+    const pct = rectToPct(candidate.rect, screen);
+    if (!pct) return false;
+    const box = rectToBoxPct(candidate.rect, screen);
+    const key = `${pointLabel(candidate.name)}|${Math.round(pct.xPct)}|${Math.round(pct.yPct)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    out.push({
+      xPct: pct.xPct,
+      yPct: pct.yPct,
+      name: candidate.name,
+      controlType: candidate.controlType || "",
+      token: formatPointToken(pct, candidate.name),
+      boxToken: box ? formatBoxToken(box, candidate.name) : "",
+      leftPct: box ? box.leftPct : undefined,
+      topPct: box ? box.topPct : undefined,
+      wPct: box ? box.wPct : undefined,
+      hPct: box ? box.hPct : undefined,
+      via: "uia",
+    });
+    return true;
+  }
+
+  if (want) {
+    const best = chooseCandidate(want, list);
+    if (best) add(best.candidate);
+  }
+
+  const ranked = list.slice().sort((a, b) => {
+    const w = walkRank(a) - walkRank(b);
+    if (w) return w;
+    return area(a) - area(b);
+  });
+  for (const candidate of ranked) {
+    if (out.length >= max) break;
+    add(candidate);
+  }
+  out.forEach((p, i) => {
+    p.token = formatPointToken({ xPct: p.xPct, yPct: p.yPct }, p.name, i);
+    if (p.boxToken) {
+      p.boxToken = formatBoxToken(
+        { leftPct: p.leftPct, topPct: p.topPct, wPct: p.wPct, hPct: p.hPct },
+        p.name,
+        i
+      );
+    }
+  });
+  return out;
+}
+
 function listForegroundControls(candidates, opts = {}) {
   const max = Number(opts.max) > 0 ? Number(opts.max) : 40;
   const screenRect = opts.screen;
@@ -303,18 +498,26 @@ async function readSelection(opts = {}) {
 module.exports = {
   TARGET_CONTROL_TYPES,
   MAX_CANDIDATES,
+  MAX_TEACH_POINTS,
   MAX_SELECTION_CHARS,
   normalize,
   scoreCandidate,
   chooseCandidate,
   rectToPct,
+  rectToBoxPct,
   psLiteral,
+  formatBoxToken,
   buildProbeScript,
   parseProbeOutput,
   findControl,
+  listControls,
   listForegroundControls,
   dumpForeground,
   buildSelectionScript,
   parseSelectionOutput,
   readSelection,
+  pointControls,
+  formatPointToken,
+  ctaRank,
+  walkRank,
 };

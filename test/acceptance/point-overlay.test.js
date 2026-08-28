@@ -21,13 +21,13 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
   const tests = [
     T("a POINT token becomes a coordinate and leaves clean prose", async () => {
       const out = po.parsePoints("Click [POINT:42.1,31:Save] to keep your work.");
-      assert.deepStrictEqual(out.points, [{ xPct: 42.1, yPct: 31, label: "Save" }]);
+      assert.deepStrictEqual(out.points, [{ xPct: 42.1, yPct: 31, label: "Save", kind: "point" }]);
       assert.strictEqual(out.text, "Click Save to keep your work.");
     }),
 
     T("the label is optional", async () => {
       const out = po.parsePoints("Look here [POINT:10,20]");
-      assert.deepStrictEqual(out.points, [{ xPct: 10, yPct: 20, label: "" }]);
+      assert.deepStrictEqual(out.points, [{ xPct: 10, yPct: 20, label: "", kind: "point" }]);
       assert.strictEqual(out.text, "Look here");
     }),
 
@@ -127,6 +127,41 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.strictEqual(event.type, "point");
       assert.strictEqual(event.ttlMs, 1200);
       assert.strictEqual(po.toOverlayEvent("[POINT:50,50]").ttlMs, po.DEFAULT_TTL_MS);
+      const held = po.toOverlayEvent("[BOX:20,40,10,4:1 Save]", { hold: true });
+      assert.strictEqual(held.hold, true);
+      assert.strictEqual(held.ttlMs, 0);
+      assert.strictEqual(held.points[0].kind, "box");
+      const path = [
+        { now: true, later: false, leftPct: 5, topPct: 8, wPct: 20, hPct: 3, label: "1 Email", stroke: [{ x: 5, y: 8 }, { x: 25, y: 11 }] },
+        { now: false, later: true, leftPct: 20, topPct: 40, wPct: 10, hPct: 4, label: "2 Save", stroke: [{ x: 20, y: 40 }, { x: 30, y: 44 }] },
+      ];
+      const walked = po.toOverlayEvent("[BOX:5,8,20,3:1 Email]", { hold: true, path });
+      assert.strictEqual(walked.hold, true);
+      assert.ok(walked.points.some((p) => p.later && /Save/.test(p.label)));
+      assert.ok(walked.points.some((p) => !p.later && !p.done && /Email/.test(p.label)));
+      assert.ok(!walked.points.some((p) => p.later && /Email/.test(p.label)));
+      assert.ok(walked.points.some((p) => p.later && Array.isArray(p.stroke) && p.stroke.length >= 2));
+      assert.ok(walked.points.some((p) => !p.later && !p.done && Array.isArray(p.stroke) && p.stroke.length >= 2));
+      const acted = po.toOverlayEvent("[BOX:5,8,20,3:1 Email]", {
+        hold: true,
+        cue: "1 of 2 Type in Email then Tab",
+        path: [
+          { now: true, cue: "Type in Email then Tab", key: "Tab", leftPct: 5, topPct: 8, wPct: 20, hPct: 3, label: "1 Email" },
+          { now: false, later: true, leftPct: 20, topPct: 40, wPct: 10, hPct: 4, label: "2 Save" },
+        ],
+      });
+      assert.ok(acted.points.some((p) => !p.later && !p.done && p.label === "Type in Email then Tab"));
+      assert.ok(acted.points.some((p) => !p.later && !p.done && p.key === "Tab"));
+      assert.ok(acted.points.some((p) => !p.later && !p.done && p.face === "field" && p.caption === "Email"));
+      assert.ok(acted.points.some((p) => p.later && p.label === "2 Save"));
+      assert.ok(acted.points.some((p) => p.later && p.face === "button" && p.caption === "Save"));
+      assert.strictEqual(po.overlayActionLabel("1 of 3 Click Save or press Enter", ""), "Click Save or press Enter");
+      assert.strictEqual(po.overlayControlFace("Type in Email then Tab"), "field");
+      assert.strictEqual(po.overlayControlCaption("1 of 2 Type in Email then Tab"), "Email");
+      assert.strictEqual(po.overlayControlFace("2 Save"), "button");
+      assert.strictEqual(po.overlayControlCaption("2 Save"), "Save");
+      assert.strictEqual(po.overlayControlFace("Look at region 1"), "region");
+      assert.strictEqual(po.parsePoints("[BOX:5,8,20,3:1 Email]").points[0].label, "1 Email");
     }),
 
     T("raw tokens never reach the user's chat", async () => {
@@ -136,6 +171,26 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(!out.text.includes("[POINT"), out.text);
     }),
 
+    T("a BOX token becomes a measured highlight and leaves clean prose", async () => {
+      const out = po.parsePoints("Aim [BOX:20,40,10,4:Save] now.");
+      assert.strictEqual(out.points.length, 1);
+      assert.strictEqual(out.points[0].kind, "box");
+      assert.strictEqual(out.points[0].leftPct, 20);
+      assert.strictEqual(out.points[0].topPct, 40);
+      assert.strictEqual(out.points[0].wPct, 10);
+      assert.strictEqual(out.points[0].hPct, 4);
+      assert.strictEqual(out.points[0].xPct, 25);
+      assert.strictEqual(out.points[0].yPct, 42);
+      assert.strictEqual(out.text, "Aim Save now.");
+      assert.strictEqual(po.hasPoints("[BOX:1,2,3,4:x]"), true);
+    }),
+
+    T("off-screen boxes are dropped", async () => {
+      const out = po.parsePoints("Try [BOX:180,20,10,4:Save] and [BOX:-5,10,10,4:Cancel].");
+      assert.deepStrictEqual(out.points, []);
+      assert.strictEqual(out.dropped, 2);
+    }),
+
     T("the overlay is not a companion and cannot eat clicks", async () => {
       const css = read("electron/hud.css");
       const html = read("electron/hud.html");
@@ -143,6 +198,10 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(
         /\.point-layer\s*\{[^}]*pointer-events:\s*none/.test(css),
         "the teach layer must never intercept the click it is pointing at"
+      );
+      assert.ok(
+        /\.point-mark\.point-box[\s\S]{0,400}pointer-events:\s*none/.test(css),
+        "a measured box must not eat the click it is highlighting"
       );
       // The floating Clicky chrome was removed on purpose — do not grow it back.
       assert.ok(
@@ -154,6 +213,34 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
           !/class="[^"]*point-layer[^"]*chrome/.test(html),
         "the point layer must not be .chrome"
       );
+      const walk = read("electron/teach-overlay.html");
+      assert.ok(/pointer-events:\s*none/.test(walk), "the screen walk must not eat clicks");
+      assert.ok(/id="walk-draw"/.test(walk) && />Draw</.test(walk), "overlay can stack a drawn BOX");
+      assert.ok(/id="draw-stroke"/.test(walk), "overlay paints the freehand stroke");
+      assert.ok(/id="walk-ink"/.test(walk), "overlay keeps stored freehand ink");
+      assert.ok(/paintWalkInk/.test(walk), "stored ink is SVG, not innerHTML");
+      assert.ok(/createElementNS/.test(walk), "stroke is SVG, not innerHTML");
+      assert.ok(/teach-overlay:frame/.test(walk), "drawn overlay boxes POST a region, never Act");
+      assert.ok(/Got it/.test(walk) && /data-q="got it, next"/.test(walk), "Got it Asks, never Acts");
+      assert.ok(/Then:/.test(walk), "Then remaining stays on the overlay");
+      assert.ok(/\\d\+\\s\+of\\s\+\\d\+/.test(walk), "overlay chrome strips N of M from the action");
+      assert.ok(/i clicked/.test(walk), "demo click on the current BOX Asks, never Acts");
+      assert.ok(/html\.demo, html\.demo body/.test(walk), "demo overlay can receive a click on the current BOX");
+      assert.ok(/point-key/.test(walk), "current overlay box can show Tab/Enter");
+      assert.ok(/point-face/.test(walk) && /\.point-face\.field/.test(walk), "overlay paints field faces at measured percents");
+      assert.ok(/Type in Email/.test(walk) && /Click Save/.test(walk), "demo walk is Email then Save, not hollow regions");
+      const hudJs = read("electron/hud.js");
+      assert.ok(/point-face/.test(hudJs) && /overlayControlFace/.test(hudJs), "HUD paints the same control faces");
+      const hudCss = read("electron/hud.css");
+      assert.ok(/\.point-face\.field/.test(hudCss) && /\.point-face\.button/.test(hudCss), "HUD CSS paints field and button faces");
+      assert.ok(!/innerHTML/.test(walk), "the walk paints with createElement");
+      assert.ok(
+        !/id="clicky-orb"|class="clicky-orb"|stage-orb|chat-bubble/.test(walk),
+        "the screen walk is boxes, not a buddy"
+      );
+      const main = read("electron/main.js");
+      assert.ok(main.includes("sendTeachOverlay"), "held BOX walks also paint on the display overlay");
+      assert.ok(/setIgnoreMouseEvents\(true/.test(main), "the display overlay is click-through");
     }),
   ];
 

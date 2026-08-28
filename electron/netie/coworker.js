@@ -4,6 +4,7 @@
  */
 const fs = require("fs");
 const path = require("path");
+const { pickDesk, deskGrounding } = require("./coworker-desks");
 
 const STATUS_CANDIDATES = Object.freeze([
   path.join("D:", "Cortex", "STATUS.md"),
@@ -54,19 +55,21 @@ function readStatusSnippet(maxChars) {
   return null;
 }
 
-function plannerGrounding(instruction) {
+function plannerGrounding(instruction, opts = {}) {
   const t = String(instruction || "").toLowerCase();
   const wantsStatus =
     /\bstatus\.md\b/.test(t) ||
     /\b(project|govern|lane|milestone|continue)\b/.test(t) ||
     /\bcortex\b/.test(t);
   const status = wantsStatus ? readStatusSnippet(1800) : readStatusSnippet(900);
+  const desk = pickDesk(instruction, { mode: opts.mode });
   const parts = [];
   if (status) {
     parts.push(
       "Project STATUS.md (" + status.path + ") - prefer citing this over inventing state:\n" + status.text
     );
   }
+  parts.push(deskGrounding(desk));
   parts.push(
     [
       "Coworker rules:",
@@ -76,6 +79,7 @@ function plannerGrounding(instruction) {
       "4. If Cursor context looks full (token circle), open a new chat and continue with @ past chats / STATUS.md.",
       "5. Expand hidden panels like a human - Window menu, enable, expand.",
       "6. Word documents: word_docx_write (or word_from_clipboard for a selection). Do not click the Word UI.",
+      "7. Online host is an artifact catalog. workspace.exec is refused (P-06).",
     ].join("\n")
   );
   return parts.join("\n\n");

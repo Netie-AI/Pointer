@@ -12,13 +12,23 @@
     <nav>
       <a href="/">home</a>
       <a href="/today">today</a>
+      <a href="/meeting">meeting</a>
+      <a href="/teach">teach</a>
+      <a href="/security">security</a>
+      <a href="/document">document</a>
+      <a href="/inbox">inbox</a>
       <a href="/lanes">lanes</a>
       <a href="/skills">skills</a>
+      <a href="/workspace">workspace</a>
     </nav>
   </header>
   <main>
     <p>Search hits first. A miss is a hint draft, never an executable action list.</p>
-    <pre id="state">loading...</pre>
+    <p id="policy" class="muted">loading...</p>
+    <h2>Hits</h2>
+    <ul id="hits"></ul>
+    <h2>Hint drafts</h2>
+    <ul id="drafts"></ul>
   </main>
   <script src="app.js"></script>
 </body>

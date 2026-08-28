@@ -1,8 +1,11 @@
 "use strict";
 /**
- * First-party MCP-shaped JSON-RPC for the coordinator (DR-0004).
+ * First-party MCP-shaped JSON-RPC for the coordinator (DR-0004 / DR-0005).
  * Unknown methods refuse. Third-party MCP servers are still P-05 / P16.
+ * workspace.exec is a named refusal - it is not a runtime.
  */
+
+const { catalog, pickDesk, teachAssist, securityAssist, sessionBundle, advanceLiveTeach, frameLiveTeach, askLiveCoworker, askHostCoworker, teachWalkPath } = require("./coworker-desks");
 
 const TOOLS = Object.freeze([
   "tools.list",
@@ -16,6 +19,22 @@ const TOOLS = Object.freeze([
   "computer.act",
   "computer.scribe",
   "computer.meeting_assist",
+  "desks.list",
+  "desks.pick",
+  "desks.ask",
+  "teach.point",
+  "teach.live",
+  "today.brief",
+  "meeting.live",
+  "security.review",
+  "security.live",
+  "inbox.live",
+  "document.live",
+  "session.live",
+  "workspace.list",
+  "workspace.get",
+  "workspace.put",
+  "workspace.exec",
 ]);
 
 const CATALOG = Object.freeze([
@@ -120,6 +139,86 @@ const CATALOG = Object.freeze([
       },
     },
   },
+  {
+    name: "desks.list",
+    description: "List coworker desks. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "desks.pick",
+    description: "Pick a desk from a goal. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "desks.ask",
+    description: "Ask the open coworker file. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "teach.point",
+    description: "Measured teach points. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "teach.live",
+    description: "Live teach walk. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "today.brief",
+    description: "Today plate. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "meeting.live",
+    description: "Live meeting notes. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "security.review",
+    description: "Security review draft. Never approve.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "security.live",
+    description: "Live Needs you file. Never approve.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "inbox.live",
+    description: "Live unsent mail. Never send.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "document.live",
+    description: "Live Notes file. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "session.live",
+    description: "This session bundle. Never Act.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "workspace.list",
+    description: "List workspace artifacts. Never exec.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "workspace.get",
+    description: "Read one workspace artifact. Never exec.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "workspace.put",
+    description: "Store a workspace artifact. Never exec.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "workspace.exec",
+    description: "Named refusal: workspace has no runtime (P-06).",
+    inputSchema: { type: "object", properties: {} },
+  }
 ]);
 
 function rpcResult(id, result) {
@@ -159,6 +258,7 @@ function createMcpAbi(opts = {}) {
       return rpcError(id, -32601, `unknown tool: ${method || "(empty)"}`);
     }
     const coord = ctx.coordinator;
+    const workspace = (coord && coord.workspace) || opts.workspace;
     try {
       if (method === "tools.list") return rpcResult(id, { tools: TOOLS.slice(), catalog: CATALOG.slice() });
       if (method === "lanes.list") {
@@ -226,6 +326,108 @@ function createMcpAbi(opts = {}) {
           params,
           ctx
         );
+      }
+      if (method === "desks.list") return rpcResult(id, { desks: catalog() });
+      if (method === "desks.pick") {
+        const desk = pickDesk(params.goal || params.text || "", { mode: params.mode });
+        return rpcResult(id, { desk: { id: desk.id, label: desk.label, act: desk.act } });
+      }
+      if (method === "desks.ask") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        const ask = String(params.ask || params.text || params.goal || "").trim();
+        const sourceId = String(params.id || params.sourceId || "").trim();
+        const out = askHostCoworker(workspace, ask, sourceId ? { sourceId } : undefined);
+        return rpcResult(id, { ...out, live: undefined, act: false, exec: false });
+      }
+      if (method === "teach.point") {
+        const assist = teachAssist({
+          text: params.text || params.goal || "walk me through this on my screen",
+          controls: params.controls,
+          screen: params.screen,
+        });
+        return rpcResult(id, { ...assist, act: false, exec: false });
+      }
+      if (method === "today.brief") {
+        if (!coord) return rpcError(id, -32000, "coordinator missing");
+        const assist = coord.brief();
+        return rpcResult(id, { ...assist, act: false, exec: false });
+      }
+      if (method === "meeting.live") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        const ask = String(params.ask || params.text || "").trim();
+        if (ask) {
+          const out = askLiveCoworker(workspace, ask);
+          return rpcResult(id, { ...out, live: undefined, act: false, exec: false });
+        }
+        const got = workspace.get("live-meeting");
+        const artifact = got.ok ? Object.assign({}, got.artifact) : null;
+        if (artifact) delete artifact.live;
+        return rpcResult(id, { ...got, artifact, act: false, exec: false });
+      }
+      if (method === "teach.live") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        const frame = params.region || params.frame;
+        if (frame && typeof frame === "object") {
+          const drawn = frameLiveTeach(workspace, frame);
+          return rpcResult(id, { ...drawn, live: undefined, act: false, exec: false });
+        }
+        const ask = String(params.ask || params.text || "").trim();
+        if (ask) {
+          const out = advanceLiveTeach(workspace, ask);
+          return rpcResult(id, { ...out, live: undefined, act: false, exec: false });
+        }
+        const got = workspace.get("live-teach");
+        const artifact = got.ok ? Object.assign({}, got.artifact) : null;
+        const path = got.ok ? teachWalkPath(got.artifact.live) : [];
+        if (artifact) delete artifact.live;
+        return rpcResult(id, { ...got, artifact, path, act: false, exec: false });
+      }
+      if (method === "security.review") {
+        const assist = securityAssist({
+          text: params.text || params.goal || "security review",
+          files: params.files,
+        });
+        return rpcResult(id, { ...assist, act: false, exec: false });
+      }
+      if (method === "security.live") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        const got = workspace.get("live-security");
+        return rpcResult(id, { ...got, act: false, exec: false });
+      }
+      if (method === "inbox.live") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        const got = workspace.get("live-inbox");
+        return rpcResult(id, { ...got, act: false, exec: false });
+      }
+      if (method === "document.live") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        const got = workspace.get("live-document");
+        return rpcResult(id, { ...got, act: false, exec: false });
+      }
+      if (method === "session.live") {
+        if (!coord) return rpcError(id, -32000, "coordinator missing");
+        const assist = coord.brief();
+        const bundle = sessionBundle(coord.workspace.list(), assist && assist.cue);
+        return rpcResult(id, { ...bundle, act: false, exec: false });
+      }
+      if (method === "workspace.list") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        return rpcResult(id, { artifacts: workspace.list(), exec: false });
+      }
+      if (method === "workspace.get") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        const got = workspace.get(params.id);
+        return rpcResult(id, { ...got, exec: false, act: false });
+      }
+      if (method === "workspace.put") {
+        if (!workspace) return rpcError(id, -32000, "workspace missing");
+        return rpcResult(id, workspace.put(params));
+      }
+      if (method === "workspace.exec") {
+        const refused = workspace
+          ? workspace.exec(params)
+          : { ok: false, exec: false, reason: "workspace has no runtime; Act stays on the laptop (P-06)" };
+        return rpcError(id, -32600, refused.reason);
       }
       return rpcError(id, -32601, `unknown tool: ${method}`);
     } catch (err) {

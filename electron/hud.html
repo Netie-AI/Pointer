@@ -35,6 +35,13 @@
           <button type="button" data-mode="scribe">Scribe</button>
           <button type="button" data-mode="meeting">Meeting</button>
         </div>
+        <div class="top-cluster mode-pill desk-pill" id="desk-pill">
+          <button type="button" data-desk="teach" data-q="walk me through this on my screen">Teach</button>
+          <button type="button" data-desk="meeting" data-q="recap this meeting" data-autoask="1">Meeting</button>
+          <button type="button" data-desk="today" data-q="what's on my plate" data-autoask="1">Today</button>
+          <button type="button" data-desk="document" data-q="write in Word ">Doc</button>
+          <button type="button" data-desk="security" data-q="security review this session" data-autoask="1">Security</button>
+        </div>
         <div class="top-cluster top-actions">
           <button type="button" class="ask-pill" id="btn-chat-toggle" title="Ask AI">
             <span>Ask AI</span>
@@ -138,8 +145,8 @@
               <label>Visible to screen capture (on by default) <input type="checkbox" id="set-capture-visible" /></label>
               <div class="menu-actions">
                 <button type="button" id="btn-canvas">History</button>
-                <button type="button" id="btn-frame">Frame</button>
-                <button type="button" id="btn-frame-top">Frame region</button>
+                <button type="button" id="btn-frame">Walk region</button>
+                <button type="button" id="btn-frame-top">Walk region</button>
                 <button type="button" id="btn-affirm">Affirm</button>
                 <button type="button" id="btn-space">Space</button>
                 <button type="button" id="btn-demo-debug">Debug shots</button>
@@ -157,6 +164,20 @@
       <div class="suggest-strip glass chrome" id="suggest-strip" hidden>
         <span class="suggest-kicker">Say</span>
         <span class="suggest-text" id="suggest-text"></span>
+      </div>
+      <div class="live-cue-bar chrome" id="live-cue-bar" hidden>
+        <p class="live-cue-asked" id="live-cue-asked" hidden></p>
+        <p class="live-cue-them" id="live-cue-them" hidden></p>
+        <p class="live-cue-you" id="live-cue-you" hidden></p>
+        <div class="live-cue-captions" id="live-cue-captions" hidden></div>
+        <p class="live-cue-text" id="live-cue-text"></p>
+        <p class="live-cue-also" id="live-cue-also" hidden></p>
+        <p class="live-cue-avoid" id="live-cue-avoid" hidden></p>
+        <div class="live-cue-actions">
+          <button type="button" class="text-btn cue-advance" id="btn-live-back" data-q="back" hidden>Back</button>
+          <button type="button" class="text-btn cue-advance" id="btn-live-next" data-q="got it, next" hidden>Got it</button>
+          <button type="button" class="text-btn" id="btn-live-copy" hidden>Copy</button>
+        </div>
       </div>
 
       <div class="subtitle-live glass chrome" id="subtitle-bar" hidden aria-hidden="true">
@@ -193,6 +214,18 @@
         <div id="insight-ai-view">
           <div class="section-label" id="insight-topic">Discussion</div>
           <p class="insight-summary" id="insight-summary">Listening for speech or a typed request.</p>
+          <div class="section-label" id="coworker-brief-meta" hidden>Meeting coworker</div>
+          <p class="meeting-asked" id="meeting-asked" hidden></p>
+          <p class="meeting-cue" id="meeting-cue" hidden></p>
+          <p class="meeting-also" id="meeting-also" hidden></p>
+          <p class="meeting-avoid" id="meeting-avoid" hidden></p>
+          <div class="cue-row" id="cue-row" hidden>
+            <button type="button" class="text-btn cue-advance" id="btn-teach-back" data-q="back" hidden>Back</button>
+            <button type="button" class="text-btn cue-advance" id="btn-teach-next" data-q="got it, next" hidden>Got it</button>
+            <button type="button" class="text-btn" id="btn-copy-cue" hidden>Copy say-this</button>
+          </div>
+          <ol class="meeting-talk" id="meeting-talk" hidden></ol>
+          <pre class="coworker-brief" id="coworker-brief" hidden></pre>
           <div class="section-label">Suggest</div>
           <div class="quick-actions" id="insight-actions">
             <button type="button" data-q="Summarize what I am looking at"><span class="q-ico">✦</span> Summarize screen</button>
@@ -230,7 +263,7 @@
           <div class="command-bar-tools" id="command-bar-tools">
             <button type="button" class="text-btn" data-cmd="attach" title="Attach files">Attach</button>
             <button type="button" class="text-btn" data-cmd="apps" title="Active apps">Apps</button>
-            <button type="button" class="text-btn" data-cmd="shots" title="Screenshots">Shots</button>
+            <button type="button" class="text-btn" data-cmd="walk" title="Walk this region">Walk</button>
             <button type="button" class="text-btn" data-cmd="clipboard" title="Clipboard history">Clipboard</button>
             <input type="file" id="file-attach" hidden multiple />
             <div class="file-chips" id="file-chips"></div>

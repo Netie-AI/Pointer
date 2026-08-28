@@ -17,6 +17,7 @@ const {
   ipcMain,
   shell,
   dialog,
+  clipboard,
 } = require("electron");
 const fs = require("fs");
 const os = require("os");
@@ -28,7 +29,7 @@ const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
 const { ensureActionCoords, hasScreenPoint } = require("./netie/targeting");
-const { dumpForeground, readSelection } = require("./netie/uia");
+const { dumpForeground, readSelection, listControls } = require("./netie/uia");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
@@ -117,6 +118,7 @@ function runUiaProbe(script) {
 
 /** UIA context for ensureActionCoords, or null when it cannot help. */
 function uiaContext(region) {
+  if (process.platform !== "win32") return null;
   if (!UIA_ENABLED || uiaFailures >= 3) return null;
   if (driver.dryRun) return null; // never spawn a probe in a dry run
   if (!region || !region.width) return null;
@@ -147,6 +149,52 @@ async function copySelectionText() {
     return "";
   }
 }
+
+/** Capture region, or the display under the cursor. Teach needs percents. */
+function teachScreenRegion() {
+  if (lastCapture && lastCapture.region && Number(lastCapture.region.width) > 0) {
+    return lastCapture.region;
+  }
+  return teachDisplayBounds();
+}
+
+function teachDisplayBounds() {
+  try {
+    const bounds = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).bounds;
+    if (bounds && Number(bounds.width) > 0) {
+      return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+    }
+  } catch {
+    /* tests / no display */
+  }
+  return null;
+}
+
+/**
+ * Measured controls for Teach. Empty on Linux, dry-run, or UIA stand-down.
+ * Overlay percents are of the display (HUD is fullscreen). Probe stays in the
+ * framed crop. Never clicks. A failed probe is "no points", not invented coords.
+ */
+async function measureTeachControls() {
+  const region = teachScreenRegion();
+  const display = teachDisplayBounds();
+  const overlayScreen = display || region;
+  const framed = Boolean(
+    lastCapture &&
+      lastCapture.region &&
+      display &&
+      (Number(region.width) < Number(display.width) - 16 ||
+        Number(region.height) < Number(display.height) - 16)
+  );
+  const ctx = uiaContext(region);
+  if (!ctx) return { controls: [], screen: overlayScreen, region, framed: framed };
+  try {
+    const controls = await listControls(ctx);
+    return { controls, screen: overlayScreen, region, framed: framed };
+  } catch {
+    return { controls: [], screen: overlayScreen, region, framed: framed };
+  }
+}
 const {
   MAX_REPLANS,
   shouldReplan,
@@ -162,6 +210,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
+const { pickDesk, meetingAssist, enrichMeetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, spawnFollowOns, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock, nextTeachStep, teachAdvance, FRAME_TEACH_TEXT, shouldTeachFramedRegion, frameLiveTeach, advanceLiveTeach, canAdvanceTeach, teachActionCue } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -478,6 +527,7 @@ try {
 let tray = null;
 let panelWindow = null;
 let overlayWindow = null;
+let teachOverlayWindow = null;
 let stageWindow = null;
 let hudWindow = null;
 let overlayDisplayBounds = null; // bounds of the display the overlay covers
@@ -580,6 +630,211 @@ let scribeSession = { gated: false };
 /** Cluely-class live meeting suggest debounce. */
 let meetingSuggestTimer = null;
 const meetingSuggestState = { lastAt: 0, lastNotes: "", inFlight: false };
+const LIVE_HEARD_MAX = 40;
+const liveHeard = [];
+function rememberHeard(source, text) {
+  const t = String(text || "").trim();
+  if (!t) return;
+  liveHeard.push({ t: Date.now(), source: source === "system" ? "system" : "mic", text: t.slice(0, 500) });
+  if (liveHeard.length > LIVE_HEARD_MAX) liveHeard.splice(0, liveHeard.length - LIVE_HEARD_MAX);
+}
+function heardTranscript(extra) {
+  const extraText = String(extra || "").trim();
+  const ring = liveHeard.map((row) => `${row.source}: ${row.text}`).join("\n");
+  return extraText && extraText !== ring ? `${ring}\n${extraText}`.trim() : ring;
+}
+function publishBrief(assist) {
+  if (!assist || !assist.ok || !assist.deliverable) return null;
+  try {
+    return liveCoordinator.workspace.put({
+      id: assist.id,
+      kind: assist.kind || "brief",
+      title: assist.title || assist.desk || "brief",
+      desk: assist.desk || "teach",
+      body: assist.deliverable,
+      cue: assist.cue || "",
+      asked: assist.asked || "",
+      rest: assist.rest || "",
+      heard: assist.heard || "",
+      notes: Boolean(assist.notes),
+      also: assist.also || "",
+      avoid: assist.avoid || "",
+      preview: assist.preview || "",
+      findings: Array.isArray(assist.findings) ? assist.findings : [],
+      live: assist.live,
+    });
+  } catch {
+    return null;
+  }
+}
+function publishSuggests(assist) {
+  const items = suggestsFromAssist(assist);
+  if (!items.length) return;
+  sendHud({ type: "suggests", items });
+}
+function meetingEnrichOpts() {
+  return {
+    fetch: typeof fetch === "function" ? fetch.bind(globalThis) : undefined,
+    url: process.env.NETIE_OPENVAULT_URL || `http://127.0.0.1:${OPENVAULT_PORT}`,
+    timeoutMs: 300,
+  };
+}
+function queueMeetingEnrich(assist) {
+  if (!assist || !assist.ok || assist.act || assist.desk !== "meeting") return;
+  if (!assist.asked) return;
+  void enrichMeetingAssist(assist, meetingEnrichOpts()).then((next) => {
+    if (!next || !next.enriched || next.act || next.cue === assist.cue) return;
+    publishLiveCoworker(next);
+  });
+}
+const liveMeetingPump = createLiveMeetingPump({
+  delayMs: 900,
+  enrich: (assist) => enrichMeetingAssist(assist, meetingEnrichOpts()),
+});
+const liveTeachPump = createLiveTeachPump({ delayMs: 1500 });
+const standingClock = createBriefClock({ delayMs: 30000 });
+let teachStep = 0;
+let teachLive = false;
+function resetTeachWalk() {
+  teachStep = 0;
+  teachLive = false;
+  liveTeachPump.reset();
+  sendHud({ type: "point", points: [], ttlMs: 1, hold: false });
+  sendTeachOverlay({ type: "point", points: [], ttlMs: 1, hold: false });
+}
+function noteTeachStep(text) {
+  if (appMode === "meeting" || appMode === "transcribe") return;
+  if (pickDesk(text, { mode: appMode }).id !== "teach") return;
+  teachStep = nextTeachStep(text, teachStep, teachLive);
+}
+function armTeachWalk(text) {
+  teachLive = true;
+  const adv = teachAdvance(text);
+  liveTeachPump.start({
+    text: adv ? "walk me through this on my screen" : text,
+    step: teachStep,
+    measure: measureTeachControls,
+    onAssist: publishTeachOverlay,
+  });
+}
+function publishLiveCoworker(assist) {
+  if (!assist || !assist.ok || assist.act || !assist.deliverable) return;
+  publishBrief(assist);
+  publishSuggests(assist);
+  sendHudQuiet({
+    type: "live-brief",
+    desk: assist.desk || "coworker",
+    act: false,
+    text: assist.deliverable,
+    cue: assist.cue || "",
+    asked: assist.asked || "",
+    rest: assist.rest || "",
+    heard: assist.heard || "",
+    turns: Array.isArray(assist.turns) ? assist.turns.slice(0, 12) : [],
+    also: assist.also || "",
+    avoid: assist.avoid || "",
+    cueKind:
+      assist.cueKind ||
+      (assist.desk === "teach" ? "point" : assist.desk === "security" ? "warn" : "say"),
+  });
+  const kind =
+    assist.cueKind ||
+    (assist.desk === "teach" ? "point" : assist.desk === "security" ? "warn" : "say");
+  const line =
+    kind === "point" && assist.cue
+      ? teachActionCue(assist) || assist.cue
+      : kind === "warn" && assist.cue
+        ? `Review: ${assist.cue}`
+        : assist.asked
+          ? `They asked: ${assist.asked}`
+          : assist.heard
+            ? `Heard: ${assist.heard}`
+            : assist.desk === "today" && assist.cue
+            ? `Plate: ${assist.cue}`
+            : assist.cue || "";
+  if (line) sendHudQuiet({ type: "insight", text: line.slice(0, 240) });
+}
+function publishTeachOverlay(assist) {
+  if (!assist || !assist.ok || assist.act) return;
+  publishLiveCoworker(assist);
+  const pointed = parsePoints(assist.deliverable);
+  if (pointed.points.length) {
+    publishPointOverlay(assist.deliverable, {
+      hold: true,
+      path: assist.path,
+      cue: teachActionCue(assist) || assist.cue,
+      rest: assist.rest,
+    });
+  }
+}
+function publishLiveMeeting(assist) {
+  publishLiveCoworker(assist);
+}
+function localMeetingReply(message, extraTranscript, extra) {
+  const desk = pickDesk(message, { mode: appMode });
+  const wantsMeeting =
+    desk.id === "meeting" || appMode === "meeting" || appMode === "transcribe";
+  if (wantsMeeting) {
+    const assist = meetingAssist({
+      transcript: heardTranscript(extraTranscript),
+      question: message,
+    });
+    if (!assist.ok) {
+      const q = String(message || "").toLowerCase();
+      if (/\b(recap|what should i say|assist|next steps?|action item)\b/.test(q)) return assist;
+      return null;
+    }
+    if (!assist.skipLlm) return null;
+    publishLiveCoworker(assist);
+    queueMeetingEnrich(assist);
+    return assist;
+  }
+  if (desk.id === "security") {
+    const assist = securityAssist({ text: message, files: sessionScanFiles() });
+    if (!assist.ok || !assist.skipLlm) return assist.ok ? null : assist;
+    publishLiveCoworker(assist);
+    return assist;
+  }
+  if (desk.id === "inbox") {
+    const assist = inboxAssist({ text: message, transcript: heardTranscript(extraTranscript) });
+    if (!assist.ok || !assist.skipLlm) return assist.ok ? null : assist;
+    publishLiveCoworker(assist);
+    return assist;
+  }
+  if (desk.id === "today") {
+    const assist = todayAssist({ state: sessionCoworkerState(), question: message });
+    if (!assist.ok || !assist.skipLlm) return assist.ok ? null : assist;
+    publishLiveCoworker(assist);
+    return assist;
+  }
+  if (desk.id === "document") {
+    const assist = documentAssist({
+      text: message,
+      source: liveArtifactBody("live-meeting") || liveArtifactBody("standing-today"),
+    });
+    if (!assist.ok || !assist.skipLlm) {
+      if (assist.ok) publishBrief(assist);
+      return assist.ok ? null : assist;
+    }
+    publishLiveCoworker(assist);
+    return assist;
+  }
+  if (desk.id === "teach") {
+    const assist = teachAssist({
+      text: message,
+      controls: extra && extra.controls,
+      screen: extra && extra.screen,
+      step: teachStep,
+      live: teachLive,
+    });
+    if (assist.ok) {
+      publishLiveCoworker(assist);
+      if (assist.skipLlm) return assist;
+    }
+    return null;
+  }
+  return null;
+}
 let sttChild = null;
 let canvasWindow = null;
 let cursorTrackTimer = null;
@@ -808,6 +1063,10 @@ function applyAppMode(modeId, { reason = "" } = {}) {
   const prev = appMode;
   appMode = getMode(modeId).id;
   const spec = getMode(appMode);
+  if (appMode !== "meeting" && appMode !== "transcribe") {
+    liveMeetingPump.reset();
+  }
+  resetTeachWalk();
   if (spec.autoNotes && (!notes.file || prev !== appMode)) {
     const started = notes.start(appMode);
     try {
@@ -1000,6 +1259,7 @@ function hideHud() {
   // desktop. Anything that draws must be hidden here.
   hideStage();
   if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.hide();
+  // Teach BOX overlay stays click-through on the display until resetTeachWalk.
 }
 
 /** Push HUD events only when the overlay is already open — never force-pop. */
@@ -1136,7 +1396,7 @@ function applyAutostart() {
 
 function applyContentProtection(visible) {
   const protect = !visible;
-  for (const win of [hudWindow, stageWindow, panelWindow, overlayWindow]) {
+  for (const win of [hudWindow, stageWindow, panelWindow, overlayWindow, teachOverlayWindow]) {
     if (win && !win.isDestroyed()) {
       try {
         win.setContentProtection(protect);
@@ -1364,8 +1624,108 @@ function closeOverlay() {
   overlayWindow = null;
 }
 
-function openOverlay() {
+function closeTeachOverlay() {
+  if (teachOverlayWindow && !teachOverlayWindow.isDestroyed()) {
+    teachOverlayWindow.close();
+  }
+  teachOverlayWindow = null;
+}
+
+/**
+ * Click-through BOX walk on the display (Clicky-shaped, original).
+ * Not a buddy, not a ring, never Act. Stays up when HUD hides.
+ */
+function teachOverlayBounds() {
+  if (overlayDisplayBounds && Number(overlayDisplayBounds.width) > 0) {
+    return overlayDisplayBounds;
+  }
+  try {
+    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+    return display && display.bounds ? display.bounds : { x: 0, y: 0, width: 1280, height: 720 };
+  } catch {
+    return { x: 0, y: 0, width: 1280, height: 720 };
+  }
+}
+
+function ensureTeachOverlay() {
+  if (teachOverlayWindow && !teachOverlayWindow.isDestroyed()) {
+    return Promise.resolve(teachOverlayWindow);
+  }
+  const { x, y, width, height } = teachOverlayBounds();
+  teachOverlayWindow = new BrowserWindow({
+    x,
+    y,
+    width,
+    height,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    hasShadow: false,
+    focusable: false,
+    show: true,
+    backgroundColor: "#00000000",
+    webPreferences: {
+      preload: path.join(__dirname, "teach-overlay-preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  teachOverlayWindow.setAlwaysOnTop(true, "screen-saver");
+  try {
+    teachOverlayWindow.setIgnoreMouseEvents(true, { forward: true });
+  } catch {
+    teachOverlayWindow.setIgnoreMouseEvents(true);
+  }
+  applyContentProtection(captureVisible());
+  const win = teachOverlayWindow;
+  win.on("closed", () => {
+    if (teachOverlayWindow === win) teachOverlayWindow = null;
+  });
+  return new Promise((resolve) => {
+    win.webContents.once("did-finish-load", () => resolve(win));
+    win.loadFile(path.join(__dirname, "teach-overlay.html"));
+  });
+}
+
+function sendTeachOverlay(event) {
+  const points = event && Array.isArray(event.points) ? event.points : [];
+  if (!points.length) {
+    closeTeachOverlay();
+    return;
+  }
+  void ensureTeachOverlay().then((win) => {
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send("teach-overlay:point", {
+      type: "point",
+      points,
+      hold: Boolean(event && event.hold),
+      ttlMs: Number(event && event.ttlMs) || 0,
+      cue: String((event && event.cue) || "").slice(0, 240),
+      rest: String((event && event.rest) || "").slice(0, 160),
+    });
+  });
+}
+
+function publishPointOverlay(raw, opts) {
+  const event = toOverlayEvent(raw, opts);
+  event.cue = String((opts && opts.cue) || "").slice(0, 240);
+  event.rest = String((opts && opts.rest) || "").slice(0, 160);
+  sendHud(event);
+  if (event.hold) sendTeachOverlay(event);
+}
+
+/** HUD Frame arms a teach walk after commit. Tray Frame stays capture for Act. */
+let frameForTeach = false;
+
+function openOverlay(opts = {}) {
   closeOverlay();
+  closeTeachOverlay();
+  frameForTeach = Boolean(opts.teach);
   // Hide chrome while framing; restore only if the user had HUD open.
   hudVisibleBeforeOverlay = isHudVisible() || hudUserOpened;
   if (isHudVisible()) {
@@ -1398,10 +1758,13 @@ function openOverlay() {
   });
   overlayWindow.setAlwaysOnTop(true, "screen-saver");
   overlayWindow.setIgnoreMouseEvents(false);
-  overlayWindow.loadFile(path.join(__dirname, "overlay.html"));
+  overlayWindow.loadFile(path.join(__dirname, "overlay.html"), {
+    query: { teach: frameForTeach ? "1" : "0" },
+  });
   overlayWindow.focus(); // so the overlay's own Esc handler works immediately
   overlayWindow.on("closed", () => {
     overlayWindow = null;
+    frameForTeach = false;
     if (state === "SELECTING") state = "ARMED";
     if (hudVisibleBeforeOverlay) showHud({ expandChat: false });
     hudVisibleBeforeOverlay = false;
@@ -1961,7 +2324,14 @@ async function askBuddy({ message, dataUrl }) {
       return "";
     }
   })();
-  const hotContext = [hot.summaryText(), memCtx ? `\nPersonal memory:\n${memCtx}` : ""]
+  const deskCtx = (() => {
+    try {
+      return plannerGrounding(message, { mode: appMode });
+    } catch {
+      return "";
+    }
+  })();
+  const hotContext = [hot.summaryText(), memCtx ? `\nPersonal memory:\n${memCtx}` : "", deskCtx]
     .filter(Boolean)
     .join("\n");
 
@@ -2019,7 +2389,7 @@ function plannerContext(instruction = "") {
   })();
   let ground = "";
   try {
-    ground = plannerGrounding(instruction);
+    ground = plannerGrounding(instruction, { mode: appMode });
   } catch {
     ground = "";
   }
@@ -2938,6 +3308,9 @@ ipcMain.handle("click:captureNow", async () => {
 });
 
 ipcMain.handle("clicks:commitRegion", async (_e, region) => {
+  // Snapshot before closeOverlay: the closed handler clears frameForTeach.
+  const teachFromFrame = frameForTeach;
+  frameForTeach = false;
   // Overlay coords are local to its display — offset into global DIP space so
   // capture + driver agree on multi-monitor setups.
   const bounds = overlayDisplayBounds || screen.getPrimaryDisplay().bounds;
@@ -2952,7 +3325,17 @@ ipcMain.handle("clicks:commitRegion", async (_e, region) => {
       type: "insight",
       text: `Region ${Math.round(screenRegion.width)}×${Math.round(screenRegion.height)} captured.`,
     });
-    return { ok: true };
+    if (
+      shouldTeachFramedRegion({
+        frameForTeach: teachFromFrame,
+        captured: Boolean(lastCapture && lastCapture.region),
+        act: false,
+      })
+    ) {
+      armTeachWalk(FRAME_TEACH_TEXT);
+      sendHudQuiet({ type: "insight", text: "Walking this region. Ask, never Act." });
+    }
+    return { ok: true, teach: Boolean(teachFromFrame) };
   } catch (err) {
     if (hudVisibleBeforeOverlay || hudUserOpened) showHud({ expandChat: false });
     sendHudQuiet({ type: "insight", text: `Frame failed: ${err.message || err}` });
@@ -2962,6 +3345,7 @@ ipcMain.handle("clicks:commitRegion", async (_e, region) => {
 });
 
 ipcMain.handle("clicks:cancelRegion", async () => {
+  frameForTeach = false;
   closeOverlay();
   state = "ARMED";
   sendToPanel("clicks:state", { state, hotkey: HOTKEY });
@@ -3135,6 +3519,13 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
 
   if (intent === "ask" || intent === "code") {
     try {
+      const local = localMeetingReply(message, payload && payload.transcript);
+      if (local && local.ok && local.skipLlm) {
+        pushTurn("user", message);
+        pushTurn("assistant", local.deliverable);
+        sendHud({ type: "answer", meta: `${local.desk} · ${local.kind}`, text: local.deliverable });
+        return { ok: true, mode: "ask", intent, reply: local.deliverable, desk: local.desk, local: true, act: false };
+      }
       const r = await askBuddy({
         message:
           intent === "code"
@@ -3570,6 +3961,60 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
   // Attached files become part of the question, fenced as data (#23). Before
   // this the renderer showed a chip and sent nothing at all.
   const asked = `${message}${buildAttachmentBlock(payload && payload.attachments)}`;
+  const spawn = spawnCoworker({ text: asked, mode: appMode });
+  if (spawn.ok) {
+    const queued = enqueueCoworkerJob(asked, payload && payload.transcript, spawn);
+    sendHud({
+      type: "answer",
+      meta: `${spawn.desk} · spawn`,
+      text: spawn.note + (queued.ok ? "" : ` Queue: ${queued.error || "failed"}`),
+    });
+    return {
+      ok: queued.ok,
+      spawn: true,
+      act: false,
+      claimLane: false,
+      desk: spawn.desk,
+      id: queued.id,
+      reply: spawn.note,
+      error: queued.ok ? undefined : queued.error,
+    };
+  }
+  noteTeachStep(asked);
+  const teachHit = teachAssist({ text: asked, step: teachStep, live: teachLive });
+  const extra = teachHit.ok ? await measureTeachControls() : null;
+  const local = localMeetingReply(asked, payload && payload.transcript, extra);
+  if (local && local.ok && local.skipLlm) {
+    const pointed = parsePoints(local.deliverable);
+    sendHud({
+      type: "answer",
+      meta: `${local.desk} · ${local.kind}`,
+      text: pointed.text || local.deliverable,
+    });
+    if (pointed.points.length) {
+      publishPointOverlay(local.deliverable, {
+        hold: true,
+        path: local.path,
+        cue: local.cue,
+        rest: local.rest,
+      });
+    }
+    if (local.desk === "teach") {
+      armTeachWalk(asked);
+    }
+    return {
+      ok: true,
+      reply: pointed.text || local.deliverable,
+      desk: local.desk,
+      local: true,
+      act: false,
+      points: pointed.points,
+    };
+  }
+  if (local && !local.ok) {
+    sendHud({ type: "answer", meta: local.desk || "coworker", text: local.reason });
+    return { ok: false, error: local.reason, desk: local.desk, local: true, act: false };
+  }
   const r = await askBuddy({ message: asked, dataUrl });
   // P3-POINT-OVERLAY — "click here" is worth more pointed at than described.
   // The tokens are stripped from the prose either way, so a model that emits
@@ -3592,6 +4037,17 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
     : { ok: false, error: failure.text, hint: failure.hint, kind: failure.kind, degraded: r.degraded, blocked: r.blocked };
 });
 
+ipcMain.handle("hud:copyText", async (_e, payload) => {
+  const text = String((payload && payload.text) || "").trim();
+  if (!text) return { ok: false, act: false, reason: "nothing to copy" };
+  try {
+    clipboard.writeText(text.slice(0, 2000));
+    return { ok: true, act: false, copied: true };
+  } catch (err) {
+    return { ok: false, act: false, reason: String(err && err.message ? err.message : err) };
+  }
+});
+
 /**
  * P4-BG-AGENTS — long jobs run behind the LIVE bar, with status in the HUD.
  * Concurrency 1: these can drive the screen, and two agents sharing one mouse
@@ -3600,9 +4056,145 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
 const bgJobs = createJobQueue({
   concurrency: 1,
   onChange: (job, sum) => {
+    try {
+      liveCoordinator.note("job", `${job.title} ${job.status}`);
+    } catch {
+      // coordinator note is best-effort; HUD status still ships
+    }
     sendHudQuiet({ type: "bg", job, summary: sum, text: describeQueue(sum) });
   },
 });
+
+function sessionCoworkerState() {
+  const snap = liveCoordinator.snapshot();
+  return {
+    today: snap.today,
+    lanes: snap.lanes,
+    drafts: snap.drafts,
+    artifacts: liveCoordinator.workspace.list(),
+    jobs: bgJobs.list(),
+    transcript: heardTranscript(),
+  };
+}
+
+/** Injected workspace bodies only. Never opens disk. Security desk consumes this. */
+function sessionScanFiles() {
+  const out = [];
+  try {
+    const ws = liveCoordinator && liveCoordinator.workspace;
+    if (!ws || typeof ws.list !== "function") return out;
+    for (const a of ws.list().slice(-20)) {
+      const got = ws.get(a.id);
+      const body = got && got.ok ? String(got.artifact.body || "") : "";
+      if (!body) continue;
+      out.push({ name: String(a.title || a.id || "artifact").slice(0, 80), body });
+    }
+  } catch {
+    return out;
+  }
+  return out;
+}
+
+function liveArtifactBody(id) {
+  try {
+    const got = liveCoordinator && liveCoordinator.workspace && liveCoordinator.workspace.get(id);
+    return got && got.ok ? String(got.artifact.body || "") : "";
+  } catch {
+    return "";
+  }
+}
+
+async function runDeskAssist(message, extraTranscript) {
+  const desk = pickDesk(message, { mode: appMode });
+  if (desk.id === "meeting") {
+    return meetingAssist({
+      transcript: heardTranscript(extraTranscript),
+      question: message,
+    });
+  }
+  if (desk.id === "security") return securityAssist({ text: message, files: sessionScanFiles() });
+  if (desk.id === "inbox") {
+    return inboxAssist({ text: message, transcript: heardTranscript(extraTranscript) });
+  }
+  if (desk.id === "today") return todayAssist({ state: sessionCoworkerState(), question: message });
+  if (desk.id === "document") {
+    return documentAssist({
+      text: message,
+      source: liveArtifactBody("live-meeting") || liveArtifactBody("standing-today"),
+    });
+  }
+  const walkHit = teachAssist({ text: message, step: teachStep, live: teachLive });
+  if (walkHit.ok) {
+    const measured = await measureTeachControls();
+    return teachAssist({
+      text: message,
+      controls: measured.controls,
+      screen: measured.screen,
+      region: measured.region,
+      framed: Boolean(measured.framed),
+      step: teachStep,
+      live: true,
+    });
+  }
+  return todayAssist({ state: sessionCoworkerState(), question: message });
+}
+
+/**
+ * Background coworker. Produces a brief. Never claims pointer-act. Never Acts.
+ */
+function enqueueCoworkerJob(message, extraTranscript, spawn) {
+  const job = String((spawn && spawn.job) || message || "").trim() || message;
+  const queued = bgJobs.add({
+    title: (spawn && spawn.title) || "Pointer coworker",
+    run: async (ctx) => {
+      if (ctx.cancelled) return { ok: false, act: false, reason: "cancelled" };
+      noteTeachStep(job);
+      const assist = await runDeskAssist(job, extraTranscript);
+      if (assist && assist.ok) {
+        publishLiveCoworker(assist);
+        for (const follow of spawnFollowOns(assist, {
+          transcript: heardTranscript(extraTranscript),
+        })) {
+          publishBrief(follow);
+        }
+        const pointed = parsePoints(assist.deliverable);
+        sendHud({
+          type: "answer",
+          meta: `${assist.desk} · background`,
+          text: pointed.text || assist.deliverable,
+        });
+        if (pointed.points.length) {
+          if (assist.desk === "teach") {
+            publishPointOverlay(assist.deliverable, {
+              hold: true,
+              path: assist.path,
+              cue: assist.cue,
+              rest: assist.rest,
+            });
+          } else {
+            sendHud(toOverlayEvent(assist.deliverable, {}));
+          }
+        }
+        if (assist.desk === "teach") {
+          armTeachWalk(job);
+        }
+        liveCoordinator.note("brief", assist.title || assist.desk);
+      } else if (assist) {
+        sendHud({
+          type: "answer",
+          meta: (spawn && spawn.desk) || "coworker",
+          text: assist.reason || "coworker had nothing to ship",
+        });
+      }
+      return { ...(assist || {}), act: false, spawn: true, claimLane: false };
+    },
+  });
+  if (queued.ok) {
+    liveCoordinator.note("spawn", (spawn && spawn.desk) || "coworker");
+    void bgJobs.drain();
+  }
+  return queued;
+}
 
 ipcMain.handle("hud:bgList", async () => ({
   ok: true,
@@ -4066,9 +4658,9 @@ ipcMain.handle("hud:openPanel", async () => {
 });
 
 ipcMain.handle("hud:frameRegion", async () => {
-  // Optional region refine while HUD is up.
-  openOverlay();
-  return { ok: true };
+  // HUD Frame is Ask: walk the framed region. Tray Frame stays capture for Act.
+  openOverlay({ teach: true });
+  return { ok: true, desk: "teach", act: false };
 });
 
 ipcMain.handle("hud:toggleListen", async (_e, payload) => {
@@ -4171,20 +4763,38 @@ function applyCaptureCommand(command, heard = "") {
     hudPaused = false;
     flushSource("mic");
     flushSource("system");
+    const recap = finishListeningSession({
+      mode: appMode,
+      transcript: heardTranscript(),
+    });
+    if (recap.ok) {
+      publishBrief(recap);
+      publishSuggests(recap);
+      try {
+        notes.append({ text: recap.deliverable, source: "netie" });
+      } catch {
+        /* notes optional */
+      }
+    }
     const saved = notes.stop();
     sendHud({ type: "capture", state: "stopped", notesPath: saved && saved.path });
     if (saved && saved.path) {
+      const text = recap.ok
+        ? `${recap.deliverable}\n\nSaved to ${saved.path}`
+        : `Transcript saved to ${saved.path}`;
       sendHud({
         type: "answer",
-        meta: `Saved · ${saved.lines} line(s)`,
-        text: `Transcript saved to ${saved.path}`,
+        meta: recap.ok ? `Saved · recap` : `Saved · ${saved.lines} line(s)`,
+        text,
       });
       sendHud({ type: "insight", text: `Transcript: ${saved.path}` });
       void eco.audit("clicks.transcript.saved", { lines: saved.lines, heard: heard.slice(0, 40) });
+    } else if (recap.ok) {
+      sendHud({ type: "answer", meta: `Meeting · ${recap.kind}`, text: recap.deliverable });
     } else {
       sendHud({ type: "answer", meta: "Stopped", text: "Recording stopped — nothing to save." });
     }
-    return { ok: true, state: "stopped", path: saved && saved.path };
+    return { ok: true, state: "stopped", path: saved && saved.path, recap: recap.ok ? recap.kind : null, act: false };
   }
 
   return { ok: false, state: "unknown" };
@@ -4248,6 +4858,13 @@ function handleUtterance(source, utt) {
             text: `Switched to ${getMode(appMode).label}. (Heard: “${res.text.slice(0, 80)}”)`,
           });
         } else {
+          rememberHeard(source, res.text);
+          if (appMode === "meeting" || appMode === "transcribe") {
+            liveMeetingPump.push({
+              transcript: heardTranscript(),
+              onBrief: publishLiveMeeting,
+            });
+          }
           // System audio is always written to the markdown transcript, whatever
           // the mode: if you armed loopback you are recording something you want
           // to keep. Mic still follows the mode's autoNotes setting.
@@ -4374,6 +4991,61 @@ ipcMain.handle("hud:setPaused", async (_e, payload) => {
 ipcMain.handle("hud:setIgnoreMouse", async (_e, payload) => {
   setHudClickThrough(payload && payload.ignore !== false);
   return { ok: true };
+});
+
+ipcMain.handle("teach-overlay:setIgnoreMouse", async (_e, payload) => {
+  if (!teachOverlayWindow || teachOverlayWindow.isDestroyed()) {
+    return { ok: false, act: false };
+  }
+  const ignore = !(payload && payload.ignore === false);
+  try {
+    teachOverlayWindow.setIgnoreMouseEvents(ignore, { forward: true });
+  } catch {
+    teachOverlayWindow.setIgnoreMouseEvents(ignore);
+  }
+  return { ok: true, act: false, ignore };
+});
+
+ipcMain.handle("teach-overlay:ask", async (_e, payload) => {
+  const asked = String((payload && (payload.message || payload.ask || payload.q)) || "").trim();
+  const adv = teachAdvance(asked);
+  if (!asked || adv === 0) {
+    return { ok: false, act: false, exec: false, reason: "overlay only Back / Got it" };
+  }
+  const ws = liveCoordinator && liveCoordinator.workspace;
+  const stored = ws && typeof ws.get === "function" ? ws.get("live-teach") : { ok: false };
+  if (stored && stored.ok && canAdvanceTeach(stored.artifact && stored.artifact.live)) {
+    liveTeachPump.reset();
+    const out = advanceLiveTeach(ws, asked);
+    if (out && out.ok && !out.act) {
+      teachLive = true;
+      if (Number.isInteger(out.step)) teachStep = out.step;
+      publishTeachOverlay(out);
+    }
+    return { ...(out || { ok: false }), live: undefined, act: false, exec: false };
+  }
+  noteTeachStep(asked);
+  armTeachWalk(asked);
+  return { ok: true, act: false, exec: false };
+});
+
+ipcMain.handle("teach-overlay:frame", async (_e, payload) => {
+  const region = payload && (payload.region || payload.frame);
+  if (!region || typeof region !== "object") {
+    return { ok: false, act: false, exec: false, desk: "teach", reason: "draw a region on the overlay first" };
+  }
+  const ws = liveCoordinator && liveCoordinator.workspace;
+  if (!ws || typeof ws.put !== "function") {
+    return { ok: false, act: false, exec: false, reason: "workspace missing" };
+  }
+  liveTeachPump.reset();
+  const drawn = frameLiveTeach(ws, region);
+  if (drawn && drawn.ok && !drawn.act) {
+    teachLive = true;
+    if (Number.isInteger(drawn.step)) teachStep = drawn.step;
+    publishTeachOverlay(drawn);
+  }
+  return { ...(drawn || { ok: false }), live: undefined, act: false, exec: false };
 });
 
 ipcMain.handle("hud:setMode", async (_e, payload) => {
@@ -4963,8 +5635,12 @@ app.whenReady().then(() => {
       .then((r) => {
         const addr = r && r.address;
         console.log(
-          `Coordinator on http://127.0.0.1:${addr && addr.port ? addr.port : 18010} (/ /today /lanes /skills)`
+          `Coordinator on http://127.0.0.1:${addr && addr.port ? addr.port : 18010} (/ /today /meeting /teach /security /document /inbox /lanes /skills /workspace)`
         );
+        standingClock.start({
+          brief: () => todayAssist({ state: sessionCoworkerState() }),
+          onBrief: (assist) => publishBrief(assist),
+        });
       })
       .catch((err) => console.error("coordinator listen:", err.message || err));
   }
@@ -4974,6 +5650,9 @@ app.whenReady().then(() => {
 });
 
 app.on("will-quit", () => {
+  liveMeetingPump.reset();
+  resetTeachWalk();
+  standingClock.reset();
   liveCoordinator.close().catch(() => {});
   globalShortcut.unregisterAll();
   stopTicks();

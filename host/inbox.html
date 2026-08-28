@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>today - Netie coordinator</title>
+  <title>inbox - Netie coordinator</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
-    <p class="kicker">host.netie.ai /today</p>
-    <h1>Today</h1>
+    <p class="kicker">host.netie.ai /inbox</p>
+    <h1>Inbox</h1>
     <nav>
       <a href="/">home</a>
       <a href="/today">today</a>
@@ -23,20 +23,17 @@
     </nav>
   </header>
   <main>
-    <p>Standing brief of this session. Not a computer. Act stays on the laptop.</p>
+    <p>Unsent mail from this laptop. Download a generated .eml. Send stays parked (P-05). Act stays on the laptop.</p>
     <p id="policy" class="muted">loading...</p>
-    <section id="today-plate" class="stage today-stage" hidden></section>
-    <p id="today-cue-web" class="meeting-cue" hidden></p>
-    <p id="today-chips" class="today-chips desk-chips"></p>
-    <p id="today-filed" class="muted" hidden></p>
+    <p id="inbox-heard-web" class="meeting-asked" hidden></p>
+    <p id="inbox-cue-web" class="meeting-cue" hidden></p>
+    <p id="inbox-chips" class="desk-chips"></p>
     <p>
-      <button type="button" id="cue-copy" hidden>Copy plate</button>
       <button type="button" id="brief-copy" hidden>Copy brief</button>
       <button type="button" id="brief-download" hidden>Download brief</button>
+      <button type="button" id="eml-download" hidden>Download .eml</button>
     </p>
-    <article id="brief"></article>
-    <h2>Session</h2>
-    <ul id="events"></ul>
+    <article id="inbox-brief"></article>
   </main>
   <script src="app.js"></script>
 </body>
