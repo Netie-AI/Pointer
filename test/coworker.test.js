@@ -940,6 +940,10 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   const teachOverlay = fs.readFileSync(path.join(__dirname, "..", "host", "overlay.html"), "utf8");
   assert.match(teachOverlay, /id="walk-chrome"/);
   assert.match(teachOverlay, /id="walk-copy"/);
+  assert.match(teachOverlay, /id="walk-live-stack"/);
+  assert.match(teachOverlay, /walk-copy\.stack/);
+  assert.match(teachOverlay, /layoutWalkUnderChrome/);
+  assert.match(teachOverlay, /!hasApi && shown/);
   assert.match(teachOverlay, /id="walk-acts"/);
   assert.match(teachOverlay, /id="walk-dock"/);
   assert.match(teachOverlay, /copy\.id = "walk-dock-copy"/);

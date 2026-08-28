@@ -481,6 +481,9 @@ function readAsset(file) {
     const overlayText = await overlay.text();
     assert.match(overlayText, /id="walk-chrome"/);
     assert.match(overlayText, /id="walk-copy"/);
+    assert.match(overlayText, /id="walk-live-stack"/);
+    assert.match(overlayText, /walk-copy\.stack/);
+    assert.match(overlayText, /layoutWalkUnderChrome/);
     assert.match(overlayText, /id="walk-acts"/);
     assert.match(overlayText, /id="walk-rail"/);
     assert.match(overlayText, /id="walk-chips"/);

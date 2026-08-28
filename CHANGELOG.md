@@ -1,3 +1,10 @@
+## 2026-08-28 - Overlay chrome does not cover the Email BOX
+
+Honest-stack chrome sits in two columns. Demo This computer and the
+BOX sit below that chrome so Type in Email still points. Live overlay
+keeps display percents. Never send. Never speak meeting. Never Act.
+P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Overlay chrome keeps the honest stack on Email
 
 Ask Live answer puts Also / Heard / Don't say in overlay chrome with

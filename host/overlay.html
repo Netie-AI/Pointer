@@ -42,10 +42,22 @@
       #walk-copy {
         flex: 1;
         min-width: 0;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2px;
+      }
+      #walk-copy.stack {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+        gap: 4px 14px;
+        align-items: start;
+      }
+      #walk-teach, #walk-live-stack {
         display: flex;
         flex-direction: column;
         gap: 2px;
+        min-width: 0;
       }
+      #walk-live-stack[hidden] { display: none; }
       #walk-acts {
         display: flex;
         flex: none;
@@ -342,16 +354,20 @@
     <div id="walk-chrome" class="chrome">
       <div id="walk-row">
         <div id="walk-copy">
-          <p id="walk-cue"></p>
-          <p id="walk-then" hidden></p>
-          <p id="walk-fill" hidden></p>
-          <p id="walk-asked" hidden></p>
-          <p id="walk-you" hidden></p>
-          <p id="walk-live" hidden></p>
-          <p id="walk-also" hidden></p>
-          <p id="walk-heard" hidden></p>
-          <p id="walk-avoid" hidden></p>
-          <p id="walk-filed" hidden></p>
+          <div id="walk-teach">
+            <p id="walk-cue"></p>
+            <p id="walk-then" hidden></p>
+            <p id="walk-fill" hidden></p>
+          </div>
+          <div id="walk-live-stack" hidden>
+            <p id="walk-asked" hidden></p>
+            <p id="walk-you" hidden></p>
+            <p id="walk-live" hidden></p>
+            <p id="walk-also" hidden></p>
+            <p id="walk-heard" hidden></p>
+            <p id="walk-avoid" hidden></p>
+            <p id="walk-filed" hidden></p>
+          </div>
         </div>
         <div id="walk-acts">
           <button type="button" id="walk-back" data-q="back">Back</button>
@@ -576,6 +592,7 @@
         } else {
           speakTeachCue(restSpeak ? spoken + ". Then " + restSpeak : spoken ? spoken + ". Last step" : "");
         }
+        layoutWalkUnderChrome();
       }
 
       let lastSpokenTeach = "";
@@ -624,11 +641,15 @@
       }
 
       function pctFromEvent(ev) {
-        const w = window.innerWidth || 1;
-        const h = window.innerHeight || 1;
+        const root = document.getElementById("point-layer");
+        const box = root && root.getBoundingClientRect ? root.getBoundingClientRect() : null;
+        const w = (box && box.width) || window.innerWidth || 1;
+        const h = (box && box.height) || window.innerHeight || 1;
+        const left = box ? box.left : 0;
+        const top = box ? box.top : 0;
         return {
-          x: Math.max(0, Math.min(100, (ev.clientX / w) * 100)),
-          y: Math.max(0, Math.min(100, (ev.clientY / h) * 100)),
+          x: Math.max(0, Math.min(100, ((ev.clientX - left) / w) * 100)),
+          y: Math.max(0, Math.min(100, ((ev.clientY - top) / h) * 100)),
         };
       }
 
@@ -766,6 +787,21 @@
         dock.classList.remove("show");
       }
 
+      function layoutWalkUnderChrome() {
+        function apply() {
+          const chrome = document.getElementById("walk-chrome");
+          const shown = Boolean(chrome && chrome.classList.contains("show"));
+          const pad = (!hasApi && shown) ? Math.ceil(chrome.getBoundingClientRect().height + 12) : 0;
+          ["walk-desktop", "point-layer", "walk-ink", "draw-stroke"].forEach(function (id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.style.top = pad ? pad + "px" : "";
+          });
+        }
+        apply();
+        if (typeof requestAnimationFrame === "function") requestAnimationFrame(apply);
+      }
+
       function paintLiveChrome(on) {
         const spec = on ? overlayDockSpec("/workspace?id=live-meeting") : null;
         const asked = overlayRow(spec, "They asked");
@@ -779,6 +815,8 @@
         const alsoEl = document.getElementById("walk-also");
         const heardEl = document.getElementById("walk-heard");
         const avoidEl = document.getElementById("walk-avoid");
+        const copy = document.getElementById("walk-copy");
+        const stack = document.getElementById("walk-live-stack");
         if (askedEl) {
           askedEl.hidden = !asked;
           askedEl.textContent = asked ? "They asked: " + asked : "";
@@ -803,6 +841,9 @@
           avoidEl.hidden = !avoid;
           avoidEl.textContent = avoid;
         }
+        if (stack) stack.hidden = !on;
+        if (copy) copy.classList.toggle("stack", Boolean(on));
+        layoutWalkUnderChrome();
       }
 
       let lastDockCopy = "";
@@ -1381,6 +1422,7 @@
       document.addEventListener("pointerleave", function () {
         if (!drawing) syncClickThrough(false);
       }, true);
+      window.addEventListener("resize", layoutWalkUnderChrome);
 
       if (api && typeof api.onPoint === "function") {
         api.onPoint(function (event) {
