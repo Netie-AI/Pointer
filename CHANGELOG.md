@@ -1,3 +1,9 @@
+## 2026-08-28 - Overlay leftover BOX yields after Save
+
+After Save, overlay leftover Email/Save BOX drops so Live answer
+leads. This computer windows stay. Back restores the walk. Never
+send. Never speak meeting. Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Back restores the walk; workspace opens Live answer
 
 Home Back after Save restores This screen. Workspace Got it on Save

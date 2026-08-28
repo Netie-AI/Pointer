@@ -870,14 +870,15 @@
         kicker.id = "walk-desktop-kicker";
         kicker.textContent = "This computer - no runtime";
         root.appendChild(kicker);
+        const saved = Boolean(inboxSaved);
         [
           {
             id: "walk-win-inbox",
             href: "/workspace?id=live-inbox",
             left: "10%",
-            top: "18%",
-            width: "62%",
-            height: "52%",
+            top: saved ? "72%" : "18%",
+            width: saved ? "86%" : "62%",
+            height: saved ? "26%" : "52%",
           },
           {
             id: "walk-win-notes",
@@ -899,9 +900,9 @@
             id: "walk-win-meeting",
             href: "/workspace?id=live-meeting",
             left: "10%",
-            top: "72%",
-            width: "86%",
-            height: "26%",
+            top: saved ? "18%" : "72%",
+            width: saved ? "62%" : "86%",
+            height: saved ? "52%" : "26%",
           },
         ].forEach(function (win) {
           const spec = overlayDockSpec(win.href);
@@ -1042,19 +1043,28 @@
 
       function paintDemoState() {
         const saved = Boolean(inboxSaved);
+        const back = document.getElementById("walk-back");
+        const next = document.getElementById("walk-next");
+        if (back) back.hidden = !(saved || demoStep > 0);
+        if (next) next.hidden = saved;
+        if (saved) {
+          paint([]);
+          paintChrome({ cue: "Saved on This computer", rest: "", fill: "" });
+          return;
+        }
         const pts = demoWalk.map(function (p, i) {
           return Object.assign({}, p, {
-            later: !saved && i > demoStep,
-            done: saved || i < demoStep,
+            later: i > demoStep,
+            done: i < demoStep,
           });
         });
         paint(pts);
-        const now = saved ? {} : demoWalk[demoStep] || {};
-        const next = saved ? {} : demoWalk[demoStep + 1] || {};
+        const now = demoWalk[demoStep] || {};
+        const rest = demoWalk[demoStep + 1] || {};
         paintChrome({
-          cue: saved ? "Saved on This computer" : now.label || now.cue || "",
-          rest: saved ? "" : next.label || next.cue || "",
-          fill: saved ? "" : now.fill || "",
+          cue: now.label || now.cue || "",
+          rest: rest.label || rest.cue || "",
+          fill: now.fill || "",
         });
       }
 
