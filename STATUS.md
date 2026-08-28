@@ -44,8 +44,8 @@
    Don't say (HUD docks that stack). Chrome keeps that stack plus
    Live / Heard after Ask or Save (never spoken) and sits above
    This computer so the Email BOX stays clear. Overlay, HUD, and home
-   Show me flies the BOX; Talk asks about this BOX; HUD Draw pencils a BOX.
-   Ask what to type is Live answer until Save. Leftover yields. Back restores. Never Act.
+   Show me flies the BOX; Talk asks this BOX; HUD Draw pencils a BOX.
+   HUD, overlay, and host are Apple Regular liquid glass (no orb). Ask what to type is Live answer until Save. Leftover yields. Back restores. Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
    Packs: linux AppImage, win zip/portable, mac zip (`npm run pack:all`).
    Act is fail-closed off Windows.

@@ -1,3 +1,10 @@
+## 2026-08-28 - Liquid glass HUD, overlay, and host
+
+HUD, overlay walk chrome, and host catalog share Apple Regular liquid
+glass (lensing shine, 28px blur, capsule chips). Live overlay body stays
+transparent. `@supports not` and reduced-transparency fall back to solid
+frost. No floating orb. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Three-OS packs (linux, win, mac)
 
 `npm run pack:linux` (AppImage), `pack:win` (zip/portable), `pack:mac`

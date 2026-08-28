@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>Netie teach overlay</title>
+    <link rel="stylesheet" href="glass.css" />
     <style>
       html, body {
         margin: 0;
@@ -25,11 +26,8 @@
         gap: 6px;
         max-width: min(760px, 92vw);
         padding: 8px 12px;
-        border-radius: 16px;
-        background: #111;
-        border: 1px solid #345;
-        color: #eee;
-        font: 650 12px "Segoe UI", system-ui, sans-serif;
+        color: var(--lg-text);
+        font: 650 12px var(--lg-font, "Segoe UI", system-ui, sans-serif);
         pointer-events: auto;
       }
       #walk-chrome.show { display: flex; }
@@ -79,26 +77,28 @@
       #walk-ask {
         flex: 1;
         min-width: 0;
-        background: #1a1a1a;
-        color: #eee;
-        border: 1px solid #345;
-        border-radius: 999px;
-        padding: 4px 10px;
-        font: inherit;
       }
       .walk-rail-tick {
-        padding: 2px 8px;
-        border-radius: 999px;
-        border: 1px solid #345;
-        color: #9ad;
-        background: #1a1a1a;
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 12px;
+        border-radius: var(--lg-radius-pill);
+        border: 1px solid var(--lg-edge-soft);
+        color: var(--lg-accent);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
         cursor: pointer;
         font: inherit;
         pointer-events: auto;
       }
-      .walk-rail-tick.now { color: #eee; border-color: #6ea8ff; cursor: default; }
+      .walk-rail-tick.now {
+        color: var(--lg-text);
+        border-color: var(--lg-accent);
+        background: rgba(158, 192, 255, 0.18);
+        cursor: default;
+      }
       .walk-rail-tick.later { opacity: 0.7; }
-      .walk-rail-tick.done { opacity: 0.4; color: #eee; }
+      .walk-rail-tick.done { opacity: 0.4; color: var(--lg-text); }
       body.draw { pointer-events: auto; cursor: crosshair; }
       #draw-stroke, #walk-ink, #walk-fly {
         position: absolute;
@@ -146,7 +146,7 @@
         overflow: visible;
       }
       #walk-then, #walk-fill, #walk-asked, #walk-you, #walk-live, #walk-also, #walk-heard, #walk-avoid, #walk-filed {
-        color: #9ad;
+        color: var(--lg-accent);
         font-weight: 500;
       }
       #walk-dock {
@@ -159,11 +159,8 @@
         max-height: 42vh;
         overflow: auto;
         padding: 10px 12px;
-        border-radius: 12px;
-        background: #111;
-        border: 1px solid #345;
-        color: #eee;
-        font: 500 12px "Segoe UI", system-ui, sans-serif;
+        color: var(--lg-text);
+        font: 500 12px var(--lg-font, "Segoe UI", system-ui, sans-serif);
         pointer-events: auto;
       }
       #walk-dock.show { display: block; }
@@ -171,22 +168,39 @@
         margin: 0 0 4px;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #9ad;
+        color: var(--lg-accent);
         font-size: 11px;
       }
       #walk-dock .dock-row, #walk-dock .dock-body, #walk-dock .dock-foot { margin: 0 0 6px; }
-      #walk-dock .dock-foot { color: #f88; }
-      #walk-dock .dock-body { white-space: pre-wrap; color: #ddd; }
+      #walk-dock .dock-foot { color: var(--lg-warn); }
+      #walk-dock .dock-body { white-space: pre-wrap; color: var(--lg-muted); }
       #walk-chrome button,
       #walk-dock button {
         pointer-events: auto;
-        background: #1a1a1a;
-        color: #9ad;
-        border: 1px solid #345;
-        padding: 4px 10px;
-        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        padding: 5px 12px;
+        border-radius: var(--lg-radius-pill);
+        border: 1px solid var(--lg-edge-soft);
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--lg-accent);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
         cursor: pointer;
         font: inherit;
+        transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), background 160ms ease,
+          border-color 160ms ease, box-shadow 160ms ease;
+      }
+      #walk-chrome button:hover,
+      #walk-dock button:hover {
+        background: rgba(255, 255, 255, 0.16);
+        border-color: var(--lg-edge);
+        color: var(--lg-text);
+      }
+      #walk-chrome button:active,
+      #walk-dock button:active {
+        transform: scale(0.97);
       }
       #point-layer {
         position: absolute;
@@ -221,12 +235,13 @@
         left: 50%;
         transform: translateX(-50%);
         padding: 3px 8px;
-        border-radius: 999px;
+        border-radius: var(--lg-radius-pill);
         white-space: nowrap;
-        background: #111;
-        border: 1px solid #345;
-        color: #eee;
-        font: 650 11px "Segoe UI", system-ui, sans-serif;
+        background: var(--lg-shine), var(--lg-fill);
+        border: 1px solid var(--lg-edge-soft);
+        color: var(--lg-text);
+        font: 650 11px var(--lg-font, "Segoe UI", system-ui, sans-serif);
+        box-shadow: var(--lg-shadow);
       }
       .point-mark.point-box {
         transform: none;
@@ -307,7 +322,11 @@
       html.demo, html.demo body,
       html.host, html.host body {
         pointer-events: auto;
-        background: #243044;
+        background-color: #12141c;
+        background-image:
+          radial-gradient(ellipse 90% 60% at 18% 22%, rgba(72, 96, 140, 0.38), transparent 62%),
+          radial-gradient(ellipse 70% 50% at 82% 68%, rgba(88, 68, 118, 0.28), transparent 58%),
+          radial-gradient(ellipse 55% 40% at 50% 88%, rgba(40, 56, 88, 0.32), transparent 55%);
       }
       html.demo #point-layer .point-box:not(.later):not(.done),
       html.host #point-layer .point-box:not(.later):not(.done) {
@@ -329,18 +348,21 @@
         margin: 0;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #9ad;
-        font: 650 11px "Segoe UI", system-ui, sans-serif;
+        color: var(--lg-accent);
+        font: 650 11px var(--lg-font, "Segoe UI", system-ui, sans-serif);
       }
       .walk-win {
         position: absolute;
         overflow: auto;
         padding: 10px 12px;
-        border-radius: 12px;
-        background: #111;
-        border: 1px solid #345;
-        color: #eee;
-        font: 500 12px "Segoe UI", system-ui, sans-serif;
+        background: var(--lg-shine), var(--lg-fill);
+        border: 1px solid var(--lg-edge-soft);
+        border-radius: 16px;
+        box-shadow: var(--lg-shadow);
+        -webkit-backdrop-filter: var(--lg-blur);
+        backdrop-filter: var(--lg-blur);
+        color: var(--lg-text);
+        font: 500 12px var(--lg-font, "Segoe UI", system-ui, sans-serif);
       }
       .walk-win.now {
         outline: 2px solid #6ea8ff;
@@ -350,12 +372,12 @@
         margin: 0 0 4px;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #9ad;
+        color: var(--lg-accent);
         font-size: 11px;
       }
       .walk-win .dock-row, .walk-win .dock-body, .walk-win .dock-foot { margin: 0 0 6px; }
-      .walk-win .dock-foot { color: #f88; }
-      .walk-win .dock-body { white-space: pre-wrap; color: #ddd; }
+      .walk-win .dock-foot { color: var(--lg-warn); }
+      .walk-win .dock-body { white-space: pre-wrap; color: var(--lg-muted); }
       .dock-row.typed, .walk-win .dock-row.typed {
         outline: 1px solid rgba(110, 168, 255, 0.7);
         border-radius: 6px;
@@ -364,7 +386,7 @@
     </style>
   </head>
   <body>
-    <div id="walk-chrome" class="chrome">
+    <div id="walk-chrome" class="lg lg-pill chrome">
       <div id="walk-row">
         <div id="walk-copy">
           <div id="walk-teach">
@@ -398,12 +420,12 @@
         <button type="button" data-desk="1" data-q="what should I say">Live answer</button>
       </p>
       <form id="walk-ask-form">
-        <input id="walk-ask" type="text" autocomplete="off" aria-label="Ask the coworker" placeholder="Ask the coworker (never Act)" />
+        <input id="walk-ask" class="lg-field" type="text" autocomplete="off" aria-label="Ask the coworker" placeholder="Ask the coworker (never Act)" />
         <button type="button" id="walk-talk" title="Ask about this BOX (never Act)">Talk</button>
         <button type="submit" id="walk-ask-go">Ask</button>
       </form>
     </div>
-    <aside id="walk-dock" class="chrome" hidden></aside>
+    <aside id="walk-dock" class="lg-card chrome" hidden></aside>
     <div id="walk-desktop" aria-hidden="true"></div>
     <svg id="walk-ink" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
     <svg id="walk-fly" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>

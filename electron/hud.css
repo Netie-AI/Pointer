@@ -1,6 +1,29 @@
 :root {
   --font: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-  --glass-blur: blur(22px) saturate(160%);
+  --lg-blur: blur(28px) saturate(180%);
+  --lg-fill: rgba(18, 22, 32, 0.42);
+  --lg-fill-strong: rgba(16, 18, 26, 0.92);
+  --lg-shine: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.46) 0%,
+    rgba(255, 255, 255, 0.1) 34%,
+    rgba(255, 255, 255, 0.03) 52%,
+    rgba(0, 0, 0, 0.16) 100%
+  );
+  --lg-edge: rgba(255, 255, 255, 0.46);
+  --lg-edge-soft: rgba(255, 255, 255, 0.18);
+  --lg-text: #f4f7fb;
+  --lg-muted: rgba(244, 247, 251, 0.72);
+  --lg-accent: #9ec0ff;
+  --lg-accent-solid: #7aa6f5;
+  --lg-good: #6ed9a8;
+  --lg-warn: #ff8b8b;
+  --lg-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  --lg-radius: 22px;
+  --lg-radius-pill: 999px;
 }
 * { box-sizing: border-box; }
 /* Every panel in this HUD is shown and hidden by setting `.hidden` from hud.js,
@@ -52,6 +75,24 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   --accent-solid: #3f74d7;
   --good: #0b7354;
   --rec: #d62839;
+  --lg-fill: rgba(252, 253, 255, 0.48);
+  --lg-fill-strong: rgba(252, 253, 255, 0.94);
+  --lg-shine: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.88) 0%,
+    rgba(255, 255, 255, 0.28) 34%,
+    rgba(20, 30, 50, 0.05) 100%
+  );
+  --lg-edge: rgba(30, 40, 60, 0.2);
+  --lg-edge-soft: rgba(30, 40, 60, 0.12);
+  --lg-text: #152238;
+  --lg-muted: rgba(21, 34, 56, 0.58);
+  --lg-accent: #2d62c8;
+  --lg-accent-solid: #3f74d7;
+  --lg-shadow:
+    0 18px 48px rgba(20, 30, 50, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -1px 0 rgba(20, 30, 50, 0.08);
 }
 .hud.theme-gra {
   --panel: rgba(36, 24, 52, 0.55);
@@ -69,19 +110,14 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 .chrome { pointer-events: auto; }
 
-/* Liquid glass pane — HeyClicky-class frosted chrome */
+/* Liquid glass pane — Apple Regular material (WWDC 2025 approximation) */
 .glass, .top-bar, .menu, .peek-drop, .clicky-orb, .nod-toast {
-  background: var(--panel);
-  background-image:
-    linear-gradient(145deg, rgba(255,255,255,0.22), rgba(255,255,255,0.04) 40%, rgba(0,0,0,0.14)),
-    var(--panel);
-  border: 1px solid var(--line);
-  box-shadow:
-    0 22px 56px rgba(0, 0, 0, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.14);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
+  position: relative;
+  background: var(--lg-shine), var(--lg-fill);
+  border: 1px solid var(--lg-edge);
+  box-shadow: var(--lg-shadow);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
   transition: opacity 180ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms ease;
 }
 
@@ -124,9 +160,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .live-cue-bar {
   position: absolute; top: 62px; left: 50%; transform: translateX(-50%);
   z-index: 29; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
-  max-width: min(720px, 92vw); padding: 6px 10px; border-radius: 16px;
-  background: var(--panel);
-  border: 1px solid var(--line);
+  max-width: min(720px, 92vw); padding: 6px 10px; border-radius: var(--lg-radius);
 }
 .hud.morph-hidden .live-cue-bar { top: 14px; }
 .live-cue-asked {
@@ -158,7 +192,23 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   font-size: 11px; font-weight: 550; color: var(--muted);
 }
 .live-cue-actions { display: flex; align-items: center; gap: 6px; flex: none; }
-.live-cue-actions .text-btn { margin: 0; padding: 5px 10px; border-radius: 999px; }
+.live-cue-actions .text-btn,
+.live-cue-chips .text-btn,
+.live-cue-bar .text-btn {
+  margin: 0; padding: 5px 10px; border-radius: var(--lg-radius-pill);
+  border: 1px solid var(--lg-edge-soft);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  color: var(--lg-accent);
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), background 160ms ease,
+    border-color 160ms ease, box-shadow 160ms ease;
+}
+.live-cue-bar .text-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: var(--lg-edge);
+  color: var(--lg-text);
+}
+.live-cue-bar .text-btn:active { transform: scale(0.97); }
 .live-cue-rail, .live-cue-chips {
   display: flex; flex-wrap: wrap; gap: 6px; width: 100%; margin: 0;
 }
@@ -167,14 +217,22 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .live-cue-chips[hidden],
 .live-cue-dock[hidden] { display: none; }
 .live-cue-tick {
-  padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line);
-  font-size: 11px; color: var(--muted); background: var(--surface, #1a1a1a);
+  padding: 2px 8px; border-radius: var(--lg-radius-pill);
+  border: 1px solid var(--lg-edge-soft);
+  font-size: 11px; color: var(--muted);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), background 160ms ease,
+    border-color 160ms ease;
 }
 button.live-cue-tick { cursor: pointer; font: inherit; }
-.live-cue-tick.now { color: var(--text); border-color: var(--accent, #6ea8ff); cursor: default; }
+button.live-cue-tick:active { transform: scale(0.97); }
+.live-cue-tick.now {
+  color: var(--text); border-color: var(--lg-accent);
+  background: rgba(158, 192, 255, 0.18); cursor: default;
+}
 .live-cue-tick.later { opacity: 0.7; }
 .live-cue-tick.done { opacity: 0.4; }
-.live-cue-chips .text-btn { margin: 0; padding: 4px 10px; border-radius: 999px; }
 .live-cue-dock {
   width: 100%;
   max-height: 28vh;
@@ -259,8 +317,18 @@ button.live-cue-tick { cursor: pointer; font: inherit; }
   border: 0; border-radius: 999px; padding: 6px 10px; background: transparent;
   color: var(--muted); font-weight: 700; font-size: 11px;
 }
-.mode-pill button.active { background: rgba(255,255,255,0.16); color: var(--text); }
-.hud.theme-light .mode-pill button.active { background: rgba(0,0,0,0.08); }
+.mode-pill button.active {
+  background: var(--lg-shine), rgba(158, 192, 255, 0.18);
+  border: 1px solid var(--lg-edge);
+  color: var(--text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+.hud.theme-light .mode-pill button.active {
+  background: var(--lg-shine), rgba(45, 98, 200, 0.14);
+  border-color: var(--lg-edge-soft);
+}
 .desk-pill button { font-size: 11px; }
 .hud.agent-busy .desk-pill { opacity: 0.55; }
 .hud.agent-busy .desk-pill button { pointer-events: none; }
@@ -879,9 +947,16 @@ button.live-cue-tick { cursor: pointer; font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition-duration: 120ms !important; }
 }
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .top-bar, .menu, .peek-drop, .clicky-orb, .nod-toast, .live-cue-bar {
+    background: var(--lg-fill-strong);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass, .top-bar, .menu, .peek-drop, .clicky-orb, .nod-toast, .roulette-dial, .roulette-list {
-    background: rgba(16, 18, 24, 0.92);
+  .glass, .top-bar, .menu, .peek-drop, .clicky-orb, .nod-toast, .live-cue-bar, .roulette-dial, .roulette-list {
+    background: var(--lg-fill-strong);
   }
 }
 
