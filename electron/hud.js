@@ -2076,9 +2076,29 @@ invoke("hud:ready").then(async (info) => {
  */
 const enquirePanel = $("enquire-panel");
 const enquireFields = $("enquire-fields");
+const reportPanel = $("report-panel");
+const reportNote = $("report-note");
+
+function hideReportPanel() {
+  if (!reportPanel) return;
+  reportPanel.hidden = true;
+  if (reportNote) reportNote.value = "";
+}
+
+function showReportPanel() {
+  if (!reportPanel) return;
+  if (enquirePanel) enquirePanel.hidden = true;
+  reportPanel.hidden = false;
+  setChatOpen(true);
+  syncClickThrough(true);
+  if (reportNote) {
+    reportNote.focus();
+  }
+}
 
 function renderEnquire(event) {
   if (!enquirePanel || !enquireFields) return;
+  hideReportPanel();
   const prompts = (event && event.prompts) || [];
   if (!prompts.length) return;
 
@@ -2150,6 +2170,41 @@ if (enquirePanel) {
     if (event.key !== "Escape") return;
     closeEnquire();
     invoke("hud:enquireCancel");
+  });
+}
+
+const btnReport = $("btn-report");
+if (btnReport) {
+  btnReport.addEventListener("click", () => {
+    showReportPanel();
+  });
+}
+if (reportPanel) {
+  reportPanel.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const result = await invoke("hud:reportProblem", {
+      note: reportNote ? reportNote.value : "",
+      mode: appMode,
+      session: sessionChip ? sessionChip.textContent : "Ready",
+    });
+    hideReportPanel();
+    if (result && result.copied) {
+      answerMeta.textContent = result.path
+        ? "Report copied — also saved on this device"
+        : "Report copied to clipboard";
+    } else if (result && result.saved) {
+      answerMeta.textContent = "Report saved on this device";
+    } else {
+      answerMeta.textContent = "Could not start the report";
+    }
+  });
+  const reportCancel = $("btn-report-cancel");
+  if (reportCancel) {
+    reportCancel.addEventListener("click", () => hideReportPanel());
+  }
+  reportPanel.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    hideReportPanel();
   });
 }
 

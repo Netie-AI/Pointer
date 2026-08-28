@@ -487,6 +487,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/id="btn-actions"/.test(html), "Actions pill missing from HUD");
       assert.ok(/id="btn-copy-actions"/.test(html), "Copy actions pill missing from HUD");
       assert.ok(/id="privacy-chip"/.test(html), "privacy chip missing from HUD");
+      assert.ok(/id="btn-report"/.test(html), "Report a problem missing from HUD");
+      assert.ok(/id="report-panel"/.test(html), "report panel missing from HUD");
       assert.ok(/id="session-chip"/.test(html), "session chip missing from HUD");
       assert.ok(/action:\s*"recap"/.test(js), "Copy recap must not send renderer text");
       assert.ok(/action:\s*"say"/.test(js), "Copy say must not send renderer text");

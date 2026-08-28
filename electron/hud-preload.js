@@ -41,6 +41,7 @@ const INVOKE = [
   "hud:hideStage",
   "hud:meetingNotes",
   "hud:copyText",
+  "hud:reportProblem",
 ];
 
 contextBridge.exposeInMainWorld("netieHud", {

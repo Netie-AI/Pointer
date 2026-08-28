@@ -15,7 +15,8 @@
    Suggest/Recap/Follow-ups/Email/Actions. HUD lists 12 languages
    (English STT stays auto; Ctrl+Alt+L still English/Traditional Chinese).
    Teach LINE/PATH/BOX. `click window:` uses observed rects. Privacy
-   and session chips. `GET /api/meeting?pack=1` is one shareable pack.
+   and session chips. HUD Report a problem copies a local note (no
+   cloud relay). `GET /api/meeting?pack=1` is one shareable pack.
    Dictation auto-stops at 120s. LIVE captions peek the open utterance
    (partials replace the tail; notes/scribe/commands stay final-only).
    `GET /api/observe?captions=1` is the same lines for agents.
