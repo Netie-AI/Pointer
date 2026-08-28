@@ -494,6 +494,9 @@ function readAsset(file) {
     assert.match(overlayText, /paintWalkDock/);
     assert.match(overlayText, /Unsent mail/);
     assert.match(overlayText, /not sent/);
+    assert.match(overlayText, /They asked/);
+    assert.match(overlayText, /Say this/);
+    assert.match(overlayText, /Never a cheater overlay/);
     assert.match(overlayText, /spoken \+ "\. Then "/);
     assert.match(overlayText, /spoken \+ "\. Last step"/);
     assert.match(overlayText, /leftPct: 12/);

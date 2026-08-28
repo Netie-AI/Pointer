@@ -51,7 +51,9 @@ the live Electron overlay stays transparent on the real display.
 Overlay chrome keeps a remaining walk rail and Ask chips (Draft email /
 Notes / Needs you / Live answer). Walk chrome stacks Type in Email /
 Then / fill so the cue stays readable. Desk chips dock the filed file on the
-walk. HUD cue bar docks that same Unsent mail / Notes / Needs you window.
+walk. HUD cue bar docks that same Unsent mail / Notes / Needs you /
+Live answer window (They asked / You / Say this / Also / Don't say,
+never a cheater overlay).
 Home Ask stays on This screen and highlights that window.
 Got it types the Heard name into Unsent mail To (starts not sent).
 Got it on Save files that draft on This computer (never send).

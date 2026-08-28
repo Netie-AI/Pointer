@@ -145,6 +145,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/id="live-cue-dock"/.test(read("electron/hud.html")), "filed desk docks on the cue bar");
       assert.ok(/live-cue-dock-copy/.test(js) && /hud:copyText/.test(js), "HUD dock Copy is clipboard, never send");
       assert.ok(/paintLiveCueDock/.test(js) && /Unsent mail/.test(js), "HUD docks Unsent mail, never send");
+      assert.ok(/desk === "meeting"/.test(js) && /never a cheater overlay/.test(js), "HUD docks Live answer, never a cheater overlay");
       assert.ok(/Draft email/.test(read("electron/hud.html")) && !/Send mail|Approve/.test(read("electron/hud.html")), "cue chips Ask, never send");
       assert.ok(/id="btn-live-next"/.test(read("electron/hud.html")), "Got it lives in the top cue bar");
       const css = read("electron/hud.css");

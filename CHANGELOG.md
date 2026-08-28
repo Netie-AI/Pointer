@@ -1,3 +1,10 @@
+## 2026-08-28 - Live answer is the honest stack
+
+Overlay Live answer on This computer is They asked / You / Say this /
+Also / Heard / Don't say. HUD cue bar docks that same stack. Copy is
+clipboard. Never a cheater overlay. Never Act. P-05 and P-06 stay
+parked.
+
 ## 2026-08-28 - Got it on Save files the draft
 
 Demo overlay and home Got it on Save stores Unsent mail on This

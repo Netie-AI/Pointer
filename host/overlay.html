@@ -293,7 +293,7 @@
       }
       .walk-win {
         position: absolute;
-        overflow: hidden;
+        overflow: auto;
         padding: 10px 12px;
         border-radius: 12px;
         background: #111;
@@ -710,8 +710,14 @@
         if (/live-meeting/.test(href)) {
           return {
             kicker: "Live answer",
-            body: "Friday works if the deck is in tonight.",
-            foot: "Don't say: Don't promise a send.",
+            rows: [
+              { label: "They asked", value: "Can we ship Friday?" },
+              { label: "You", value: "Friday works if the deck is in tonight." },
+              { label: "Say this", value: "Friday works if the deck is in tonight." },
+              { label: "Also", value: "Name the Friday hold." },
+              { label: "Heard", value: "Sarah Chen / Friday / $40k" },
+            ],
+            foot: "Don't say: Don't promise a send. Never a cheater overlay.",
           };
         }
         return null;
@@ -887,15 +893,15 @@
             left: "74%",
             top: "50%",
             width: "22%",
-            height: "28%",
+            height: "20%",
           },
           {
             id: "walk-win-meeting",
             href: "/workspace?id=live-meeting",
             left: "10%",
-            top: "74%",
-            width: "40%",
-            height: "18%",
+            top: "72%",
+            width: "86%",
+            height: "26%",
           },
         ].forEach(function (win) {
           const spec = overlayDockSpec(win.href);

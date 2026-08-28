@@ -167,6 +167,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/html\.demo #walk-desktop/.test(walk) && /This computer - no runtime/.test(walk), "live Electron overlay stays transparent");
       assert.ok(/highlightWalkWindow/.test(walk), "desk chips highlight the filed window on This computer");
       assert.ok(/Unsent mail/.test(walk) && /not sent/.test(walk), "overlay mail dock is unsent");
+      assert.ok(/They asked/.test(walk) && /Say this/.test(walk) && /Never a cheater overlay/.test(walk), "overlay Live answer is the honest stack");
       const openFn = walk.slice(walk.indexOf("function openDeskWindow"), walk.indexOf("function onDesk"));
       assert.ok(!/location\.href/.test(openFn) && !/window\.open/.test(openFn), "desk chips must not leave the overlay");
       assert.ok(/spoken \+ "\. Then "/.test(walk), "overlay speaks Then remaining");

@@ -957,6 +957,9 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /paintWalkDock/);
   assert.match(teachOverlay, /Unsent mail/);
   assert.match(teachOverlay, /not sent/);
+  assert.match(teachOverlay, /They asked/);
+  assert.match(teachOverlay, /Say this/);
+  assert.match(teachOverlay, /Never a cheater overlay/);
   const openFn = teachOverlay.slice(teachOverlay.indexOf("function openDeskWindow"), teachOverlay.indexOf("function onDesk"));
   assert.match(openFn, /paintWalkDock/);
   assert.match(openFn, /highlightWalkWindow/);
@@ -1844,6 +1847,8 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /cueDockSpec/);
   assert.match(hud, /Unsent mail/);
   assert.match(hud, /not sent - send is parked/);
+  assert.match(hud, /desk === "meeting"/);
+  assert.match(hud, /never a cheater overlay/);
   assert.match(hud, /live-cue-dock-copy/);
   assert.match(hud, /lastCueDockCopy/);
   assert.match(hud, /event\.path/);

@@ -249,6 +249,35 @@ function cueDockSpec(event) {
       foot: "not approval",
     };
   }
+  if (desk === "meeting") {
+    const asked = String((event && event.asked) || "").trim();
+    const cue = String((event && event.cue) || src).trim();
+    const also = String((event && event.also) || "").trim();
+    const avoid = String((event && event.avoid) || "").trim();
+    const heard = String((event && event.heard) || "").trim();
+    const turns = Array.isArray(event && event.turns) ? event.turns : [];
+    let you = "";
+    let them = "";
+    turns.forEach((row) => {
+      const text = String((row && row.text) || "").trim();
+      if (!text) return;
+      if (row.speaker === "you") you = text;
+      else if (row.speaker === "them") them = text;
+    });
+    const rows = [];
+    if (asked) rows.push({ label: "They asked", value: asked.slice(0, 120) });
+    if (them && them !== asked) rows.push({ label: "Them", value: them.slice(0, 120) });
+    if (you) rows.push({ label: "You", value: you.slice(0, 120) });
+    if (cue) rows.push({ label: "Say this", value: cue.slice(0, 160) });
+    if (also) rows.push({ label: "Also", value: also.slice(0, 120) });
+    if (heard) rows.push({ label: "Heard", value: heard.slice(0, 120) });
+    if (!rows.length) return null;
+    return {
+      kicker: "Live answer",
+      rows: rows,
+      foot: (avoid ? "Don't say: " + avoid.slice(0, 120) + " - " : "") + "never a cheater overlay",
+    };
+  }
   return null;
 }
 function paintLiveCueDock(event) {

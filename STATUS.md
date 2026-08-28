@@ -30,7 +30,7 @@
    `/overlay` is the same teach walk (Draw stacks a BOX; Last step
    when nothing remains; walk rail plus Ask chips; Enter is Got it).
    HUD cue bar keeps that remaining rail and those chips when chrome
-   hides, and docks Unsent mail / Notes / Needs you on that bar. Walk
+   hides, and docks Unsent mail / Notes / Needs you / Live answer on that bar. Walk
    rail ticks jump by Ask. Overlay docks the filed file on the walk.
    Walk chrome stacks Type in Email / Then / fill so it stays readable.
    Public `/overlay` paints This computer under that walk (live overlay
@@ -39,7 +39,9 @@
    Escape. Dock Copy is clipboard, never send. Home Ask stays on This
    screen. Got it types the Heard name into Unsent mail To (starts
    not sent). Got it on Save files that draft on This computer
-   (never send). Last step is spoken. Never Act.
+   (never send). Last step is spoken. Overlay Live answer on This
+   computer is They asked / You / Say this / Also / Don't say (HUD
+   docks that stack). Never a cheater overlay. Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

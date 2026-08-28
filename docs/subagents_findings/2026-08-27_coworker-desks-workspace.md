@@ -105,7 +105,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   Got it types the Heard name into Unsent mail To (starts not sent).
   Got it on Save files that draft on This computer (never send).
   Walk chrome stacks Type in Email / Then / fill. HUD cue bar
-  docks that same filed window. Home Ask stays on This screen and
+  docks that same filed window (Live answer is They asked / You / Say
+  this / Also / Don't say, never a cheater overlay). Home Ask stays on This screen and
   highlights that window.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
