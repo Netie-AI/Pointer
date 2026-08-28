@@ -1,3 +1,10 @@
+## 2026-08-28 - Overlay chrome wraps; HUD docks the filed file
+
+Walk chrome stacks Type in Email / Then / fill / filed (no ellipsis
+row). HUD cue bar docks Unsent mail / Notes / Needs you when those
+desks file. Close hides the dock. Never send. Never Act. P-05 and
+P-06 stay parked.
+
 ## 2026-08-28 - Overlay docks the filed file; home Ask stays
 
 Public `/overlay` Draft email / Notes / Needs you / Live answer docks

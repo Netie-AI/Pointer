@@ -99,7 +99,9 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - `?demo=1` paints a sample coworker catalog (not live, no runtime, Ask
   stays on the laptop). Public APIs stay 404. Overlay desk chips dock
   Unsent mail / Notes / Needs you / Live answer on the walk (no second
-  tab). Home Ask stays on This screen and highlights that window.
+  tab). Walk chrome stacks Type in Email / Then / fill. HUD cue bar
+  docks that same filed window. Home Ask stays on This screen and
+  highlights that window.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
 ## Traps

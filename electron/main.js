@@ -388,6 +388,8 @@ function publishLiveCoworker(assist) {
     also: assist.also || "",
     avoid: assist.avoid || "",
     path: Array.isArray(assist.path) ? assist.path.slice(0, 8) : [],
+    preview: String(assist.preview || "").slice(0, 400),
+    title: String(assist.title || "").slice(0, 80),
     cueKind:
       assist.cueKind ||
       (assist.desk === "teach" ? "point" : assist.desk === "security" ? "warn" : "say"),

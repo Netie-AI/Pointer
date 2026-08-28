@@ -45,8 +45,10 @@ Public and loopback `/overlay` is that same walk full-screen (demo
 online when APIs are empty; live path on the laptop). Overlay Draw
 stacks a BOX (cap 8, 0.4% fail-closed). Last BOX says Last step.
 Overlay chrome keeps a remaining walk rail and Ask chips (Draft email /
-Notes / Needs you / Live answer). Desk chips dock the filed file on the
-walk. Home Ask stays on This screen and highlights that window.
+Notes / Needs you / Live answer). Walk chrome stacks Type in Email /
+Then / fill so the cue stays readable. Desk chips dock the filed file on the
+walk. HUD cue bar docks that same Unsent mail / Notes / Needs you window.
+Home Ask stays on This screen and highlights that window.
 Email BOX types the Heard name. Enter is Got it. Never send.
 The laptop HUD cue bar paints that same remaining rail and those chips
 when chrome hides. OS voice says Last step on the last BOX.

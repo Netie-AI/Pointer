@@ -939,6 +939,8 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(openFrame, /closeTeachOverlay/);
   const teachOverlay = fs.readFileSync(path.join(__dirname, "..", "host", "overlay.html"), "utf8");
   assert.match(teachOverlay, /id="walk-chrome"/);
+  assert.match(teachOverlay, /id="walk-copy"/);
+  assert.match(teachOverlay, /id="walk-acts"/);
   assert.match(teachOverlay, /id="walk-dock"/);
   assert.match(teachOverlay, /paintWalkDock/);
   assert.match(teachOverlay, /Unsent mail/);
@@ -1795,6 +1797,7 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(html, /id="live-cue-captions"/);
   assert.match(html, /id="live-cue-rail"/);
   assert.match(html, /id="live-cue-chips"/);
+  assert.match(html, /id="live-cue-dock"/);
   assert.match(html, /Draft email/);
   assert.doesNotMatch(html, /Send mail|Approve/);
   assert.match(html, /id="btn-live-next"/);
@@ -1806,6 +1809,8 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(mainCue, /turns:/);
   assert.match(mainCue, /cueKind/);
   assert.match(mainCue, /path:/);
+  assert.match(mainCue, /preview:/);
+  assert.match(mainCue, /title:/);
   assert.match(mainCue, /teachActionCue/);
   assert.match(hud, /cueDisplay/);
   assert.match(hud, /Next:/);
@@ -1814,6 +1819,11 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /brief\.textContent/);
   assert.match(hud, /live-cue-bar/);
   assert.match(hud, /paintLiveCueRail/);
+  assert.match(hud, /paintLiveCueDock/);
+  assert.match(hud, /cueDockSpec/);
+  assert.match(hud, /Unsent mail/);
+  assert.match(hud, /not sent - send is parked/);
+  assert.match(hud, /live-cue-dock-close/);
   assert.match(hud, /event\.path/);
   assert.match(hud, /Last step/);
   assert.match(hud, /got it, next/);
@@ -1832,6 +1842,8 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(css, /\.live-cue-caption/);
   assert.match(css, /\.live-cue-rail/);
   assert.match(css, /\.live-cue-chips/);
+  assert.match(css, /\.live-cue-dock/);
+  assert.match(css, /live-cue-dock\[hidden\]/);
   assert.match(css, /live-cue-rail\[hidden\]/);
   assert.match(css, /\.hud\.morph-hidden \.live-cue-bar/);
   assert.doesNotMatch(css, /chat-open \.live-cue-bar/);
@@ -1846,6 +1858,7 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(liveFn, /live-cue-them/);
   assert.match(liveFn, /live-cue-you/);
   assert.match(liveFn, /paintLiveCueCaptions/);
+  assert.match(liveFn, /paintLiveCueDock/);
   assert.match(liveFn, /Them:/);
   assert.match(liveFn, /Don't say:/);
   assert.doesNotMatch(liveFn, /innerHTML/);

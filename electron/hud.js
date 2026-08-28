@@ -204,6 +204,91 @@ function paintLiveCueRail(path) {
   });
   rail.hidden = !rows.length;
 }
+function hideLiveCueDock() {
+  const dock = $("live-cue-dock");
+  if (!dock) return;
+  while (dock.firstChild) dock.removeChild(dock.firstChild);
+  dock.hidden = true;
+}
+function cueDockSpec(event) {
+  const desk = String((event && event.desk) || "");
+  const preview = String((event && event.preview) || "").trim();
+  const text = String((event && event.text) || "").trim();
+  const src = preview || text;
+  if (desk === "inbox") {
+    const toM = src.match(/^To:\s*(.+)$/m);
+    const subM = src.match(/^Subject:\s*(.+)$/m);
+    let body = src
+      .replace(/^To:\s*.+\n?/m, "")
+      .replace(/^Subject:\s*.+\n?/m, "")
+      .replace(/^\n+/, "")
+      .slice(0, 400);
+    return {
+      kicker: "Unsent mail",
+      rows: [
+        { label: "To", value: (toM && String(toM[1] || "").trim()) || "not sent" },
+        { label: "Subject", value: (subM && String(subM[1] || "").trim()) || String((event && event.title) || "Draft reply").slice(0, 80) },
+      ],
+      body: body,
+      foot: "not sent - send is parked (P-05)",
+    };
+  }
+  if (desk === "document") {
+    return {
+      kicker: "Notes",
+      body: src.slice(0, 400) || String((event && event.title) || "Notes").slice(0, 80),
+      foot: "not a .docx - Word.app still needs Cortex",
+    };
+  }
+  if (desk === "security") {
+    return {
+      kicker: "Needs you",
+      body: String((event && event.cue) || src).slice(0, 400) || "Needs you. Never approval.",
+      foot: "not approval",
+    };
+  }
+  return null;
+}
+function paintLiveCueDock(event) {
+  const dock = $("live-cue-dock");
+  if (!dock) return;
+  const spec = cueDockSpec(event);
+  if (!spec) return;
+  while (dock.firstChild) dock.removeChild(dock.firstChild);
+  const kick = document.createElement("p");
+  kick.className = "dock-kicker";
+  kick.textContent = spec.kicker;
+  dock.appendChild(kick);
+  (spec.rows || []).forEach((row) => {
+    const p = document.createElement("p");
+    p.className = "dock-row";
+    const lab = document.createElement("span");
+    lab.textContent = String((row && row.label) || "") + " ";
+    const val = document.createElement("b");
+    val.textContent = String((row && row.value) || "");
+    p.appendChild(lab);
+    p.appendChild(val);
+    dock.appendChild(p);
+  });
+  if (spec.body) {
+    const body = document.createElement("p");
+    body.className = "dock-body";
+    body.textContent = spec.body;
+    dock.appendChild(body);
+  }
+  if (spec.foot) {
+    const foot = document.createElement("p");
+    foot.className = "dock-foot";
+    foot.textContent = spec.foot;
+    dock.appendChild(foot);
+  }
+  const close = document.createElement("button");
+  close.type = "button";
+  close.id = "live-cue-dock-close";
+  close.textContent = "Close";
+  dock.appendChild(close);
+  dock.hidden = false;
+}
 function paintMeetingTalk(event, asked) {
   const root = $("meeting-talk");
   if (!root) return;
@@ -341,6 +426,7 @@ function paintLiveBrief(event) {
     lastThemLine = "";
     lastCueTurns = [];
     cueBarHasBrief = false;
+    hideLiveCueDock();
     paintLiveCueRail([]);
     paintMeetingTalk({ desk: "", turns: [] }, "");
     paintLiveCueCaptions();
@@ -381,6 +467,7 @@ function paintLiveBrief(event) {
   if (bar) bar.hidden = !cueBarHasBrief;
   paintLiveCueCaptions();
   paintLiveCueRail(kind === "point" ? event.path : []);
+  paintLiveCueDock(event);
   if (barAsked) {
     barAsked.hidden = !askedLine;
     barAsked.textContent = askedLine;
@@ -1510,7 +1597,14 @@ function onCueAdvance(event) {
   doAsk();
 }
 if (cueRow) cueRow.addEventListener("click", onCueAdvance);
-if (liveCueBar) liveCueBar.addEventListener("click", onCueAdvance);
+if (liveCueBar) {
+  liveCueBar.addEventListener("click", onCueAdvance);
+  liveCueBar.addEventListener("click", (event) => {
+    if (!event.target.closest || !event.target.closest("#live-cue-dock-close")) return;
+    event.preventDefault();
+    hideLiveCueDock();
+  });
+}
 const btnCopyCue = $("btn-copy-cue");
 const btnLiveCopy = $("btn-live-copy");
 async function onCueCopy(button) {

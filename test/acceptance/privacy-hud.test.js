@@ -142,12 +142,15 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/id="live-cue-captions"/.test(read("electron/hud.html")), "Live captions live on the cue bar");
       assert.ok(/id="live-cue-rail"/.test(read("electron/hud.html")), "remaining walk rail lives on the cue bar");
       assert.ok(/id="live-cue-chips"/.test(read("electron/hud.html")), "desk chips live on the cue bar");
+      assert.ok(/id="live-cue-dock"/.test(read("electron/hud.html")), "filed desk docks on the cue bar");
+      assert.ok(/paintLiveCueDock/.test(js) && /Unsent mail/.test(js), "HUD docks Unsent mail, never send");
       assert.ok(/Draft email/.test(read("electron/hud.html")) && !/Send mail|Approve/.test(read("electron/hud.html")), "cue chips Ask, never send");
       assert.ok(/id="btn-live-next"/.test(read("electron/hud.html")), "Got it lives in the top cue bar");
       const css = read("electron/hud.css");
       assert.ok(/\.live-cue-bar/.test(css), "live cue bar has chrome");
       assert.ok(/\.live-cue-caption/.test(css), "Live captions have chrome");
       assert.ok(/\.live-cue-rail/.test(css) && /\.live-cue-chips/.test(css), "cue rail and chips have chrome");
+      assert.ok(/\.live-cue-dock/.test(css) && /live-cue-dock\[hidden\]/.test(css), "cue dock stays unless hidden");
       assert.ok(!/\.hud\.chat-open \.live-cue-bar/.test(css), "live cue bar must not wait for chat");
       assert.ok(/\.hud\.morph-hidden \.live-cue-bar/.test(css), "compact HUD still positions the cue bar");
       assert.ok(

@@ -35,9 +35,22 @@
       #walk-chrome.show { display: flex; }
       #walk-row {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 10px;
         min-width: 0;
+      }
+      #walk-copy {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      #walk-acts {
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: 6px;
       }
       #walk-rail, #walk-chips {
         display: flex;
@@ -86,14 +99,14 @@
         border-radius: 8px;
         pointer-events: none;
       }
-      #walk-cue { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      #walk-then, #walk-fill, #walk-filed {
+      #walk-cue, #walk-then, #walk-fill, #walk-filed {
         margin: 0;
+        white-space: normal;
+        overflow: visible;
+      }
+      #walk-then, #walk-fill, #walk-filed {
         color: #9ad;
         font-weight: 500;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
       #walk-dock {
         position: fixed;
@@ -259,13 +272,17 @@
   <body>
     <div id="walk-chrome" class="chrome">
       <div id="walk-row">
-        <p id="walk-cue"></p>
-        <p id="walk-then" hidden></p>
-        <p id="walk-fill" hidden></p>
-        <p id="walk-filed" hidden></p>
-        <button type="button" id="walk-back" data-q="back">Back</button>
-        <button type="button" id="walk-next" data-q="got it, next">Got it</button>
-        <button type="button" id="walk-draw">Draw</button>
+        <div id="walk-copy">
+          <p id="walk-cue"></p>
+          <p id="walk-then" hidden></p>
+          <p id="walk-fill" hidden></p>
+          <p id="walk-filed" hidden></p>
+        </div>
+        <div id="walk-acts">
+          <button type="button" id="walk-back" data-q="back">Back</button>
+          <button type="button" id="walk-next" data-q="got it, next">Got it</button>
+          <button type="button" id="walk-draw">Draw</button>
+        </div>
       </div>
       <div id="walk-rail"></div>
       <p id="walk-chips">
