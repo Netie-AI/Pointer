@@ -912,15 +912,68 @@ function pageDesk() {
   return "";
 }
 
+function showFiled(line) {
+  const text = String(line || "");
+  ["host-filed", "today-filed", "artifact-filed", "meeting-filed"].forEach(function (id) {
+    const filed = document.getElementById(id);
+    if (!filed) return;
+    filed.hidden = !text;
+    filed.textContent = text;
+  });
+}
+
+function demoAskDesk(ask) {
+  const t = String(ask || "").toLowerCase();
+  if (!t) return "";
+  if (/\b(got it|next control|i clicked|walk me through|teach me|on (my )?screen|back)\b/.test(t)) {
+    return "teach";
+  }
+  if (/\b(security review|vuln|cve)\b/.test(t)) return "security";
+  if (/\b(?:microsoft\s+)?word\b/.test(t) || /\bdocx\b/.test(t)) return "document";
+  if (/\b(inbox|gmail|outlook|slack reply|email|follow-?up)\b/.test(t)) return "inbox";
+  if (
+    (/\b(meeting|standup|what should i say|next steps?|action items?)\b/.test(t) || /\brecap\b/.test(t)) &&
+    !/\b(inbox|gmail|outlook|email|word|docx)\b/.test(t)
+  ) {
+    return "meeting";
+  }
+  if (/\b(on my plate|today'?s brief|morning brief)\b/.test(t)) return "today";
+  return "";
+}
+
+function demoAsk(ask) {
+  const desk = demoAskDesk(ask);
+  if (desk === "teach") {
+    postTeach(ask);
+    return;
+  }
+  const ids = {
+    inbox: "live-inbox",
+    document: "live-document",
+    security: "live-security",
+    meeting: "live-meeting",
+    today: "standing-today",
+  };
+  const id = ids[desk];
+  if (!id) {
+    showFiled("Demo catalog. Ask stays on the laptop. Never Act.");
+    return;
+  }
+  if (!isWorkspacePage()) {
+    location.href = "/workspace?id=" + encodeURIComponent(id);
+    return;
+  }
+  openDemoArtifact(id);
+  if (desk === "inbox") showFiled("Demo catalog. Opened unsent mail. Never sent. Never Act.");
+  else if (desk === "document") showFiled("Demo catalog. Opened Notes. Never a .docx. Never Act.");
+  else if (desk === "security") showFiled("Demo catalog. Opened Needs you. Never approval. Never Act.");
+  else if (desk === "meeting") showFiled("Demo catalog. Opened Live answer. Never a cheater overlay. Never Act.");
+  else showFiled("Demo catalog. Opened Today. Never Act.");
+}
+
 function postAsk(ask) {
   if (isDemoCatalog()) {
-    const line = "Demo catalog. Ask stays on the laptop. Never Act.";
-    ["host-filed", "today-filed", "artifact-filed", "meeting-filed"].forEach(function (id) {
-      const filed = document.getElementById(id);
-      if (!filed) return;
-      filed.hidden = false;
-      filed.textContent = line;
-    });
+    demoAsk(ask);
     return;
   }
   const payload = { ask: ask, act: false };

@@ -1,4 +1,11 @@
-## 2026-08-28 - Demo Draw stacks a BOX on This screen
+## 2026-08-28 - Demo Ask opens the matching window
+
+Public/demo Ask files Unsent mail, Notes, Needs you, or Live answer
+on This computer. Teach Ask is still Got it. Unknown Ask stays on
+the laptop. Never send. Never a .docx. Never approval. Run still
+refuses (P-06). Never Act. P-05 stays parked.
+
+
 
 Public/demo This screen Draw stores a freehand BOX (cap 8, 0.4%
 fail-closed), same rules as the laptop overlay. Home This screen is

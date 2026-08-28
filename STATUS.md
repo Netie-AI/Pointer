@@ -24,7 +24,8 @@
    to open a window on This computer. Home This screen tap is Got it
    (Ask, never Act). Run refuses (P-06). Public live paths stay 404.
    Public pages paint the labeled demo coworker (not your session, no
-   runtime).
+   runtime). Demo Ask opens the matching window on This computer
+   (never send, never a .docx, never approval).
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

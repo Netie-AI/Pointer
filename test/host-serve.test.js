@@ -288,6 +288,11 @@ function readAsset(file) {
     assert.match(app, /Demo catalog/);
     const pollLive = app.slice(app.indexOf("function pollWhileLive"), app.indexOf("function paintDesks"));
     assert.match(pollLive, /isDemoCatalog/);
+    assert.match(app, /demoAsk/);
+    assert.match(app, /Opened unsent mail/);
+    assert.match(app, /Ask stays on the laptop/);
+    const demoAskFn = app.slice(app.indexOf("function demoAsk"), app.indexOf("function postAsk"));
+    assert.doesNotMatch(demoAskFn, /mode:\s*"meeting"/);
     assert.match(app, /if \(onTeach\) speakTeachCue/);
     assert.match(app, /showMeeting = !onTeach/);
     assert.match(app, /onTeach/);
