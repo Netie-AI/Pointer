@@ -1921,6 +1921,25 @@ if (enquirePanel) {
  * A crosshair and a label that fade. Not a companion, not a ring that lives on
  * screen; the floating Clicky chrome was removed for good reasons.
  */
+function overlayControlFace(cue) {
+  const t = String(cue || "").toLowerCase();
+  if (/\btype in\b|\bedit\b|\bemail\b|\bfield\b|\binput\b/.test(t)) return "field";
+  if (/\bclick\b|\bsave\b|\bcancel\b|\bbutton\b|\bsubmit\b/.test(t)) return "button";
+  return "region";
+}
+
+function overlayControlCaption(cue) {
+  return (
+    String(cue || "control")
+      .replace(/^\d+\s+of\s+\d+\s+/i, "")
+      .replace(/^\d+\s+/, "")
+      .replace(/^(type in|click|look at)\s+/i, "")
+      .replace(/\s+then\s+tab$/i, "")
+      .trim()
+      .slice(0, 24) || "control"
+  );
+}
+
 function renderPoints(points, ttlMs, hold) {
   const layer = $("point-layer");
   if (!layer) return;
@@ -1942,10 +1961,17 @@ function renderPoints(points, ttlMs, hold) {
       mark.style.left = `${point.xPct}%`;
       mark.style.top = `${point.yPct}%`;
     }
-    if (!later && !done) {
+    if (!later && !done && !boxed) {
       const ring = document.createElement("div");
       ring.className = "point-ring";
       mark.appendChild(ring);
+    }
+    if (boxed) {
+      const kind = point.face || overlayControlFace(point.label);
+      const face = document.createElement("div");
+      face.className = "point-face " + (kind === "field" ? "field" : kind === "button" ? "button" : "region");
+      face.textContent = point.caption || overlayControlCaption(point.label);
+      mark.appendChild(face);
     }
     if (point.label) {
       const label = document.createElement("span");

@@ -1,3 +1,10 @@
+## 2026-08-28 - Overlay paints measured field and button faces
+
+Laptop teach overlay and HUD paint field / button faces at measured
+BOX percents (same catalog as `/teach` This screen). Never invented
+coords. Tap current BOX is still Got it. Never Act. Never a buddy.
+P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Teach This screen shows measured controls
 
 Loopback `/teach` paints field and button faces at measured BOX percents

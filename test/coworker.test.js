@@ -926,7 +926,9 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /id="walk-chrome"/);
   assert.match(teachOverlay, /Got it/);
   assert.match(teachOverlay, /Then:/);
-  assert.match(teachOverlay, /Look at region 1/);
+  assert.match(teachOverlay, /Type in Email/);
+  assert.match(teachOverlay, /Click Save/);
+  assert.match(teachOverlay, /point-face/);
   assert.match(teachOverlay, /point-key/);
   assert.match(teachOverlay, /got it, next/);
   assert.match(teachOverlay, /pointer-events:\s*none/);
@@ -1633,6 +1635,8 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /Then:/);
   assert.match(hud, /event\.rest/);
   assert.match(hud, /point-box/);
+  assert.match(hud, /point-face/);
+  assert.match(hud, /overlayControlFace/);
   assert.match(hud, /later/);
   assert.match(hud, /event\.hold/);
   assert.match(hud, /renderPoints\(event\.points, event\.ttlMs, event\.hold\)/);

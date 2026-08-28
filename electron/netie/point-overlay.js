@@ -126,8 +126,10 @@ function laterOverlayPoints(path) {
       later: Boolean(p && p.later),
       done: !Boolean(p && p.later),
     };
+    if (p && p.cue) row.cue = String(p.cue);
     const stroke = clipStroke(p && p.stroke);
     if (stroke.length) row.stroke = stroke;
+    stampOverlayFace(row);
     out.push(row);
   }
   return out;
@@ -159,6 +161,33 @@ function holdTtl(opts) {
  * Current hold label is the action (Click Save / Type in Email), not the
  * numbered catalog name. BOX tokens stay `1 Save`. Never a buddy.
  */
+function overlayControlFace(cue) {
+  const t = String(cue || "").toLowerCase();
+  if (/\btype in\b|\bedit\b|\bemail\b|\bfield\b|\binput\b/.test(t)) return "field";
+  if (/\bclick\b|\bsave\b|\bcancel\b|\bbutton\b|\bsubmit\b/.test(t)) return "button";
+  return "region";
+}
+
+function overlayControlCaption(cue) {
+  return (
+    String(cue || "control")
+      .replace(/^\d+\s+of\s+\d+\s+/i, "")
+      .replace(/^\d+\s+/, "")
+      .replace(/^(type in|click|look at)\s+/i, "")
+      .replace(/\s+then\s+tab$/i, "")
+      .trim()
+      .slice(0, 24) || "control"
+  );
+}
+
+function stampOverlayFace(point) {
+  if (!point || !(Number(point.wPct) > 0)) return point;
+  const cue = String(point.cue || point.label || "");
+  point.face = overlayControlFace(cue);
+  point.caption = overlayControlCaption(cue);
+  return point;
+}
+
 function overlayActionLabel(cue, stepCue) {
   const step = String(stepCue || "").trim();
   if (step) return step.slice(0, 40);
@@ -187,6 +216,7 @@ function stampCurrentAction(points, opts) {
     if (key) next.key = key;
     const stroke = clipStroke(now && now.stroke);
     if (stroke.length) next.stroke = stroke;
+    stampOverlayFace(next);
     return next;
   });
 }
@@ -201,6 +231,8 @@ module.exports = {
   toOverlayEvent,
   laterOverlayPoints,
   overlayActionLabel,
+  overlayControlFace,
+  overlayControlCaption,
   stampCurrentAction,
   clipBox,
 };

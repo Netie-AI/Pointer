@@ -38,7 +38,8 @@ it Ask the next step on loopback (never Act). A tap inside the current BOX
 is Got it (Ask, never Act). Draw around a control to
 stack a BOX and keep the freehand stroke on the walk. Copy next / Copy say-this
 copy the cue line. Overlay current BOX shows Click / Type in / Look at
-(not only `1 Save`). Loopback `/meeting` Ask chips file an unsent follow-up
+plus field / button faces at those measured percents (not only `1 Save`).
+Loopback `/meeting` Ask chips file an unsent follow-up
 and a Word draft from the stored transcript (never send, never Word.app,
 teach walks stay on `/teach`). Loopback sticky chrome has a fixed Ask bar
 on every page (`/api/ask`, never Act). `/today` chips file Recap / mail /

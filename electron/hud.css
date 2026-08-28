@@ -299,6 +299,22 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   color: var(--accent); font-size: 10px; font-weight: 650;
 }
 .point-mark.point-box .point-key { top: -22px; }
+.point-mark.point-box::before, .point-mark.point-box::after { display: none; }
+.point-face {
+  position: absolute; inset: 6px;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; font-size: 11px; font-weight: 650;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.point-face.field {
+  background: #e8eef4; border: 1px solid #9ad; border-radius: 4px; color: #111;
+}
+.point-face.button {
+  background: #345; border: 1px solid #6be; border-radius: 6px; color: #eee;
+}
+.point-face.region {
+  background: #15202c; border: 1px dashed #567; border-radius: 6px; color: #eee;
+}
 .point-mark.later::before, .point-mark.later::after,
 .point-mark.done::before, .point-mark.done::after { display: none; }
 .point-mark.point-box.later {

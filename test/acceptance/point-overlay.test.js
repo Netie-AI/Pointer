@@ -84,8 +84,15 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       });
       assert.ok(acted.points.some((p) => !p.later && !p.done && p.label === "Type in Email then Tab"));
       assert.ok(acted.points.some((p) => !p.later && !p.done && p.key === "Tab"));
+      assert.ok(acted.points.some((p) => !p.later && !p.done && p.face === "field" && p.caption === "Email"));
       assert.ok(acted.points.some((p) => p.later && p.label === "2 Save"));
+      assert.ok(acted.points.some((p) => p.later && p.face === "button" && p.caption === "Save"));
       assert.strictEqual(po.overlayActionLabel("1 of 3 Click Save or press Enter", ""), "Click Save or press Enter");
+      assert.strictEqual(po.overlayControlFace("Type in Email then Tab"), "field");
+      assert.strictEqual(po.overlayControlCaption("1 of 2 Type in Email then Tab"), "Email");
+      assert.strictEqual(po.overlayControlFace("2 Save"), "button");
+      assert.strictEqual(po.overlayControlCaption("2 Save"), "Save");
+      assert.strictEqual(po.overlayControlFace("Look at region 1"), "region");
       assert.strictEqual(po.parsePoints("[BOX:5,8,20,3:1 Email]").points[0].label, "1 Email");
     }),
 
@@ -152,6 +159,12 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/i clicked/.test(walk), "demo click on the current BOX Asks, never Acts");
       assert.ok(/html\.demo, html\.demo body/.test(walk), "demo overlay can receive a click on the current BOX");
       assert.ok(/point-key/.test(walk), "current overlay box can show Tab/Enter");
+      assert.ok(/point-face/.test(walk) && /\.point-face\.field/.test(walk), "overlay paints field faces at measured percents");
+      assert.ok(/Type in Email/.test(walk) && /Click Save/.test(walk), "demo walk is Email then Save, not hollow regions");
+      const hudJs = read("electron/hud.js");
+      assert.ok(/point-face/.test(hudJs) && /overlayControlFace/.test(hudJs), "HUD paints the same control faces");
+      const hudCss = read("electron/hud.css");
+      assert.ok(/\.point-face\.field/.test(hudCss) && /\.point-face\.button/.test(hudCss), "HUD CSS paints field and button faces");
       assert.ok(!/innerHTML/.test(walk), "the walk paints with createElement");
       assert.ok(
         !/id="clicky-orb"|class="clicky-orb"|stage-orb|chat-bubble/.test(walk),

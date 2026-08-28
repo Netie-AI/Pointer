@@ -25,11 +25,13 @@
    You/Them, Live captions, and say-this (never a cheater overlay).
    `/teach` stacks drawn BOX steps (current hold,
    later dashed), Back/Got it Ask, never invented coords. Overlay stays
-   numbered BOX tokens (`1 Save`). Current BOX paints Click /
-   Type in / Look at. A tap on the current BOX is Got it (Ask, never Act).
-   Overlay Draw stores a freehand BOX and keeps that stroke on the walk.
-   Cap 8. Tiny boxes fail closed at 0.4%. `/teach` This screen paints
-   measured controls (field / button) at those BOX percents.
+   numbered BOX tokens (`1 Save`). Current BOX paints
+   Click / Type in / Look at plus field / button faces at those percents
+   (HUD and overlay, same as `/teach` This screen). A tap on the current
+   BOX is Got it (Ask, never Act). Overlay Draw stores a freehand BOX
+   and keeps that stroke on the walk. Cap 8. Tiny boxes fail closed at
+   0.4%. `/teach` This screen paints measured controls (field / button)
+   at those BOX percents.
    Compact HUD `cueDisplay` for `point` strips `N of M`.
    This session links `/workspace?id=` to the live document, inbox, or
    security file and shows Download generated .docx / unsent .eml /
