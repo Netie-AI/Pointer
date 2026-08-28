@@ -188,6 +188,8 @@ is a sample catalog (not live, no runtime, Ask stays on the laptop).
 Public localFirst pages paint that same labeled demo (not your session).
 Live APIs stay 404. Demo Ask opens the matching window on This computer
 (never send, never a .docx, never approval). Unknown Ask stays on the laptop.
+Fixed cue bar chips Ask the same jobs (Got it / Draft email / Notes /
+Needs you / Live answer).
 `/workspace` opens a file as a window on This computer (not a dump below
 the catalog). Home This screen Draw stacks a BOX (cap 8, 0.4% fail-closed)
 and tap on the current BOX is Got it (Ask, never Act).

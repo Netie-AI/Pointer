@@ -941,6 +941,16 @@ function demoAskDesk(ask) {
   return "";
 }
 
+function demoAskChips() {
+  return [
+    { q: "got it, next", label: "Got it" },
+    { q: "draft a follow-up email from this meeting", label: "Draft email" },
+    { q: "write this recap in Word", label: "Notes" },
+    { q: "Security review this session", label: "Needs you" },
+    { q: "what should I say", label: "Live answer" },
+  ];
+}
+
 function demoAsk(ask) {
   const desk = demoAskDesk(ask);
   if (desk === "teach") {
@@ -1384,6 +1394,9 @@ function ensureLiveCueBar() {
   openChip.id = "host-open";
   openChip.hidden = true;
   bar.appendChild(openChip);
+  const chips = el("p", "desk-chips");
+  chips.id = "host-ask-chips";
+  bar.appendChild(chips);
   const form = el("form", "live-cue-ask");
   form.id = "host-ask-form";
   const input = document.createElement("input");
@@ -1514,6 +1527,14 @@ function paintChrome(home) {
   if (back) back.hidden = !canWalk;
   if (next) next.hidden = !canWalk;
   if (copy) copy.hidden = !lastChromeCue;
+  paintDeskChips(
+    "host-ask-chips",
+    home && Array.isArray(home.chips) && home.chips.length
+      ? home.chips
+      : isDemoCatalog()
+        ? demoAskChips()
+        : []
+  );
   paintWorkingSet();
 }
 
@@ -2623,6 +2644,7 @@ function demoHome() {
     artifacts: files.map(function (row) {
       return { id: row.id, desk: row.desk, title: row.title };
     }),
+    chips: demoAskChips(),
   };
 }
 

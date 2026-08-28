@@ -1,4 +1,10 @@
-## 2026-08-28 - Demo Ask opens the matching window
+## 2026-08-28 - Demo chips Ask the next desk
+
+Fixed cue bar chips Ask Got it, Draft email, Notes, Needs you, and
+Live answer. Same as typing Ask. Never send. Never approval. Run still
+refuses (P-06). Never Act. P-05 stays parked.
+
+
 
 Public/demo Ask files Unsent mail, Notes, Needs you, or Live answer
 on This computer. Teach Ask is still Got it. Unknown Ask stays on

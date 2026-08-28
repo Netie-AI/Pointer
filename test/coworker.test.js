@@ -1613,6 +1613,11 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /Ask stays on the laptop/);
   const demoAskFn = hostApp.slice(hostApp.indexOf("function demoAsk"), hostApp.indexOf("function postAsk"));
   assert.doesNotMatch(demoAskFn, /mode:\s*"meeting"/);
+  assert.match(hostApp, /demoAskChips/);
+  assert.match(hostApp, /host-ask-chips/);
+  assert.match(hostApp, /Draft email/);
+  const chipsFn = hostApp.slice(hostApp.indexOf("function demoAskChips"), hostApp.indexOf("function demoAsk("));
+  assert.doesNotMatch(chipsFn, /Send mail|Approve/);
   assert.match(hostApp, /if \(onTeach\) speakTeachCue/);
   assert.match(hostApp, /showMeeting = !onTeach/);
   assert.match(hostApp, /onTeach/);

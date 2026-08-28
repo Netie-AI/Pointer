@@ -302,6 +302,12 @@ function readAsset(file) {
     assert.match(app, /meeting-card-captions/);
     const cssText = fs.readFileSync(path.join(HOST, "style.css"), "utf8");
     assert.match(cssText, /56vh/);
+    assert.match(app, /demoAskChips/);
+    assert.match(app, /host-ask-chips/);
+    assert.match(app, /Draft email/);
+    const chipsFn = app.slice(app.indexOf("function demoAskChips"), app.indexOf("function demoAsk("));
+    assert.doesNotMatch(chipsFn, /Send mail|Approve/);
+    assert.match(cssText, /#host-ask-chips/);
     assert.match(cssText, /teach-map-stroke/);
     assert.match(cssText, /teach-map-ink/);
     assert.match(cssText, /teach-map-cue/);

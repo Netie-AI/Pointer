@@ -171,6 +171,10 @@ pre {
   flex: 1 1 100%;
   margin: 0;
 }
+#host-ask-chips {
+  flex: 1 1 100%;
+  margin: 0;
+}
 .meeting-chips, .today-chips, .desk-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
 .meeting-chips button, .today-chips button, .desk-chips button {
   background: #1a1a1a;
