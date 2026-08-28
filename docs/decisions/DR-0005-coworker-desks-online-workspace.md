@@ -195,4 +195,6 @@ the catalog). Home This screen Draw stacks a BOX (cap 8, 0.4% fail-closed)
 and tap on the current BOX is Got it (Ask, never Act).
 Public `/overlay` is the same teach walk the laptop HUD loads (demo
 online, live on loopback). Overlay Draw stacks a BOX (cap 8, 0.4%
-fail-closed). Last BOX says Last step, not an empty Then.
+fail-closed). Last BOX says Last step, not an empty Then. Overlay chrome
+keeps a remaining walk rail and Ask chips (Draft email / Notes / Needs
+you / Live answer). Enter is Got it. Never send. Never approval.

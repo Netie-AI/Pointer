@@ -1,3 +1,10 @@
+## 2026-08-28 - Overlay chrome Asks the next desk
+
+Public `/overlay` keeps a remaining walk rail and Ask chips (Draft
+email / Notes / Needs you / Live answer). Enter is Got it. Demo chips
+open the matching window on This computer. Never send. Never approval.
+Run still refuses (P-06). Never Act. P-05 stays parked.
+
 ## 2026-08-28 - Public /overlay is the teach walk; Last step is honest
 
 Public `/overlay` serves the same click-through teach page the laptop

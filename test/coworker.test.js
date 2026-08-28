@@ -928,6 +928,15 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /Got it/);
   assert.match(teachOverlay, /Then:/);
   assert.match(teachOverlay, /Last step/);
+  assert.match(teachOverlay, /id="walk-rail"/);
+  assert.match(teachOverlay, /id="walk-chips"/);
+  assert.match(teachOverlay, /data-desk/);
+  assert.match(teachOverlay, /overlayDeskHref/);
+  assert.match(teachOverlay, /live-inbox/);
+  assert.match(teachOverlay, /Enter/);
+  const deskHref = teachOverlay.slice(teachOverlay.indexOf("function overlayDeskHref"), teachOverlay.indexOf("function onDesk"));
+  assert.doesNotMatch(deskHref, /mode:\s*"meeting"/);
+  assert.doesNotMatch(teachOverlay, /Send mail|Approve/);
   assert.match(teachOverlay, /demoFrame/);
   assert.match(teachOverlay, /0\.4/);
   assert.match(teachOverlay, /demoWalk.length >= 8/);

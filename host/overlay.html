@@ -20,18 +20,41 @@
         transform: translateX(-50%);
         z-index: 2;
         display: none;
-        align-items: center;
-        gap: 10px;
-        max-width: min(720px, 86vw);
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        max-width: min(760px, 92vw);
         padding: 8px 12px;
-        border-radius: 999px;
+        border-radius: 16px;
         background: #111;
         border: 1px solid #345;
         color: #eee;
         font: 650 12px "Segoe UI", system-ui, sans-serif;
         pointer-events: auto;
       }
-      #walk-chrome.show { display: inline-flex; }
+      #walk-chrome.show { display: flex; }
+      #walk-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+      #walk-rail, #walk-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 0;
+      }
+      .walk-rail-tick {
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid #345;
+        color: #9ad;
+        pointer-events: none;
+      }
+      .walk-rail-tick.now { color: #eee; border-color: #6ea8ff; }
+      .walk-rail-tick.later { opacity: 0.7; }
+      .walk-rail-tick.done { opacity: 0.4; color: #eee; }
       body.draw { pointer-events: auto; cursor: crosshair; }
       #draw-stroke, #walk-ink {
         position: absolute;
@@ -203,11 +226,20 @@
   </head>
   <body>
     <div id="walk-chrome" class="chrome">
-      <p id="walk-cue"></p>
-      <p id="walk-then" hidden></p>
-      <button type="button" id="walk-back" data-q="back">Back</button>
-      <button type="button" id="walk-next" data-q="got it, next">Got it</button>
-      <button type="button" id="walk-draw">Draw</button>
+      <div id="walk-row">
+        <p id="walk-cue"></p>
+        <p id="walk-then" hidden></p>
+        <button type="button" id="walk-back" data-q="back">Back</button>
+        <button type="button" id="walk-next" data-q="got it, next">Got it</button>
+        <button type="button" id="walk-draw">Draw</button>
+      </div>
+      <p id="walk-rail"></p>
+      <p id="walk-chips">
+        <button type="button" data-desk="1" data-q="draft a follow-up email from this meeting">Draft email</button>
+        <button type="button" data-desk="1" data-q="write this recap in Word">Notes</button>
+        <button type="button" data-desk="1" data-q="Security review this session">Needs you</button>
+        <button type="button" data-desk="1" data-q="what should I say">Live answer</button>
+      </p>
     </div>
     <svg id="walk-ink" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
     <svg id="draw-stroke" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
@@ -218,6 +250,7 @@
       const chromeBar = document.getElementById("walk-chrome");
       const cueEl = document.getElementById("walk-cue");
       const thenEl = document.getElementById("walk-then");
+      const railEl = document.getElementById("walk-rail");
       const api = window.netieTeachOverlay;
       const hasApi = Boolean(api && typeof api.invoke === "function");
       let mouseOverChrome = false;
@@ -308,6 +341,22 @@
           layer.appendChild(mark);
         });
         paintWalkInk(points);
+        paintRail(points);
+      }
+
+      function paintRail(points) {
+        if (!railEl) return;
+        while (railEl.firstChild) railEl.removeChild(railEl.firstChild);
+        (points || []).forEach(function (point, i) {
+          const tick = document.createElement("span");
+          tick.className = "walk-rail-tick";
+          if (point && point.later) tick.classList.add("later");
+          else if (point && point.done) tick.classList.add("done");
+          else tick.classList.add("now");
+          tick.textContent = overlayControlCaption((point && (point.caption || point.label || point.cue)) || String(i + 1));
+          railEl.appendChild(tick);
+        });
+        railEl.hidden = !railEl.childNodes.length;
       }
 
       function paintWalkInk(points) {
@@ -457,6 +506,52 @@
         paintStroke(pts);
       }
 
+      function overlayDeskHref(ask) {
+        const t = String(ask || "").toLowerCase();
+        if (!t) return "";
+        if (/\b(got it|next control|i clicked|walk me through|teach me|on (my )?screen|back)\b/.test(t)) return "";
+        if (/\b(security review|vuln|cve)\b/.test(t)) return "/workspace?id=live-security";
+        if (/\b(?:microsoft\s+)?word\b/.test(t) || /\bdocx\b/.test(t)) return "/workspace?id=live-document";
+        if (/\b(inbox|gmail|outlook|slack reply|email|follow-?up)\b/.test(t)) return "/workspace?id=live-inbox";
+        if (
+          (/\b(meeting|standup|what should i say|next steps?|action items?)\b/.test(t) || /\brecap\b/.test(t)) &&
+          !/\b(inbox|gmail|outlook|email|word|docx)\b/.test(t)
+        ) {
+          return "/workspace?id=live-meeting";
+        }
+        return "";
+      }
+
+      function onDesk(q) {
+        const text = String(q || "").trim();
+        if (!text) return;
+        if (hasApi) {
+          api.invoke("teach-overlay:ask", { message: text, act: false });
+          return;
+        }
+        const href = overlayDeskHref(text);
+        if (demo) {
+          if (href) location.href = href;
+          return;
+        }
+        fetch("/api/ask", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ask: text, act: false }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (out) {
+            if (out && out.act) return;
+            const next = (out && out.href) || href;
+            if (next && /^\/workspace\?id=(live-inbox|live-document|live-security|live-meeting)$/.test(next)) {
+              location.href = next;
+            }
+          })
+          .catch(function () {
+            if (href) location.href = href;
+          });
+      }
+
       function onAdvance(ev) {
         if (ev.target && ev.target.closest && ev.target.closest("#walk-draw")) {
           ev.preventDefault();
@@ -467,7 +562,8 @@
         const q = btn && String(btn.getAttribute("data-q") || "").trim();
         if (!q) return;
         ev.preventDefault();
-        onAsk(q);
+        if (btn.getAttribute("data-desk")) onDesk(q);
+        else onAsk(q);
       }
 
       if (chromeBar) chromeBar.addEventListener("click", onAdvance);
@@ -675,7 +771,15 @@
         setDraw(false);
       });
       document.addEventListener("keydown", function (ev) {
-        if (ev.key === "Escape" && drawing) setDraw(false);
+        if (ev.key === "Escape" && drawing) {
+          setDraw(false);
+          return;
+        }
+        if (ev.key === "Enter" && !drawing && !ev.repeat) {
+          if (ev.target && ev.target.closest && ev.target.closest("button")) return;
+          ev.preventDefault();
+          onAsk("got it, next");
+        }
       });
       document.addEventListener("pointerleave", function () {
         if (!drawing) syncClickThrough(false);

@@ -44,6 +44,8 @@ never meeting. Current BOX pulses in place (not a cursor ring).
 Public and loopback `/overlay` is that same walk full-screen (demo
 online when APIs are empty; live path on the laptop). Overlay Draw
 stacks a BOX (cap 8, 0.4% fail-closed). Last BOX says Last step.
+Overlay chrome keeps a remaining walk rail and Ask chips (Draft email /
+Notes / Needs you / Live answer). Enter is Got it. Never send.
 Loopback `/meeting` Ask chips file an unsent follow-up
 and a Word draft from the stored transcript (never send, never Word.app,
 teach walks stay on `/teach`). Loopback sticky chrome has a fixed Ask bar
