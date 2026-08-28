@@ -107,6 +107,7 @@ function test(name, fn) {
     assert.strictEqual(shown.act.available, true);
     assert.strictEqual(shown.act.gated, true);
     assert.strictEqual(shown.act.keepCursor, true);
+    assert.strictEqual(shown.act.keepFocus, true);
     assert.strictEqual(shown.delivery.present, false);
     assert.strictEqual(shown.mode, "agent");
     assert.strictEqual(shown.hotkeys.recording, "Control+Alt+Space");
@@ -156,6 +157,7 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("click: Save"));
     assert.ok(shown.drive.instructions.includes("click window: notepad"));
     assert.ok(shown.drive.instructions.includes("clicks keep the real cursor"));
+    assert.ok(shown.drive.instructions.includes("clicks keep the previous window"));
     assert.ok(shown.drive.instructions.includes("wait 400"));
     assert.ok(shown.drive.instructions.includes("replace: hello"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?screenshot=1"));

@@ -18,8 +18,9 @@
  *
  * Set dryRun:true in tests to skip OS calls entirely.
  *
- * Clicks restore the real cursor after SendInput (HeyClicky). hover still
- * travels. Pass action.warp true to keep the old animated pointer.
+ * Clicks restore the real cursor and the previous foreground window after
+ * SendInput (HeyClicky). hover still travels. Pass action.warp true to keep
+ * the old animated pointer. Type/fill still steal focus so text lands.
  */
 
 const { spawn } = require("child_process");
@@ -72,9 +73,11 @@ public class NetieInput {
     // Per-monitor DPI aware v2 — SetCursorPos/SendInput take physical pixels.
     try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch {}
   }
-  public static void Click(int x, int y, bool right, bool restore) {
+  public static void Click(int x, int y, bool right, bool restore, bool restoreFg) {
     POINT orig = new POINT();
     bool haveOrig = restore && GetCursorPos(out orig);
+    IntPtr fg = IntPtr.Zero;
+    if (restoreFg) fg = GetForegroundWindow();
     SetCursorPos(x,y);
     INPUT[] a = new INPUT[2];
     a[0].type=INPUT_MOUSE; a[1].type=INPUT_MOUSE;
@@ -83,6 +86,7 @@ public class NetieInput {
     a[0].mkhi.mi.dwFlags=down; a[1].mkhi.mi.dwFlags=up;
     SendInput(2,a,Marshal.SizeOf(typeof(INPUT)));
     if (haveOrig) SetCursorPos(orig.X, orig.Y);
+    if (restoreFg && fg != IntPtr.Zero) SetForegroundWindow(fg);
   }
   public static void Wheel(int delta) {
     INPUT[] a = new INPUT[1];
@@ -159,8 +163,10 @@ while (-not $done) {
       }
       'click' {
         $restore = $true
+        $restoreFg = $true
         if ($null -ne $m.restore) { $restore = [bool]$m.restore }
-        [NetieInput]::Click([int]$m.x, [int]$m.y, [bool]$m.right, $restore)
+        if ($null -ne $m.restoreFg) { $restoreFg = [bool]$m.restoreFg }
+        [NetieInput]::Click([int]$m.x, [int]$m.y, [bool]$m.right, $restore, $restoreFg)
       }
       'drag'  { [NetieInput]::Drag([int]$m.x1, [int]$m.y1, [int]$m.x2, [int]$m.y2) }
       'wheel' {
@@ -606,32 +612,48 @@ class InputDriver {
     return this.last;
   }
 
-  async clickAt(x, y, { button = "left", double = false, restore = true } = {}) {
+  async clickAt(x, y, { button = "left", double = false, restore = true, restoreFg = true } = {}) {
     const xi = Math.round(Number(x));
     const yi = Math.round(Number(y));
     const right = button === "right";
     const keep = restore !== false;
-    this.last = { op: double ? "doubleclick" : "click", x: xi, y: yi, button, restore: keep };
+    const keepFg = restoreFg !== false;
+    this.last = {
+      op: double ? "doubleclick" : "click",
+      x: xi,
+      y: yi,
+      button,
+      restore: keep,
+      restoreFg: keepFg,
+    };
     if (this.dryRun) return this.last;
     const p = this._phys(xi, yi);
     // Double-click: stay on the target for the second hit, then restore.
-    await this._send({ op: "click", x: p.x, y: p.y, right, restore: keep && !double });
+    await this._send({
+      op: "click",
+      x: p.x,
+      y: p.y,
+      right,
+      restore: keep && !double,
+      restoreFg: keepFg && !double,
+    });
     if (double) {
       await sleep(80);
-      await this._send({ op: "click", x: p.x, y: p.y, right, restore: keep });
+      await this._send({ op: "click", x: p.x, y: p.y, right, restore: keep, restoreFg: keepFg });
     }
     return this.last;
   }
 
   /**
-   * Aimed click that does not fly the user's pointer across the screen.
-   * hover / warp:true still travel.
+   * Aimed click that does not fly the user's pointer or steal their window.
+   * hover / warp:true still travel. Type/fill pass restoreFg:false so text lands.
    */
   async _aimedClick(sx, sy, action, extra = {}) {
     const keep = clickKeepsCursor(action);
+    const keepFg = extra.restoreFg !== false && keep;
     if (!keep) await this.moveToAnimated(sx, sy, { durationMs: 220 });
-    await this.clickAt(sx, sy, { ...extra, restore: keep });
-    return keep;
+    await this.clickAt(sx, sy, { ...extra, restore: keep, restoreFg: keepFg });
+    return { keepCursor: keep, keepFocus: keepFg };
   }
 
   async typeText(text) {
@@ -802,20 +824,20 @@ class InputDriver {
 
       case "click": {
         if (sx == null || sy == null) return { ok: false, error: "missing coordinates for click" };
-        const keepCursor = await this._aimedClick(sx, sy, action, { button: "left" });
-        return { ok: true, type, x: sx, y: sy, keepCursor };
+        const kept = await this._aimedClick(sx, sy, action, { button: "left" });
+        return { ok: true, type, x: sx, y: sy, ...kept };
       }
 
       case "doubleclick": {
         if (sx == null || sy == null) return { ok: false, error: "missing coordinates" };
-        const keepCursor = await this._aimedClick(sx, sy, action, { double: true });
-        return { ok: true, type, x: sx, y: sy, keepCursor };
+        const kept = await this._aimedClick(sx, sy, action, { double: true });
+        return { ok: true, type, x: sx, y: sy, ...kept };
       }
 
       case "rightclick": {
         if (sx == null || sy == null) return { ok: false, error: "missing coordinates" };
-        const keepCursor = await this._aimedClick(sx, sy, action, { button: "right" });
-        return { ok: true, type, x: sx, y: sy, keepCursor };
+        const kept = await this._aimedClick(sx, sy, action, { button: "right" });
+        return { ok: true, type, x: sx, y: sy, ...kept };
       }
 
       case "focus_hwnd":
@@ -828,7 +850,7 @@ class InputDriver {
         // wrong window is the classic blind-agent failure.
         let focused = false;
         if (sx != null && sy != null) {
-          await this._aimedClick(sx, sy, action, { button: "left" });
+          await this._aimedClick(sx, sy, action, { button: "left", restoreFg: false });
           if (!this.dryRun) await sleep(120);
           focused = true;
         }
@@ -845,7 +867,7 @@ class InputDriver {
       case "clipboard_paste": {
         // Prefer clipboard + Ctrl+V (OpenClaw-style) — more reliable than Unicode typing.
         if (sx != null && sy != null) {
-          await this._aimedClick(sx, sy, action, { button: "left" });
+          await this._aimedClick(sx, sy, action, { button: "left", restoreFg: false });
           if (!this.dryRun) await sleep(80);
         }
         if (action.value != null && String(action.value).length) {
@@ -869,7 +891,7 @@ class InputDriver {
       case "copy":
       case "select_copy": {
         if (sx != null && sy != null) {
-          await this.clickAt(sx, sy, { button: "left" });
+          await this.clickAt(sx, sy, { button: "left", restoreFg: false });
           if (!this.dryRun) await sleep(60);
         }
         await this.press("ctrl+c");

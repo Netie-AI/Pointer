@@ -87,6 +87,7 @@ function test(name, fn) {
     const act = r.result.catalog.find((t) => t.name === "computer.act");
     assert.match(act.description, /focus: notepad then type: hello/);
     assert.match(act.description, /restore the real cursor/);
+    assert.match(act.description, /previous window/);
     assert.ok(act.inputSchema.properties.mode);
   });
 

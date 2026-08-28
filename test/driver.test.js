@@ -80,6 +80,7 @@ test("dry-run keeps v1 contract: xPct math, type without coords, missing coords 
   assert.strictEqual(Math.round(click.x), 300);
   assert.strictEqual(Math.round(click.y), 350);
   assert.strictEqual(click.keepCursor, true);
+  assert.strictEqual(click.keepFocus, true);
 
   const typed = await d.perform({ type: "type", value: "hello" });
   assert.strictEqual(typed.ok, true);
@@ -109,8 +110,8 @@ test("one persistent worker serves many ops; coords go through toPhysical", asyn
   assert.strictEqual(state.spawned, 1, "worker must be reused across ops");
   const [click, move, type, combo, wheel] = state.ops;
   assert.deepStrictEqual(
-    { op: click.op, x: click.x, y: click.y, right: click.right, restore: click.restore },
-    { op: "click", x: 20, y: 40, right: false, restore: true }
+    { op: click.op, x: click.x, y: click.y, right: click.right, restore: click.restore, restoreFg: click.restoreFg },
+    { op: "click", x: 20, y: 40, right: false, restore: true, restoreFg: true }
   );
   assert.deepStrictEqual({ op: move.op, x: move.x, y: move.y }, { op: "move", x: 10, y: 10 });
   assert.strictEqual(type.op, "type");
@@ -143,6 +144,7 @@ test("type with coords clicks the field first (focus), then types", async () => 
   assert.ok(click, "clicks field to focus");
   assert.strictEqual(click.x, 100);
   assert.strictEqual(click.restore, true);
+  assert.strictEqual(click.restoreFg, false, "fill must keep the field focused");
   assert.ok(type, "types after focus");
   assert.ok(state.ops.indexOf(click) < state.ops.indexOf(type), "click before type");
   d.dispose();
@@ -310,8 +312,10 @@ test("click restores the real cursor; warp:true still travels", async () => {
     { region: { x: 0, y: 0, width: 200, height: 100 } }
   );
   assert.strictEqual(clicked.keepCursor, true);
+  assert.strictEqual(clicked.keepFocus, true);
   assert.ok(!keepState.ops.some((o) => o.op === "move"), "default click does not travel");
   assert.strictEqual(keepState.ops.find((o) => o.op === "click").restore, true);
+  assert.strictEqual(keepState.ops.find((o) => o.op === "click").restoreFg, true);
   keep.dispose();
 
   const warpState = {};
@@ -321,6 +325,7 @@ test("click restores the real cursor; warp:true still travels", async () => {
     { region: { x: 0, y: 0, width: 200, height: 100 } }
   );
   assert.strictEqual(warped.keepCursor, false);
+  assert.strictEqual(warped.keepFocus, false);
   assert.ok(
     warpState.ops.some((o) => o.op === "pos" || o.op === "move"),
     "warp:true still travels"
@@ -329,11 +334,14 @@ test("click restores the real cursor; warp:true still travels", async () => {
   warp.dispose();
 });
 
-test("worker Click restores GetCursorPos after SendInput", () => {
+test("worker Click restores GetCursorPos and the previous window after SendInput", () => {
   const src = fs.readFileSync(path.join(__dirname, "../electron/netie/driver.js"), "utf8");
   assert.ok(/bool haveOrig = restore && GetCursorPos\(out orig\)/.test(src));
   assert.ok(/if \(haveOrig\) SetCursorPos\(orig\.X, orig\.Y\)/.test(src));
+  assert.ok(/if \(restoreFg\) fg = GetForegroundWindow\(\)/.test(src));
+  assert.ok(/if \(restoreFg && fg != IntPtr\.Zero\) SetForegroundWindow\(fg\)/.test(src));
   assert.ok(/action\.warp === true/.test(src), "warp:true must still animate");
+  assert.ok(/restoreFg: false/.test(src), "type/fill must keep the field focused");
 });
 
 (async () => {

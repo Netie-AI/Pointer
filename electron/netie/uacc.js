@@ -166,6 +166,7 @@ function computerStatus(opts = {}) {
       available: opts.actAvailable === true,
       gated: true,
       keepCursor: true,
+      keepFocus: true,
       reason:
         opts.actAvailable === true
           ? "Cortex /dms/secure then reviewPlan"
@@ -244,6 +245,7 @@ function computerStatus(opts = {}) {
         "click: Save",
         "click window: notepad",
         "clicks keep the real cursor",
+        "clicks keep the previous window",
         "doubleclick 40 50",
         "rightclick: Close",
         "hover 40 50",
