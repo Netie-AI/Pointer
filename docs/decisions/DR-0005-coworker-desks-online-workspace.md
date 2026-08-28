@@ -162,7 +162,8 @@ Live captions, and say-this (never a cheater overlay). Loopback
 .docx, live-inbox the unsent .eml, live-security the generated review
 (never approval). The open file leads that page with This session files as tabs.
 Home work cards link Open in
-workspace. Download packet is loopback GET `/api/session.zip` (session
+workspace as desk windows on the rail. Rooms on `/` are a dock of links,
+not a markdown dump. Download packet is loopback GET `/api/session.zip` (session
 markdown plus finished files, never exec). Loopback `/workspace` paints
 those files as a desktop grid on This computer (click to open). Opening
 a Teach walk paints This screen. Opening a Meeting paints the Live

@@ -21,7 +21,7 @@
    chrome is teach-only (Then / Got it). `/meeting` and home keep the
    live answer. Loopback `/`
    paints teach path, meeting card, Today plate,
-   and filed work cards. `/meeting` is a live answer: They asked, last
+   and filed desk windows. `/meeting` is a live answer: They asked, last
    You/Them, Live captions, and say-this (never a cheater overlay).
    `/teach` stacks drawn BOX steps (current hold,
    later dashed), Back/Got it Ask, never invented coords. Overlay stays
@@ -41,8 +41,8 @@
    Opening Teach walk paints This screen. Opening Meeting paints the
    Live answer. Word / mail / review paint Notes / Unsent mail / Needs you
    on `/workspace` and `/document` `/inbox` `/security`. Unsent `To` is a
-   Heard name or not sent (never invent, never send). Home Open in workspace.
-   Public those paths stay 404.
+   Heard name or not sent (never invent, never send). Home rail is those
+   windows plus a room dock (no markdown dump). Public those paths stay 404.
    `/workspace` Run is a named refuse (P-06). Public catalog empty.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 

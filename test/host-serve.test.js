@@ -169,6 +169,7 @@ function readAsset(file) {
     assert.match(homeText, /Pointer coworker/);
     assert.match(homeText, /id="desks"/);
     assert.match(homeText, /id="rooms"/);
+    assert.match(homeText, /room-dock/);
     assert.match(homeText, /id="stage"/);
     assert.match(homeText, /id="session"/);
     assert.match(homeText, /id="session-files"/);
@@ -208,6 +209,8 @@ function readAsset(file) {
     assert.match(app, /\/api\/inbox/);
     assert.match(app, /\/api\/home/);
     assert.match(app, /paintRooms/);
+    assert.match(app, /room-dock-tile/);
+    assert.match(app, /paintFiledWindow/);
     assert.match(app, /paintStage/);
     assert.match(app, /paintSession/);
     assert.match(app, /paintChrome/);
@@ -288,6 +291,8 @@ function readAsset(file) {
     assert.match(cssText, /work-rail/);
     assert.match(cssText, /work-card-kicker/);
     assert.match(cssText, /work-card-open/);
+    assert.match(cssText, /room-dock-tile/);
+    assert.match(cssText, /desk-window-open/);
     assert.match(cssText, /session-grid/);
     assert.match(cssText, /session-tile/);
     assert.match(cssText, /session-tile-kind/);
@@ -312,6 +317,7 @@ function readAsset(file) {
     assert.match(liveRoom, /applyOpenDocument/);
     assert.match(liveRoom, /applyOpenInbox/);
     assert.match(liveRoom, /applyOpenSecurity/);
+    assert.doesNotMatch(liveRoom, /el\("pre"\)/);
     assert.match(app, /paintDeskWindow/);
     assert.match(app, /notesPaper/);
     assert.match(app, /notesWindowBody/);

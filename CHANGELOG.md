@@ -1,3 +1,10 @@
+## 2026-08-28 - Home paints filed windows and a room dock
+
+Loopback `/` paints Notes / Unsent mail / Needs you as windows on the
+rail. Rooms is a dock of links, not a markdown dump. Meeting and teach
+rooms no longer dump the brief under the card. Never Act. P-05 and P-06
+stay parked.
+
 ## 2026-08-28 - Unsent mail To is a Heard name
 
 Inbox drafts put `To:` from their Heard name, or `not sent` when the

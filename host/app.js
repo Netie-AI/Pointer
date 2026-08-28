@@ -370,6 +370,12 @@ function paintDeskWindow(root, spec) {
     foot.textContent = String(spec.foot);
     win.appendChild(foot);
   }
+  if (spec.href) {
+    const a = el("a", "work-card-open desk-window-open");
+    a.href = spec.href;
+    a.textContent = spec.hrefLabel || "Open in workspace";
+    win.appendChild(a);
+  }
   root.appendChild(win);
 }
 
@@ -442,6 +448,7 @@ function applyOpenDocument(root, art, text) {
     title: String((art && art.title) || "Document draft").slice(0, 80),
     body: body,
     foot: "not a .docx - Word.app still needs Cortex",
+    href: art && art.href,
   });
 }
 
@@ -464,6 +471,7 @@ function applyOpenInbox(root, art, text) {
     ],
     body: inboxComposeBody(draft),
     foot: "not sent - send is parked (P-05)",
+    href: art && art.href,
   });
 }
 
@@ -486,6 +494,7 @@ function applyOpenSecurity(root, art, text) {
     hits: hits,
     body: verdict,
     foot: "do not approve",
+    href: art && art.href,
   });
 }
 
@@ -759,7 +768,7 @@ if (artifactFilter) {
 }
 
 const todayPage = document.getElementById("brief");
-if (todayPage) {
+if (todayPage && pageDesk() === "today") {
   pollWhileLive(function () {
     return fetch("/api/today")
       .then((r) => r.json())
@@ -780,8 +789,10 @@ function applyToday(t) {
     plate.textContent = plateText ? "Plate: " + plateText : "";
   }
   setCueButton(plateText, Boolean(t && t.localFirst));
-  paintBrief((t && (t.deliverable || t.brief)) || "", "today", Boolean(t && t.localFirst));
-  paintEvents((t && (t.events || t.today)) || []);
+  if (pageDesk() === "today") {
+    paintBrief((t && (t.deliverable || t.brief)) || "", "today", Boolean(t && t.localFirst));
+    paintEvents((t && (t.events || t.today)) || []);
+  }
   paintTodayChips((t && t.chips) || []);
   const stage = document.getElementById("today-plate");
   if (stage) {
@@ -1047,13 +1058,8 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
     applyOpenInbox(page, art, body);
   } else if (desk === "security") {
     applyOpenSecurity(page, art, body);
-  } else {
-    paintInboxCard(page, m);
-    paintDocumentCard(page, m);
-    paintSecurityCard(page, m);
-    const pre = el("pre");
-    pre.textContent = body;
-    page.appendChild(pre);
+  } else if (desk === "today") {
+    paintTodayPlate(page, m);
   }
   setBriefButtons(body, (m && m.desk) || "brief", Boolean(m && m.localFirst));
   setFinishedDownloads(m, m);
@@ -1731,84 +1737,45 @@ function findingItems(m) {
   return sectionAfter(m && m.deliverable, "Findings (redacted)").slice(0, 8);
 }
 
-function paintWorkCard(root, cls, label, body, foot, href) {
-  if (!root) return;
-  const card = el("article", "work-card " + cls);
-  card.setAttribute("role", "region");
-  card.setAttribute("aria-label", label);
-  const kicker = el("p", "work-card-kicker");
-  kicker.textContent = label;
-  card.appendChild(kicker);
-  if (body) {
-    const pre = el("p", "work-card-body");
-    pre.textContent = body;
-    card.appendChild(pre);
-  }
-  if (foot) {
-    const f = el("p", "work-card-foot");
-    f.textContent = foot;
-    card.appendChild(f);
-  }
-  if (href) {
-    const a = el("a", "work-card-open");
-    a.href = href;
-    a.textContent = "Open in workspace";
-    card.appendChild(a);
-  }
-  root.appendChild(card);
+function paintFiledWindow(root, paint, m, href) {
+  if (!root || !m || typeof paint !== "function") return;
+  const slot = el("div");
+  paint(
+    slot,
+    {
+      title: (m && m.title) || "",
+      cue: (m && m.cue) || "",
+      preview: (m && m.preview) || "",
+      findings: (m && m.findings) || [],
+      href: href || "",
+    },
+    String((m && m.deliverable) || "")
+  );
+  if (slot.firstChild) root.appendChild(slot.firstChild);
 }
 
 function paintInboxCard(root, m, href) {
   if (!root || !m || m.desk !== "inbox" || m.localFirst) return;
   const preview = draftPreview(m);
   const cue = String((m && m.cue) || "").trim();
-  if (!preview && !cue) return;
-  paintWorkCard(root, "work-inbox", "Unsent mail", preview || cue, "not sent", href);
+  if (!preview && !cue && !String((m && m.deliverable) || "").trim()) return;
+  paintFiledWindow(root, applyOpenInbox, m, href);
 }
 
 function paintDocumentCard(root, m, href) {
   if (!root || !m || m.desk !== "document" || m.localFirst) return;
   const preview = draftPreview(m);
   const cue = String((m && m.cue) || "").trim();
-  if (!preview && !cue) return;
-  paintWorkCard(root, "work-document", "Notes", preview || cue, "not a .docx", href);
+  if (!preview && !cue && !String((m && m.deliverable) || "").trim()) return;
+  paintFiledWindow(root, applyOpenDocument, m, href);
 }
 
 function paintSecurityCard(root, m, href) {
   if (!root || !m || m.desk !== "security" || m.localFirst) return;
   const hits = findingItems(m);
   const cue = String((m && m.cue) || "").trim();
-  if (!hits.length && !cue) return;
-  const card = el("article", "work-card work-security");
-  card.setAttribute("role", "region");
-  card.setAttribute("aria-label", "Needs you");
-  const kicker = el("p", "work-card-kicker");
-  kicker.textContent = "Needs you";
-  card.appendChild(kicker);
-  if (cue) {
-    const head = el("p", "work-card-body");
-    head.textContent = cue;
-    card.appendChild(head);
-  }
-  if (hits.length) {
-    const list = el("ul", "work-hits");
-    hits.forEach(function (line) {
-      const li = el("li");
-      li.textContent = line;
-      list.appendChild(li);
-    });
-    card.appendChild(list);
-  }
-  const foot = el("p", "work-card-foot");
-  foot.textContent = "do not approve";
-  card.appendChild(foot);
-  if (href) {
-    const a = el("a", "work-card-open");
-    a.href = href;
-    a.textContent = "Open in workspace";
-    card.appendChild(a);
-  }
-  root.appendChild(card);
+  if (!hits.length && !cue && !String((m && m.deliverable) || "").trim()) return;
+  paintFiledWindow(root, applyOpenSecurity, m, href);
 }
 
 function paintWorkRail(root, rooms) {
@@ -1839,49 +1806,27 @@ function paintRooms(rooms, localFirst) {
   const root = document.getElementById("rooms");
   if (!root) return;
   root.replaceChildren();
-  ["teach", "meeting", "today", "document", "security", "inbox"].forEach((id) => {
+  const labels = {
+    teach: "Teach",
+    meeting: "Meeting",
+    today: "Today",
+    document: "Notes",
+    inbox: "Unsent mail",
+    security: "Needs you",
+  };
+  ["teach", "meeting", "today", "document", "inbox", "security"].forEach(function (id) {
     const r = (rooms && rooms[id]) || {};
-    const card = el("article", "desk");
-    const h = el("h3");
-    const a = el("a");
+    const a = el("a", "room-dock-tile");
     a.href = "/" + id;
-    a.textContent = r.title || id;
-    h.appendChild(a);
-    const cue = el("p", "muted");
+    const kicker = el("span", "room-dock-kicker");
+    kicker.textContent = labels[id] || id;
+    a.appendChild(kicker);
+    const cue = el("span", "room-dock-cue");
     const cueText = String(r.cue || "").trim();
-    if (cueText) {
-      const prefix = id === "teach" ? "" : id === "meeting" ? "Say this: " : id === "today" ? "Plate: " : id === "document" || id === "inbox" ? "" : "Review: ";
-      const line = id === "teach" ? teachActionLine(r) || cueText : cueText;
-      cue.textContent = prefix + line;
-    } else {
-      cue.textContent = localFirst ? "Live " + id + " stays on the laptop." : "No live " + id + " yet.";
-    }
-    const restText = String(r.rest || "").trim();
-    const pre = el("pre");
-    pre.textContent = String(r.deliverable || "").slice(0, 400);
-    card.appendChild(h);
-    card.appendChild(cue);
-    if (id === "meeting") {
-      const askedText = String(r.asked || "").trim();
-      if (askedText) {
-        const asked = el("p", "muted");
-        asked.textContent = "They asked: " + askedText;
-        card.appendChild(asked);
-      }
-    }
-    if (id === "teach" && restText) {
-      const then = el("p", "muted");
-      then.textContent = "Then: " + restText;
-      card.appendChild(then);
-    }
-    const heardText = String(r.heard || "").trim();
-    if (id === "meeting" && heardText) {
-      const heard = el("p", "muted");
-      heard.textContent = "Heard: " + heardText;
-      card.appendChild(heard);
-    }
-    card.appendChild(pre);
-    root.appendChild(card);
+    const line = id === "teach" ? teachActionLine(r) || cueText : cueText;
+    cue.textContent = line || (localFirst ? "on the laptop" : "none yet");
+    a.appendChild(cue);
+    root.appendChild(a);
   });
 }
 

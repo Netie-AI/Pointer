@@ -59,7 +59,8 @@ Live answer. Opening a Word file paints Notes (paper skips recap metadata). Open
 unsent mail paints a compose window whose To is a Heard name or not
 sent (never invent, never send). Opening a review paints Needs you
 (never approve). Loopback `/document` `/inbox` `/security` paint the
-same windows. Home theater cards use those kickers and Open in workspace.
+same windows. Home theater paints those windows on the rail and a room
+dock of links (no markdown dump).
 Loopback `/document`
 downloads a generated `.docx` from the live draft (never Act, never
 Word.app). Public `/api/document.docx` is 404. Loopback `/meeting` paints the You/Them
