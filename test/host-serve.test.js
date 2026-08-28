@@ -317,10 +317,11 @@ function readAsset(file) {
     assert.match(app, /revealHomeWindow\("live-meeting"\)/);
     assert.match(app, /Opened Live answer. Never sent/);
     assert.match(app, /Never a cheater overlay/);
-    assert.match(app, /if \(onTeach\) speakTeachCue/);
+    assert.match(app, /if \(walkCue\) speakTeachCue/);
     assert.match(app, /Last step/);
     assert.match(app, /\. Last step/);
     assert.match(app, /showMeeting = !onTeach/);
+    assert.match(app, /walkCue && teachAction/);
     assert.match(app, /onTeach/);
     assert.match(app, /Then: /);
     assert.match(app, /Last step/);

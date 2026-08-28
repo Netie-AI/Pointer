@@ -1757,8 +1757,10 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /Draft email/);
   const chipsFn = hostApp.slice(hostApp.indexOf("function demoAskChips"), hostApp.indexOf("function demoAsk("));
   assert.doesNotMatch(chipsFn, /Send mail|Approve/);
-  assert.match(hostApp, /if \(onTeach\) speakTeachCue/);
+  assert.match(hostApp, /if \(walkCue\) speakTeachCue/);
   assert.match(hostApp, /showMeeting = !onTeach/);
+  assert.match(hostApp, /walkCue && teachAction/);
+  assert.match(hostApp, /querySelector\("\.teach-map"\)/);
   assert.match(hostApp, /onTeach/);
   assert.match(hostApp, /Then: /);
   assert.match(hostApp, /Last step/);

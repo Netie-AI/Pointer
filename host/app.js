@@ -1603,10 +1603,11 @@ function paintChrome(home) {
   const onMeeting = Boolean(document.getElementById("meeting-brief"));
   const onHome = Boolean(document.getElementById("stage"));
   const showMeeting = !onTeach && (onMeeting || onHome);
+  const walkCue = onTeach || (onHome && Boolean(document.querySelector(".teach-map")));
   let cueLine = "";
-  if (onTeach && teachAction) cueLine = teachAction;
+  if (walkCue && teachAction) cueLine = teachAction;
   else if (showMeeting && asked && meetingCue) cueLine = "Say this: " + meetingCue;
-  else if (onTeach) cueLine = teachAction || String(teachCue).replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
+  else if (walkCue) cueLine = teachAction || String(teachCue).replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
   else if (showMeeting && meetingCue) cueLine = "Say this: " + meetingCue;
   else if (plate) cueLine = "Plate: " + plate;
   else if (meetingCue) cueLine = "Say this: " + meetingCue;
@@ -1667,12 +1668,12 @@ function paintChrome(home) {
     cap.hidden = !cap.childNodes.length;
   }
   if (textEl) textEl.textContent = cueLine;
-  lastChromeCue = onTeach
+  lastChromeCue = walkCue
     ? teachAction || teachCue
     : showMeeting
       ? meetingCopyText(meeting)
       : meetingCue || plate;
-  if (onTeach) speakTeachCue(teachRest ? teachAction || teachCue : teachAction || teachCue ? (teachAction || teachCue) + ". Last step" : "");
+  if (walkCue) speakTeachCue(teachRest ? teachAction || teachCue : teachAction || teachCue ? (teachAction || teachCue) + ". Last step" : "");
   bar.hidden = false;
   const canWalk = onTeach && Boolean(teach.advance);
   const demoWalkOn = isDemoCatalog() && (onHome || isWorkspacePage());
