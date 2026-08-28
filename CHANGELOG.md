@@ -1,3 +1,9 @@
+## 2026-08-28 - Got it on Save files the draft
+
+Demo overlay and home Got it on Save stores Unsent mail on This
+computer (Saved). To stays typed. Never send. Never Act. P-05 and
+P-06 stay parked.
+
 ## 2026-08-28 - Got it types Unsent mail To
 
 Demo overlay and home Got it type Sarah Chen into Unsent mail To on

@@ -530,7 +530,9 @@ function applyOpenInbox(root, art, text) {
       { label: "Subject", value: subject },
     ],
     body: inboxComposeBody(draft),
-    foot: "not sent - send is parked (P-05)",
+    foot: /saved on this computer/i.test(String((art && art.cue) || ""))
+      ? "saved on This computer - send is parked (P-05)"
+      : "not sent - send is parked (P-05)",
     href: art && art.href,
   });
 }
@@ -1808,9 +1810,10 @@ function onTeachRailStep(i, path, apply) {
     if (p && p.now) now = idx;
     else if (p && !p.later && !p.done) now = idx;
   });
-  if (want === now) return;
+  if (want === now && !(isDemoCatalog() && demoInboxSaved())) return;
   if (isDemoCatalog()) {
     const last = demoTeachWalk().length - 1;
+    if (want === demoTeachStep && !demoInboxSaved()) return;
     demoTeachStep = Math.max(0, Math.min(want, last));
     const m = demoTeachRoom();
     if (typeof apply === "function") apply(m);
@@ -1857,20 +1860,30 @@ function paintTeachMap(root, m, opts) {
     next.textContent = action;
     map.appendChild(next);
   }
-  if (rest || action) {
+  if (rest) {
     const then = el("p", "teach-map-then");
-    then.textContent = rest ? "Then: " + rest : "Last step";
+    then.textContent = "Then: " + rest;
+    map.appendChild(then);
+  } else if (action && !/^saved on this computer/i.test(action)) {
+    const then = el("p", "teach-map-then");
+    then.textContent = "Last step";
     map.appendChild(then);
   }
   boxes.forEach((p) => {
     const face = teachControlFace(p);
+    if (p.done && face === "field") return;
     const control = el("div", "teach-map-control " + face);
     control.style.left = Number(p.leftPct) + "%";
     control.style.top = Number(p.topPct) + "%";
     control.style.width = Number(p.wPct) + "%";
     control.style.height = Number(p.hPct) + "%";
     const faceLab = el("span", "teach-map-face");
-    faceLab.textContent = p.now && p.fill ? String(p.fill).slice(0, 24) : teachControlCaption(p);
+    faceLab.textContent =
+      p.done && face === "button" && /save/i.test(String((p.caption || p.label || p.cue) || ""))
+        ? "Saved"
+        : p.now && p.fill
+        ? String(p.fill).slice(0, 24)
+        : teachControlCaption(p);
     control.appendChild(faceLab);
     map.appendChild(control);
     const cls = p.now ? "teach-map-box now" : p.later ? "teach-map-box then" : path.length ? "teach-map-box done" : "teach-map-box now";
@@ -2509,6 +2522,7 @@ function demoFrameTeach(spec) {
   if (demoTeachWalk().length >= 8) return false;
   const box = demoParseFrame(spec);
   if (!box) return false;
+  const wasSaved = demoInboxSaved();
   const n = demoTeachWalk().length + 1;
   const ink = Array.isArray(spec && spec.stroke)
     ? spec.stroke.filter(function (p) {
@@ -2528,6 +2542,7 @@ function demoFrameTeach(spec) {
     caption: "region " + n,
     stroke: ink.length >= 2 ? ink : undefined,
   });
+  if (wasSaved) demoTeachStep = demoTeachWalk().length - 1;
   return true;
 }
 
@@ -2567,18 +2582,27 @@ function demoTeachWalk() {
 function demoAdvanceTeach(ask) {
   const q = String(ask || "").toLowerCase();
   const last = demoTeachWalk().length - 1;
-  if (/\bback\b/.test(q)) demoTeachStep = Math.max(0, demoTeachStep - 1);
-  else demoTeachStep = Math.min(last, demoTeachStep + 1);
+  if (/\bback\b/.test(q)) {
+    if (demoTeachStep >= demoTeachWalk().length) demoTeachStep = last;
+    else demoTeachStep = Math.max(0, demoTeachStep - 1);
+  } else demoTeachStep = Math.min(demoTeachWalk().length, demoTeachStep + 1);
+}
+
+function demoInboxSaved() {
+  return demoTeachStep >= demoTeachWalk().length;
 }
 
 function demoTeachRoom() {
   const walk = demoTeachWalk();
-  const step = Math.max(0, Math.min(demoTeachStep, walk.length - 1));
+  const saved = demoInboxSaved();
+  const last = walk.length - 1;
+  const step = saved ? last : Math.max(0, Math.min(demoTeachStep, last));
   const path = walk.map(function (p, i) {
     return Object.assign({}, p, {
-      now: i === step,
-      later: i > step,
-      done: i < step,
+      now: !saved && i === step,
+      later: !saved && i > step,
+      done: saved || i < step,
+      caption: saved && /save/i.test(String((p.caption || p.label || "") || "")) ? "Saved" : p.caption,
     });
   });
   return {
@@ -2590,9 +2614,9 @@ function demoTeachRoom() {
     desk: "teach",
     advance: true,
     title: "Teach walk",
-    action: walk[step].cue,
-    cue: walk[step].cue,
-    rest: walk[step + 1] ? walk[step + 1].cue : "",
+    action: saved ? "Saved on This computer" : walk[step].cue,
+    cue: saved ? "Saved on This computer" : walk[step].cue,
+    rest: saved ? "" : walk[step + 1] ? walk[step + 1].cue : "",
     path: path,
     deliverable: "Demo walk. Type in Email, then Click Save. Never Act.",
     reason: "Demo catalog. Not your live session. Never Act.",
@@ -2653,7 +2677,7 @@ function demoHome() {
     localFirst: false,
     desk: "inbox",
     title: "Draft follow-up (not sent)",
-    cue: "not sent",
+    cue: demoInboxSaved() ? "saved on This computer" : "not sent",
     preview: "To: " + (demoTeachStep > 0 ? "Sarah Chen" : "not sent") + "\nSubject: Friday deck\n\nFriday works if the deck is in tonight.",
     deliverable: "## Draft\nTo: " + (demoTeachStep > 0 ? "Sarah Chen" : "not sent") + "\nSubject: Friday deck\n\nFriday works if the deck is in tonight.",
   };

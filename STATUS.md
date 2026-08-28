@@ -38,7 +38,8 @@
    field instead of covering it. Draw stays a pencil until Draw or
    Escape. Dock Copy is clipboard, never send. Home Ask stays on This
    screen. Got it types the Heard name into Unsent mail To (starts
-   not sent). Last step is spoken. Never Act.
+   not sent). Got it on Save files that draft on This computer
+   (never send). Last step is spoken. Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

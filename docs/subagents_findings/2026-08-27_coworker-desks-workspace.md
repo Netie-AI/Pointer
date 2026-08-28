@@ -103,6 +103,7 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   Electron overlay stays transparent. Demo BOX highlights the Unsent
   mail To field. Draw stays a pencil. Dock Copy is clipboard, never send.
   Got it types the Heard name into Unsent mail To (starts not sent).
+  Got it on Save files that draft on This computer (never send).
   Walk chrome stacks Type in Email / Then / fill. HUD cue bar
   docks that same filed window. Home Ask stays on This screen and
   highlights that window.

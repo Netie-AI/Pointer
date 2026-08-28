@@ -54,6 +54,7 @@ Then / fill so the cue stays readable. Desk chips dock the filed file on the
 walk. HUD cue bar docks that same Unsent mail / Notes / Needs you window.
 Home Ask stays on This screen and highlights that window.
 Got it types the Heard name into Unsent mail To (starts not sent).
+Got it on Save files that draft on This computer (never send).
 Enter is Got it. Never send.
 The laptop HUD cue bar paints that same remaining rail and those chips
 when chrome hides. OS voice says Last step on the last BOX.

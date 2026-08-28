@@ -967,6 +967,9 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /Type " \+ fill/);
   assert.match(teachOverlay, /syncInboxType/);
   assert.match(teachOverlay, /inboxTypedTo \|\| "not sent"/);
+  assert.match(teachOverlay, /inboxSaved/);
+  assert.match(teachOverlay, /Saved on This computer/);
+  assert.match(teachOverlay, /saved on This computer - send is parked/);
   assert.match(teachOverlay, /onRailStep/);
   assert.match(teachOverlay, /data-rail/);
   assert.match(teachOverlay, /data-step/);
@@ -1667,6 +1670,8 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /if \(paintingDemo\) return false/);
   assert.match(hostApp, /demoHome/);
   assert.match(hostApp, /demoTeachStep > 0 \? "Sarah Chen" : "not sent"/);
+  assert.match(hostApp, /demoInboxSaved/);
+  assert.match(hostApp, /Saved on This computer/);
   assert.match(hostApp, /Demo catalog/);
   const pollLive = hostApp.slice(hostApp.indexOf("function pollWhileLive"), hostApp.indexOf("function paintDesks"));
   assert.match(pollLive, /isDemoCatalog/);

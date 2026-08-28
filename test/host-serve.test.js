@@ -295,6 +295,8 @@ function readAsset(file) {
     assert.match(app, /if \(paintingDemo\) return false/);
     assert.match(app, /demoHome/);
     assert.match(app, /demoTeachStep > 0 \? "Sarah Chen" : "not sent"/);
+    assert.match(app, /demoInboxSaved/);
+    assert.match(app, /Saved on This computer/);
     assert.match(app, /Demo catalog/);
     const pollLive = app.slice(app.indexOf("function pollWhileLive"), app.indexOf("function paintDesks"));
     assert.match(pollLive, /isDemoCatalog/);
@@ -478,6 +480,9 @@ function readAsset(file) {
     assert.match(overlayText, /Type in Email/);
     assert.match(overlayText, /syncInboxType/);
     assert.match(overlayText, /inboxTypedTo \|\| "not sent"/);
+    assert.match(overlayText, /inboxSaved/);
+    assert.match(overlayText, /Saved on This computer/);
+    assert.match(overlayText, /saved on This computer - send is parked/);
     assert.match(overlayText, /id="walk-dock"/);
     assert.match(overlayText, /copy\.id = "walk-dock-copy"/);
     assert.match(overlayText, /copyWalkDock/);
