@@ -386,10 +386,50 @@ function inboxWindowBody(text, preview) {
   return String(preview || "").trim().slice(0, 1500);
 }
 
+function notesPaper(text) {
+  const lines = String(text || "").split("\n");
+  const out = [];
+  let skippedHead = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!skippedHead) {
+      if (
+        /^#\s/.test(line) ||
+        /^kind:\s/i.test(line) ||
+        /^source:\s/i.test(line) ||
+        /^act:\s/i.test(line) ||
+        /^>\s/.test(line) ||
+        !String(line || "").trim()
+      ) {
+        continue;
+      }
+      skippedHead = true;
+    }
+    out.push(line);
+  }
+  const cut = out.join("\n").trim();
+  return cut || String(text || "").trim();
+}
+
 function notesWindowBody(text, preview) {
-  const fromDraft = sectionAfter(text, "Draft to write").join("\n").trim();
-  if (fromDraft) return fromDraft.slice(0, 1500);
-  return String(preview || "").trim().slice(0, 1500);
+  const body = String(text || "");
+  const idx = body.indexOf("## Draft to write");
+  let raw = "";
+  if (idx >= 0) {
+    let rest = body.slice(idx + "## Draft to write".length);
+    const how = rest.search(/\n## How\b/);
+    if (how >= 0) rest = rest.slice(0, how);
+    raw = rest.trim();
+  }
+  if (!raw) raw = String(preview || "").trim();
+  return notesPaper(raw).slice(0, 1500);
+}
+
+function inboxComposeBody(draft) {
+  return String(draft || "")
+    .replace(/^To:\s*.+\n?/m, "")
+    .replace(/^Subject:\s*.+\n?/m, "")
+    .replace(/^\n+/, "");
 }
 
 function applyOpenDocument(root, art, text) {
@@ -422,7 +462,7 @@ function applyOpenInbox(root, art, text) {
       { label: "To", value: to },
       { label: "Subject", value: subject },
     ],
-    body: draft,
+    body: inboxComposeBody(draft),
     foot: "not sent - send is parked (P-05)",
   });
 }
@@ -1723,7 +1763,7 @@ function paintInboxCard(root, m, href) {
   const preview = draftPreview(m);
   const cue = String((m && m.cue) || "").trim();
   if (!preview && !cue) return;
-  paintWorkCard(root, "work-inbox", "Unsent follow-up", preview || cue, "not sent", href);
+  paintWorkCard(root, "work-inbox", "Unsent mail", preview || cue, "not sent", href);
 }
 
 function paintDocumentCard(root, m, href) {
@@ -1731,7 +1771,7 @@ function paintDocumentCard(root, m, href) {
   const preview = draftPreview(m);
   const cue = String((m && m.cue) || "").trim();
   if (!preview && !cue) return;
-  paintWorkCard(root, "work-document", "Word draft", preview || cue, "not a .docx", href);
+  paintWorkCard(root, "work-document", "Notes", preview || cue, "not a .docx", href);
 }
 
 function paintSecurityCard(root, m, href) {
@@ -1741,9 +1781,9 @@ function paintSecurityCard(root, m, href) {
   if (!hits.length && !cue) return;
   const card = el("article", "work-card work-security");
   card.setAttribute("role", "region");
-  card.setAttribute("aria-label", "Security review");
+  card.setAttribute("aria-label", "Needs you");
   const kicker = el("p", "work-card-kicker");
-  kicker.textContent = "Security review";
+  kicker.textContent = "Needs you";
   card.appendChild(kicker);
   if (cue) {
     const head = el("p", "work-card-body");

@@ -1,3 +1,9 @@
+## 2026-08-28 - Unsent mail To is a Heard name
+
+Inbox drafts put `To:` from their Heard name, or `not sent` when the
+ring has none. Never invent. Never send. Notes paper skips recap
+metadata. Home cards use the same kickers. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Desk rooms paint Notes, unsent mail, and Needs you
 
 Loopback `/document` paints a Notes window. `/inbox` paints Unsent

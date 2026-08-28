@@ -92,7 +92,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   computer (click to open, Run still refused). Opening a Teach walk paints
   This screen. Opening a Meeting paints the Live answer. Opening Word /
   mail / review paints Notes / Unsent mail / Needs you on `/workspace`
-  and on `/document` `/inbox` `/security`. Public catalog stays empty.
+  and on `/document` `/inbox` `/security`. Unsent To is a Heard name or
+  not sent. Public catalog stays empty.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
 ## Traps

@@ -39,10 +39,10 @@
    The open file leads `/workspace` with This session files as tabs.
    `/workspace` paints those files as a desktop grid on This computer.
    Opening Teach walk paints This screen. Opening Meeting paints the
-   Live answer.    Opening Word / mail / review paints Notes / Unsent mail /
-   Needs you on `/workspace` and on `/document` `/inbox` `/security`
-   (never send, never approve). Home theater cards include Open
-   in workspace. Public those paths stay 404.
+   Live answer. Word / mail / review paint Notes / Unsent mail / Needs you
+   on `/workspace` and `/document` `/inbox` `/security`. Unsent `To` is a
+   Heard name or not sent (never invent, never send). Home Open in workspace.
+   Public those paths stay 404.
    `/workspace` Run is a named refuse (P-06). Public catalog empty.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 

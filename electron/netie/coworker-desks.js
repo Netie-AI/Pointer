@@ -2050,14 +2050,17 @@ function inboxAssist({ text, transcript } = {}) {
     if (blocks.length) blocks.push("");
     blocks.push("What we decided:", ...decided.map((row) => `- ${namedLine(row)}`));
   }
+  const names = themHeardNames(utterances);
   const greeting = inboxGreeting(utterances);
   const confirm = inboxConfirm(utterances);
-  const named = themHeardNames(utterances).length > 0;
-  const draft = blocks.length
+  const named = names.length > 0;
+  const toHeader = names[0] ? `To: ${names[0]}` : "To: not sent";
+  const draftBody = blocks.length
     ? [greeting, "", ...blocks, "", confirm].join("\n")
     : named
       ? [greeting, "", "Thanks - I will confirm the details on this machine and follow up."].join("\n")
       : "Thanks - I will confirm the details on this machine and follow up.";
+  const draft = [toHeader, "Subject: Draft reply", "", draftBody].join("\n");
   const heard = heardLine(utterances);
   const deliverable = [
     "# Draft (not sent)",
@@ -2141,11 +2144,17 @@ function headerToken(s, fallback) {
  * Build an .eml package in memory. Never sends. Never Acts. P-05 stays parked.
  * Loopback /inbox can download this; public catalog stays 404.
  */
+function mailField(body, key) {
+  const m = String(body || "").match(new RegExp("^" + key + ":\\s*(.+)$", "im"));
+  return m ? String(m[1] || "").trim() : "";
+}
+
 function buildEml(text, opts = {}) {
   const body = String(text || "").replace(/\r\n/g, "\n").trim();
   if (!body) return { ok: false, reason: "no inbox draft" };
-  const subject = headerToken(opts.subject, "Draft follow-up (not sent)");
-  const to = headerToken(opts.to, "undisclosed-recipients:;");
+  const subject = headerToken(opts.subject || mailField(body, "Subject"), "Draft follow-up (not sent)");
+  let to = headerToken(opts.to || mailField(body, "To"), "");
+  if (!to || /^not sent$/i.test(to)) to = "undisclosed-recipients:;";
   const raw = [
     "MIME-Version: 1.0",
     "Content-Type: text/plain; charset=UTF-8",
@@ -2383,6 +2392,45 @@ function isBareDocWrite(text) {
   );
 }
 
+function notesDraftBody(source, request) {
+  const asked = String(request || "")
+    .replace(/^(write|put|type)\s+/i, "")
+    .trim();
+  const body = String(source || "").trim();
+  if (!body) return asked.slice(0, 1500);
+  const parts = String(body).split(/^## /m);
+  const wanted = [];
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (/^(Recap|Commitments|Decisions|On your plate)\b/i.test(part)) {
+      wanted.push("## " + part.trim());
+    }
+  }
+  if (wanted.length) return wanted.join("\n\n").slice(0, 1500);
+  const lines = body.split("\n");
+  const out = [];
+  let skipHead = true;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const t = String(line || "").trim();
+    if (skipHead) {
+      if (
+        !t ||
+        (/^#\s/.test(t) && !/^##\s/.test(t)) ||
+        /^>\s/.test(t) ||
+        /^kind:\s/i.test(t) ||
+        /^source:\s/i.test(t)
+      ) {
+        continue;
+      }
+      skipHead = false;
+    }
+    out.push(line);
+  }
+  const cut = out.join("\n").trim();
+  return (cut || body || asked).slice(0, 1500);
+}
+
 function documentAssist({ text, source, transcript } = {}) {
   const t = String(text || "").trim();
   if (!t) {
@@ -2393,7 +2441,7 @@ function documentAssist({ text, source, transcript } = {}) {
   const reuse = Boolean(
     fromLive && (isBareDocWrite(t) || /\b(recap|meeting|brief|this|plate|today)\b/.test(q))
   );
-  const draft = (reuse ? fromLive : t.replace(/^(write|put|type)\s+/i, "")).slice(0, 1500);
+  const draft = (reuse ? notesDraftBody(fromLive, t) : t.replace(/^(write|put|type)\s+/i, "")).slice(0, 1500);
   const utterances = parseUtterances(transcript);
   const names = themHeardNames(utterances);
   const orgs = themHeardOrgs(utterances);

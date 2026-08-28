@@ -995,14 +995,17 @@ test("inbox assist drafts and never sends", () => {
   });
   assert.strictEqual(named.act, false);
   assert.match(named.deliverable, /Hi Sarah Chen/);
+  assert.match(named.deliverable, /To: Sarah Chen/);
   assert.match(named.deliverable, /Wanted to confirm/);
   assert.match(named.deliverable, /Friday/);
   assert.match(named.deliverable, /\$40k/);
   assert.match(named.deliverable, /with Acme/);
   assert.doesNotMatch(named.deliverable, /Hi Acme/);
+  assert.doesNotMatch(named.deliverable, /To: Acme/);
   assert.match(named.heard, /Sarah Chen/);
   assert.match(named.cue, /not sent/);
   assert.match(named.preview, /Hi Sarah Chen/);
+  assert.match(fromMeet.deliverable, /To: not sent/);
   assert.match(named.deliverable, /generated \.eml/);
   assert.match(inboxDraftText({ body: named.deliverable }), /Hi Sarah Chen/);
   assert.strictEqual(
@@ -1018,8 +1021,15 @@ test("inbox assist drafts and never sends", () => {
   const raw = eml.buffer.toString("utf8");
   assert.match(raw, /X-Pointer-Send: never/);
   assert.match(raw, /Subject: Hi Bcc: evil@x/);
+  assert.match(raw, /undisclosed-recipients/);
   assert.doesNotMatch(raw, /\nBcc:/);
   assert.match(raw, /Thanks - Friday\./);
+  const namedMail = buildEml(inboxDraftText({ body: named.deliverable }));
+  assert.ok(namedMail.ok);
+  const namedRaw = namedMail.buffer.toString("utf8");
+  assert.match(namedRaw, /To: Sarah Chen/);
+  assert.match(namedRaw, /X-Pointer-Send: never/);
+  assert.doesNotMatch(namedRaw, /\nBcc:/);
   const blank = buildEml(" \n\t ");
   assert.strictEqual(blank.ok, false);
   const ownName = inboxAssist({
@@ -1027,6 +1037,7 @@ test("inbox assist drafts and never sends", () => {
     transcript: "mic: I'm Alex.\nsystem: Can you send the deck Friday?",
   });
   assert.doesNotMatch(ownName.deliverable, /Hi Alex/);
+  assert.doesNotMatch(ownName.deliverable, /To: Alex/);
   const notAName = inboxAssist({
     text: "draft a follow-up email from this meeting",
     transcript: "system: I'm going Friday.\nmic: I will send it Friday.",
@@ -1347,6 +1358,16 @@ test("document assist drafts and never writes Word", () => {
   assert.strictEqual(bare.act, false);
   assert.strictEqual(bare.skipLlm, true);
   assert.match(bare.deliverable, /ship the deck Friday/);
+  const cleaned = documentAssist({
+    text: "write this recap in Word",
+    source:
+      "# Meeting brief\n> kind: assist\n\n## Recap\n- ship the deck Friday\n\n## What you can say\nDon't dump this.\n\n## Commitments\n- You: I will send it Friday.",
+  });
+  assert.strictEqual(cleaned.act, false);
+  assert.match(cleaned.preview, /ship the deck Friday/);
+  assert.match(cleaned.preview, /I will send it Friday/);
+  assert.doesNotMatch(cleaned.preview, /kind: assist/);
+  assert.doesNotMatch(cleaned.preview, /Don't dump this/);
   const fromToday = documentAssist({
     text: "write in Word",
     source: "# Today\n## On your plate\n- I'll send it Friday.",
@@ -1541,6 +1562,9 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /applyOpenInbox/);
   assert.match(hostApp, /applyOpenSecurity/);
   assert.match(hostApp, /paintDeskWindow/);
+  assert.match(hostApp, /notesPaper/);
+  assert.match(hostApp, /notesWindowBody/);
+  assert.match(hostApp, /inboxComposeBody/);
   assert.match(hostApp, /paintOpenFileBody/);
   assert.match(hostApp, /desk === "document"/);
   assert.match(hostApp, /desk === "inbox"/);

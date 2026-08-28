@@ -313,6 +313,9 @@ function readAsset(file) {
     assert.match(liveRoom, /applyOpenInbox/);
     assert.match(liveRoom, /applyOpenSecurity/);
     assert.match(app, /paintDeskWindow/);
+    assert.match(app, /notesPaper/);
+    assert.match(app, /notesWindowBody/);
+    assert.match(app, /inboxComposeBody/);
     assert.match(app, /desk-window/);
     assert.doesNotMatch(app, /id="inbox-send"|Send mail/);
     assert.match(app, /\/api\/teach/);
