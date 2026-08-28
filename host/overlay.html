@@ -334,6 +334,7 @@
         <div id="walk-acts">
           <button type="button" id="walk-back" data-q="back">Back</button>
           <button type="button" id="walk-next" data-q="got it, next">Got it</button>
+          <button type="button" id="walk-stack-copy">Copy</button>
           <button type="button" id="walk-draw">Draw</button>
         </div>
       </div>
@@ -778,10 +779,10 @@
         return lines.filter(Boolean).join("\n");
       }
 
-      function copyWalkDock() {
-        const text = String(lastDockCopy || "").trim();
-        const btn = document.getElementById("walk-dock-copy");
-        if (!text) return;
+      function copyOverlayText(text, btnId) {
+        const line = String(text || "").trim();
+        const btn = document.getElementById(btnId);
+        if (!line) return;
         const done = function (ok) {
           if (btn) btn.textContent = ok ? "Copied" : "Copy failed";
           setTimeout(function () {
@@ -789,10 +790,18 @@
           }, 1200);
         };
         if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-          navigator.clipboard.writeText(text).then(function () { done(true); }).catch(function () { done(false); });
+          navigator.clipboard.writeText(line).then(function () { done(true); }).catch(function () { done(false); });
           return;
         }
         done(false);
+      }
+
+      function copyWalkDock() {
+        copyOverlayText(lastDockCopy, "walk-dock-copy");
+      }
+
+      function copyWalkStack() {
+        copyOverlayText(dockCopyText(overlayDockSpec("/workspace?id=live-meeting")), "walk-stack-copy");
       }
 
       function openDeskWindow(href) {
@@ -951,6 +960,11 @@
         if (ev.target && ev.target.closest && ev.target.closest("#walk-draw")) {
           ev.preventDefault();
           setDraw(!drawing);
+          return;
+        }
+        if (ev.target && ev.target.closest && ev.target.closest("#walk-stack-copy")) {
+          ev.preventDefault();
+          copyWalkStack();
           return;
         }
         if (ev.target && ev.target.closest && ev.target.closest("#walk-dock-copy")) {

@@ -501,6 +501,9 @@ function readAsset(file) {
     assert.match(overlayText, /id="walk-dock"/);
     assert.match(overlayText, /copy\.id = "walk-dock-copy"/);
     assert.match(overlayText, /copyWalkDock/);
+    assert.match(overlayText, /id="walk-stack-copy"/);
+    assert.match(overlayText, /copyWalkStack/);
+    assert.match(overlayText, /overlayDockSpec\("\/workspace\?id=live-meeting"\)/);
     assert.match(overlayText, /html\.demo \.point-face\.field/);
     assert.match(overlayText, /id="walk-desktop"/);
     assert.match(overlayText, /paintWalkDesktop/);

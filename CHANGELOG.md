@@ -1,3 +1,10 @@
+## 2026-08-28 - Overlay chrome Copy clips the honest stack
+
+Overlay chrome Copy clips They asked / You / Say this / Also /
+Heard / Don't say (clipboard, never send). Teach walk stays BOX
+plus voice. Never speak meeting. Never Act. P-05 and P-06 stay
+parked.
+
 ## 2026-08-28 - Overlay leftover BOX yields after Save
 
 After Save, overlay leftover Email/Save BOX drops so Live answer
