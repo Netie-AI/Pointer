@@ -14,6 +14,8 @@ const DEFAULT_RECORDING_HOTKEY = "Control+Alt+Space";
 const DEFAULT_MODE_HOTKEY = "Control+Alt+M";
 const DEFAULT_LANGUAGE_HOTKEY = "Control+Alt+L";
 const DICTATE_HOLD_VKS = Object.freeze([0x11, 0x12, 0x20]); // Ctrl, Alt, Space
+/** OpenWillow-class session cap. HUD hold-to-talk uses the same 120s. */
+const DICTATE_MAX_MS = 120000;
 
 const MOD_ORDER = Object.freeze(["Control", "Alt", "Shift", "Super"]);
 const RESERVED_HOTKEYS = Object.freeze([
@@ -117,17 +119,35 @@ function normalizeDictateHotkeys(input = {}) {
 
 function createHoldMonitor(opts = {}) {
   const intervalMs = Number(opts.intervalMs) > 0 ? Number(opts.intervalMs) : 40;
+  const maxMs = Number(opts.maxMs) > 0 ? Number(opts.maxMs) : DICTATE_MAX_MS;
   const poll = opts.poll;
   const onRelease = opts.onRelease;
   const setInt = typeof opts.setInterval === "function" ? opts.setInterval : setInterval;
   const clearInt = typeof opts.clearInterval === "function" ? opts.clearInterval : clearInterval;
+  const setTO = typeof opts.setTimeout === "function" ? opts.setTimeout : setTimeout;
+  const clearTO = typeof opts.clearTimeout === "function" ? opts.clearTimeout : clearTimeout;
   let timer = null;
+  let watchdog = null;
   let armed = false;
   let seenDown = false;
+
+  function clearWatchdog() {
+    if (watchdog != null) {
+      clearTO(watchdog);
+      watchdog = null;
+    }
+  }
+
+  function fireRelease(sample) {
+    const fn = onRelease;
+    stop();
+    if (typeof fn === "function") fn(sample);
+  }
 
   function stop() {
     armed = false;
     seenDown = false;
+    clearWatchdog();
     if (timer != null) {
       clearInt(timer);
       timer = null;
@@ -138,6 +158,10 @@ function createHoldMonitor(opts = {}) {
     stop();
     if (typeof poll !== "function") return { ok: false, reason: "no poll" };
     armed = true;
+    watchdog = setTO(() => {
+      if (!armed) return;
+      fireRelease({ reason: "max", maxMs });
+    }, maxMs);
     timer = setInt(() => {
       Promise.resolve(poll())
         .then((sample) => {
@@ -148,14 +172,12 @@ function createHoldMonitor(opts = {}) {
             return;
           }
           if (seenDown && sample && sample.down !== true) {
-            const fn = onRelease;
-            stop();
-            if (typeof fn === "function") fn(sample);
+            fireRelease(sample);
           }
         })
         .catch(() => {});
     }, intervalMs);
-    return { ok: true };
+    return { ok: true, maxMs };
   }
 
   return {
@@ -167,12 +189,16 @@ function createHoldMonitor(opts = {}) {
     get seenDown() {
       return seenDown;
     },
+    get maxMs() {
+      return maxMs;
+    },
   };
 }
 
 module.exports = {
   createHoldMonitor,
   DICTATE_HOLD_VKS,
+  DICTATE_MAX_MS,
   DEFAULT_RECORDING_HOTKEY,
   DEFAULT_MODE_HOTKEY,
   DEFAULT_LANGUAGE_HOTKEY,

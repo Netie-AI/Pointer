@@ -133,6 +133,36 @@ function test(name, fn) {
     assert.strictEqual(liveActions.present, true);
     assert.match(liveActions.note, /untrusted model text/);
     assert.match(liveActions.text, /Sam owns QA/);
+    const { exportMeetingPack } = require("../electron/netie/meeting");
+    const blankPack = exportMeetingPack({});
+    assert.strictEqual(blankPack.ok, false);
+    assert.strictEqual(blankPack.markdown, "");
+    assert.strictEqual(blankPack.present.notes, false);
+    const notesOnly = exportMeetingPack({ notes: "We ship Friday." });
+    assert.strictEqual(notesOnly.ok, true);
+    assert.match(notesOnly.markdown, /^# Meeting pack/m);
+    assert.match(notesOnly.markdown, /## Notes/);
+    assert.match(notesOnly.markdown, /We ship Friday/);
+    assert.doesNotMatch(notesOnly.markdown, /## Recap/);
+    const fullPack = exportMeetingPack({
+      notes: "We ship Friday. Sam owns QA.",
+      recap: "Ship Friday. Sam owns QA.",
+      say: "Confirm Friday.",
+      email: "Hi team,\nShip Friday.",
+      actions: "1. Sam owns QA.",
+    });
+    assert.strictEqual(fullPack.ok, true);
+    assert.strictEqual(fullPack.present.notes, true);
+    assert.strictEqual(fullPack.present.recap, true);
+    assert.strictEqual(fullPack.present.say, true);
+    assert.strictEqual(fullPack.present.email, true);
+    assert.strictEqual(fullPack.present.actions, true);
+    assert.match(fullPack.markdown, /## Recap/);
+    assert.match(fullPack.markdown, /## Say/);
+    assert.match(fullPack.markdown, /## Follow-up email/);
+    assert.match(fullPack.markdown, /## Action items/);
+    assert.match(fullPack.markdown, /not commands/);
+    assert.match(fullPack.note, /untrusted/);
   });
 
   await test("notes.tail returns the live file without leaking after stop", () => {

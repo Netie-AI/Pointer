@@ -67,7 +67,7 @@ const {
   pickWindowSource,
 } = require("./netie/delivery");
 const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetingNotes, exportMeetingRecap, exportMeetingSay, exportMeetingEmail, exportMeetingActions, normalizeMeetingKind } = require("./netie/meeting");
-const { createHoldMonitor, DICTATE_HOLD_VKS, comboVks, normalizeDictateHotkeys } = require("./netie/holdkey");
+const { createHoldMonitor, DICTATE_HOLD_VKS, DICTATE_MAX_MS, comboVks, normalizeDictateHotkeys } = require("./netie/holdkey");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
 const { shouldAcceptFrame, detectCaptureCommand } = require("./netie/capture-gate");
@@ -353,6 +353,7 @@ function liveComputerStatus() {
     stt: { url: loc.sttUrl, local: loc.sttLocal },
     llm: { url: loc.llmUrl, local: loc.llmLocal, model: llmModel },
     session: liveSession(),
+    sessionMaxMs: DICTATE_MAX_MS,
   });
 }
 
@@ -851,20 +852,27 @@ const driver = new InputDriver({
   toPhysical: (pt) => screen.dipToScreenPoint(pt),
 });
 
-/** OpenWillow hold-to-talk: after the recording hotkey press, stop when the combo lifts. */
+/** OpenWillow hold-to-talk: stop on key up, or at 120s even on tap-to-toggle. */
 const dictateHold = createHoldMonitor({
   intervalMs: 40,
+  maxMs: DICTATE_MAX_MS,
   poll: () => {
     const acc = settings.get("recordingHotkey") || "Control+Alt+Space";
     const vks = comboVks(acc);
     return driver.keysHeld(vks.length ? vks : DICTATE_HOLD_VKS);
   },
-  onRelease: () => {
+  onRelease: (sample) => {
     if (!listenMic) return;
     if (appMode !== "transcribe" && appMode !== "scribe") return;
     listenMic = false;
     sendHudQuiet({ type: "auto-listen", mic: false, system: listenSystem, paused: false });
-    sendHudQuiet({ type: "insight", text: "Dictation off - key released." });
+    sendHudQuiet({
+      type: "insight",
+      text:
+        sample && sample.reason === "max"
+          ? "Dictation off - 120s session cap."
+          : "Dictation off - key released.",
+    });
     syncDictateCancelHotkey();
   },
 });

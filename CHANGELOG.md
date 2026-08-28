@@ -2,6 +2,16 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Meeting pack plus 120s dictation cap
+
+Loopback `GET /api/meeting?pack=1` returns notes plus last recap / say /
+email / actions as one markdown pack (Cluely shareable notes, one hop).
+Empty pack is a refusal, not a blank file. Public host GET `/api/meeting`
+stays the empty catalog; the live pack stays on 127.0.0.1. Global
+Ctrl+Alt+Space now auto-stops at 120s even on Linux tap-to-toggle (same
+cap as HUD hold-to-talk). `computer.status.session.maxMs` publishes that
+cap. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Merge main into detectable HUD branch
 
 Keeps loopback `computer.*` (UACC, 12 languages, meeting email/actions) plus

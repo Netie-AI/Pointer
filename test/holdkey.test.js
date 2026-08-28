@@ -1,6 +1,6 @@
 "use strict";
 const assert = require("assert");
-const { createHoldMonitor, DICTATE_HOLD_VKS, canonicalizeHotkey, comboVks, normalizeDictateHotkeys } = require("../electron/netie/holdkey");
+const { createHoldMonitor, DICTATE_HOLD_VKS, DICTATE_MAX_MS, canonicalizeHotkey, comboVks, normalizeDictateHotkeys } = require("../electron/netie/holdkey");
 const { InputDriver, MOD_VK, VK } = require("../electron/netie/driver");
 
 let pass = 0;
@@ -111,6 +111,54 @@ function test(name, fn) {
     await Promise.resolve();
     assert.strictEqual(released, 1);
     assert.strictEqual(mon.armed, false);
+  });
+
+  await test("hold monitor auto-stops at the 120s session cap", async () => {
+    assert.strictEqual(DICTATE_MAX_MS, 120000);
+    let tick = null;
+    let cap = null;
+    let released = [];
+    const mon = createHoldMonitor({
+      intervalMs: 1,
+      maxMs: 50,
+      setInterval: (fn) => {
+        tick = fn;
+        return 9;
+      },
+      clearInterval: () => {
+        tick = null;
+      },
+      setTimeout: (fn) => {
+        cap = fn;
+        return 10;
+      },
+      clearTimeout: () => {
+        cap = null;
+      },
+      poll: () => ({ ok: true, down: false, dryRun: true }),
+      onRelease: (sample) => {
+        released.push(sample);
+      },
+    });
+    const started = mon.start();
+    assert.strictEqual(started.ok, true);
+    assert.strictEqual(started.maxMs, 50);
+    assert.strictEqual(mon.armed, true);
+    await tick();
+    await Promise.resolve();
+    assert.strictEqual(released.length, 0);
+    cap();
+    assert.strictEqual(released.length, 1);
+    assert.strictEqual(released[0].reason, "max");
+    assert.strictEqual(released[0].maxMs, 50);
+    assert.strictEqual(mon.armed, false);
+    const fs = require("fs");
+    const path = require("path");
+    const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
+    assert.match(main, /DICTATE_MAX_MS/);
+    assert.match(main, /120s session cap/);
+    const hudLive = fs.readFileSync(path.join(__dirname, "..", "electron", "netie", "hud-live.js"), "utf8");
+    assert.match(hudLive, /maxMs = 120000/);
   });
 
   await test("keysHeld dry-run never claims a physical hold", async () => {
