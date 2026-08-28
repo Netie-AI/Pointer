@@ -1,3 +1,10 @@
+## 2026-08-28 - Overlay Ask stays in fixed chrome
+
+Overlay chrome Ask (never Act) opens the matching This computer
+window, same as home. Enter in Ask submits Ask; Enter outside is
+Got it. Never send. Never speak meeting. Never Act. P-05 and P-06
+stay parked.
+
 ## 2026-08-28 - Overlay chrome keeps Live captions after Save
 
 After Save, overlay chrome keeps They asked / You / Live captions

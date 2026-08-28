@@ -996,6 +996,10 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /Last step/);
   assert.match(teachOverlay, /id="walk-rail"/);
   assert.match(teachOverlay, /id="walk-chips"/);
+  assert.match(teachOverlay, /id="walk-ask"/);
+  assert.match(teachOverlay, /id="walk-ask-go"/);
+  assert.match(teachOverlay, /submitWalkAsk/);
+  assert.match(teachOverlay, /closest\("#walk-ask-form"\)/);
   assert.match(teachOverlay, /data-desk/);
   assert.match(teachOverlay, /overlayDeskHref/);
   assert.match(teachOverlay, /live-inbox/);

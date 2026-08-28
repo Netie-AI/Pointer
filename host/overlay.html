@@ -58,6 +58,22 @@
         gap: 6px;
         margin: 0;
       }
+      #walk-ask-form {
+        display: flex;
+        gap: 6px;
+        margin: 0;
+        pointer-events: auto;
+      }
+      #walk-ask {
+        flex: 1;
+        min-width: 0;
+        background: #1a1a1a;
+        color: #eee;
+        border: 1px solid #345;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font: inherit;
+      }
       .walk-rail-tick {
         padding: 2px 8px;
         border-radius: 999px;
@@ -348,6 +364,10 @@
         <button type="button" data-desk="1" data-q="Security review this session">Needs you</button>
         <button type="button" data-desk="1" data-q="what should I say">Live answer</button>
       </p>
+      <form id="walk-ask-form">
+        <input id="walk-ask" type="text" autocomplete="off" aria-label="Ask the coworker" placeholder="Ask the coworker (never Act)" />
+        <button type="submit" id="walk-ask-go">Ask</button>
+      </form>
     </div>
     <aside id="walk-dock" class="chrome" hidden></aside>
     <div id="walk-desktop" aria-hidden="true"></div>
@@ -995,6 +1015,15 @@
           });
       }
 
+      function submitWalkAsk() {
+        const input = document.getElementById("walk-ask");
+        const q = String((input && input.value) || "").trim();
+        if (!q) return;
+        if (input) input.value = "";
+        if (overlayDeskHref(q)) onDesk(q);
+        else onAsk(q);
+      }
+
       function onAdvance(ev) {
         if (ev.target && ev.target.closest && ev.target.closest("#walk-draw")) {
           ev.preventDefault();
@@ -1036,6 +1065,13 @@
       }
 
       if (chromeBar) chromeBar.addEventListener("click", onAdvance);
+      const askForm = document.getElementById("walk-ask-form");
+      if (askForm) {
+        askForm.addEventListener("submit", function (ev) {
+          ev.preventDefault();
+          submitWalkAsk();
+        });
+      }
       const dockBar = document.getElementById("walk-dock");
       if (dockBar) dockBar.addEventListener("click", onAdvance);
       document.addEventListener("pointerdown", function (ev) {
@@ -1299,6 +1335,7 @@
         }
         if (ev.key === "Enter" && !drawing && !ev.repeat) {
           if (ev.target && ev.target.closest && ev.target.closest("button")) return;
+          if (ev.target && ev.target.closest && ev.target.closest("#walk-ask-form")) return;
           ev.preventDefault();
           onAsk("got it, next");
         }

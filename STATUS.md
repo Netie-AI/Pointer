@@ -28,7 +28,7 @@
    (never send, never a .docx, never approval). Cue-bar chips Ask
    Got it / Draft email / Notes / Needs you / Live answer. Public
    `/overlay` is the same teach walk (Draw stacks a BOX; Last step
-   when nothing remains; walk rail plus Ask chips; Enter is Got it).
+   when nothing remains; walk rail plus Ask field and chips; Enter is Got it).
    HUD cue bar keeps that remaining rail and those chips when chrome
    hides, and docks Unsent mail / Notes / Needs you / Live answer on that bar. Walk
    rail ticks jump by Ask. Overlay docks the filed file on the walk.
