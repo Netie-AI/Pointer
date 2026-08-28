@@ -24,7 +24,7 @@ jobs:
         # This is Windows-authored code, and `safe-path.js` takes a different
         # branch per platform (case-insensitive comparison, 8.3 short names). One
         # runner would leave half of that containment logic unexercised.
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
 
     env:
       # The strict acceptance gates, set here rather than via the `set VAR=` in
@@ -85,8 +85,8 @@ jobs:
         run: |
           echo "NOT RUN IN THIS JOB: npm run test:smoke - it boots real Electron and"
           echo "  runs in the dedicated 'smoke' job on windows-latest, where the customer"
-          echo "  artifact actually ships. Smoke is NOT run on Linux: there is no shipped"
-          echo "  Linux build, and the harness teardown is taskkill (Windows-only)."
+          echo "  artifact actually ships SendInput Act. Linux/mac packs (npm run pack:linux /"
+          echo "  pack:mac) ship HUD + overlay + host; OS Act stays fail-closed off Windows."
 
   # #22's rendered-HUD assertions and the live IPC bridge only exist in the smoke
   # lane. Until this job existed, CI declared that lane NOT RUN, which meant a HUD

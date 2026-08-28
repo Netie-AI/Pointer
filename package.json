@@ -7,7 +7,7 @@
   "scripts": {
     "start": "electron electron/main.js",
     "dev": "electron electron/main.js",
-    "test": "node test/ecosystem.test.js && node test/vault.test.js && node test/intent.test.js && node test/zen.test.js && node test/followup.test.js && node test/driver.test.js && node test/geometry.test.js && node test/conversations.test.js && node test/stt.test.js && node test/audio.test.js && node test/transcriber.test.js && node test/agentic.test.js && node test/recipes.test.js && node test/presence.test.js && node test/clicky.test.js && node test/clicky-cursor.test.js && node test/plan-guard.test.js && node test/invariants/claude-contract.test.js && node test/invariants/governed-docs.test.js && node test/invariants/ipc-bridge.test.js && node test/invariants/word-sink.test.js && node test/word-coworker.test.js && node test/safe-path.test.js && node test/plan-describe.test.js && node test/app-target.test.js && node test/attachments.test.js && node test/clipboard-integrity.test.js && node test/coordinator.test.js && node test/mcp-abi.test.js && node test/host-serve.test.js && node test/coworker.test.js && node test/workspace.test.js",
+    "test": "node test/ecosystem.test.js && node test/vault.test.js && node test/intent.test.js && node test/zen.test.js && node test/followup.test.js && node test/driver.test.js && node test/geometry.test.js && node test/conversations.test.js && node test/stt.test.js && node test/audio.test.js && node test/transcriber.test.js && node test/agentic.test.js && node test/recipes.test.js && node test/presence.test.js && node test/clicky.test.js && node test/clicky-cursor.test.js && node test/plan-guard.test.js && node test/invariants/claude-contract.test.js && node test/invariants/governed-docs.test.js && node test/invariants/ipc-bridge.test.js && node test/invariants/word-sink.test.js && node test/word-coworker.test.js && node test/safe-path.test.js && node test/plan-describe.test.js && node test/app-target.test.js && node test/attachments.test.js && node test/clipboard-integrity.test.js && node test/coordinator.test.js && node test/mcp-abi.test.js && node test/host-serve.test.js && node test/coworker.test.js && node test/workspace.test.js && node test/packaging.test.js",
     "test:e2e": "node test/e2e/golden-act.test.js",
     "test:stress": "node test/stress/agent-loop.stress.js",
     "test:contracts": "node test/contracts/computer-use.contract.js",
@@ -31,10 +31,15 @@
     "test:cursor": "node test/clicky-cursor.test.js",
     "test:guard": "node test/plan-guard.test.js",
     "test:smoke": "node test/smoke/hud-boot.smoke.js && node test/smoke/ipc-live.smoke.js",
-    "test:smoke:ipc": "node test/smoke/ipc-live.smoke.js"
+    "test:smoke:ipc": "node test/smoke/ipc-live.smoke.js",
+    "pack:linux": "node scripts/pack.js linux",
+    "pack:win": "node scripts/pack.js win",
+    "pack:mac": "node scripts/pack.js mac",
+    "pack:all": "node scripts/pack-all.js"
   },
   "devDependencies": {
     "electron": "^35.0.0",
+    "electron-builder": "^26.15.3",
     "playwright": "^1.62.1"
   },
   "optionalDependencies": {

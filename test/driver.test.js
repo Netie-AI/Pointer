@@ -222,6 +222,23 @@ test("dry-run supports drag/open/clipboard without spawning", async () => {
   assert.strictEqual((await d.perform({ type: "open", path: "C:\\Windows\\notepad.exe" })).ok, true);
 });
 
+test("off-Windows Act is fail-closed and does not spawn powershell", async () => {
+  if (process.platform === "win32") return;
+  const state = {};
+  const d = new InputDriver({ spawnImpl: fakeSpawn(() => ({}), state) });
+  const out = await d.perform(
+    { type: "click", xPct: 50, yPct: 50 },
+    { region: { x: 0, y: 0, width: 100, height: 100 } }
+  );
+  assert.strictEqual(out.ok, false);
+  assert.strictEqual(out.act, false);
+  assert.match(String(out.error || ""), /fail-closed/);
+  assert.strictEqual(state.spawned || 0, 0);
+  const wait = await d.perform({ type: "wait", ms: 1 });
+  assert.strictEqual(wait.ok, true);
+  d.dispose();
+});
+
 (async () => {
   for (const { name, fn } of tests) {
     try {

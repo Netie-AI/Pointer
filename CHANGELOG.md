@@ -1,3 +1,11 @@
+## 2026-08-28 - Three-OS packs (linux, win, mac)
+
+`npm run pack:linux` (AppImage), `pack:win` (zip/portable), `pack:mac`
+(zip), or `pack:all` together. SendInput Act stays Windows-only and
+fail-closed on linux/mac. HUD, overlay Draw, and the host still work.
+Original electron-builder config. Never vendors Clicky. P-05 and P-06
+stay parked.
+
 ## 2026-08-28 - HUD Draw pencils a BOX on the display
 
 HUD cue bar Draw arms a freehand pencil on the laptop display and

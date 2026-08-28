@@ -47,14 +47,14 @@
    Show me flies the BOX; Talk asks about this BOX; HUD Draw pencils a BOX.
    Ask what to type is Live answer until Save. Leftover yields. Back restores. Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
+   Packs: linux AppImage, win zip/portable, mac zip (`npm run pack:all`).
+   Act is fail-closed off Windows.
 
 ## Next
 
 - Recall HUD disclosure / PDF-image extraction are `prd-agent`.
-- Measure STT: `node scripts/stt_baseline.js`.
-- `wrangler deploy` of `netie-host` when DNS/account is ready.
+- STT: `node scripts/stt_baseline.js`. `wrangler deploy` of `netie-host`
+  when DNS/account is ready.
 
 ## Later
-
-- OpenVault custody endpoint (TBD per `docs/CONTRACTS.md`).
-- Skill harvest stays blocked (DR-0003). P-05 stays parked.
+- OpenVault custody TBD. Skill harvest blocked (DR-0003). P-05 parked.

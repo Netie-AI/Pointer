@@ -20,6 +20,7 @@
  */
 
 const { spawn } = require("child_process");
+const { actOs, actRefuseReason, isOsAct } = require("./platform");
 
 // C# helper + command loop. Compiled once per worker lifetime.
 const WORKER_SCRIPT = `
@@ -320,6 +321,9 @@ class InputDriver {
 
   _ensureWorker() {
     if (this._worker) return this._worker;
+    if (!actOs() && !this.dryRun) {
+      throw new Error(actRefuseReason());
+    }
     const encoded = Buffer.from(WORKER_SCRIPT, "utf16le").toString("base64");
     const child = this._spawn(
       "powershell.exe",
@@ -649,6 +653,9 @@ class InputDriver {
    */
   async perform(action, ctx = {}) {
     const type = String(action.type || "").toLowerCase();
+    if (isOsAct(type) && !actOs() && !this.dryRun) {
+      return { ok: false, error: actRefuseReason(), act: false, platform: process.platform };
+    }
     const region = ctx.region || { x: 0, y: 0, width: 0, height: 0 };
     const { sx, sy } = this._resolvePoint(action, region);
 
