@@ -99,6 +99,12 @@ function describeAction(action) {
         ? `Type a stored secret into${where || " a field"} (value never shown)`
         : `Type ${a.value ? `"${clip(a.value, 40)}"` : "text"} into${where || " a field"}`;
       break;
+    case "uia_set":
+      verb = "Set";
+      text = secret
+        ? `Set a stored secret into${where || " a field"} without moving the cursor (value never shown)`
+        : `Set ${a.value ? `"${clip(a.value, 40)}"` : "text"} into${where || " a field"} without moving the cursor`;
+      break;
 
     case "paste":
     case "clipboard_paste":
@@ -110,6 +116,30 @@ function describeAction(action) {
       verb = "Click";
       text = `Click${where || " the targeted control"}`;
       break;
+    case "uia_invoke":
+      verb = "Invoke";
+      text = `Invoke${where || " the named control"} without moving the cursor`;
+      break;
+    case "uia_select":
+      verb = "Select";
+      text = `Select${where || " the named tab or list item"}`;
+      break;
+    case "uia_toggle": {
+      verb = "Toggle";
+      const want = String(a.want || "flip").toLowerCase();
+      if (want === "on") text = `Check${where || " the named box"}`;
+      else if (want === "off") text = `Uncheck${where || " the named box"}`;
+      else text = `Toggle${where || " the named box"}`;
+      break;
+    }
+    case "uia_expand": {
+      verb = String(a.want || "expand").toLowerCase() === "collapse" ? "Collapse" : "Expand";
+      text =
+        verb === "Collapse"
+          ? `Collapse${where || " the named control"}`
+          : `Expand${where || " the named control"}`;
+      break;
+    }
     case "doubleclick":
       verb = "Double-click";
       text = `Double-click${where || " the targeted control"}`;
@@ -167,6 +197,10 @@ function describeAction(action) {
     case "wait":
       verb = "Wait";
       text = `Wait ${clip(a.ms || a.value || "a moment", 20)}`;
+      break;
+    case "uia_wait":
+      verb = "Wait";
+      text = `Wait for${where || " a named control"}`;
       break;
 
     case "clipboard_verify":

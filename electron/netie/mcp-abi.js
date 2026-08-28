@@ -81,7 +81,7 @@ const CATALOG = Object.freeze([
   },
   {
     name: "computer.status",
-    description: "Detectability, live mode, session, token totals, Claude 5-hour vs Cursor route, hotkeys, STT/LLM URL, on-device vs off-device, UACC probe, delivery target, and instruction verbs.",
+    description: "Detectability, live mode, session, token totals, Claude 5-hour vs Cursor route, hotkeys, STT/LLM URL, on-device vs off-device, UACC probe, delivery target, standing ~/.pointer home, rust pointer-core, and instruction verbs.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -101,7 +101,7 @@ const CATALOG = Object.freeze([
   {
     name: "computer.act",
     description:
-      "Gated OS actions. instruction plans via recipes then type:/click:/click window:/focus:/open:/deliver:/replace:/wait/scroll/doubleclick/rightclick/hover. Chain local verbs with then: focus: notepad then type: hello or click window: notepad then type: hello. use Claude opens Claude Code while the 5-hour window is open; use Cursor when that limit is used. Clicks and launches need approved true. mode alone switches Agent/General/Transcribe/Scribe/Meeting like the tray (no Cortex).",
+      "Gated OS actions. instruction plans via recipes then type:/click:/click window:/invoke:/fill: Search: hello/type in:/set:/toggle:/check:/uncheck:/expand:/collapse:/select:/wait for:/focus:/open:/deliver:/replace:/wait/scroll/doubleclick/rightclick/hover. click: Save tries UIA InvokePattern first (no cursor warp); miss falls back to SendInput. invoke: Save is Invoke only. fill: and type in: try ValuePattern first (no cursor warp); miss falls back to click then type. set: Search: hello is ValuePattern only. toggle: Remember me uses TogglePattern. expand: Documents uses ExpandCollapsePattern. select: Home uses SelectionItemPattern (no cursor). wait for: Save polls the foreground UIA tree until that control exists (default 5000ms, cap 15000). Chain local verbs with then: focus: notepad then type: hello or invoke: Save then type: hello or fill: Search: hello then click: Save or open: notepad then wait for: Untitled then type: hello or select: Home then type: hello. use Claude opens Claude Code while the 5-hour window is open; use Cursor when that limit is used. Clicks and launches need approved true. mode alone switches Agent/General/Transcribe/Scribe/Meeting like the tray (no Cortex).",
     inputSchema: {
       type: "object",
       properties: {

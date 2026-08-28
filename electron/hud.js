@@ -527,6 +527,7 @@ function setLive(on) {
 function updateRecUi() {
   btnListen.classList.toggle("active", listening && !paused);
   btnListen.classList.toggle("warn-on", listening && paused);
+  hudRoot.classList.toggle("is-listening", listening && !paused);
   if (!listening) recLabel.textContent = "Record";
   else if (paused) recLabel.textContent = "Paused";
   else recLabel.textContent = "Recording";
@@ -583,8 +584,8 @@ function setAgentBusy(busy) {
 }
 
 function applyTheme(theme) {
-  const next = ["dark", "light", "gra"].includes(theme) ? theme : "dark";
-  hudRoot.classList.remove("theme-dark", "theme-light", "theme-gra");
+  const next = ["dark", "light", "gra", "computer"].includes(theme) ? theme : "dark";
+  hudRoot.classList.remove("theme-dark", "theme-light", "theme-gra", "theme-computer");
   hudRoot.classList.add(`theme-${next}`);
   localStorage.setItem("netie-hud-theme", next);
   document.querySelectorAll("#theme-row button").forEach((button) => {
@@ -1007,14 +1008,37 @@ $("command-bar-tools")?.addEventListener("click", (event) => {
   if (!btn) return;
   const cmd = btn.dataset.cmd;
   if (cmd === "attach") $("file-attach")?.click();
-  else if (cmd === "apps") {
+  else if (cmd === "folders") {
+    invoke("hud:pickFolder").then((res) => {
+      if (!res || !res.ok) return;
+      const chips = $("file-chips");
+      const entry = {
+        name: res.name || "folder",
+        size: 0,
+        content: `[folder] ${res.path}`,
+        ok: true,
+        reason: "",
+        chip: null,
+      };
+      attachments.push(entry);
+      chips?.appendChild(renderAttachmentChip(entry));
+    }).catch(() => {});
+  } else if (cmd === "apps") {
     askInput.value = "List active apps and suggest what I can do next";
     doAsk();
-  } else if (cmd === "walk" || cmd === "shots") invoke("hud:frameRegion");
+  } else if (cmd === "walk") invoke("hud:frameRegion");
+  else if (cmd === "shots") invoke("hud:demoShot");
   else if (cmd === "clipboard") {
     askInput.value = "Summarize my clipboard and offer paste targets";
     doAsk();
   }
+});
+
+$("btn-listen-stop")?.addEventListener("click", () => {
+  $("btn-listen")?.click();
+});
+$("btn-agent-chip")?.addEventListener("click", () => {
+  askInput?.focus();
 });
 
 /**

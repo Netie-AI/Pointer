@@ -9,6 +9,8 @@
 
 const { spawnSync } = require("child_process");
 const { normalizeScribeLanguage, SCRIBE_LANGUAGES } = require("./scribe");
+const { pointerHome } = require("./settings");
+const { publicCore } = require("./pointer-core");
 
 /** READ / observe skills that match UACC MCP tool names. */
 const UACC_SKILLS = Object.freeze([
@@ -43,6 +45,8 @@ const SEARCH_TOKENS = Object.freeze([
   "list windows",
   "list monitors",
   "active window",
+  "wait for",
+  "wait for element",
   "smart click",
   "smart type",
   "computer control",
@@ -156,6 +160,13 @@ function computerStatus(opts = {}) {
     bind: "127.0.0.1",
     mcp: "/mcp",
     api: "/api/computer",
+    home: String(opts.home || pointerHome()).slice(0, 240),
+    core: publicCore({
+      live: opts.core,
+      home: opts.home,
+      port: opts.corePort,
+      env: opts.env,
+    }),
     uacc: {
       installed: Boolean(uacc && uacc.installed),
       version: (uacc && uacc.version) || null,
@@ -165,6 +176,12 @@ function computerStatus(opts = {}) {
     act: {
       available: opts.actAvailable === true,
       gated: true,
+      uiaToggle: true,
+      uiaExpand: true,
+      uiaInvoke: true,
+      uiaSet: true,
+      uiaWait: true,
+      uiaSelect: true,
       reason:
         opts.actAvailable === true
           ? "Cortex /dms/secure then reviewPlan"
@@ -247,13 +264,24 @@ function computerStatus(opts = {}) {
       instructions: [
         "observe",
         "type: hello",
+        "fill: Search: hello",
+        "type in: Search: hello",
+        "set: Search: hello",
         "click 40 50",
         "click: Save",
+        "invoke: Save",
+        "select: Home",
+        "toggle: Remember me",
+        "check: Remember me",
+        "uncheck: Remember me",
+        "expand: Documents",
+        "collapse: Documents",
         "click window: notepad",
         "doubleclick 40 50",
         "rightclick: Close",
         "hover 40 50",
         "wait 400",
+        "wait for: Save",
         "scroll down",
         "focus: notepad",
         "focus: notepad then type: hello",
@@ -269,6 +297,7 @@ function computerStatus(opts = {}) {
         "observe windows include x y width height cx cy",
         "use Claude",
         "use Cursor",
+        "GET http://127.0.0.1:18011/health",
         "GET /api/meeting?notes=1",
         "GET /api/meeting?export=1",
         "GET /api/meeting?recap=1",

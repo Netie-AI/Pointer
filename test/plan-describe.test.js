@@ -36,6 +36,50 @@ check("a click names the control", () => {
   assert.ok(d.text.includes("Send"));
 });
 
+check("uia_invoke names the control and does not claim a cursor warp", () => {
+  const d = describeAction({ type: "uia_invoke", target: "Save" });
+  assert.ok(d.text.includes("Save"));
+  assert.ok(/invoke/i.test(d.text));
+  assert.ok(/without moving the cursor/i.test(d.text));
+});
+
+check("uia_wait names the control", () => {
+  const d = describeAction({ type: "uia_wait", target: "Save" });
+  assert.ok(d.text.includes("Save"));
+  assert.ok(/wait for/i.test(d.text));
+});
+
+check("uia_select names the tab", () => {
+  const d = describeAction({ type: "uia_select", target: "Home" });
+  assert.ok(d.text.includes("Home"));
+  assert.ok(/select/i.test(d.text));
+});
+
+check("uia_set names the field and does not claim a cursor warp", () => {
+  const d = describeAction({ type: "uia_set", target: "Search", value: "hello" });
+  assert.ok(d.text.includes("Search"));
+  assert.ok(d.text.includes("hello"));
+  assert.ok(/without moving the cursor/i.test(d.text));
+});
+
+check("uia_toggle names the box and the want", () => {
+  const flip = describeAction({ type: "uia_toggle", target: "Remember me" });
+  assert.ok(flip.text.includes("Remember me"));
+  assert.ok(/toggle/i.test(flip.text));
+  const on = describeAction({ type: "uia_toggle", target: "Remember me", want: "on" });
+  assert.ok(/check/i.test(on.text));
+  const off = describeAction({ type: "uia_toggle", target: "Remember me", want: "off" });
+  assert.ok(/uncheck/i.test(off.text));
+});
+
+check("uia_expand names the control and the want", () => {
+  const open = describeAction({ type: "uia_expand", target: "Documents", want: "expand" });
+  assert.ok(open.text.includes("Documents"));
+  assert.ok(/expand/i.test(open.text));
+  const close = describeAction({ type: "uia_expand", target: "Documents", want: "collapse" });
+  assert.ok(/collapse/i.test(close.text));
+});
+
 check("a secret value is never echoed", () => {
   const d = describeAction({
     type: "type",

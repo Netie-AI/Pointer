@@ -90,6 +90,64 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   --good: #0b7354;
   --rec: #b4232d;
 }
+.hud.theme-computer {
+  --panel: #e7f3ee;
+  --panel-strong: #f4fbf8;
+  --surface: rgba(16, 48, 40, 0.07);
+  --surface-hover: rgba(16, 48, 40, 0.12);
+  --field: #ffffff;
+  --line: rgba(20, 64, 52, 0.14);
+  --line-soft: rgba(20, 64, 52, 0.08);
+  --text: #16332c;
+  --muted: rgba(22, 51, 44, 0.62);
+  --accent: #1f6b5c;
+  --accent-solid: #1a7a68;
+  --good: #0b7354;
+  --rec: #c45b2d;
+}
+
+.command-ask {
+  display: flex; align-items: center; gap: 8px;
+  margin: 4px 4px 0; padding: 6px 10px;
+  background: var(--field); border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.command-search {
+  width: 18px; height: 18px; color: var(--muted); flex: 0 0 auto;
+}
+.command-search svg { width: 18px; height: 18px; display: block; }
+.agent-chip, .mic-chip, .route-chip {
+  flex: 0 0 auto; border: 0; background: #16332c; color: #f4fbf8;
+  width: 28px; height: 28px; border-radius: 50%; padding: 0;
+  display: grid; place-items: center;
+}
+.agent-chip svg, .mic-chip svg { width: 16px; height: 16px; display: block; fill: currentColor; }
+.mic-chip { background: var(--surface); color: var(--text); border: 1px solid var(--line-soft); }
+.route-chip {
+  width: auto; border-radius: 999px; padding: 4px 10px;
+  background: var(--surface); color: var(--muted); font-size: 11px; font-weight: 650;
+  border: 1px solid var(--line-soft);
+}
+.command-ask #ask-input {
+  flex: 1; min-height: 28px; max-height: 72px; padding: 4px 0;
+}
+.listen-kicker {
+  display: none; font-family: var(--font-display); font-weight: 500; font-size: 13px;
+  color: var(--text); white-space: nowrap;
+}
+.hud.is-listening .listen-kicker { display: inline; }
+.listen-dots {
+  display: none; width: 56px; height: 14px; flex: 0 0 auto;
+  background-image: radial-gradient(circle, var(--accent-solid) 1.2px, transparent 1.4px);
+  background-size: 7px 5px; opacity: 0.85;
+}
+.hud.theme-computer .listen-dots,
+.hud.is-listening .listen-dots { display: inline-block; }
+.listen-stop {
+  width: 12px; height: 12px; border-radius: 3px; padding: 0; flex: 0 0 auto;
+  background: var(--accent-solid); border: 0; display: none;
+}
+.hud.is-listening .listen-stop { display: inline-block; }
 .hud.theme-gra {
   --panel: #1c1714;
   --panel-strong: #14110f;

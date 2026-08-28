@@ -2,6 +2,57 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - UIA wait-for and named select
+
+`wait for: Save` polls the foreground automation tree until that control
+exists (default 5000ms, cap 15000). Timeout is a visible no. `select: Home`
+uses SelectionItemPattern on TabItem / ListItem / RadioButton / DataItem /
+TreeItem without moving the cursor. Button / Edit / CheckBox stay not
+selectable. Cortex `/dms/secure` then reviewPlan still gates Act. No GPLv3
+dump. No third-party MCP.
+
+## 2026-08-28 - UIA ValuePattern for named fields
+
+`fill: Search: hello` and `type in:` try SetValue on the foreground
+Edit before SendInput so the cursor stays put. Chrome miss falls back
+to click then type. `set: Search: hello` is ValuePattern only.
+Password boxes refuse. Cortex `/dms/secure` then reviewPlan still
+gates Act. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-28 - UIA InvokePattern for named clicks
+
+`click: Save` tries InvokePattern on the foreground control before
+SendInput so the cursor stays put. Chrome miss falls back to aim.
+`invoke: Save` is Invoke only. Edit/Document stay not invokable.
+Cortex `/dms/secure` then reviewPlan still gates Act. No GPLv3 dump.
+No third-party MCP.
+
+## 2026-08-28 - UIA toggle and expand without moving the cursor
+
+`toggle:` / `check:` / `uncheck:` use TogglePattern on a named CheckBox.
+`expand:` / `collapse:` use ExpandCollapsePattern on TreeItem / ComboBox /
+Group. Neither warps the cursor. Leaf nodes and non-toggleable Buttons
+stay a visible no. Cortex `/dms/secure` then reviewPlan still gates Act.
+No GPLv3 dump. No third-party MCP.
+
+## 2026-08-28 - Rust type/combo plus Perplexity listening pill
+
+`pointer-core` now owns type/tap/combo/keys as well as click/move/wheel.
+PowerShell remains the fallback. Listening chrome paints Listening... plus
+a stop square on `is-listening`. Standing home writes `~/.pointer/core.json`.
+No GPLv3 dump. No third-party MCP.
+
+## 2026-08-28 - Willow + Perplexity Computer HUD + Rust core
+
+Founder DR-0006: Pointer is Willow + Perplexity Computer + OpenWorker home,
+not OpenWillow-only. Command bar matches the founder screenshots (Ask
+anything, Attach Files, Folders, Active Apps, Screenshots, Clipboard
+History) with a Computer mint/white theme. Solid fills only (no
+backdrop-filter). Standing home is `~/.pointer`. `native/pointer-core`
+listens on `127.0.0.1:18011` and takes click/move/wheel; PowerShell is
+the fallback. `computer.status.core` / `.home` publish that. Act still
+needs Cortex then reviewPlan. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Token-aware Claude 5-hour then Cursor
 
 Prefer Claude Code while the 5-hour window is open; instruction or

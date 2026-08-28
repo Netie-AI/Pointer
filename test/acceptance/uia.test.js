@@ -290,6 +290,403 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
       assert.ok(/IsPassword/.test(uia.buildSelectionScript()), "probe must refuse password boxes");
       assert.ok(/TextPattern/.test(uia.buildSelectionScript()), "probe must use TextPattern");
     }),
+
+    T("toggleControl TogglePattern-flips a named checkbox without moving the cursor", async () => {
+      const scripts = [];
+      const r = await uia.toggleControl("Remember me", {
+        run: async (script) => {
+          scripts.push(script);
+          if (/TogglePattern/.test(script)) {
+            return JSON.stringify({
+              ok: true,
+              toggled: true,
+              changed: true,
+              name: "Remember me",
+              controlType: "CheckBox",
+              state: "On",
+              want: "flip",
+            });
+          }
+          return JSON.stringify([
+            { name: "Remember me", controlType: "Text", enabled: true, rect: rect(0, 0, 200, 20) },
+            { name: "Remember me", controlType: "CheckBox", enabled: true, rect: rect(10, 40, 18, 18) },
+          ]);
+        },
+      });
+      assert.strictEqual(r.ok, true);
+      assert.strictEqual(r.via, "uia-toggle");
+      assert.strictEqual(r.name, "Remember me");
+      assert.strictEqual(r.state, "On");
+      assert.ok(scripts.some((s) => /TogglePattern/.test(s)), "second script must Toggle");
+      assert.ok(
+        !/SetCursorPos|SendInput|mouse_event/.test(scripts.join("\n")),
+        "Toggle must not warp or click the cursor"
+      );
+      assert.ok(uia.canToggle({ name: "Remember me", controlType: "CheckBox" }));
+      assert.ok(uia.canToggle({ name: "Option A", controlType: "RadioButton" }));
+      assert.strictEqual(uia.canToggle({ name: "Save", controlType: "Button" }), false);
+      assert.strictEqual(uia.canToggle({ name: "Name", controlType: "Edit" }), false);
+      assert.strictEqual(uia.canToggle({ name: "Remember me", controlType: "CheckBox", enabled: false }), false);
+      assert.strictEqual(uia.normalizeWant("check"), "on");
+      assert.strictEqual(uia.normalizeWant("uncheck"), "off");
+      const parsed = uia.parseToggleOutput(
+        JSON.stringify({
+          ok: true,
+          toggled: true,
+          changed: false,
+          name: "Remember me",
+          controlType: "CheckBox",
+          state: "On",
+          want: "on",
+        })
+      );
+      assert.strictEqual(parsed.ok, true);
+      assert.strictEqual(parsed.changed, false);
+      assert.strictEqual(parsed.via, "uia-toggle");
+    }),
+
+    T("toggleControl miss and non-toggleable Button are a visible no", async () => {
+      const btn = await uia.toggleControl("Save", {
+        run: async () =>
+          JSON.stringify([{ name: "Save", controlType: "Button", enabled: true, rect: rect(10, 10, 80, 24) }]),
+      });
+      assert.strictEqual(btn.ok, false);
+      assert.strictEqual(btn.reason, "not toggleable");
+      const miss = await uia.toggleControl("Remember me", {
+        run: async () =>
+          JSON.stringify([{ name: "Print", controlType: "CheckBox", enabled: true, rect: rect(0, 0, 10, 10) }]),
+      });
+      assert.strictEqual(miss.ok, false);
+      assert.match(String(miss.reason || ""), /no matching/);
+      const boom = await uia.toggleControl("Remember me", {
+        run: async () => {
+          throw new Error("powershell timed out");
+        },
+      });
+      assert.strictEqual(boom.ok, false);
+      assert.strictEqual(await uia.toggleControl("", { run: async () => "[]" }).then((x) => x.ok), false);
+      const radioOff = uia.parseToggleOutput(JSON.stringify({ ok: false, reason: "cannot uncheck radio" }));
+      assert.strictEqual(radioOff.ok, false);
+      assert.strictEqual(radioOff.reason, "cannot uncheck radio");
+      const src = fs.readFileSync(path.join(ROOT, "electron/netie/uia.js"), "utf8");
+      assert.ok(/TogglePattern/.test(src), "UIA toggle must live in uia.js");
+      const main = fs.readFileSync(path.join(ROOT, "electron/main.js"), "utf8");
+      assert.ok(main.includes("toggleControl"), "toggle: must run UIA Toggle from the executor");
+      assert.ok(/cannot uncheck radio/.test(src), "radio uncheck must refuse");
+    }),
+
+    T("expandControl ExpandCollapsePattern-opens a named tree without moving the cursor", async () => {
+      const scripts = [];
+      const r = await uia.expandControl("Documents", {
+        run: async (script) => {
+          scripts.push(script);
+          if (/ExpandCollapsePattern/.test(script)) {
+            return JSON.stringify({
+              ok: true,
+              expanded: true,
+              changed: true,
+              name: "Documents",
+              controlType: "TreeItem",
+              state: "Expanded",
+              want: "expand",
+            });
+          }
+          return JSON.stringify([
+            { name: "Documents", controlType: "Edit", enabled: true, rect: rect(0, 0, 200, 20) },
+            { name: "Documents", controlType: "TreeItem", enabled: true, rect: rect(10, 40, 80, 18) },
+          ]);
+        },
+      });
+      assert.strictEqual(r.ok, true);
+      assert.strictEqual(r.via, "uia-expand");
+      assert.strictEqual(r.name, "Documents");
+      assert.strictEqual(r.state, "Expanded");
+      assert.ok(scripts.some((s) => /ExpandCollapsePattern/.test(s)), "second script must ExpandCollapse");
+      assert.ok(scripts[0].includes("TreeItem"), "probe must include TreeItem (not in TARGET_CONTROL_TYPES)");
+      assert.ok(
+        !/SetCursorPos|SendInput|mouse_event/.test(scripts.join("\n")),
+        "Expand must not warp or click the cursor"
+      );
+      assert.ok(uia.canExpand({ name: "Documents", controlType: "TreeItem" }));
+      assert.ok(uia.canExpand({ name: "File", controlType: "ComboBox" }));
+      assert.ok(uia.canExpand({ name: "Group", controlType: "Group" }));
+      assert.strictEqual(uia.canExpand({ name: "Name", controlType: "Edit" }), false);
+      assert.strictEqual(uia.canExpand({ name: "Remember me", controlType: "CheckBox" }), false);
+      assert.strictEqual(uia.canExpand({ name: "Documents", controlType: "TreeItem", enabled: false }), false);
+      assert.strictEqual(uia.normalizeExpandWant("close"), "collapse");
+      assert.strictEqual(uia.normalizeExpandWant("open"), "expand");
+      const parsed = uia.parseExpandOutput(
+        JSON.stringify({
+          ok: true,
+          expanded: true,
+          changed: false,
+          name: "Documents",
+          controlType: "TreeItem",
+          state: "Expanded",
+          want: "expand",
+        })
+      );
+      assert.strictEqual(parsed.ok, true);
+      assert.strictEqual(parsed.changed, false);
+      assert.strictEqual(parsed.via, "uia-expand");
+    }),
+
+    T("expandControl miss, leaf, and non-expandable Edit are a visible no", async () => {
+      const edit = await uia.expandControl("Name", {
+        run: async () =>
+          JSON.stringify([{ name: "Name", controlType: "Edit", enabled: true, rect: rect(10, 10, 80, 24) }]),
+      });
+      assert.strictEqual(edit.ok, false);
+      assert.strictEqual(edit.reason, "not expandable");
+      const miss = await uia.expandControl("Documents", {
+        run: async () =>
+          JSON.stringify([{ name: "Print", controlType: "TreeItem", enabled: true, rect: rect(0, 0, 10, 10) }]),
+      });
+      assert.strictEqual(miss.ok, false);
+      assert.match(String(miss.reason || ""), /no matching/);
+      const leaf = uia.parseExpandOutput(JSON.stringify({ ok: false, reason: "leaf" }));
+      assert.strictEqual(leaf.ok, false);
+      assert.strictEqual(leaf.reason, "leaf");
+      const boom = await uia.expandControl("Documents", {
+        run: async () => {
+          throw new Error("powershell timed out");
+        },
+      });
+      assert.strictEqual(boom.ok, false);
+      assert.strictEqual(await uia.expandControl("", { run: async () => "[]" }).then((x) => x.ok), false);
+      const src = fs.readFileSync(path.join(ROOT, "electron/netie/uia.js"), "utf8");
+      assert.ok(/ExpandCollapsePattern/.test(src), "UIA expand must live in uia.js");
+      assert.ok(/LeafNode/.test(src), "leaf nodes must refuse");
+      const main = fs.readFileSync(path.join(ROOT, "electron/main.js"), "utf8");
+      assert.ok(main.includes("expandControl"), "expand: must run UIA ExpandCollapse from the executor");
+    }),
+
+    T("invokeControl InvokePattern-clicks a named button without moving the cursor", async () => {
+      const scripts = [];
+      const r = await uia.invokeControl("Save", {
+        run: async (script) => {
+          scripts.push(script);
+          if (/InvokePattern/.test(script)) {
+            return JSON.stringify({ ok: true, invoked: true, name: "Save", controlType: "Button" });
+          }
+          return JSON.stringify([
+            { name: "Cancel", controlType: "Button", enabled: true, rect: rect(0, 0, 100, 40) },
+            { name: "Save", controlType: "Button", enabled: true, rect: rect(200, 400, 100, 40) },
+          ]);
+        },
+      });
+      assert.strictEqual(r.ok, true);
+      assert.strictEqual(r.via, "uia-invoke");
+      assert.strictEqual(r.name, "Save");
+      assert.ok(scripts.some((s) => /InvokePattern/.test(s)), "second script must Invoke");
+      assert.ok(
+        !/SetCursorPos|SendInput|mouse_event/.test(scripts.join("\n")),
+        "Invoke must not warp or click the cursor"
+      );
+      assert.ok(uia.canInvoke({ name: "Save", controlType: "Button" }));
+      assert.strictEqual(uia.canInvoke({ name: "Name", controlType: "Edit" }), false);
+      assert.strictEqual(uia.canInvoke({ name: "Body", controlType: "Document" }), false);
+      assert.strictEqual(uia.canInvoke({ name: "Save", controlType: "Button", enabled: false }), false);
+      const parsed = uia.parseInvokeOutput(
+        JSON.stringify({ ok: true, invoked: true, name: "OK", controlType: "Button" })
+      );
+      assert.strictEqual(parsed.ok, true);
+      assert.strictEqual(parsed.via, "uia-invoke");
+    }),
+
+    T("invokeControl miss and non-invokable Edit are a visible no", async () => {
+      const edit = await uia.invokeControl("Name", {
+        run: async () =>
+          JSON.stringify([{ name: "Name", controlType: "Edit", enabled: true, rect: rect(10, 10, 200, 24) }]),
+      });
+      assert.strictEqual(edit.ok, false);
+      assert.strictEqual(edit.reason, "not invokable");
+      const miss = await uia.invokeControl("Save", {
+        run: async () =>
+          JSON.stringify([{ name: "Print", controlType: "Button", enabled: true, rect: rect(0, 0, 10, 10) }]),
+      });
+      assert.strictEqual(miss.ok, false);
+      assert.match(String(miss.reason || ""), /no matching/);
+      const boom = await uia.invokeControl("Save", {
+        run: async () => {
+          throw new Error("powershell timed out");
+        },
+      });
+      assert.strictEqual(boom.ok, false);
+      assert.strictEqual(await uia.invokeControl("", { run: async () => "[]" }).then((x) => x.ok), false);
+      const src = fs.readFileSync(path.join(ROOT, "electron/netie/uia.js"), "utf8");
+      assert.ok(/InvokePattern/.test(src), "UIA invoke must live in uia.js");
+      const main = fs.readFileSync(path.join(ROOT, "electron/main.js"), "utf8");
+      assert.ok(main.includes("invokeControl"), "named click must try UIA Invoke before SendInput");
+      assert.ok(main.includes("uia-invoke"), "a successful Invoke must be visible on the outcome");
+      assert.match(
+        main,
+        /toLowerCase\(\) === "click" && String\(action\.target/,
+        "only single click auto-Invokes; double-click stays SendInput"
+      );
+    }),
+
+    T("setValueControl ValuePattern-fills a named Edit without moving the cursor", async () => {
+      const scripts = [];
+      const r = await uia.setValueControl("Search", "hello", {
+        run: async (script) => {
+          scripts.push(script);
+          if (/ValuePattern/.test(script)) {
+            return JSON.stringify({ ok: true, set: true, name: "Search", controlType: "Edit" });
+          }
+          return JSON.stringify([
+            { name: "Save", controlType: "Button", enabled: true, rect: rect(0, 0, 80, 30) },
+            { name: "Search", controlType: "Edit", enabled: true, rect: rect(40, 10, 200, 24) },
+          ]);
+        },
+      });
+      assert.strictEqual(r.ok, true);
+      assert.strictEqual(r.via, "uia-set");
+      assert.strictEqual(r.name, "Search");
+      assert.ok(scripts.some((s) => /ValuePattern/.test(s)));
+      assert.ok(!/SetCursorPos|SendInput|mouse_event/.test(scripts.join("\n")));
+      assert.ok(uia.canSetValue({ name: "Search", controlType: "Edit" }));
+      assert.strictEqual(uia.canSetValue({ name: "Save", controlType: "Button" }), false);
+      assert.ok(/IsPassword/.test(uia.buildSetValueScript("Search", "Edit", "x")));
+      const quoted = uia.buildSetValueScript("O'Brien", "Edit", "it's");
+      assert.ok(quoted.includes("$want='O''Brien'"));
+      assert.ok(quoted.includes("$val='it''s'"));
+    }),
+
+    T("setValueControl miss, Button, and password are a visible no", async () => {
+      const btn = await uia.setValueControl("Save", "x", {
+        run: async () =>
+          JSON.stringify([{ name: "Save", controlType: "Button", enabled: true, rect: rect(0, 0, 80, 30) }]),
+      });
+      assert.strictEqual(btn.ok, false);
+      const miss = await uia.setValueControl("Search", "hello", {
+        run: async () =>
+          JSON.stringify([{ name: "Name", controlType: "Edit", enabled: true, rect: rect(0, 0, 80, 20) }]),
+      });
+      assert.strictEqual(miss.ok, false);
+      const pwd = uia.parseSetValueOutput(JSON.stringify({ ok: false, reason: "password" }));
+      assert.strictEqual(pwd.ok, false);
+      assert.strictEqual(pwd.blocked, true);
+      const empty = await uia.setValueControl("Search", "", { run: async () => "[]" });
+      assert.strictEqual(empty.ok, false);
+      const boom = await uia.setValueControl("Search", "x", {
+        run: async () => {
+          throw new Error("powershell timed out");
+        },
+      });
+      assert.strictEqual(boom.ok, false);
+      const main = fs.readFileSync(path.join(ROOT, "electron/main.js"), "utf8");
+      assert.ok(main.includes("setValueControl"), "named fill must try UIA SetValue before SendInput");
+      assert.ok(main.includes("uia-set"), "a successful SetValue must be visible on the outcome");
+    }),
+
+    T("waitForControl returns as soon as the named control exists", async () => {
+      let probes = 0;
+      const hit = await uia.waitForControl("Save", {
+        run: async () => {
+          probes += 1;
+          return JSON.stringify([{ name: "Save", controlType: "Button", enabled: true, rect: rect(0, 0, 80, 30) }]);
+        },
+      });
+      assert.strictEqual(hit.ok, true);
+      assert.strictEqual(hit.via, "uia-wait");
+      assert.strictEqual(hit.name, "Save");
+      assert.strictEqual(probes, 1);
+      const miss = await uia.waitForControl("Save", {
+        ms: 30,
+        stepMs: 20,
+        sleep: async () => {},
+        run: async () => "[]",
+      });
+      assert.strictEqual(miss.ok, false);
+      assert.strictEqual(miss.reason, "timeout");
+      const boom = await uia.waitForControl("Save", {
+        run: async () => {
+          throw new Error("powershell timed out");
+        },
+      });
+      assert.strictEqual(boom.ok, false);
+      const main = fs.readFileSync(path.join(ROOT, "electron/main.js"), "utf8");
+      assert.ok(main.includes("waitForControl"), "wait for: must poll UIA from the executor");
+    }),
+
+    T("selectControl SelectionItemPattern-picks a named tab without moving the cursor", async () => {
+      const scripts = [];
+      const r = await uia.selectControl("Home", {
+        run: async (script) => {
+          scripts.push(script);
+          if (/SelectionItemPattern/.test(script)) {
+            return JSON.stringify({ ok: true, selected: true, name: "Home", controlType: "TabItem" });
+          }
+          return JSON.stringify([
+            { name: "Home", controlType: "Text", enabled: true, rect: rect(0, 0, 200, 20) },
+            { name: "Home", controlType: "TabItem", enabled: true, rect: rect(10, 40, 60, 24) },
+          ]);
+        },
+      });
+      assert.strictEqual(r.ok, true);
+      assert.strictEqual(r.via, "uia-select");
+      assert.strictEqual(r.name, "Home");
+      assert.ok(scripts.some((s) => /SelectionItemPattern/.test(s)), "second script must Select");
+      assert.ok(
+        scripts.some((s) => /TreeItem/.test(s) && !/SelectionItemPattern/.test(s)),
+        "probe must include TreeItem so named tree rows resolve"
+      );
+      assert.ok(
+        !/SetCursorPos|SendInput|mouse_event/.test(scripts.join("\n")),
+        "Select must not warp or click the cursor"
+      );
+      assert.ok(uia.canSelect({ name: "Home", controlType: "TabItem" }));
+      assert.ok(uia.canSelect({ name: "Inbox", controlType: "ListItem" }));
+      assert.ok(uia.canSelect({ name: "Documents", controlType: "TreeItem" }));
+      assert.strictEqual(uia.canSelect({ name: "Save", controlType: "Button" }), false);
+      assert.strictEqual(uia.canSelect({ name: "Name", controlType: "Edit" }), false);
+      assert.strictEqual(uia.canSelect({ name: "Remember me", controlType: "CheckBox" }), false);
+      const parsed = uia.parseSelectOutput(
+        JSON.stringify({ ok: true, selected: true, name: "Inbox", controlType: "ListItem" })
+      );
+      assert.strictEqual(parsed.ok, true);
+      assert.strictEqual(parsed.via, "uia-select");
+      const treeScripts = [];
+      const tree = await uia.selectControl("Documents", {
+        run: async (script) => {
+          treeScripts.push(script);
+          if (/SelectionItemPattern/.test(script)) {
+            return JSON.stringify({ ok: true, selected: true, name: "Documents", controlType: "TreeItem" });
+          }
+          return JSON.stringify([
+            { name: "Documents", controlType: "TreeItem", enabled: true, rect: rect(10, 40, 80, 20) },
+          ]);
+        },
+      });
+      assert.strictEqual(tree.ok, true);
+      assert.strictEqual(tree.controlType, "TreeItem");
+    }),
+
+    T("selectControl miss and non-selectable Button are a visible no", async () => {
+      const btn = await uia.selectControl("Save", {
+        run: async () =>
+          JSON.stringify([{ name: "Save", controlType: "Button", enabled: true, rect: rect(10, 10, 80, 24) }]),
+      });
+      assert.strictEqual(btn.ok, false);
+      assert.strictEqual(btn.reason, "not selectable");
+      const miss = await uia.selectControl("Home", {
+        run: async () =>
+          JSON.stringify([{ name: "Print", controlType: "TabItem", enabled: true, rect: rect(0, 0, 10, 10) }]),
+      });
+      assert.strictEqual(miss.ok, false);
+      assert.match(String(miss.reason || ""), /no matching/);
+      const boom = await uia.selectControl("Home", {
+        run: async () => {
+          throw new Error("powershell timed out");
+        },
+      });
+      assert.strictEqual(boom.ok, false);
+      const src = fs.readFileSync(path.join(ROOT, "electron/netie/uia.js"), "utf8");
+      assert.ok(/SelectionItemPattern/.test(src), "UIA select must live in uia.js");
+      const main = fs.readFileSync(path.join(ROOT, "electron/main.js"), "utf8");
+      assert.ok(main.includes("selectControl"), "select: must run UIA Select from the executor");
+    }),
   ];
 
   const ok = await suite.run(tests);

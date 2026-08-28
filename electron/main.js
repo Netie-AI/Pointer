@@ -29,7 +29,7 @@ const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
 const { ensureActionCoords, hasScreenPoint } = require("./netie/targeting");
-const { dumpForeground, readSelection, listControls } = require("./netie/uia");
+const { dumpForeground, readSelection, listControls, toggleControl, expandControl, invokeControl, setValueControl, waitForControl, selectControl } = require("./netie/uia");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
@@ -38,7 +38,7 @@ const { createPartialPump } = require("./netie/live-partial");
 const { Transcriber, sanitizeSttUrl, isLoopbackSttUrl, DEFAULT_SIDECAR } = require("./netie/transcriber");
 const { detectModeSwitch, getMode, allowsActions, isKnownMode } = require("./netie/modes");
 const { NotesSession } = require("./netie/notes");
-const { SettingsStore } = require("./netie/settings");
+const { SettingsStore, pointerHome, ensurePointerHome } = require("./netie/settings");
 const { createNodGate, isAffirmation } = require("./netie/affirm");
 const { checkMarkdownPython } = require("./netie/coderun");
 const { matchRecipe, expandRecipe, RECIPES } = require("./netie/recipes");
@@ -47,6 +47,7 @@ const { createCoordinator } = require("./netie/coordinator");
 const { createMcpAbi } = require("./netie/mcp-abi");
 const { searchThenCraft, craftHint } = require("./netie/skill-search");
 const { detectUacc, computerStatus, computerObserve, privacyLabel, sessionLabel } = require("./netie/uacc");
+const pointerCore = require("./netie/pointer-core");
 const { runComputerAct, planFromInstruction } = require("./netie/computer-act");
 const { shouldDictateIntoFocus, dictateSecureGoal } = require("./netie/dictate");
 const {
@@ -385,6 +386,9 @@ function liveComputerStatus() {
     sessionMaxMs: DICTATE_MAX_MS,
     dictateMode: dictateGesture.listening ? dictateGesture.mode : "off",
     route: publicRoute(settings.get("claudeRoute") || {}, settings.get("tokenUsage") || {}, Date.now()),
+    home: pointerHome(),
+    core: coreLive,
+    corePort: pointerCore.corePort(),
   });
 }
 
@@ -932,7 +936,14 @@ const driver = new InputDriver({
   dryRun: process.env.NETIE_CLICK_DRY_RUN === "1",
   // Worker is per-monitor DPI aware → feed it physical pixels, not DIPs.
   toPhysical: (pt) => screen.dipToScreenPoint(pt),
+  uiaToggle: (target, want) => toggleControl(target, { run: runUiaProbe, want }),
+  uiaExpand: (target, want) => expandControl(target, { run: runUiaProbe, want }),
+  uiaInvoke: (target) => invokeControl(target, { run: runUiaProbe }),
+  uiaSet: (target, value) => setValueControl(target, value, { run: runUiaProbe }),
+  uiaWait: (target, ms) => waitForControl(target, { run: runUiaProbe, ms }),
+  uiaSelect: (target) => selectControl(target, { run: runUiaProbe }),
 });
+let coreLive = { ok: false, engine: "none" };
 
 /** OpenWillow hold-to-talk; Willow double-tap stays hands-free. Session owns the 120s cap. */
 const dictateHold = createHoldMonitor({
@@ -2902,6 +2913,39 @@ async function executeApproved(actions, opts = {}) {
       }
 
       const started = Date.now();
+      // HeyClicky-class: InvokePattern on a named click, ValuePattern on a
+      // named field, before screenshot or SendInput. No SetCursorPos. Chrome
+      // often ignores both; that miss falls through to aim. Double-click,
+      // right-click, hover stay SendInput. Password boxes refuse SetValue.
+      const namedClick =
+        String(action.type || "").toLowerCase() === "click" && String(action.target || "").trim();
+      const namedFill =
+        ["type", "fill", "setvalue"].includes(String(action.type || "").toLowerCase()) &&
+        String(action.target || "").trim() &&
+        String(action.value ?? "") !== "";
+      let invokedEarly = null;
+      let setEarly = null;
+      if (
+        !driver.dryRun &&
+        UIA_ENABLED &&
+        process.platform === "win32" &&
+        uiaFailures < 3
+      ) {
+        if (namedClick) {
+          try {
+            invokedEarly = await invokeControl(action.target, { run: runUiaProbe });
+          } catch (err) {
+            invokedEarly = { ok: false, reason: String(err.message || err) };
+          }
+        } else if (namedFill) {
+          try {
+            setEarly = await setValueControl(action.target, action.value, { run: runUiaProbe });
+          } catch (err) {
+            setEarly = { ok: false, reason: String(err.message || err) };
+          }
+        }
+      }
+      const skipAim = Boolean((invokedEarly && invokedEarly.ok) || (setEarly && setEarly.ok));
       // Refresh the screenshot before aiming, so targets created by earlier
       // steps (a launched app, an opened dialog) are actually visible.
       let refreshedView = false;
@@ -2910,7 +2954,9 @@ async function executeApproved(actions, opts = {}) {
       // switch. Absolute x/y (click window: center) counts as aimed; an
       // xPct-only check used to throw those points away and call vision.
       const mustReaim =
-        needsFreshView(action.type) && (action._reaim === true || !hasScreenPoint(action));
+        !skipAim &&
+        needsFreshView(action.type) &&
+        (action._reaim === true || !hasScreenPoint(action));
       if (!driver.dryRun && mustReaim) {
         try {
           await captureDisplayCrop(null);
@@ -2921,11 +2967,14 @@ async function executeApproved(actions, opts = {}) {
       }
       const { region, dataUrl } = currentView();
       const aimSource = refreshedView ? stripAimCoords(action) : action;
-      const enriched = await ensureActionCoords(aimSource, {
-        dataUrl,
-        eco,
-        uia: uiaContext(region),
-      });
+      const earlyVia = invokedEarly && invokedEarly.ok ? "uia-invoke" : setEarly && setEarly.ok ? "uia-set" : null;
+      const enriched = skipAim
+        ? { ...action, _targetedVia: earlyVia }
+        : await ensureActionCoords(aimSource, {
+            dataUrl,
+            eco,
+            uia: uiaContext(region),
+          });
       // Auto-swap Windows pointer face per action (click vs type/agent).
       try {
         const face = modeForAction(enriched.type);
@@ -2943,6 +2992,15 @@ async function executeApproved(actions, opts = {}) {
         sendHudQuiet({
           type: "insight",
           text: `Aiming “${enriched.target || enriched.type}” by vision — the OS could not name that control.`,
+        });
+      }
+      if (skipAim) {
+        sendHudQuiet({
+          type: "insight",
+          text:
+            invokedEarly && invokedEarly.ok
+              ? `Invoked “${enriched.target}” without moving the cursor.`
+              : `Set “${enriched.target}” without moving the cursor.`,
         });
       }
       sendStage({
@@ -2984,7 +3042,28 @@ async function executeApproved(actions, opts = {}) {
 
       let outcome;
       try {
-        outcome = await driver.perform(enriched, { region });
+        if (invokedEarly && invokedEarly.ok) {
+          outcome = {
+            ok: true,
+            type: enriched.type,
+            via: "uia-invoke",
+            name: invokedEarly.name,
+            keepCursor: true,
+            keepFocus: true,
+          };
+        } else if (setEarly && setEarly.ok) {
+          outcome = {
+            ok: true,
+            type: enriched.type,
+            via: "uia-set",
+            name: setEarly.name,
+            typed: String(enriched.value ?? "").length,
+            keepCursor: true,
+            keepFocus: true,
+          };
+        } else {
+          outcome = await driver.perform(enriched, { region });
+        }
       } catch (err) {
         outcome = { ok: false, error: String(err.message || err) };
       }
@@ -4773,6 +4852,17 @@ ipcMain.handle("hud:frameRegion", async () => {
   return { ok: true, desk: "teach", act: false };
 });
 
+ipcMain.handle("hud:pickFolder", async () => {
+  const picked = await dialog.showOpenDialog({
+    title: "Folders",
+    properties: ["openDirectory"],
+    defaultPath: pointerHome(),
+  });
+  if (picked.canceled || !picked.filePaths.length) return { ok: false, error: "cancelled" };
+  const folder = picked.filePaths[0];
+  return { ok: true, path: folder, name: path.basename(folder), act: false };
+});
+
 ipcMain.handle("hud:toggleListen", async (_e, payload) => {
   listenMic = Boolean(payload && payload.on);
   if (listenMic) {
@@ -5743,6 +5833,19 @@ app.whenReady().then(() => {
   setupMediaCapture();
   registerHotkey();
   applyAutostart();
+  ensurePointerHome();
+  if (process.env.NETIE_CORE !== "0" && process.env.NETIE_SMOKE !== "1") {
+    pointerCore
+      .ensureCore({ home: pointerHome() })
+      .then((live) => {
+        coreLive = live;
+        if (live && live.ok) {
+          driver.setCoreSend((cmd) => pointerCore.sendOp(cmd));
+          console.log(`pointer-core on ${live.api} home=${live.home}`);
+        }
+      })
+      .catch((err) => console.error("pointer-core:", err.message || err));
+  }
   if (process.env.NETIE_COORDINATOR !== "0" && process.env.NETIE_SMOKE !== "1") {
     liveCoordinator
       .listen({ host: "127.0.0.1", port: Number(process.env.NETIE_COORDINATOR_PORT) || 18010 })

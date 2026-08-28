@@ -4,7 +4,7 @@ Visual source for Pointer HUD command bar, onboard, and status pills (EPIC-P05 /
 Open this INDEX before changing HUD or onboard CSS.
 
 Windows mapping: Mac `fn` / dual `⌘` → Pointer **Clicky hold** / **Ctrl+Shift+Space**.
-No `backdrop-filter` on core HUD (see `docs/PRODUCT_SURFACE.md`).
+No `backdrop-filter` on core HUD (see `docs/PRODUCT_SURFACE.md`). Match layout and mint/white Computer theme with solid fills.
 
 | File | Purpose |
 |------|---------|

@@ -92,7 +92,7 @@ Approval stays in HUD: nod / Affirm / Ctrl+Y.
 
 ## Visual refs (command bar / onboard / status pills)
 
-See [`docs/ui-refs/perplexity-computer/INDEX.md`](ui-refs/perplexity-computer/INDEX.md) before HUD or onboard CSS changes.
+See [`docs/ui-refs/perplexity-computer/INDEX.md`](ui-refs/perplexity-computer/INDEX.md) before HUD or onboard CSS changes. Command bar layout matches those refs (Ask anything, Attach Files, Folders, Active Apps, Screenshots, Clipboard History, Auto, mic). Computer theme is the mint/white palette. Solid fills only.
 
 ## STT / OCR
 

@@ -68,6 +68,22 @@ function parseNamedInstruction(type, text) {
   return { ok: true, source: type, actions: [{ type, target: hit[1].trim() }] };
 }
 
+/** fill: Search: hello / type in: Search: hello / set: Search: hello */
+function parseNamedFill(text) {
+  const hit = String(text || "").match(
+    /^(?:please\s+)?(fill|set|type\s+in)\s*:\s*([^:]{1,80})\s*:\s*([\s\S]+)$/i
+  );
+  if (!hit) return null;
+  const target = String(hit[2] || "").trim();
+  const value = String(hit[3] || "").trim();
+  if (!target || !value) return null;
+  const verb = String(hit[1] || "").toLowerCase().replace(/\s+/g, " ");
+  if (verb === "set") {
+    return { ok: true, source: "set", actions: [{ type: "uia_set", target, value }] };
+  }
+  return { ok: true, source: "fill", actions: [{ type: "fill", target, value }] };
+}
+
 function findWindow(windows, want) {
   const needle = String(want || "").trim().toLowerCase();
   if (!needle) return null;
@@ -101,7 +117,7 @@ function windowClickPoint(win) {
 const MAX_CHAIN = 8;
 
 function looksLocalStep(text) {
-  return /^(?:please\s+)?(?:observe|screenshot|screen info|type\s*:|dictate\s*:|click|doubleclick|rightclick|hover|wait|scroll|press\s+|open\s*:|focus|deliver\s*:|replace\s*:|copy|paste|select)/i.test(
+  return /^(?:please\s+)?(?:observe|screenshot|screen info|type\s+in\s*:|type\s*:|dictate\s*:|click|doubleclick|rightclick|hover|invoke\s*:|toggle\s*:|check\s*:|uncheck\s*:|expand\s*:|collapse\s*:|fill\s*:|set\s*:|select\s*:|wait\s+for|wait|scroll|press\s+|open\s*:|focus|deliver\s*:|replace\s*:|copy|paste|select)/i.test(
     String(text || "").trim()
   );
 }
@@ -130,6 +146,16 @@ function planOneInstruction(instruction, opts = {}) {
   }
   if (/^(?:please\s+)?(?:observe|screenshot|screen info)$/i.test(text)) {
     return { ok: true, source: "observe", actions: [{ type: "observe" }] };
+  }
+  const waitFor = text.match(/^(?:please\s+)?wait\s+for\s*:\s*(.+)$/i);
+  if (waitFor && waitFor[1].trim()) {
+    const rest = waitFor[1].trim();
+    const timed = rest.match(/^(.+?)\s+(\d+)\s*(?:ms)?$/i);
+    const target = timed ? timed[1].trim() : rest;
+    const ms = timed ? Math.min(15000, Math.max(200, Number(timed[2]))) : 5000;
+    if (target && !/^\d+$/.test(target)) {
+      return { ok: true, source: "wait-for", actions: [{ type: "uia_wait", target, ms }] };
+    }
   }
   const waited = text.match(/^(?:please\s+)?wait(?:\s|:)\s*(\d+)\s*(?:ms|milliseconds?)?$/i);
   if (waited) {
@@ -208,6 +234,40 @@ function planOneInstruction(instruction, opts = {}) {
   for (const kind of ["click", "doubleclick", "rightclick", "hover"]) {
     const named = parseNamedInstruction(kind, text);
     if (named) return named;
+  }
+  const invoked = parseNamedInstruction("invoke", text);
+  if (invoked && invoked.actions && invoked.actions[0]) {
+    invoked.actions[0].type = "uia_invoke";
+    invoked.source = "invoke";
+    return invoked;
+  }
+  const selected = parseNamedInstruction("select", text);
+  if (selected && selected.actions && selected.actions[0]) {
+    selected.actions[0].type = "uia_select";
+    selected.source = "select";
+    return selected;
+  }
+  const filled = parseNamedFill(text);
+  if (filled) return filled;
+  const toggled = text.match(/^(?:please\s+)?(toggle|check|uncheck)\s*:\s*(.+)$/i);
+  if (toggled && String(toggled[2] || "").trim()) {
+    const kind = String(toggled[1] || "toggle").toLowerCase();
+    const want = kind === "check" ? "on" : kind === "uncheck" ? "off" : "flip";
+    return {
+      ok: true,
+      source: kind,
+      actions: [{ type: "uia_toggle", target: String(toggled[2]).trim(), want }],
+    };
+  }
+  const expanded = text.match(/^(?:please\s+)?(expand|collapse)\s*:\s*(.+)$/i);
+  if (expanded && String(expanded[2] || "").trim()) {
+    const kind = String(expanded[1] || "expand").toLowerCase();
+    const want = kind === "collapse" ? "collapse" : "expand";
+    return {
+      ok: true,
+      source: kind,
+      actions: [{ type: "uia_expand", target: String(expanded[2]).trim(), want }],
+    };
   }
   const delivered = text.match(/^(?:please\s+)?deliver\s*:\s*([\s\S]+)$/i);
   if (delivered && delivered[1].trim()) {

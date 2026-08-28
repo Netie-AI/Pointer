@@ -328,7 +328,14 @@ class InputDriver {
   constructor(opts = {}) {
     this.dryRun = Boolean(opts.dryRun);
     this.toPhysical = opts.toPhysical || null;
+    this.uiaToggle = opts.uiaToggle || null;
+    this.uiaExpand = opts.uiaExpand || null;
+    this.uiaInvoke = opts.uiaInvoke || null;
+    this.uiaSet = opts.uiaSet || null;
+    this.uiaWait = opts.uiaWait || null;
+    this.uiaSelect = opts.uiaSelect || null;
     this._spawn = opts.spawnImpl || spawn;
+    this._coreSend = opts.coreSend || null;
     this._opTimeoutMs = opts.opTimeoutMs || 8000;
     this._startTimeoutMs = opts.startTimeoutMs || 15000;
     this.last = null;
@@ -337,6 +344,11 @@ class InputDriver {
     this._pending = new Map(); // id → { resolve, reject, timer }
     this._seq = 0;
     this._buf = "";
+  }
+
+  /** Prefer the standing Rust core for click/move/wheel (DR-0006). */
+  setCoreSend(fn) {
+    this._coreSend = typeof fn === "function" ? fn : null;
   }
 
   _phys(x, y) {
@@ -439,6 +451,17 @@ class InputDriver {
 
   async _send(cmd, { timeoutMs } = {}) {
     if (this.dryRun) return { ok: true, dryRun: true };
+    const op = String((cmd && cmd.op) || "");
+    const rustOps = op === "click" || op === "move" || op === "wheel" || op === "pos"
+      || op === "type" || op === "tap" || op === "combo" || op === "keys";
+    if (this._coreSend && rustOps) {
+      try {
+        const rust = await this._coreSend(cmd);
+        if (rust && rust.ok) return rust;
+      } catch {
+        /* PowerShell fallback */
+      }
+    }
     const worker = this._ensureWorker();
     await this._ready;
     const id = ++this._seq;
@@ -763,6 +786,38 @@ class InputDriver {
         await sleep(Number(action.ms) || 150);
         return { ok: true, noop: true, type };
 
+      case "uia_wait": {
+        const target = String(action.target || action.value || "").trim();
+        const ms = Number(action.ms);
+        this.last = { op: "uia_wait", target, ms };
+        if (!target) return { ok: false, type, error: "missing wait-for target" };
+        if (this.dryRun) {
+          return { ok: true, type, target, via: "uia-wait", dryRun: true, waitedMs: 0 };
+        }
+        if (typeof this.uiaWait !== "function") {
+          return { ok: false, type, error: "UIA wait not available", target };
+        }
+        const r = await this.uiaWait(target, ms);
+        if (!r || !r.ok) {
+          return {
+            ok: false,
+            type,
+            error: (r && r.reason) || "timeout",
+            target,
+            waitedMs: r && r.waitedMs,
+          };
+        }
+        return {
+          ok: true,
+          type,
+          target,
+          via: "uia-wait",
+          name: r.name,
+          waitedMs: r.waitedMs,
+          probes: r.probes,
+        };
+      }
+
       case "movecursor":
       case "hover":
         if (sx == null || sy == null) return { ok: false, error: "missing coordinates" };
@@ -981,6 +1036,177 @@ class InputDriver {
         });
         this.last = { op: "word_from_clipboard", ...result };
         return coworkerOutcome(type, result, { clipLen: text.length });
+      }
+
+      case "uia_toggle": {
+        const target = String(action.target || action.value || "").trim();
+        const want = String(action.want || "flip").toLowerCase();
+        this.last = { op: "uia_toggle", target, want };
+        if (!target) return { ok: false, type, error: "missing toggle target" };
+        if (this.dryRun) {
+          return {
+            ok: true,
+            type,
+            target,
+            want,
+            via: "uia-toggle",
+            dryRun: true,
+            keepCursor: true,
+            keepFocus: true,
+          };
+        }
+        if (typeof this.uiaToggle !== "function") {
+          return { ok: false, type, error: "UIA toggle not available", target };
+        }
+        const r = await this.uiaToggle(target, want);
+        if (!r || !r.ok) {
+          return { ok: false, type, error: (r && r.reason) || "toggle failed", target };
+        }
+        return {
+          ok: true,
+          type,
+          target,
+          want: r.want || want,
+          via: "uia-toggle",
+          name: r.name,
+          state: r.state,
+          changed: r.changed,
+          keepCursor: true,
+          keepFocus: true,
+        };
+      }
+
+      case "uia_expand": {
+        const target = String(action.target || action.value || "").trim();
+        const want = String(action.want || "expand").toLowerCase();
+        this.last = { op: "uia_expand", target, want };
+        if (!target) return { ok: false, type, error: "missing expand target" };
+        if (this.dryRun) {
+          return {
+            ok: true,
+            type,
+            target,
+            want,
+            via: "uia-expand",
+            dryRun: true,
+            keepCursor: true,
+            keepFocus: true,
+          };
+        }
+        if (typeof this.uiaExpand !== "function") {
+          return { ok: false, type, error: "UIA expand not available", target };
+        }
+        const r = await this.uiaExpand(target, want);
+        if (!r || !r.ok) {
+          return { ok: false, type, error: (r && r.reason) || "expand failed", target };
+        }
+        return {
+          ok: true,
+          type,
+          target,
+          want: r.want || want,
+          via: "uia-expand",
+          name: r.name,
+          state: r.state,
+          changed: r.changed,
+          keepCursor: true,
+          keepFocus: true,
+        };
+      }
+
+      case "uia_invoke": {
+        const target = String(action.target || action.value || "").trim();
+        this.last = { op: "uia_invoke", target };
+        if (!target) return { ok: false, type, error: "missing invoke target" };
+        if (this.dryRun) {
+          return {
+            ok: true,
+            type,
+            target,
+            via: "uia-invoke",
+            dryRun: true,
+            keepCursor: true,
+            keepFocus: true,
+          };
+        }
+        if (typeof this.uiaInvoke !== "function") {
+          return { ok: false, type, error: "UIA invoke not available", target };
+        }
+        const r = await this.uiaInvoke(target);
+        if (!r || !r.ok) {
+          return { ok: false, type, error: (r && r.reason) || "invoke failed", target };
+        }
+        return {
+          ok: true,
+          type,
+          target,
+          via: "uia-invoke",
+          name: r.name,
+          keepCursor: true,
+          keepFocus: true,
+        };
+      }
+
+      case "uia_set": {
+        const target = String(action.target || action.field || "").trim();
+        const value = String(action.value ?? "");
+        this.last = { op: "uia_set", target, len: value.length };
+        if (!target) return { ok: false, type, error: "missing set target" };
+        if (!value) return { ok: false, type, error: "empty value", target };
+        if (this.dryRun) {
+          return { ok: true, type, target, via: "uia-set", dryRun: true, typed: value.length };
+        }
+        if (typeof this.uiaSet !== "function") {
+          return { ok: false, type, error: "UIA set not available", target };
+        }
+        const r = await this.uiaSet(target, value);
+        if (!r || !r.ok) {
+          return { ok: false, type, error: (r && r.reason) || "set failed", target };
+        }
+        return {
+          ok: true,
+          type,
+          target,
+          via: "uia-set",
+          name: r.name,
+          typed: value.length,
+          keepCursor: true,
+          keepFocus: true,
+        };
+      }
+
+      case "uia_select": {
+        const target = String(action.target || action.value || "").trim();
+        this.last = { op: "uia_select", target };
+        if (!target) return { ok: false, type, error: "missing select target" };
+        if (this.dryRun) {
+          return {
+            ok: true,
+            type,
+            target,
+            via: "uia-select",
+            dryRun: true,
+            keepCursor: true,
+            keepFocus: true,
+          };
+        }
+        if (typeof this.uiaSelect !== "function") {
+          return { ok: false, type, error: "UIA select not available", target };
+        }
+        const r = await this.uiaSelect(target);
+        if (!r || !r.ok) {
+          return { ok: false, type, error: (r && r.reason) || "select failed", target };
+        }
+        return {
+          ok: true,
+          type,
+          target,
+          via: "uia-select",
+          name: r.name,
+          controlType: r.controlType,
+          keepCursor: true,
+          keepFocus: true,
+        };
       }
 
       case "clipboard_verify": {

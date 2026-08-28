@@ -45,6 +45,13 @@ jobs:
           node-version: "22"
           cache: npm
 
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust pointer-core
+        run: |
+          cargo test --manifest-path native/pointer-core/Cargo.toml
+          cargo build --release --manifest-path native/pointer-core/Cargo.toml
+
       # Electron's postinstall downloads a ~100MB binary that only the smoke lane
       # needs, and the smoke lane runs in its own job below. Skip it so this job
       # is not paying for, or flaking on, a download it never uses.

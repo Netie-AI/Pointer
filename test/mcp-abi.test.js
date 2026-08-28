@@ -86,11 +86,19 @@ function test(name, fn) {
     assert.ok(scribe.inputSchema.properties.dictate);
     const act = r.result.catalog.find((t) => t.name === "computer.act");
     assert.match(act.description, /focus: notepad then type: hello/);
+    assert.match(act.description, /toggle:/);
+    assert.match(act.description, /expand:/);
+    assert.match(act.description, /invoke:/);
+    assert.match(act.description, /fill: Search: hello/);
+    assert.match(act.description, /wait for:/);
+    assert.match(act.description, /select:/);
     assert.match(act.description, /use Claude/);
     assert.match(act.description, /use Cursor/);
     assert.ok(act.inputSchema.properties.mode);
     const status = r.result.catalog.find((t) => t.name === "computer.status");
     assert.match(status.description, /token totals/);
+    assert.match(status.description, /pointer-core/);
+    assert.match(status.description, /home/);
     assert.match(status.description, /Claude 5-hour/);
   });
 

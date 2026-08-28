@@ -23,12 +23,12 @@ const { isLaunch } = require("./plan-guard");
 
 /** Verbs whose effect is visible on screen — verifying a `wait` proves nothing. */
 const OBSERVABLE = Object.freeze([
-  "click", "doubleclick", "rightclick", "type", "fill", "drag",
+  "click", "doubleclick", "rightclick", "uia_toggle", "uia_expand", "uia_invoke", "uia_select", "type", "fill", "drag",
   // `keypress` is a real driver verb (driver.js) and safety classifies it as
   // consequential — omitting it meant an irreversible Enter was never verified,
   // not even with settings.verifySteps on, and reported "n/a" rather than
   // "skipped". Kept in step with plan-guard's DRIVER_ACTIONS.
-  "paste", "clipboard_paste", "setvalue", "press", "keypress", "navigate", "open",
+  "paste", "clipboard_paste", "setvalue", "uia_set", "press", "keypress", "navigate", "open",
   "focus_hwnd",
 ]);
 
