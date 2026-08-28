@@ -254,6 +254,8 @@ function computerStatus(opts = {}) {
         "deliver: hello",
         "replace: hello",
         "press ctrl+s",
+        "copy this",
+        "copy all",
         "GET /api/observe?screenshot=1",
         "GET /api/observe?clipboard=1",
         "GET /api/observe?selection=1",
