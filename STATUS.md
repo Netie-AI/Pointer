@@ -17,7 +17,8 @@
    teach-only Click/Type in (Then / Got it). OS voice speaks that cue
    (never meeting). Current BOX pulses on overlay, HUD, and This screen.
    `/meeting` is a Live answer, never a cheater overlay. Overlay Draw
-   stores a freehand BOX (cap 8, 0.4% fail-closed). Home rail is filed
+   stores a freehand BOX (cap 8, 0.4% fail-closed). Demo This screen
+   Draw stacks that BOX too (never Act). Home rail is filed
    windows plus a room dock. Session markdown is copy-only. Unsent `To`
    is a Heard name or not sent. `/workspace` is a desktop; click a file
    to open a window on This computer. Home This screen tap is Got it

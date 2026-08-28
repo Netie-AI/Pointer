@@ -308,6 +308,11 @@ function readAsset(file) {
     assert.match(cssText, /teach-map\.tap/);
     assert.match(cssText, /workspace-catalog/);
     assert.match(cssText, /scroll-margin-top/);
+    assert.match(app, /demoFrameTeach/);
+    assert.match(app, /Draw a larger BOX \(0\.4%\)/);
+    assert.match(app, /Walk is full - 8 boxes/);
+    assert.match(app, /Drew a BOX/);
+    assert.match(cssText, /min-height: 64vh/);
     assert.match(cssText, /teach-map-key/);
     assert.match(cssText, /teach-map-hint\.add/);
     assert.match(cssText, /teach-now-pulse/);

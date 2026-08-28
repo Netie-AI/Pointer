@@ -1,4 +1,11 @@
-## 2026-08-28 - This computer opens files as windows; home BOX is Got it
+## 2026-08-28 - Demo Draw stacks a BOX on This screen
+
+Public/demo This screen Draw stores a freehand BOX (cap 8, 0.4%
+fail-closed), same rules as the laptop overlay. Home This screen is
+Draw + Got it. This computer window fills the desktop; files stay the
+dock. Run still refuses (P-06). Never Act. P-05 stays parked.
+
+
 
 Click a file on `/workspace` to open it as a window on This computer.
 Home This screen tap on the current BOX is Got it (Ask, never Act).

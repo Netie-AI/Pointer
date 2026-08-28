@@ -1556,6 +1556,10 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /wireTeachTap/);
   assert.match(hostApp, /teach-map tap/);
   assert.match(hostApp, /applyHomeTeach/);
+  assert.match(hostApp, /demoFrameTeach/);
+  assert.match(hostApp, /Draw a larger BOX \(0\.4%\)/);
+  assert.match(hostApp, /Walk is full - 8 boxes/);
+  assert.match(hostApp, /Drew a BOX/);
   assert.match(hostApp, /postTeachFrame/);
   assert.match(hostApp, /Draw another BOX to add a step/);
   assert.match(hostApp, /stroke:/);

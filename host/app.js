@@ -1486,10 +1486,20 @@ function hitTeachBox(box, xPct, yPct) {
 
 function postTeachFrame(box, apply) {
   if (isDemoCatalog()) {
+    const ok = demoFrameTeach(box);
     const filed = document.getElementById("host-filed");
     if (filed) {
       filed.hidden = false;
-      filed.textContent = "Demo catalog. Draw stays on the live laptop overlay. Never Act.";
+      filed.textContent = ok
+        ? "Demo catalog. Drew a BOX. Never Act."
+        : demoTeachWalk().length >= 8
+          ? "Demo catalog. Walk is full - 8 boxes. Never Act."
+          : "Demo catalog. Draw a larger BOX (0.4%). Never Act.";
+    }
+    if (ok) {
+      const m = demoTeachRoom();
+      if (typeof apply === "function") apply(m);
+      applyDemoCatalog();
     }
     return;
   }
@@ -1923,7 +1933,7 @@ function applyHomeTeach(m) {
   if (!root || !m) return;
   const map = root.querySelector(".teach-map");
   const holder = document.createElement("div");
-  paintTeachMap(holder, m, { tap: true, apply: applyHomeTeach });
+  paintTeachMap(holder, m, { draw: true, apply: applyHomeTeach });
   const nextMap = holder.querySelector(".teach-map");
   if (!nextMap) return;
   if (map) map.replaceWith(nextMap);
@@ -1938,7 +1948,7 @@ function paintStage(rooms, localFirst) {
     root.hidden = true;
     return;
   }
-  paintTeachMap(root, (rooms && rooms.teach) || {}, { tap: true, apply: applyHomeTeach });
+  paintTeachMap(root, (rooms && rooms.teach) || {}, { draw: true, apply: applyHomeTeach });
   paintMeetingCard(root, (rooms && rooms.meeting) || {});
   paintTodayPlate(root, (rooms && rooms.today) || {});
   paintWorkRail(root, rooms);
@@ -2322,6 +2332,71 @@ if (!document.getElementById("rooms")) {
 }
 
 let demoTeachStep = 0;
+let demoDrawn = [];
+
+function demoClipBox(left, top, w, h) {
+  if (!Number.isFinite(left) || !Number.isFinite(top) || !(w > 0) || !(h > 0)) return null;
+  if (left < 0 || top < 0 || left >= 100 || top >= 100) return null;
+  const right = Math.min(100, left + w);
+  const bottom = Math.min(100, top + h);
+  const ww = right - Math.max(0, left);
+  const hh = bottom - Math.max(0, top);
+  if (ww < 0.4 || hh < 0.4) return null;
+  return { leftPct: Math.max(0, left), topPct: Math.max(0, top), wPct: ww, hPct: hh };
+}
+
+function demoParseFrame(spec) {
+  if (!spec || typeof spec !== "object") return null;
+  const stroke = Array.isArray(spec.stroke) ? spec.stroke : [];
+  if (stroke.length >= 2) {
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    stroke.forEach(function (p) {
+      const x = Number(p && p.x);
+      const y = Number(p && p.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      x0 = Math.min(x0, x);
+      y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x);
+      y1 = Math.max(y1, y);
+    });
+    return demoClipBox(x0, y0, x1 - x0, y1 - y0);
+  }
+  const x0 = Number(spec.x0);
+  const y0 = Number(spec.y0);
+  const x1 = Number(spec.x1);
+  const y1 = Number(spec.y1);
+  if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return null;
+  return demoClipBox(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
+}
+
+function demoFrameTeach(spec) {
+  if (demoTeachWalk().length >= 8) return false;
+  const box = demoParseFrame(spec);
+  if (!box) return false;
+  const n = demoTeachWalk().length + 1;
+  const ink = Array.isArray(spec && spec.stroke)
+    ? spec.stroke.filter(function (p) {
+        return Number.isFinite(Number(p && p.x)) && Number.isFinite(Number(p && p.y));
+      }).slice(0, 80).map(function (p) {
+        return { x: Number(p.x), y: Number(p.y) };
+      })
+    : [];
+  demoDrawn.push({
+    leftPct: box.leftPct,
+    topPct: box.topPct,
+    wPct: box.wPct,
+    hPct: box.hPct,
+    label: n + " region",
+    cue: "Look at region " + n,
+    face: "region",
+    caption: "region " + n,
+    stroke: ink.length >= 2 ? ink : undefined,
+  });
+  return true;
+}
 
 function demoTeachWalk() {
   return [
@@ -2352,7 +2427,7 @@ function demoTeachWalk() {
       face: "button",
       caption: "Save",
     },
-  ];
+  ].concat(demoDrawn);
 }
 
 function demoAdvanceTeach(ask) {
