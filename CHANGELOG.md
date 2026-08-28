@@ -1,3 +1,10 @@
+## 2026-08-28 - Overlay chrome keeps Live captions after Save
+
+After Save, overlay chrome keeps They asked / You / Live captions
+(honest, visible, never spoken). Duplicate Live answer dock drops.
+Chrome Copy still clips the stack. Never send. Never Act. P-05
+and P-06 stay parked.
+
 ## 2026-08-28 - Overlay chrome Copy clips the honest stack
 
 Overlay chrome Copy clips They asked / You / Say this / Also /

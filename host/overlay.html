@@ -99,12 +99,12 @@
         border-radius: 8px;
         pointer-events: none;
       }
-      #walk-cue, #walk-then, #walk-fill, #walk-filed {
+      #walk-cue, #walk-then, #walk-fill, #walk-asked, #walk-you, #walk-live, #walk-filed {
         margin: 0;
         white-space: normal;
         overflow: visible;
       }
-      #walk-then, #walk-fill, #walk-filed {
+      #walk-then, #walk-fill, #walk-asked, #walk-you, #walk-live, #walk-filed {
         color: #9ad;
         font-weight: 500;
       }
@@ -329,6 +329,9 @@
           <p id="walk-cue"></p>
           <p id="walk-then" hidden></p>
           <p id="walk-fill" hidden></p>
+          <p id="walk-asked" hidden></p>
+          <p id="walk-you" hidden></p>
+          <p id="walk-live" hidden></p>
           <p id="walk-filed" hidden></p>
         </div>
         <div id="walk-acts">
@@ -724,6 +727,42 @@
         return null;
       }
 
+      function overlayRow(spec, label) {
+        const rows = (spec && spec.rows) || [];
+        for (let i = 0; i < rows.length; i++) {
+          if (rows[i] && rows[i].label === label) return String(rows[i].value || "");
+        }
+        return "";
+      }
+
+      function hideWalkDock() {
+        const dock = document.getElementById("walk-dock");
+        if (!dock) return;
+        dock.hidden = true;
+        dock.classList.remove("show");
+      }
+
+      function paintLiveChrome(on) {
+        const spec = on ? overlayDockSpec("/workspace?id=live-meeting") : null;
+        const asked = overlayRow(spec, "They asked");
+        const you = overlayRow(spec, "You");
+        const askedEl = document.getElementById("walk-asked");
+        const youEl = document.getElementById("walk-you");
+        const liveEl = document.getElementById("walk-live");
+        if (askedEl) {
+          askedEl.hidden = !asked;
+          askedEl.textContent = asked ? "They asked: " + asked : "";
+        }
+        if (youEl) {
+          youEl.hidden = !you;
+          youEl.textContent = you ? "You: " + you : "";
+        }
+        if (liveEl) {
+          liveEl.hidden = !asked;
+          liveEl.textContent = asked ? "Live: " + asked : "";
+        }
+      }
+
       let lastDockCopy = "";
       function paintWalkDock(href) {
         const dock = document.getElementById("walk-dock");
@@ -1063,9 +1102,11 @@
         if (next) next.hidden = saved;
         if (saved) {
           paint([]);
+          paintLiveChrome(true);
           paintChrome({ cue: "Saved on This computer", rest: "", fill: "" });
           return;
         }
+        paintLiveChrome(false);
         const pts = demoWalk.map(function (p, i) {
           return Object.assign({}, p, {
             later: i > demoStep,
@@ -1228,14 +1269,8 @@
           filedEl.hidden = !saved;
           filedEl.textContent = saved ? "Opened Live answer. Never sent." : "";
         }
-        if (saved) paintWalkDock(href);
-        else if (wasSaved) {
-          const dock = document.getElementById("walk-dock");
-          if (dock) {
-            dock.hidden = true;
-            dock.classList.remove("show");
-          }
-        } else {
+        if (saved || wasSaved) hideWalkDock();
+        else {
           const dock = document.getElementById("walk-dock");
           if (dock && dock.classList.contains("show")) paintWalkDock(href);
         }

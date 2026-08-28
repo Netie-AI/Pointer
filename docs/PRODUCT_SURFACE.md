@@ -56,7 +56,7 @@ Live answer window (They asked / You / Say this / Also / Don't say,
 never a cheater overlay).
 Home Ask stays on This screen and highlights that window.
 Got it types the Heard name into Unsent mail To (starts not sent).
-Got it on Save files that draft then docks Live answer on overlay and home (never send, never speak meeting). After Save, home This screen yields to Live answer. Back restores the walk. Workspace Save opens Live answer on This computer. Cue Copy clips They asked / You / Say this / Also / Heard / Don't say.
+Got it on Save files that draft then docks Live answer on overlay and home (never send, never speak meeting). After Save, home This screen yields to Live answer. Overlay chrome keeps They asked / You / Live captions (never spoken). Back restores the walk. Workspace Save opens Live answer on This computer. Cue Copy clips They asked / You / Say this / Also / Heard / Don't say.
 Enter is Got it. Never send.
 The laptop HUD cue bar paints that same remaining rail and those chips
 when chrome hides. OS voice says Last step on the last BOX.

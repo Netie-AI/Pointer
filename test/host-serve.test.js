@@ -504,6 +504,10 @@ function readAsset(file) {
     assert.match(overlayText, /id="walk-stack-copy"/);
     assert.match(overlayText, /copyWalkStack/);
     assert.match(overlayText, /overlayDockSpec\("\/workspace\?id=live-meeting"\)/);
+    assert.match(overlayText, /id="walk-asked"/);
+    assert.match(overlayText, /id="walk-live"/);
+    assert.match(overlayText, /paintLiveChrome/);
+    assert.match(overlayText, /if \(saved \|\| wasSaved\) hideWalkDock\(\)/);
     assert.match(overlayText, /html\.demo \.point-face\.field/);
     assert.match(overlayText, /id="walk-desktop"/);
     assert.match(overlayText, /paintWalkDesktop/);
