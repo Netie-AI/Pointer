@@ -166,7 +166,9 @@ workspace. Download packet is loopback GET `/api/session.zip` (session
 markdown plus finished files, never exec). Loopback `/workspace` paints
 those files as a desktop grid on This computer (click to open). Opening
 a Teach walk paints This screen. Opening a Meeting paints the Live
-answer. Loopback `/workspace` This computer dock Run POSTs `/api/workspace/exec`
+answer. Opening a Word file paints Notes. Opening unsent mail paints a
+compose window (never send). Opening a review paints Needs you (never
+approve). Loopback `/workspace` This computer dock Run POSTs `/api/workspace/exec`
 and always fails closed (P-06). Public catalog shows the same refuse.
 Loopback GET `/api/document.docx` returns a generated Word package from
 the live draft (never Act, never Word.app). Public `/api/document.docx`

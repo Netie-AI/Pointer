@@ -330,6 +330,134 @@ function applyOpenMeeting(root, m) {
   return !(m && m.localFirst);
 }
 
+function paintDeskWindow(root, spec) {
+  if (!root || !spec) return;
+  const win = el("article", "desk-window " + String(spec.cls || "").trim());
+  const kicker = el("p", "desk-window-kicker");
+  kicker.textContent = String(spec.kicker || "");
+  win.appendChild(kicker);
+  if (spec.title) {
+    const h = el("h2", "desk-window-title");
+    h.textContent = String(spec.title).slice(0, 80);
+    win.appendChild(h);
+  }
+  (spec.rows || []).forEach(function (row) {
+    const p = el("p", "desk-window-row");
+    const lab = el("span");
+    lab.textContent = String((row && row.label) || "");
+    const val = document.createElement("b");
+    val.textContent = String((row && row.value) || "");
+    p.appendChild(lab);
+    p.appendChild(val);
+    win.appendChild(p);
+  });
+  if (Array.isArray(spec.hits) && spec.hits.length) {
+    const list = el("ul", "work-hits");
+    spec.hits.forEach(function (line) {
+      const li = el("li");
+      li.textContent = String(line || "").slice(0, 160);
+      list.appendChild(li);
+    });
+    win.appendChild(list);
+  }
+  if (spec.body) {
+    const pre = el("pre", "desk-window-body");
+    pre.textContent = String(spec.body);
+    win.appendChild(pre);
+  }
+  if (spec.foot) {
+    const foot = el("p", "desk-window-foot");
+    foot.textContent = String(spec.foot);
+    win.appendChild(foot);
+  }
+  root.appendChild(win);
+}
+
+function inboxWindowBody(text, preview) {
+  const parts = String(text || "").split(/^## /m);
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (!/^Draft\b/.test(part) || /^Draft to write\b/.test(part)) continue;
+    const rest = part.replace(/^Draft[^\n]*\n?/, "");
+    const cut = rest.search(/\n---/);
+    const out = (cut >= 0 ? rest.slice(0, cut) : rest).trim();
+    if (out) return out.slice(0, 1500);
+  }
+  return String(preview || "").trim().slice(0, 1500);
+}
+
+function notesWindowBody(text, preview) {
+  const fromDraft = sectionAfter(text, "Draft to write").join("\n").trim();
+  if (fromDraft) return fromDraft.slice(0, 1500);
+  return String(preview || "").trim().slice(0, 1500);
+}
+
+function applyOpenDocument(root, art, text) {
+  if (!root) return;
+  root.replaceChildren();
+  const body = notesWindowBody(text, art && art.preview) || String(text || "").trim();
+  paintDeskWindow(root, {
+    cls: "desk-document",
+    kicker: "Notes",
+    title: String((art && art.title) || "Document draft").slice(0, 80),
+    body: body,
+    foot: "not a .docx - Word.app still needs Cortex",
+  });
+}
+
+function applyOpenInbox(root, art, text) {
+  if (!root) return;
+  root.replaceChildren();
+  const draft = inboxWindowBody(text, art && art.preview) || String(text || "").trim();
+  let to = "not sent";
+  let subject = String((art && art.title) || "Draft follow-up (not sent)").slice(0, 80);
+  const toM = draft.match(/^To:\s*(.+)$/m);
+  const subM = draft.match(/^Subject:\s*(.+)$/m);
+  if (toM) to = String(toM[1] || "").trim().slice(0, 80) || to;
+  if (subM) subject = String(subM[1] || "").trim().slice(0, 80) || subject;
+  paintDeskWindow(root, {
+    cls: "desk-inbox",
+    kicker: "Unsent mail",
+    rows: [
+      { label: "To", value: to },
+      { label: "Subject", value: subject },
+    ],
+    body: draft,
+    foot: "not sent - send is parked (P-05)",
+  });
+}
+
+function applyOpenSecurity(root, art, text) {
+  if (!root) return;
+  root.replaceChildren();
+  const m = {
+    desk: "security",
+    localFirst: false,
+    cue: art && art.cue,
+    deliverable: text,
+    findings: art && art.findings,
+  };
+  const hits = findingItems(m);
+  const verdict = sectionAfter(text, "Verdict").join(" ").trim().slice(0, 240);
+  paintDeskWindow(root, {
+    cls: "desk-security",
+    kicker: "Needs you",
+    title: String((art && art.cue) || "Security review").slice(0, 80),
+    hits: hits,
+    body: verdict,
+    foot: "do not approve",
+  });
+}
+
+function applyOpenToday(root, m, text) {
+  if (!root) return false;
+  root.replaceChildren();
+  paintTodayPlate(root, m);
+  if (!root.childNodes.length) paintOpenPre(root, text);
+  lastArtifactText = String((m && m.deliverable) || text || lastArtifactText || "");
+  return !(m && m.localFirst);
+}
+
 function paintOpenFileBody(root, body, text) {
   const art = body && body.artifact;
   const desk = String((art && art.desk) || "").toLowerCase();
@@ -354,6 +482,31 @@ function paintOpenFileBody(root, body, text) {
       })
       .then(function (m) {
         applyOpenMeeting(root, m);
+      })
+      .catch(function () {
+        paintOpenPre(root, text);
+      });
+    return;
+  }
+  if (desk === "document" || id === "live-document") {
+    applyOpenDocument(root, art, text);
+    return;
+  }
+  if (desk === "inbox" || id === "live-inbox") {
+    applyOpenInbox(root, art, text);
+    return;
+  }
+  if (desk === "security" || id === "live-security") {
+    applyOpenSecurity(root, art, text);
+    return;
+  }
+  if (desk === "today" || id === "standing-today") {
+    fetch("/api/today")
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (m) {
+        applyOpenToday(root, m, text);
       })
       .catch(function () {
         paintOpenPre(root, text);

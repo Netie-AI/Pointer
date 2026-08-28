@@ -1537,6 +1537,10 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /teach-map-screen/);
   assert.match(hostApp, /applyOpenTeach/);
   assert.match(hostApp, /applyOpenMeeting/);
+  assert.match(hostApp, /applyOpenDocument/);
+  assert.match(hostApp, /applyOpenInbox/);
+  assert.match(hostApp, /applyOpenSecurity/);
+  assert.match(hostApp, /paintDeskWindow/);
   assert.match(hostApp, /paintOpenFileBody/);
   assert.match(hostApp, /## Draft to write/);
   assert.match(hostApp, /teachActionLine/);
@@ -1574,6 +1578,8 @@ test("desk chips ask, never act", () => {
   assert.match(hostWorkspace, /workspace-page/);
   assert.match(hostWorkspace, /Open a Teach walk/);
   assert.match(hostWorkspace, /Live answer/);
+  assert.match(hostWorkspace, /Needs you/);
+  assert.match(hostWorkspace, /unsent mail/i);
   assert.match(fs.readFileSync(path.join(__dirname, "..", "host", "security.html"), "utf8"), /id="report-download"/);
   assert.match(hostApp, /live-cue-next/);
   assert.match(hostApp, /live-cue-captions/);

@@ -1,3 +1,10 @@
+## 2026-08-28 - This computer opens Notes, unsent mail, and Needs you
+
+Opening a Word file on `/workspace` paints a Notes window. Opening
+unsent mail paints To / Subject / body (never send). Opening a review
+paints Needs you (never approve). Never Act. Never a runtime. P-05 and
+P-06 stay parked.
+
 ## 2026-08-28 - This computer opens teach and meeting windows
 
 Opening a Teach walk on `/workspace` paints This screen (field / button
