@@ -866,6 +866,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /id="draw-stroke"/);
   assert.match(teachOverlay, /id="walk-ink"/);
   assert.match(teachOverlay, /paintWalkInk/);
+  assert.match(teachOverlay, /\\d\+\\s\+of\\s\+\\d\+/);
   assert.match(teachOverlay, /createElementNS/);
   assert.match(teachOverlay, /stroke:/);
   assert.match(teachOverlay, /teach-overlay:frame/);
@@ -1450,6 +1451,10 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /stroke:/);
   assert.match(hostApp, /paintTeachInk/);
   assert.match(hostApp, /teach-map-ink/);
+  assert.match(hostApp, /teachActionLine/);
+  assert.match(hostApp, /meeting-card-kicker/);
+  assert.match(hostApp, /meeting-card-captions/);
+  assert.match(hostApp, /Live answer/);
   assert.match(hostApp, /paintChrome/);
   assert.match(hostApp, /setFinishedDownloads/);
   assert.match(hostApp, /report-download/);
@@ -1556,6 +1561,7 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(mainCue, /heard:/);
   assert.match(mainCue, /turns:/);
   assert.match(mainCue, /cueKind/);
+  assert.match(mainCue, /teachActionCue/);
   assert.match(hud, /cueDisplay/);
   assert.match(hud, /Next:/);
   assert.match(hud, /Review:/);

@@ -29,7 +29,8 @@ never Act. Home `/api/home` lists live rooms for every desk. Loopback
 `/` and `/workspace` show a This session catalog (They asked / Heard /
 filed inbox and Word links, no runtime). Loopback `/` also paints the live
 teach path, meeting say-this card, Today plate, and filed inbox/Word/security
-work cards. Loopback host pages keep They asked / Heard / Live captions /
+work cards. `/meeting` paints a Live answer (They asked / last You/Them /
+Live captions / say-this). Loopback host pages keep They asked / Heard / Live captions /
 Click/Type in in sticky chrome
 (Back / Got it Ask, never Act). Loopback
 `/teach` draws a read-only box map from measured markers and Back / Got

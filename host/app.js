@@ -599,14 +599,43 @@ function paintMeetingCard(root, m) {
   const asked = String(m.asked || "").trim();
   const cue = String(m.cue || "").trim();
   const heard = String(m.heard || "").trim();
-  if (!asked && !cue && !heard) return;
+  const caps = Array.isArray(m.captions) ? m.captions : [];
+  const themLine = lastTalkLine(m.turns, "them");
+  const youLine = lastTalkLine(m.turns, "you");
+  const themShow = Boolean(themLine && themLine !== asked);
+  const youShow = Boolean(youLine);
+  if (!asked && !cue && !heard && !caps.length && !themShow && !youShow) return;
   const card = el("section", "meeting-card");
   card.setAttribute("role", "region");
-  card.setAttribute("aria-label", asked ? "They asked: " + asked : "Meeting assist");
+  card.setAttribute("aria-label", asked ? "They asked: " + asked : "Live meeting answer");
+  const kicker = el("p", "meeting-card-kicker");
+  kicker.textContent = "Live answer";
+  card.appendChild(kicker);
   if (asked) {
     const q = el("p", "meeting-card-asked");
     q.textContent = "They asked: " + asked;
     card.appendChild(q);
+  }
+  if (themShow) {
+    const them = el("p", "meeting-card-them");
+    them.textContent = "Them: " + themLine;
+    card.appendChild(them);
+  }
+  if (youShow) {
+    const you = el("p", "meeting-card-you");
+    you.textContent = "You: " + youLine;
+    card.appendChild(you);
+  }
+  if (caps.length) {
+    const wrap = el("div", "meeting-card-captions");
+    caps.forEach(function (row) {
+      const text = String((row && row.text) || "").trim();
+      if (!text) return;
+      const p = el("p", "meeting-card-caption");
+      p.textContent = "Live: " + text.slice(0, 160);
+      wrap.appendChild(p);
+    });
+    if (wrap.childNodes.length) card.appendChild(wrap);
   }
   if (cue) {
     const say = el("p", "meeting-card-say");
@@ -670,18 +699,19 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
   const cue = cueId ? document.getElementById(cueId) : null;
   const text = String((m && m.cue) || "").trim();
   if (cue) {
-    cue.hidden = !text;
     const prefix =
       (m && m.desk) === "teach"
-        ? "Next: "
+        ? ""
         : (m && m.desk) === "meeting"
           ? "Say this: "
           : (m && m.desk) === "today"
             ? "Plate: "
             : "Review: ";
-    cue.textContent = text ? prefix + text : "";
+    const line = (m && m.desk) === "teach" ? teachActionLine(m) || text : text;
+    cue.hidden = !line;
+    cue.textContent = line ? prefix + line : "";
   }
-  setCueButton(text, Boolean(m && m.localFirst));
+  setCueButton((m && m.desk) === "teach" ? teachActionLine(m) || text : text, Boolean(m && m.localFirst));
   const askedEl = askedId ? document.getElementById(askedId) : null;
   const asked = String((m && m.asked) || "").trim();
   if (askedEl) {
@@ -938,7 +968,7 @@ function paintChrome(home) {
   if (onTeach && teachAction) cueLine = teachAction;
   else if (asked && meetingCue) cueLine = "Say this: " + meetingCue;
   else if (teachAction) cueLine = teachAction;
-  else if (teachCue) cueLine = "Next: " + teachCue;
+  else if (teachCue) cueLine = teachAction || String(teachCue).replace(/^\d+\s+of\s+\d+\s+/i, "").trim() || teachCue;
   else if (plate) cueLine = "Plate: " + plate;
   else if (meetingCue) cueLine = "Say this: " + meetingCue;
   const askedEl = document.getElementById("live-cue-asked");
@@ -1154,6 +1184,14 @@ function wireTeachFrame(map, apply, current) {
   });
 }
 
+function teachActionLine(m) {
+  const action = String((m && m.action) || "").trim();
+  if (action) return action;
+  return String((m && m.cue) || "")
+    .replace(/^\d+\s+of\s+\d+\s+/i, "")
+    .trim();
+}
+
 function paintTeachInk(map, boxes) {
   if (!map) return;
   const inked = (boxes || []).filter(function (p) {
@@ -1194,9 +1232,9 @@ function paintTeachMap(root, m, opts) {
   if (!boxes.length && !dots.length && !draw) return;
   const map = el("div", draw ? "teach-map draw" : "teach-map");
   map.setAttribute("role", draw ? "application" : "img");
-  const cue = String((m && m.cue) || "").trim();
+  const action = teachActionLine(m);
   const rest = String((m && m.rest) || "").trim();
-  map.setAttribute("aria-label", cue ? "Next: " + cue : draw ? "Draw around a control on this stage. Never Act." : "Teach walk");
+  map.setAttribute("aria-label", action ? action : draw ? "Draw around a control on this stage. Never Act." : "Teach walk");
   if (draw) {
     const hint = el("p", boxes.length ? "teach-map-hint add" : "teach-map-hint");
     hint.textContent = boxes.length
@@ -1204,9 +1242,9 @@ function paintTeachMap(root, m, opts) {
       : "Draw around a control. Pointer stores a BOX and will not click.";
     map.appendChild(hint);
   }
-  if (cue) {
+  if (action) {
     const next = el("p", "teach-map-cue");
-    next.textContent = "Next: " + cue;
+    next.textContent = action;
     map.appendChild(next);
   }
   if (rest) {
@@ -1460,8 +1498,9 @@ function paintRooms(rooms, localFirst) {
     const cue = el("p", "muted");
     const cueText = String(r.cue || "").trim();
     if (cueText) {
-      const prefix = id === "teach" ? "Next: " : id === "meeting" ? "Say this: " : id === "today" ? "Plate: " : "Review: ";
-      cue.textContent = prefix + cueText;
+      const prefix = id === "teach" ? "" : id === "meeting" ? "Say this: " : id === "today" ? "Plate: " : "Review: ";
+      const line = id === "teach" ? teachActionLine(r) || cueText : cueText;
+      cue.textContent = prefix + line;
     } else {
       cue.textContent = localFirst ? "Live " + id + " stays on the laptop." : "No live " + id + " yet.";
     }

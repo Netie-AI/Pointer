@@ -16,9 +16,12 @@
    timeout or ungrounded lines keep the heuristic (never invent, never
    send, never a stealth overlay). The HUD and loopback host cue bars keep
    that stack plus last You/Them and Live captions (STT or stored ring)
-   when chrome hides. `/teach` sticky chrome shows Click/Type in on the
-   current BOX. Loopback `/` paints teach path, meeting card, Today plate,
-   and filed work cards. `/teach` stacks drawn BOX steps (current hold,
+   when chrome hides. `/teach` sticky chrome and the walk stage show
+   Click/Type in on the current BOX (not `Next: N of M`). Loopback `/`
+   paints teach path, meeting card, Today plate,
+   and filed work cards. `/meeting` is a live answer: They asked, last
+   You/Them, Live captions, and say-this (never a cheater overlay).
+   `/teach` stacks drawn BOX steps (current hold,
    later dashed), Back/Got it Ask, never invented coords. Overlay stays
    numbered BOX tokens (`1 Save`). Current BOX paints Click /
    Type in / Look at. A tap on the current BOX is Got it (Ask, never Act).

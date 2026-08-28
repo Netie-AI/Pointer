@@ -1,3 +1,10 @@
+## 2026-08-28 - Meeting live answer and teach action labels
+
+Loopback `/meeting` paints a Live answer card: They asked, last You/Them,
+Live captions, and say-this. `/teach` stage and overlay chrome show
+Click/Type in on the current BOX (not `Next: N of M`). Never Act. Never
+a stealth overlay. Never a buddy. P-05 and P-06 stay parked.
+
 ## 2026-08-27 - Teach walk keeps the freehand stroke
 
 Loopback `/teach` and the overlay keep the drawn polyline on each BOX

@@ -265,7 +265,10 @@
       function paintChrome(event) {
         const cue = String((event && event.cue) || "").trim();
         const rest = String((event && event.rest) || "").trim();
-        if (cueEl) cueEl.textContent = cue ? "Next: " + cue : "";
+        if (cueEl) {
+          const action = String(cue || "").replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
+          cueEl.textContent = action;
+        }
         if (thenEl) {
           thenEl.hidden = !rest;
           thenEl.textContent = rest ? "Then: " + rest : "";

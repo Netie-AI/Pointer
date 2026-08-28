@@ -248,6 +248,9 @@ function readAsset(file) {
     assert.match(app, /teach-map-stroke/);
     assert.match(app, /paintTeachInk/);
     assert.match(app, /teach-map-ink/);
+    assert.match(app, /teachActionLine/);
+    assert.match(app, /meeting-card-kicker/);
+    assert.match(app, /meeting-card-captions/);
     const cssText = fs.readFileSync(path.join(HOST, "style.css"), "utf8");
     assert.match(cssText, /56vh/);
     assert.match(cssText, /teach-map-stroke/);
@@ -259,6 +262,8 @@ function readAsset(file) {
     assert.match(cssText, /teach-map-key/);
     assert.match(cssText, /teach-map-hint\.add/);
     assert.match(cssText, /meeting-card-say/);
+    assert.match(cssText, /meeting-card-kicker/);
+    assert.match(cssText, /meeting-card-captions/);
     assert.match(cssText, /meeting-card-also/);
     assert.match(cssText, /meeting-card-avoid/);
     assert.match(cssText, /today-plate-kicker/);
@@ -319,6 +324,7 @@ function readAsset(file) {
     assert.match(meetingText, /id="cue-copy"/);
     assert.match(meetingText, /id="brief-download"/);
     assert.match(meetingText, /Live meeting answer/);
+    assert.match(meetingText, /Live captions/);
     const meetingApi = handlePublicRequest({ method: "GET", pathname: "/api/meeting" });
     assert.strictEqual(JSON.parse(meetingApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(meetingApi.body).exec, false);

@@ -162,7 +162,7 @@ const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
 const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
-const { pickDesk, meetingAssist, enrichMeetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, spawnFollowOns, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock, nextTeachStep, teachAdvance, FRAME_TEACH_TEXT, shouldTeachFramedRegion, frameLiveTeach, advanceLiveTeach, canAdvanceTeach } = require("./netie/coworker-desks");
+const { pickDesk, meetingAssist, enrichMeetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, spawnFollowOns, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock, nextTeachStep, teachAdvance, FRAME_TEACH_TEXT, shouldTeachFramedRegion, frameLiveTeach, advanceLiveTeach, canAdvanceTeach, teachActionCue } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
   EVENTS: PresenceEvents,
@@ -396,7 +396,7 @@ function publishLiveCoworker(assist) {
     (assist.desk === "teach" ? "point" : assist.desk === "security" ? "warn" : "say");
   const line =
     kind === "point" && assist.cue
-      ? `Next: ${assist.cue}`
+      ? teachActionCue(assist) || assist.cue
       : kind === "warn" && assist.cue
         ? `Review: ${assist.cue}`
         : assist.asked
@@ -416,7 +416,7 @@ function publishTeachOverlay(assist) {
     publishPointOverlay(assist.deliverable, {
       hold: true,
       path: assist.path,
-      cue: assist.cue,
+      cue: teachActionCue(assist) || assist.cue,
       rest: assist.rest,
     });
   }
