@@ -1,3 +1,10 @@
+## 2026-08-28 - Saved walk yields to Live answer
+
+After Save, home This screen drops the leftover teach walk so Live
+answer leads. Cue Copy clips They asked / You / Say this / Also /
+Heard / Don't say. Never send. Never speak meeting. Never Act.
+P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Home Save docks Live answer
 
 Home Got it on Save files the unsent draft, then pulses Live answer

@@ -1384,6 +1384,27 @@ function lastTalkLine(turns, speaker) {
   return "";
 }
 
+function meetingCopyText(m) {
+  const asked = String((m && m.asked) || "").trim();
+  const cue = String((m && m.cue) || "").trim();
+  const also = String((m && m.also) || "").trim();
+  const avoid = String((m && m.avoid) || "").trim();
+  const heard = String((m && m.heard) || "").trim();
+  const you = lastTalkLine(m && m.turns, "you");
+  const lines = ["Live answer"];
+  if (asked) lines.push("They asked: " + asked);
+  if (you) lines.push("You: " + you);
+  if (cue) lines.push("Say this: " + cue);
+  if (also) lines.push("Also: " + also);
+  if (heard) lines.push("Heard: " + heard);
+  if (avoid) {
+    lines.push("Don't say: " + avoid + (/never a cheater overlay/i.test(avoid) ? "" : " Never a cheater overlay."));
+  } else {
+    lines.push("Never a cheater overlay.");
+  }
+  return lines.filter(Boolean).join("\n");
+}
+
 function ensureLiveCueBar() {
   let bar = document.getElementById("live-cue-bar");
   if (bar) return bar;
@@ -1557,7 +1578,11 @@ function paintChrome(home) {
     cap.hidden = !cap.childNodes.length;
   }
   if (textEl) textEl.textContent = cueLine;
-  lastChromeCue = onTeach ? teachAction || teachCue : meetingCue || plate;
+  lastChromeCue = onTeach
+    ? teachAction || teachCue
+    : showMeeting
+      ? meetingCopyText(meeting)
+      : meetingCue || plate;
   if (onTeach) speakTeachCue(teachRest ? teachAction || teachCue : teachAction || teachCue ? (teachAction || teachCue) + ". Last step" : "");
   bar.hidden = false;
   const canWalk = onTeach && Boolean(teach.advance);
@@ -2108,7 +2133,9 @@ function paintStage(rooms, localFirst) {
     root.hidden = true;
     return;
   }
-  paintTeachMap(root, (rooms && rooms.teach) || {}, { draw: true, apply: applyHomeTeach });
+  if (!(isDemoCatalog() && demoInboxSaved())) {
+    paintTeachMap(root, (rooms && rooms.teach) || {}, { draw: true, apply: applyHomeTeach });
+  }
   paintMeetingCard(root, (rooms && rooms.meeting) || {});
   paintTodayPlate(root, (rooms && rooms.today) || {});
   paintWorkRail(root, rooms);
