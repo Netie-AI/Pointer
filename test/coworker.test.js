@@ -26,6 +26,7 @@ const {
   createLiveTeachPump,
   createBriefClock,
   sessionBundle,
+  sessionPacketParts,
   publicSessionSnapshot,
   heardFacts,
   DESK_CHIPS,
@@ -122,6 +123,84 @@ test("session bundle is a catalog of filed desks and never execs", () => {
   const badId = sessionBundle([{ id: "../etc", desk: "meeting", title: "nope" }]);
   assert.strictEqual(badId.empty, true);
   assert.ok(!badId.files.some((row) => /\.\.|\/etc/.test(String(row.id || "") + String(row.href || ""))));
+});
+
+test("session packet is finished files and never execs", () => {
+  const empty = sessionPacketParts([]);
+  assert.strictEqual(empty.ok, false);
+  assert.strictEqual(empty.exec, false);
+  assert.strictEqual(empty.act, false);
+  assert.strictEqual(empty.send, false);
+  assert.strictEqual(empty.approve, false);
+  assert.deepStrictEqual(empty.files, []);
+  const inbox = inboxAssist({
+    text: "draft a follow-up email",
+    transcript: "system: Hi this is Sarah Chen from acme.\nsystem: Can you send the deck by Friday for $40k?\nmic: I will send it Friday.",
+  });
+  const document = documentAssist({ text: "write hello in Word" });
+  const security = securityAssist({
+    text: "review this",
+    files: [{ name: "notes.md", body: "Launch is Friday for $40k." }],
+  });
+  const packet = sessionPacketParts(
+    [
+      {
+        id: "live-meeting",
+        desk: "meeting",
+        title: "Live meeting",
+        body: "# Meeting brief\nThey asked: What is the launch date?",
+        cue: "We'll ship Friday.",
+      },
+      { id: "live-teach", desk: "teach", title: "Teach walk", body: "# Teach walk\nType in Email then Tab" },
+      {
+        id: "live-inbox",
+        desk: "inbox",
+        title: inbox.title,
+        body: inbox.deliverable,
+        preview: inbox.preview,
+        cue: inbox.cue,
+      },
+      {
+        id: "live-document",
+        desk: "document",
+        title: document.title,
+        body: document.deliverable,
+        preview: document.preview,
+        cue: document.cue,
+      },
+      {
+        id: "live-security",
+        desk: "security",
+        title: security.title,
+        body: security.deliverable,
+        preview: security.preview,
+        cue: security.cue,
+      },
+      { id: "../etc/passwd", desk: "meeting", title: "nope", body: "leak" },
+    ],
+    "I'll send it Friday."
+  );
+  assert.strictEqual(packet.ok, true);
+  assert.strictEqual(packet.act, false);
+  assert.strictEqual(packet.exec, false);
+  assert.strictEqual(packet.send, false);
+  assert.strictEqual(packet.approve, false);
+  const names = packet.files.map((row) => row.name);
+  assert.deepStrictEqual(names, [
+    "pointer-session.md",
+    "meeting.md",
+    "teach.md",
+    "pointer-draft.eml",
+    "pointer-review.md",
+  ]);
+  assert.ok(names.every((name) => /^[A-Za-z0-9._-]+$/.test(name)));
+  assert.ok(!names.some((name) => name.includes("/") || name.includes("..")));
+  assert.match(packet.files[0].data.toString("utf8"), /act: never/);
+  assert.match(packet.files[1].data.toString("utf8"), /Meeting brief/);
+  assert.match(packet.files[2].data.toString("utf8"), /Teach walk/);
+  assert.match(packet.files[3].data.toString("utf8"), /X-Pointer-Send: never/);
+  assert.match(packet.files[4].data.toString("utf8"), /approve: never/);
+  assert.match(packet.documentText, /hello in Word/i);
 });
 
 test("heard names come from the ring and never invent", () => {
@@ -1460,6 +1539,8 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /meeting-card-captions/);
   assert.match(hostApp, /Live answer/);
   assert.match(hostApp, /paintChrome/);
+  assert.match(hostApp, /\/api\/session\.zip/);
+  assert.match(hostApp, /pointer-session.zip/);
   assert.match(hostApp, /setFinishedDownloads/);
   assert.match(hostApp, /report-download/);
   assert.match(hostApp, /\/api\/security\.md/);

@@ -12,9 +12,9 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { createWorkspace } = require("./workspace");
-const { catalog, todayAssist, sessionBundle, advanceLiveTeach, frameLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, meetingCaptions, teachWalkPath, teachActionCue, documentDraftText, inboxDraftText, securityReportText, buildEml, buildSecurityReport } = require("./coworker-desks");
+const { catalog, todayAssist, sessionBundle, sessionPacketParts, advanceLiveTeach, frameLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, meetingCaptions, teachWalkPath, teachActionCue, documentDraftText, inboxDraftText, securityReportText, buildEml, buildSecurityReport } = require("./coworker-desks");
 const { parsePoints } = require("./point-overlay");
-const { buildDocx } = require("./word-coworker");
+const { buildDocx, zipStore } = require("./word-coworker");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
 
@@ -385,6 +385,43 @@ function createCoordinator(opts = {}) {
         "content-disposition": 'attachment; filename="pointer-review.md"',
       });
       res.end(built.buffer);
+      return;
+    }
+    if (req.method === "GET" && (url.pathname === "/api/session.zip" || url.pathname === "/session.zip")) {
+      const todayBrief = todayAssist({
+        state: {
+          today,
+          lanes: snapshot().lanes,
+          drafts,
+          artifacts: workspace.list(),
+          jobs: [],
+        },
+      });
+      const parts = sessionPacketParts(workspace.list(), todayBrief.cue);
+      const zipFiles = Array.isArray(parts.files) ? parts.files.slice() : [];
+      if (parts.documentText) {
+        const built = buildDocx(parts.documentText);
+        if (built.ok) zipFiles.push({ name: "pointer-draft.docx", data: built.buffer });
+      }
+      if (!parts.ok || !zipFiles.length) {
+        res.writeHead(404, { "content-type": "application/json; charset=utf-8" });
+        res.end(
+          JSON.stringify({
+            ok: false,
+            act: false,
+            exec: false,
+            send: false,
+            approve: false,
+            reason: parts.reason || "no live session",
+          })
+        );
+        return;
+      }
+      res.writeHead(200, {
+        "content-type": "application/zip",
+        "content-disposition": 'attachment; filename="pointer-session.zip"',
+      });
+      res.end(zipStore(zipFiles));
       return;
     }
     if (req.method === "GET" && url.pathname === "/api/home") {

@@ -547,6 +547,7 @@ module.exports = {
   writeDocx,
   buildDocx,
   appendDocx,
+  zipStore,
   zipRead,
   clipboardMatchesSource,
   defaultDocxPath,

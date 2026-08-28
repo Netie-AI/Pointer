@@ -812,6 +812,115 @@ function test(name, fn) {
     await c.close();
   });
 
+  await test("loopback session.zip is a packet of finished files and never execs", async () => {
+    const {
+      documentAssist,
+      inboxAssist,
+      securityAssist,
+    } = require("../electron/netie/coworker-desks");
+    const { zipRead } = require("../electron/netie/word-coworker");
+    const c = createCoordinator({ clock: () => 17 });
+    const on = await c.listen({ host: "127.0.0.1", port: 0 });
+    const port = on.address.port;
+    const miss = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/session.zip" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks) }));
+      }).on("error", reject);
+    });
+    assert.strictEqual(miss.status, 404);
+    const missJson = JSON.parse(miss.body.toString("utf8"));
+    assert.strictEqual(missJson.act, false);
+    assert.strictEqual(missJson.exec, false);
+    assert.strictEqual(missJson.send, false);
+    assert.strictEqual(missJson.approve, false);
+    c.workspace.put({
+      id: "live-meeting",
+      desk: "meeting",
+      title: "Live meeting",
+      body: "# Meeting brief\nThey asked: What is the launch date?",
+      cue: "We'll ship Friday.",
+      asked: "What is the launch date?",
+    });
+    c.workspace.put({
+      id: "live-teach",
+      desk: "teach",
+      title: "Teach walk",
+      body: "# Teach walk\nType in Email then Tab",
+      cue: "Type in Email then Tab",
+    });
+    const draft = documentAssist({ text: "write hello in Word" });
+    c.workspace.put({
+      id: "live-document",
+      desk: "document",
+      title: draft.title,
+      body: draft.deliverable,
+      cue: draft.cue,
+      preview: draft.preview,
+    });
+    const mail = inboxAssist({
+      text: "draft a follow-up email",
+      transcript: "system: Hi this is Sarah Chen from acme.\nsystem: Can you send the deck by Friday for $40k?\nmic: I will send it Friday.",
+    });
+    c.workspace.put({
+      id: "live-inbox",
+      desk: "inbox",
+      title: mail.title,
+      body: mail.deliverable,
+      cue: mail.cue,
+      preview: mail.preview,
+    });
+    const review = securityAssist({
+      text: "security review this session",
+      files: [{ name: "notes.md", body: "Launch is Friday for $40k." }],
+    });
+    c.workspace.put({
+      id: "live-security",
+      desk: "security",
+      title: review.title,
+      body: review.deliverable,
+      cue: review.cue,
+      preview: review.preview,
+      findings: review.findings,
+    });
+    const hit = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/session.zip" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () =>
+          resolve({
+            status: res.statusCode,
+            type: String(res.headers["content-type"] || ""),
+            disp: String(res.headers["content-disposition"] || ""),
+            body: Buffer.concat(chunks),
+          })
+        );
+      }).on("error", reject);
+    });
+    assert.strictEqual(hit.status, 200);
+    assert.match(hit.type, /zip/);
+    assert.match(hit.disp, /pointer-session\.zip/);
+    const zip = zipRead(hit.body);
+    assert.strictEqual(zip.ok, true);
+    const names = zip.entries.map((row) => row.name);
+    assert.ok(names.includes("pointer-session.md"));
+    assert.ok(names.includes("meeting.md"));
+    assert.ok(names.includes("teach.md"));
+    assert.ok(names.includes("pointer-draft.eml"));
+    assert.ok(names.includes("pointer-review.md"));
+    assert.ok(names.includes("pointer-draft.docx"));
+    assert.ok(names.every((name) => /^[A-Za-z0-9._-]+$/.test(name)));
+    const sessionMd = zip.entries.find((row) => row.name === "pointer-session.md").data.toString("utf8");
+    assert.match(sessionMd, /act: never/);
+    assert.match(sessionMd, /exec: parked/);
+    const eml = zip.entries.find((row) => row.name === "pointer-draft.eml").data.toString("utf8");
+    assert.match(eml, /X-Pointer-Send: never/);
+    const report = zip.entries.find((row) => row.name === "pointer-review.md").data.toString("utf8");
+    assert.match(report, /approve: never/);
+    await c.close();
+  });
+
   console.log(`\n${pass} passed, ${fails.length} failed`);
   process.exit(fails.length ? 1 : 0);
 })();

@@ -50,7 +50,8 @@ the working set (never exec). `/workspace` This computer dock Run POSTs
 document or inbox file on `/workspace?id=` also offers Download generated
 `.docx` / unsent `.eml` and hoists that file above desks and Run, with
 This session files as tabs. Opening `live-security` offers Download review
-(never approval). Home theater cards include Open in workspace.
+(never approval). Download packet on home/`/workspace` is loopback GET
+`/api/session.zip` (finished files, never exec). Home theater cards include Open in workspace.
 Loopback `/document`
 downloads a generated `.docx` from the live draft (never Act, never
 Word.app). Public `/api/document.docx` is 404. Loopback `/meeting` paints the You/Them

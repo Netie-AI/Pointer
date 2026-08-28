@@ -1,3 +1,10 @@
+## 2026-08-28 - Download packet is the finished session zip
+
+Loopback GET `/api/session.zip` packs This session markdown plus meeting /
+teach briefs, generated `.docx`, unsent `.eml`, and the security review.
+Never Act. Never send. Never approval. Never exec. Public catalog stays
+404. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Teach chrome stays teach-only
 
 Loopback `/teach` sticky chrome hides meeting They asked / Live captions

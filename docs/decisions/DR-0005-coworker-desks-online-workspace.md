@@ -160,7 +160,8 @@ Live captions, and say-this (never a cheater overlay). Loopback
 .docx, live-inbox the unsent .eml, live-security the generated review
 (never approval). The open file leads that page with This session files as tabs.
 Home work cards link Open in
-workspace. Loopback `/workspace` This computer dock Run POSTs `/api/workspace/exec`
+workspace. Download packet is loopback GET `/api/session.zip` (session
+markdown plus finished files, never exec). Loopback `/workspace` This computer dock Run POSTs `/api/workspace/exec`
 and always fails closed (P-06). Public catalog shows the same refuse.
 Loopback GET `/api/document.docx` returns a generated Word package from
 the live draft (never Act, never Word.app). Public `/api/document.docx`

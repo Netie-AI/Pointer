@@ -3000,6 +3000,60 @@ function sessionMarkdown(bundle) {
   return lines.join("\n").slice(0, 4000);
 }
 
+function packetFile(name, data) {
+  if (!/^[A-Za-z0-9._-]+$/.test(String(name || ""))) return null;
+  if (data == null) return null;
+  const buf = Buffer.isBuffer(data) ? data : Buffer.from(String(data), "utf8");
+  if (!buf.length) return null;
+  return { name, data: buf };
+}
+
+/**
+ * Finished files for a loopback session packet. Never Acts. Never sends.
+ * Never approves. Coordinator may zip these plus a generated .docx.
+ */
+function sessionPacketParts(artifacts, plateCue) {
+  const bundle = sessionBundle(artifacts, plateCue);
+  if (!bundle || bundle.empty) {
+    return {
+      ok: false,
+      act: false,
+      exec: false,
+      send: false,
+      approve: false,
+      files: [],
+      documentText: "",
+      reason: "no live session",
+    };
+  }
+  const byId = new Map();
+  for (const a of Array.isArray(artifacts) ? artifacts : []) {
+    if (a && a.id) byId.set(String(a.id), a);
+  }
+  const files = [];
+  function add(name, data) {
+    const row = packetFile(name, data);
+    if (row) files.push(row);
+  }
+  add("pointer-session.md", bundle.markdown);
+  add("meeting.md", String((byId.get("live-meeting") || {}).body || "").trim());
+  add("teach.md", String((byId.get("live-teach") || {}).body || "").trim());
+  const eml = buildEml(inboxDraftText(byId.get("live-inbox") || null));
+  if (eml.ok) add("pointer-draft.eml", eml.buffer);
+  const report = buildSecurityReport(securityReportText(byId.get("live-security") || null));
+  if (report.ok) add("pointer-review.md", report.buffer);
+  const documentText = documentDraftText(byId.get("live-document") || null);
+  return {
+    ok: files.length > 0 || Boolean(documentText),
+    act: false,
+    exec: false,
+    send: false,
+    approve: false,
+    files,
+    documentText,
+  };
+}
+
 /**
  * Computer-shaped session catalog. Artifacts you can open, never a runtime.
  * Public copies stay empty. Never Acts.
@@ -3183,6 +3237,7 @@ module.exports = {
   sessionBundle,
   publicSessionSnapshot,
   sessionMarkdown,
+  sessionPacketParts,
   scanInjectedSecrets,
   FRAME_TEACH_TEXT,
   shouldTeachFramedRegion,

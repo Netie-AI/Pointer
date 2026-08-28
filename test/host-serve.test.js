@@ -226,6 +226,8 @@ function readAsset(file) {
     assert.match(paint, /textContent/);
     assert.match(app, /writeText/);
     assert.match(app, /createObjectURL/);
+    assert.match(app, /\/api\/session\.zip/);
+    assert.match(app, /pointer-session.zip/);
     assert.match(app, /pointer-session.md/);
     assert.match(app, /briefFileName/);
     assert.match(app, /artifact-copy/);
@@ -435,6 +437,15 @@ function readAsset(file) {
     const reportBare = handlePublicRequest({ method: "GET", pathname: "/security.md" });
     assert.strictEqual(reportBare.status, 404);
     assert.strictEqual(JSON.parse(reportBare.body).approve, false);
+    const packetPublic = handlePublicRequest({ method: "GET", pathname: "/api/session.zip" });
+    assert.strictEqual(packetPublic.status, 404);
+    assert.strictEqual(JSON.parse(packetPublic.body).exec, false);
+    assert.strictEqual(JSON.parse(packetPublic.body).act, false);
+    assert.strictEqual(JSON.parse(packetPublic.body).send, false);
+    assert.strictEqual(JSON.parse(packetPublic.body).approve, false);
+    const packetBare = handlePublicRequest({ method: "GET", pathname: "/session.zip" });
+    assert.strictEqual(packetBare.status, 404);
+    assert.strictEqual(JSON.parse(packetBare.body).exec, false);
     const css = await fetch(new Request("https://host.netie.ai/style.css"));
     assert.strictEqual(css.status, 200);
     assert.match(css.headers.get("content-type"), /text\/css/);

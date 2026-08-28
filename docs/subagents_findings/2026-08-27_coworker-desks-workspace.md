@@ -82,6 +82,10 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - Loopback GET `/api/security.md` builds a redacted review in memory
   (never approval, never Act, no disk walk). Public `/api/security.md`
   stays 404. Cue still says not approval.
+- Loopback GET `/api/session.zip` packs This session markdown plus
+  meeting / teach briefs, generated `.docx`, unsent `.eml`, and the
+  security review (never Act, never send, never approval, never exec).
+  Public `/api/session.zip` stays 404.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
 ## Traps

@@ -1697,8 +1697,20 @@ if (sessionCopy) {
 const sessionDownload = document.getElementById("session-download");
 if (sessionDownload) {
   sessionDownload.addEventListener("click", function () {
-    const mdEl = document.getElementById("session-md");
-    downloadMarkdown("pointer-session.md", mdEl ? mdEl.textContent : "");
+    fetch("/api/session.zip")
+      .then(function (r) {
+        if (!r.ok) throw new Error("no packet");
+        return r.blob();
+      })
+      .then(function (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = el("a");
+        a.href = url;
+        a.download = "pointer-session.zip";
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch(function () {});
   });
 }
 
