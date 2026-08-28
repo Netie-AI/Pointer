@@ -19,9 +19,11 @@
    `/meeting` is a Live answer, never a cheater overlay. Overlay Draw
    stores a freehand BOX (cap 8, 0.4% fail-closed). Home rail is filed
    windows plus a room dock. Session markdown is copy-only. Unsent `To`
-   is a Heard name or not sent. `/workspace` is a desktop grid; Run
-   refuses (P-06). Public live paths stay 404. Public pages paint the
-   labeled demo coworker (not your session, no runtime).
+   is a Heard name or not sent. `/workspace` is a desktop; click a file
+   to open a window on This computer. Home This screen tap is Got it
+   (Ask, never Act). Run refuses (P-06). Public live paths stay 404.
+   Public pages paint the labeled demo coworker (not your session, no
+   runtime).
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

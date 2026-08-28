@@ -187,3 +187,6 @@ never meeting. Current BOX pulses in place (not a cursor ring). `?demo=1`
 is a sample catalog (not live, no runtime, Ask stays on the laptop).
 Public localFirst pages paint that same labeled demo (not your session).
 Live APIs stay 404.
+`/workspace` opens a file as a window on This computer (not a dump below
+the catalog). Home This screen tap on the current BOX is Got it (Ask,
+never Act).

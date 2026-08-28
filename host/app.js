@@ -269,6 +269,8 @@ function paintOpenFileHero() {
   const main = document.querySelector("main");
   if (!main || !isWorkspacePage()) return;
   main.classList.toggle("workspace-open-file", Boolean(lastOpenId));
+  const win = document.getElementById("open-file");
+  if (win) win.hidden = !lastOpenId;
   paintOpenFileTabs();
 }
 
@@ -1620,6 +1622,21 @@ function wireTeachFrame(map, apply, current) {
   });
 }
 
+function wireTeachTap(map, apply, current) {
+  if (!map || map.dataset.tapped === "1") return;
+  map.dataset.tapped = "1";
+  map.addEventListener("click", function (ev) {
+    const r = map.getBoundingClientRect();
+    const w = r.width || 1;
+    const h = r.height || 1;
+    const x = ((ev.clientX - r.left) / w) * 100;
+    const y = ((ev.clientY - r.top) / h) * 100;
+    if (!hitTeachBox(current, x, y)) return;
+    postTeach("i clicked", apply);
+    ev.preventDefault();
+  });
+}
+
 function teachActionLine(m) {
   const action = String((m && m.action) || "").trim();
   if (action) return action;
@@ -1674,6 +1691,7 @@ function paintTeachInk(map, boxes) {
 function paintTeachMap(root, m, opts) {
   if (!root || (m && m.desk && m.desk !== "teach") || (m && m.localFirst)) return;
   const draw = Boolean(opts && opts.draw) && !(m && m.localFirst) && !(m && m.exec);
+  const tap = !draw && Boolean(opts && opts.tap) && !(m && m.localFirst) && !(m && m.exec);
   const path = Array.isArray(m && m.path) && m.path.length ? m.path : [];
   const markers = Array.isArray(m && m.markers) ? m.markers : [];
   const boxes = path.length
@@ -1683,7 +1701,7 @@ function paintTeachMap(root, m, opts) {
     ? path.filter((p) => p.now && Number.isFinite(Number(p.xPct)) && Number.isFinite(Number(p.yPct)))
     : markers.filter((p) => Number.isFinite(Number(p.xPct)) && Number.isFinite(Number(p.yPct)));
   if (!boxes.length && !dots.length && !draw) return;
-  const map = el("div", draw ? "teach-map draw" : "teach-map");
+  const map = el("div", draw ? "teach-map draw" : tap ? "teach-map tap" : "teach-map");
   map.setAttribute("role", draw ? "application" : "img");
   const action = teachActionLine(m);
   const rest = String((m && m.rest) || "").trim();
@@ -1696,6 +1714,10 @@ function paintTeachMap(root, m, opts) {
     hint.textContent = boxes.length
       ? "Click the current BOX to Got it. Draw another BOX to add a step."
       : "Draw around a control. Pointer stores a BOX and will not click.";
+    map.appendChild(hint);
+  } else if (tap) {
+    const hint = el("p", "teach-map-hint");
+    hint.textContent = "Click the current BOX to Got it. Never Act.";
     map.appendChild(hint);
   }
   if (action) {
@@ -1752,6 +1774,7 @@ function paintTeachMap(root, m, opts) {
     map.appendChild(rail);
   }
   if (draw) wireTeachFrame(map, opts.apply, boxes.find(function (p) { return p.now; }) || null);
+  else if (tap) wireTeachTap(map, opts.apply, boxes.find(function (p) { return p.now; }) || null);
   root.appendChild(map);
 }
 
@@ -1895,6 +1918,18 @@ function paintWorkRail(root, rooms) {
   if (rail.childNodes.length) root.appendChild(rail);
 }
 
+function applyHomeTeach(m) {
+  const root = document.getElementById("stage");
+  if (!root || !m) return;
+  const map = root.querySelector(".teach-map");
+  const holder = document.createElement("div");
+  paintTeachMap(holder, m, { tap: true, apply: applyHomeTeach });
+  const nextMap = holder.querySelector(".teach-map");
+  if (!nextMap) return;
+  if (map) map.replaceWith(nextMap);
+  else root.insertBefore(nextMap, root.firstChild);
+}
+
 function paintStage(rooms, localFirst) {
   const root = document.getElementById("stage");
   if (!root) return;
@@ -1903,7 +1938,7 @@ function paintStage(rooms, localFirst) {
     root.hidden = true;
     return;
   }
-  paintTeachMap(root, (rooms && rooms.teach) || {});
+  paintTeachMap(root, (rooms && rooms.teach) || {}, { tap: true, apply: applyHomeTeach });
   paintMeetingCard(root, (rooms && rooms.meeting) || {});
   paintTodayPlate(root, (rooms && rooms.today) || {});
   paintWorkRail(root, rooms);

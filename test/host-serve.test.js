@@ -158,6 +158,9 @@ function readAsset(file) {
     assert.match(page, /id="open-file"/);
     assert.match(page, /id="open-file-kicker"/);
     assert.match(page, /id="open-file-tabs"/);
+    assert.match(page, /workspace-catalog/);
+    assert.match(page, /Open window/);
+    assert.match(page, /open it as a window/);
     assert.match(page, /tabs on the open file/);
     assert.match(page, /generated \.docx/);
     assert.match(page, /security review/);
@@ -255,6 +258,9 @@ function readAsset(file) {
     assert.match(app, /teach-map-screen/);
     assert.match(app, /p\.now && p\.cue/);
     assert.match(app, /wireTeachFrame/);
+    assert.match(app, /wireTeachTap/);
+    assert.match(app, /teach-map tap/);
+    assert.match(app, /applyHomeTeach/);
     assert.match(app, /postTeachFrame/);
     assert.match(app, /teach-map/);
     assert.match(app, /teach-map-cue/);
@@ -299,6 +305,8 @@ function readAsset(file) {
     assert.match(cssText, /teach-map-control/);
     assert.match(cssText, /teach-map-screen/);
     assert.match(cssText, /\.teach-map\.draw/);
+    assert.match(cssText, /teach-map\.tap/);
+    assert.match(cssText, /workspace-catalog/);
     assert.match(cssText, /teach-map-key/);
     assert.match(cssText, /teach-map-hint\.add/);
     assert.match(cssText, /teach-now-pulse/);

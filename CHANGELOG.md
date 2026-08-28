@@ -1,4 +1,11 @@
-## 2026-08-28 - Public host paints the sample coworker
+## 2026-08-28 - This computer opens files as windows; home BOX is Got it
+
+Click a file on `/workspace` to open it as a window on This computer.
+Home This screen tap on the current BOX is Got it (Ask, never Act).
+Public catalog stays labeled demo. Run still refuses (P-06). Never Act.
+P-05 stays parked.
+
+
 
 Public localFirst pages paint the labeled demo catalog (This screen,
 Live answer, Notes, Unsent mail, Needs you). Not your session. Live

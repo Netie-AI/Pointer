@@ -8,15 +8,18 @@ header, main, .live-cue-bar { max-width: 720px; margin: 0 auto; padding: 16px; }
 body.workspace-page header,
 body.workspace-page main,
 body.workspace-page .live-cue-bar { max-width: 960px; }
-main.workspace-open-file {
-  display: flex;
-  flex-direction: column;
+main.workspace-open-file .workspace-catalog {
+  display: none;
 }
-main.workspace-open-file #open-file {
-  order: -3;
+#computer-dock #open-file {
+  margin: 12px 0 0;
+  padding: 12px 14px 16px;
+  border: 1px solid #345;
+  background: #151515;
 }
-main.workspace-open-file #computer-dock {
-  order: -2;
+#computer-dock #open-file > h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
 }
 .session-grid {
   display: grid;
@@ -234,6 +237,13 @@ pre {
 .teach-map.draw {
   pointer-events: auto;
   cursor: crosshair;
+}
+.teach-map.tap {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.teach-map.tap .teach-map-box.now {
+  cursor: pointer;
 }
 .teach-map-cue, .teach-map-then {
   position: absolute;
