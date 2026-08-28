@@ -250,6 +250,8 @@ function computerStatus(opts = {}) {
         "click 40 50",
         "click: Save",
         "click window: notepad",
+        "click element: Save",
+        "observe then click element: Save",
         "doubleclick 40 50",
         "rightclick: Close",
         "hover 40 50",

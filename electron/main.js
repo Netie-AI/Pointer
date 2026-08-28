@@ -328,10 +328,20 @@ async function planLocalInstruction(instruction) {
   } catch {
     windows = [];
   }
+  let elements = [];
+  if (/\b(?:click|doubleclick|rightclick|hover)\s+(?:element|control)\s*:/i.test(String(instruction || ""))) {
+    try {
+      const uia = uiaContext(teachScreenRegion());
+      if (uia) elements = await dumpForeground({ ...uia, max: 40 });
+    } catch {
+      elements = [];
+    }
+  }
   return planFromInstruction(instruction, {
     matchRecipe,
     target: deliveryTarget,
     windows,
+    elements,
   });
 }
 

@@ -154,6 +154,8 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("focus: notepad then type: hello"));
     assert.ok(shown.drive.instructions.includes("click: Save"));
     assert.ok(shown.drive.instructions.includes("click window: notepad"));
+    assert.ok(shown.drive.instructions.includes("click element: Save"));
+    assert.ok(shown.drive.instructions.includes("observe then click element: Save"));
     assert.ok(shown.drive.instructions.includes("wait 400"));
     assert.ok(shown.drive.instructions.includes("replace: hello"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?screenshot=1"));

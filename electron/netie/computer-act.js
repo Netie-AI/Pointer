@@ -98,6 +98,43 @@ function windowClickPoint(win) {
   return null;
 }
 
+function findElement(elements, want) {
+  const needle = String(want || "").trim().toLowerCase();
+  if (!needle) return null;
+  const list = Array.isArray(elements) ? elements : [];
+  let best = null;
+  let bestScore = 0;
+  for (const el of list) {
+    const name = String((el && (el.name || el.label || el.title || el.target)) || "")
+      .trim()
+      .toLowerCase();
+    if (!name) continue;
+    let score = 0;
+    if (name === needle) score = 100;
+    else if (name.startsWith(needle) || needle.startsWith(name)) score = 70;
+    else if (name.includes(needle)) score = 55;
+    else continue;
+    if (el && el.enabled === false) score -= 25;
+    if (score > bestScore) {
+      best = el;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+function elementClickPoint(el) {
+  if (!el || typeof el !== "object") return null;
+  if (el.xPct != null && el.yPct != null) {
+    const xPct = Number(el.xPct);
+    const yPct = Number(el.yPct);
+    if (Number.isFinite(xPct) && Number.isFinite(yPct) && xPct >= 0 && xPct <= 100 && yPct >= 0 && yPct <= 100) {
+      return { xPct, yPct };
+    }
+  }
+  return windowClickPoint(el);
+}
+
 const MAX_CHAIN = 8;
 
 function looksLocalStep(text) {
@@ -205,6 +242,25 @@ function planOneInstruction(instruction, opts = {}) {
       actions: [{ type: kind, x: pt.x, y: pt.y }],
     };
   }
+  const elementClick = text.match(
+    /^(?:please\s+)?(click|doubleclick|rightclick|hover)\s+(?:element|control)\s*:\s*([\s\S]+)$/i
+  );
+  if (elementClick && elementClick[2].trim()) {
+    const kind = String(elementClick[1] || "click").toLowerCase();
+    const hit = findElement(opts.elements, elementClick[2]);
+    if (!hit) return { ok: false, reason: "no matching element" };
+    const pt = elementClickPoint(hit);
+    if (!pt) return { ok: false, reason: "no element rect" };
+    const action = { type: kind, target: String(hit.name || elementClick[2]).trim() };
+    if (pt.xPct != null) {
+      action.xPct = pt.xPct;
+      action.yPct = pt.yPct;
+    } else {
+      action.x = pt.x;
+      action.y = pt.y;
+    }
+    return { ok: true, source: "click-element", actions: [action] };
+  }
   for (const kind of ["click", "doubleclick", "rightclick", "hover"]) {
     const named = parseNamedInstruction(kind, text);
     if (named) return named;
@@ -274,6 +330,7 @@ async function prepareComputerAct(params, deps = {}) {
       planned = planFromInstruction(req.instruction, {
         matchRecipe: deps.matchRecipe,
         windows: deps.windows,
+        elements: deps.elements,
         target: deps.target,
       });
     }
@@ -329,7 +386,9 @@ module.exports = {
   planOneInstruction,
   planFromInstruction,
   findWindow,
+  findElement,
   windowClickPoint,
+  elementClickPoint,
   prepareComputerAct,
   runComputerAct,
   MAX_CHAIN,
