@@ -496,6 +496,8 @@ function readAsset(file) {
     assert.match(overlayText, /looksWalkAsk/);
     assert.match(overlayText, /what should i \(say\|type\|put\)/);
     assert.match(overlayText, /Got it/);
+    assert.match(overlayText, /Show me/);
+    assert.match(overlayText, /id="walk-fly"/);
     assert.match(overlayText, /Last step/);
     assert.match(overlayText, /demoFrame/);
     assert.match(overlayText, /Type in Email/);

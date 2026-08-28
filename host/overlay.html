@@ -100,7 +100,7 @@
       .walk-rail-tick.later { opacity: 0.7; }
       .walk-rail-tick.done { opacity: 0.4; color: #eee; }
       body.draw { pointer-events: auto; cursor: crosshair; }
-      #draw-stroke, #walk-ink {
+      #draw-stroke, #walk-ink, #walk-fly {
         position: absolute;
         inset: 0;
         width: 100%;
@@ -109,12 +109,25 @@
       }
       #draw-stroke { z-index: 3; }
       #walk-ink { z-index: 2; }
+      #walk-fly { z-index: 3; }
       #draw-stroke polyline, #walk-ink polyline {
         fill: none;
         stroke: #9ad;
         stroke-width: 1.35;
         stroke-linecap: round;
         stroke-linejoin: round;
+      }
+      #walk-fly path {
+        fill: none;
+        stroke: #6ea8ff;
+        stroke-width: 1.5;
+        stroke-linecap: round;
+        stroke-dasharray: 140;
+        stroke-dashoffset: 140;
+        animation: walk-fly-draw 640ms ease-out forwards;
+      }
+      @keyframes walk-fly-draw {
+        to { stroke-dashoffset: 0; }
       }
       #walk-ink polyline.then, #walk-ink polyline.done {
         stroke: #567;
@@ -372,6 +385,7 @@
         <div id="walk-acts">
           <button type="button" id="walk-back" data-q="back">Back</button>
           <button type="button" id="walk-next" data-q="got it, next">Got it</button>
+          <button type="button" id="walk-show">Show me</button>
           <button type="button" id="walk-stack-copy">Copy</button>
           <button type="button" id="walk-draw">Draw</button>
         </div>
@@ -391,6 +405,7 @@
     <aside id="walk-dock" class="chrome" hidden></aside>
     <div id="walk-desktop" aria-hidden="true"></div>
     <svg id="walk-ink" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
+    <svg id="walk-fly" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
     <svg id="draw-stroke" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
     <div id="draw-ghost" class="point-mark point-box" hidden></div>
     <div id="point-layer" aria-hidden="true"></div>
@@ -415,6 +430,11 @@
       let liveAsked = false;
       let lastInboxSaved = false;
       let lastRailPoints = [];
+      let showMeOn = false;
+      let showMeTimer = 0;
+      let showMeLeft = 0;
+      let lastFlyKey = "";
+      let lastFlyAt = null;
 
       function restLine(rest, cue) {
         if (/^saved on this computer/i.test(String(cue || ""))) return "";
@@ -502,6 +522,7 @@
           layer.appendChild(mark);
         });
         paintWalkInk(points);
+        paintWalkFly(points);
         paintRail(points);
       }
 
@@ -527,6 +548,7 @@
       function onRailStep(i) {
         const want = Number(i);
         if (!Number.isInteger(want) || want < 0) return;
+        stopShowMe();
         let now = 0;
         lastRailPoints.forEach(function (p, idx) {
           if (p && p.now) now = idx;
@@ -568,6 +590,86 @@
         ink.hidden = n === 0;
       }
 
+      function boxCenter(point) {
+        if (!point) return null;
+        if (Number(point.wPct) > 0 && Number(point.hPct) > 0) {
+          return {
+            x: Number(point.leftPct) + Number(point.wPct) / 2,
+            y: Number(point.topPct) + Number(point.hPct) / 2,
+          };
+        }
+        const x = Number(point.xPct);
+        const y = Number(point.yPct);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        return { x: x, y: y };
+      }
+
+      function paintWalkFly(points) {
+        const fly = document.getElementById("walk-fly");
+        if (!fly) return;
+        while (fly.firstChild) fly.removeChild(fly.firstChild);
+        const now = (points || []).find(function (p) {
+          return p && !p.later && !p.done;
+        });
+        const to = boxCenter(now);
+        const key = to ? [to.x.toFixed(2), to.y.toFixed(2)].join(",") : "";
+        if (!to || !lastFlyAt || key === lastFlyKey) {
+          lastFlyKey = key;
+          if (to) lastFlyAt = to;
+          fly.hidden = true;
+          return;
+        }
+        const from = lastFlyAt;
+        lastFlyKey = key;
+        lastFlyAt = to;
+        const mx = (from.x + to.x) / 2;
+        const my = Math.max(2, Math.min(from.y, to.y) - 10);
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute(
+          "d",
+          "M " + from.x + " " + from.y + " Q " + mx + " " + my + " " + to.x + " " + to.y
+        );
+        fly.appendChild(path);
+        fly.hidden = false;
+      }
+
+      function stopShowMe() {
+        showMeOn = false;
+        if (showMeTimer) {
+          clearTimeout(showMeTimer);
+          showMeTimer = 0;
+        }
+        const btn = document.getElementById("walk-show");
+        if (btn) btn.textContent = "Show me";
+      }
+
+      function showMeStep() {
+        if (!showMeOn || inboxSaved || showMeLeft <= 0) {
+          stopShowMe();
+          return;
+        }
+        showMeLeft -= 1;
+        onAsk("got it, next");
+        if (inboxSaved || showMeLeft <= 0) {
+          stopShowMe();
+          return;
+        }
+        showMeTimer = setTimeout(showMeStep, 1700);
+      }
+
+      function toggleShowMe() {
+        if (showMeOn) {
+          stopShowMe();
+          return;
+        }
+        if (inboxSaved) return;
+        showMeOn = true;
+        showMeLeft = 8;
+        const btn = document.getElementById("walk-show");
+        if (btn) btn.textContent = "Stop";
+        showMeTimer = setTimeout(showMeStep, 1700);
+      }
+
       function paintChrome(event) {
         const cue = String((event && event.cue) || "").trim();
         const rest = String((event && event.rest) || "").trim();
@@ -588,6 +690,7 @@
         const spoken = fill && /^type in\b/i.test(action) ? "Type " + fill : action;
         const restSpeak = String(rest || "").replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
         if (/^saved on this computer/i.test(action)) {
+          stopShowMe();
           speakTeachCue("Saved on This computer. Never sent.");
         } else {
           speakTeachCue(restSpeak ? spoken + ". Then " + restSpeak : spoken ? spoken + ". Last step" : "");
@@ -632,6 +735,7 @@
       function setDraw(on) {
         drawing = Boolean(on);
         document.body.classList.toggle("draw", drawing);
+        if (drawing) stopShowMe();
         if (ghost) ghost.hidden = true;
         clearStroke();
         drag = null;
@@ -803,7 +907,7 @@
           const chrome = document.getElementById("walk-chrome");
           const shown = Boolean(chrome && chrome.classList.contains("show"));
           const pad = (!hasApi && shown) ? Math.ceil(chrome.getBoundingClientRect().height + 12) : 0;
-          ["walk-desktop", "point-layer", "walk-ink", "draw-stroke"].forEach(function (id) {
+          ["walk-desktop", "point-layer", "walk-ink", "walk-fly", "draw-stroke"].forEach(function (id) {
             const el = document.getElementById(id);
             if (!el) return;
             el.style.top = pad ? pad + "px" : "";
@@ -1097,6 +1201,7 @@
         const q = String((input && input.value) || "").trim();
         if (!q) return;
         if (input) input.value = "";
+        stopShowMe();
         if (overlayDeskHref(q)) onDesk(q);
         else onAsk(q);
       }
@@ -1104,7 +1209,13 @@
       function onAdvance(ev) {
         if (ev.target && ev.target.closest && ev.target.closest("#walk-draw")) {
           ev.preventDefault();
+          stopShowMe();
           setDraw(!drawing);
+          return;
+        }
+        if (ev.target && ev.target.closest && ev.target.closest("#walk-show")) {
+          ev.preventDefault();
+          toggleShowMe();
           return;
         }
         if (ev.target && ev.target.closest && ev.target.closest("#walk-stack-copy")) {
@@ -1137,6 +1248,7 @@
         const q = btn && String(btn.getAttribute("data-q") || "").trim();
         if (!q) return;
         ev.preventDefault();
+        stopShowMe();
         if (btn.getAttribute("data-desk")) onDesk(q);
         else onAsk(q);
       }
@@ -1211,9 +1323,12 @@
         const saved = Boolean(inboxSaved);
         const back = document.getElementById("walk-back");
         const next = document.getElementById("walk-next");
+        const show = document.getElementById("walk-show");
         if (back) back.hidden = !(saved || demoStep > 0);
         if (next) next.hidden = saved;
+        if (show) show.hidden = saved;
         if (saved) {
+          stopShowMe();
           liveAsked = true;
           paint([]);
           paintLiveChrome(true);
@@ -1366,6 +1481,9 @@
         inboxSaved = false;
         liveAsked = false;
         lastInboxSaved = false;
+        lastFlyKey = "";
+        lastFlyAt = null;
+        stopShowMe();
         paintWalkDesktop();
         highlightWalkWindow("/workspace?id=live-inbox");
         paintDemoState();
@@ -1419,14 +1537,18 @@
         clearStroke();
       });
       document.addEventListener("keydown", function (ev) {
-        if (ev.key === "Escape" && drawing) {
-          setDraw(false);
-          return;
+        if (ev.key === "Escape") {
+          stopShowMe();
+          if (drawing) {
+            setDraw(false);
+            return;
+          }
         }
         if (ev.key === "Enter" && !drawing && !ev.repeat) {
           if (ev.target && ev.target.closest && ev.target.closest("button")) return;
           if (ev.target && ev.target.closest && ev.target.closest("#walk-ask-form")) return;
           ev.preventDefault();
+          stopShowMe();
           onAsk("got it, next");
         }
       });

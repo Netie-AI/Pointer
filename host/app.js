@@ -1035,6 +1035,7 @@ function demoAsk(ask) {
 }
 
 function postAsk(ask) {
+  stopHostShowMe();
   if (isDemoCatalog()) {
     demoAsk(ask);
     return;
@@ -1332,6 +1333,7 @@ function postMeeting(ask) {
 }
 
 function postTeach(ask, apply) {
+  if (!hostShowMeTick) stopHostShowMe();
   if (isDemoCatalog()) {
     demoAdvanceTeach(ask);
     const m = demoTeachRoom();
@@ -1377,6 +1379,56 @@ function wireTeachAdvance(apply) {
 }
 
 let lastChromeCue = "";
+let hostShowMeOn = false;
+let hostShowMeTimer = 0;
+let hostShowMeTick = false;
+let hostShowMeLeft = 0;
+
+function stopHostShowMe() {
+  hostShowMeOn = false;
+  if (hostShowMeTimer) {
+    clearTimeout(hostShowMeTimer);
+    hostShowMeTimer = 0;
+  }
+  const btn = document.getElementById("live-cue-show");
+  if (btn) btn.textContent = "Show me";
+}
+
+function hostShowMeStep() {
+  if (!hostShowMeOn || hostShowMeLeft <= 0) {
+    stopHostShowMe();
+    return;
+  }
+  const next = document.getElementById("live-cue-next");
+  if (next && next.hidden) {
+    stopHostShowMe();
+    return;
+  }
+  hostShowMeLeft -= 1;
+  hostShowMeTick = true;
+  postTeach("got it, next");
+  hostShowMeTick = false;
+  const still = document.getElementById("live-cue-next");
+  if ((still && still.hidden) || hostShowMeLeft <= 0) {
+    stopHostShowMe();
+    return;
+  }
+  hostShowMeTimer = setTimeout(hostShowMeStep, 1700);
+}
+
+function toggleHostShowMe() {
+  if (hostShowMeOn) {
+    stopHostShowMe();
+    return;
+  }
+  const next = document.getElementById("live-cue-next");
+  if (next && next.hidden) return;
+  hostShowMeOn = true;
+  hostShowMeLeft = 8;
+  const btn = document.getElementById("live-cue-show");
+  if (btn) btn.textContent = "Stop";
+  hostShowMeTimer = setTimeout(hostShowMeStep, 1700);
+}
 
 function chromeBtn(id, label) {
   const b = el("button");
@@ -1437,9 +1489,11 @@ function ensureLiveCueBar() {
   const actions = el("div", "live-cue-actions");
   const back = chromeBtn("live-cue-back", "Back");
   const next = chromeBtn("live-cue-next", "Got it");
+  const show = chromeBtn("live-cue-show", "Show me");
   const copy = chromeBtn("live-cue-copy", "Copy");
   actions.appendChild(back);
   actions.appendChild(next);
+  actions.appendChild(show);
   actions.appendChild(copy);
   bar.appendChild(asked);
   bar.appendChild(heard);
@@ -1496,6 +1550,7 @@ function ensureLiveCueBar() {
   else document.body.insertBefore(bar, document.body.firstChild);
   back.addEventListener("click", function () { postTeach("back"); });
   next.addEventListener("click", function () { postTeach("got it, next"); });
+  show.addEventListener("click", function () { toggleHostShowMe(); });
   copy.addEventListener("click", function () { copyPlain(lastChromeCue); });
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
@@ -1606,9 +1661,12 @@ function paintChrome(home) {
   const canNext = Boolean(canWalk || (demoWalkOn && !demoInboxSaved()));
   const back = document.getElementById("live-cue-back");
   const next = document.getElementById("live-cue-next");
+  const show = document.getElementById("live-cue-show");
   const copy = document.getElementById("live-cue-copy");
   if (back) back.hidden = !canBack;
   if (next) next.hidden = !canNext;
+  if (show) show.hidden = !canNext;
+  if (!canNext) stopHostShowMe();
   if (copy) copy.hidden = !lastChromeCue;
   paintDeskChips(
     "host-ask-chips",

@@ -154,6 +154,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/id="walk-draw"/.test(walk) && />Draw</.test(walk), "overlay can stack a drawn BOX");
       assert.ok(/id="draw-stroke"/.test(walk), "overlay paints the freehand stroke");
       assert.ok(/id="walk-ink"/.test(walk), "overlay keeps stored freehand ink");
+      assert.ok(/id="walk-fly"/.test(walk) && /paintWalkFly/.test(walk), "overlay flies the BOX from the last control to the current one");
+      assert.ok(/id="walk-show"/.test(walk) && />Show me</.test(walk) && /toggleShowMe/.test(walk) && /showMeLeft = 8/.test(walk), "Show me speaks the walk and Got its, never Act");
       assert.ok(/paintWalkInk/.test(walk), "stored ink is SVG, not innerHTML");
       assert.ok(/createElementNS/.test(walk), "stroke is SVG, not innerHTML");
       assert.ok(/teach-overlay:frame/.test(walk), "drawn overlay boxes POST a region, never Act");

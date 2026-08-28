@@ -1,3 +1,10 @@
+## 2026-08-28 - Show me speaks the walk and flies the BOX
+
+Show me in overlay/home chrome speaks Click/Type in, flies a laser
+from the last control to the current BOX, then Got it (types Sarah
+Chen, then Save). Never a buddy orb. Never send. Never speak meeting.
+Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Ask what to type opens Live answer
 
 Ask "what should I type" (or another question) opens Live answer in

@@ -1050,7 +1050,14 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, />Draw</);
   assert.match(teachOverlay, /id="draw-stroke"/);
   assert.match(teachOverlay, /id="walk-ink"/);
+  assert.match(teachOverlay, /id="walk-fly"/);
   assert.match(teachOverlay, /paintWalkInk/);
+  assert.match(teachOverlay, /paintWalkFly/);
+  assert.match(teachOverlay, /id="walk-show"/);
+  assert.match(teachOverlay, />Show me</);
+  assert.match(teachOverlay, /toggleShowMe/);
+  assert.match(teachOverlay, /showMeStep/);
+  assert.match(teachOverlay, /showMeLeft = 8/);
   assert.match(teachOverlay, /\\d\+\\s\+of\\s\+\\d\+/);
   assert.match(teachOverlay, /createElementNS/);
   assert.match(teachOverlay, /stroke:/);
@@ -1782,6 +1789,9 @@ test("desk chips ask, never act", () => {
   assert.match(hostWorkspace, /unsent mail/i);
   assert.match(fs.readFileSync(path.join(__dirname, "..", "host", "security.html"), "utf8"), /id="report-download"/);
   assert.match(hostApp, /live-cue-next/);
+  assert.match(hostApp, /live-cue-show/);
+  assert.match(hostApp, /toggleHostShowMe/);
+  assert.match(hostApp, /chromeBtn\("live-cue-show", "Show me"\)/);
   assert.match(hostApp, /live-cue-captions/);
   assert.match(hostApp, /Live:/);
   assert.doesNotMatch(hostApp, /innerHTML/);
