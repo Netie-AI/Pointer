@@ -131,6 +131,23 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .command-ask #ask-input {
   flex: 1; min-height: 28px; max-height: 72px; padding: 4px 0;
 }
+.listen-kicker {
+  display: none; font-family: var(--font-display); font-weight: 500; font-size: 13px;
+  color: var(--text); white-space: nowrap;
+}
+.hud.is-listening .listen-kicker { display: inline; }
+.listen-dots {
+  display: none; width: 56px; height: 14px; flex: 0 0 auto;
+  background-image: radial-gradient(circle, var(--accent-solid) 1.2px, transparent 1.4px);
+  background-size: 7px 5px; opacity: 0.85;
+}
+.hud.theme-computer .listen-dots,
+.hud.is-listening .listen-dots { display: inline-block; }
+.listen-stop {
+  width: 12px; height: 12px; border-radius: 3px; padding: 0; flex: 0 0 auto;
+  background: var(--accent-solid); border: 0; display: none;
+}
+.hud.is-listening .listen-stop { display: inline-block; }
 .hud.theme-gra {
   --panel: #1c1714;
   --panel-strong: #14110f;

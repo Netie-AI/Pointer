@@ -167,6 +167,7 @@ function test(name, fn) {
     assert.ok(shown.home.includes(".pointer") || shown.home.length > 0);
     assert.strictEqual(shown.core.persistent, true);
     assert.strictEqual(shown.core.engine, "none");
+    assert.deepStrictEqual(shown.core.ops, []);
     assert.strictEqual(shown.act.review, "observe then reviewPlan then click/copy/paste");
     assert.strictEqual(shown.route.claude, "open");
     assert.strictEqual(shown.route.cursor, "ready");

@@ -98,6 +98,7 @@ function publicCore(opts = {}) {
   const home = String(opts.home || pointerHome(opts.env)).slice(0, 240);
   const port = opts.port || corePort(opts.env);
   const ok = live.ok === true && live.engine === "rust";
+  const ops = ["click", "move", "wheel", "pos", "type", "tap", "combo", "keys"];
   return {
     ok,
     engine: ok ? "rust" : live.engine ? String(live.engine).slice(0, 24) : "none",
@@ -105,6 +106,7 @@ function publicCore(opts = {}) {
     bind: `127.0.0.1:${port}`,
     home,
     api: `http://127.0.0.1:${port}/health`,
+    ops: ok ? ops : [],
   };
 }
 

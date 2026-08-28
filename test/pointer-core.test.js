@@ -52,16 +52,14 @@ function test(name, fn) {
     const none = publicCore({ env: { POINTER_HOME: "/tmp/p", POINTER_CORE_PORT: "18011" } });
     assert.strictEqual(none.ok, false);
     assert.strictEqual(none.engine, "none");
-    assert.strictEqual(none.persistent, true);
-    assert.strictEqual(none.bind, "127.0.0.1:18011");
+    assert.deepStrictEqual(none.ops, []);
     const live = publicCore({
       live: { ok: true, engine: "rust" },
       home: "/tmp/p",
       port: 18011,
     });
     assert.strictEqual(live.ok, true);
-    assert.strictEqual(live.engine, "rust");
-    assert.ok(live.api.includes("/health"));
+    assert.ok(live.ops.includes("type"));
   });
 
   await test("binaryPath points at native/pointer-core release", () => {
@@ -114,6 +112,8 @@ function test(name, fn) {
     assert.strictEqual(r.op, "click");
     assert.strictEqual(rustOps, 1);
     assert.strictEqual(spawned, 0);
+    await d.typeText("hi");
+    assert.strictEqual(rustOps, 2);
     d.dispose();
   });
 

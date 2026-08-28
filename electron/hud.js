@@ -527,6 +527,7 @@ function setLive(on) {
 function updateRecUi() {
   btnListen.classList.toggle("active", listening && !paused);
   btnListen.classList.toggle("warn-on", listening && paused);
+  hudRoot.classList.toggle("is-listening", listening && !paused);
   if (!listening) recLabel.textContent = "Record";
   else if (paused) recLabel.textContent = "Paused";
   else recLabel.textContent = "Recording";
@@ -1033,7 +1034,7 @@ $("command-bar-tools")?.addEventListener("click", (event) => {
   }
 });
 
-$("btn-command-mic")?.addEventListener("click", () => {
+$("btn-listen-stop")?.addEventListener("click", () => {
   $("btn-listen")?.click();
 });
 $("btn-agent-chip")?.addEventListener("click", () => {

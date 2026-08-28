@@ -10,7 +10,7 @@
    OpenWorker home + DR-0005 coworker/UACC. Command bar matches
    `docs/ui-refs/perplexity-computer`. Computer theme is mint/white
    solid panels (no backdrop-filter). `~/.pointer` is the standing home.
-   Rust `pointer-core` on `127.0.0.1:18011` takes click/move/wheel;
+   Rust `pointer-core` on `127.0.0.1:18011` takes click/move/wheel/type/tap/combo/keys;
    PowerShell is fallback. `computer.status.core` / `.home` publish it.
    Rest of the rust rewrite is P-08.
 2. **DR-0005 still holds.** Screenshotable HUD, UACC READ, IBM Plex,

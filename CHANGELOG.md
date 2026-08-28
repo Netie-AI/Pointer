@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Rust type/combo plus Perplexity listening pill
+
+`pointer-core` now owns type/tap/combo/keys as well as click/move/wheel.
+PowerShell remains the fallback. Listening chrome paints Listening... plus
+a stop square on `is-listening`. Standing home writes `~/.pointer/core.json`.
+No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Willow + Perplexity Computer HUD + Rust core
 
 Founder DR-0006: Pointer is Willow + Perplexity Computer + OpenWorker home,

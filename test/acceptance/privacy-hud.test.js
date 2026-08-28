@@ -132,7 +132,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(html.includes('data-cmd="shots"'), "Perplexity Screenshots lives on the command bar");
       assert.ok(html.includes('Ask anything'), "command bar placeholder matches the refs");
       assert.ok(html.includes('data-theme="computer"'), "Computer theme matches founder screenshots");
-      assert.ok(html.includes('id="command-ask"'), "Ask capsule is fixed chrome, not an orb");
+      assert.ok(html.includes('id="listen-kicker"'), "Listening kicker matches Perplexity hold-to-talk refs");
+      assert.ok(html.includes('id="btn-listen-stop"'), "Stop control stays on the listening pill");
       assert.ok(html.includes('id="btn-scribe-retry"'), "Scribe Retry stays in fixed top chrome");
       assert.ok(html.includes('id="btn-scribe-paste"'), "Scribe Paste as-is stays in fixed top chrome");
       const langSel = html.slice(
@@ -160,6 +161,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/\.session-chip\.is-scribing/.test(css), "scribing session uses the accent color");
       assert.ok(/\.session-chip\.is-error/.test(css), "error session uses the rec color");
       const js = read("electron/hud.js");
+      assert.ok(/is-listening/.test(js), "mic on paints is-listening on fixed chrome");
       assert.ok(/function applyPrivacy/.test(js), "privacy events must paint the chip");
       assert.ok(/privacyChip\.textContent = text/.test(js), "privacy label must be text, not HTML");
       assert.ok(!/privacyChip\.innerHTML/.test(js), "privacy chip must never take HTML");

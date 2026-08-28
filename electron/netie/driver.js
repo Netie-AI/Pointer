@@ -446,7 +446,9 @@ class InputDriver {
   async _send(cmd, { timeoutMs } = {}) {
     if (this.dryRun) return { ok: true, dryRun: true };
     const op = String((cmd && cmd.op) || "");
-    if (this._coreSend && (op === "click" || op === "move" || op === "wheel" || op === "pos")) {
+    const rustOps = op === "click" || op === "move" || op === "wheel" || op === "pos"
+      || op === "type" || op === "tap" || op === "combo" || op === "keys";
+    if (this._coreSend && rustOps) {
       try {
         const rust = await this._coreSend(cmd);
         if (rust && rust.ok) return rust;
