@@ -119,7 +119,9 @@ function normalizeDictateHotkeys(input = {}) {
 
 function createHoldMonitor(opts = {}) {
   const intervalMs = Number(opts.intervalMs) > 0 ? Number(opts.intervalMs) : 40;
-  const maxMs = Number(opts.maxMs) > 0 ? Number(opts.maxMs) : DICTATE_MAX_MS;
+  const rawMax = opts.maxMs;
+  const maxMs =
+    rawMax == null || rawMax === "" ? DICTATE_MAX_MS : Number(rawMax);
   const poll = opts.poll;
   const onRelease = opts.onRelease;
   const setInt = typeof opts.setInterval === "function" ? opts.setInterval : setInterval;
@@ -158,10 +160,12 @@ function createHoldMonitor(opts = {}) {
     stop();
     if (typeof poll !== "function") return { ok: false, reason: "no poll" };
     armed = true;
-    watchdog = setTO(() => {
-      if (!armed) return;
-      fireRelease({ reason: "max", maxMs });
-    }, maxMs);
+    if (maxMs > 0) {
+      watchdog = setTO(() => {
+        if (!armed) return;
+        fireRelease({ reason: "max", maxMs });
+      }, maxMs);
+    }
     timer = setInt(() => {
       Promise.resolve(poll())
         .then((sample) => {
@@ -177,7 +181,7 @@ function createHoldMonitor(opts = {}) {
         })
         .catch(() => {});
     }, intervalMs);
-    return { ok: true, maxMs };
+    return { ok: true, maxMs: maxMs > 0 ? maxMs : 0 };
   }
 
   return {
@@ -195,10 +199,116 @@ function createHoldMonitor(opts = {}) {
   };
 }
 
+/** Willow-class double-tap window. Second press before this converts hold to hands-free. */
+const DOUBLE_TAP_MS = 400;
+
+function createDictateSession(opts = {}) {
+  const doubleTapMs = Number(opts.doubleTapMs) > 0 ? Number(opts.doubleTapMs) : DOUBLE_TAP_MS;
+  const rawMax = opts.maxMs;
+  const maxMs = rawMax == null || rawMax === "" ? DICTATE_MAX_MS : Number(rawMax);
+  const setTO = typeof opts.setTimeout === "function" ? opts.setTimeout : setTimeout;
+  const clearTO = typeof opts.clearTimeout === "function" ? opts.clearTimeout : clearTimeout;
+  const onStop = opts.onStop;
+  const onHandsfree = opts.onHandsfree;
+  const toggleOnPress = () =>
+    typeof opts.toggleOnPress === "function" ? Boolean(opts.toggleOnPress()) : Boolean(opts.toggleOnPress);
+
+  let mode = "idle";
+  let delay = null;
+  let watchdog = null;
+
+  function clearDelay() {
+    if (delay != null) {
+      clearTO(delay);
+      delay = null;
+    }
+  }
+
+  function clearWatchdog() {
+    if (watchdog != null) {
+      clearTO(watchdog);
+      watchdog = null;
+    }
+  }
+
+  function armWatchdog() {
+    clearWatchdog();
+    if (!(maxMs > 0)) return;
+    watchdog = setTO(() => {
+      finish("max");
+    }, maxMs);
+  }
+
+  function finish(reason) {
+    const was = mode;
+    mode = "idle";
+    clearDelay();
+    clearWatchdog();
+    if (was !== "idle" && typeof onStop === "function") onStop({ reason, from: was });
+  }
+
+  function press() {
+    if (mode === "handsfree") {
+      finish("tap");
+      return { ok: true, action: "stop", reason: "tap", mode: "idle" };
+    }
+    if (mode === "pending") {
+      clearDelay();
+      mode = "handsfree";
+      if (typeof onHandsfree === "function") onHandsfree({ mode: "handsfree" });
+      return { ok: true, action: "handsfree", mode: "handsfree" };
+    }
+    if (mode === "hold") {
+      if (toggleOnPress()) {
+        finish("tap");
+        return { ok: true, action: "stop", reason: "tap", mode: "idle" };
+      }
+      return { ok: true, action: "ignore", mode: "hold" };
+    }
+    mode = "hold";
+    armWatchdog();
+    return { ok: true, action: "start", mode: "hold" };
+  }
+
+  function release() {
+    if (mode !== "hold") return { ok: true, action: "ignore", mode };
+    if (toggleOnPress()) return { ok: true, action: "ignore", mode };
+    mode = "pending";
+    delay = setTO(() => {
+      delay = null;
+      finish("release");
+    }, doubleTapMs);
+    return { ok: true, action: "pending", mode: "pending" };
+  }
+
+  function cancel(reason) {
+    if (mode === "idle") return { ok: true, action: "idle", mode: "idle" };
+    finish(reason || "cancel");
+    return { ok: true, action: "stop", reason: reason || "cancel", mode: "idle" };
+  }
+
+  return {
+    press,
+    release,
+    cancel,
+    get mode() {
+      return mode;
+    },
+    get listening() {
+      return mode === "hold" || mode === "pending" || mode === "handsfree";
+    },
+    get doubleTapMs() {
+      return doubleTapMs;
+    },
+  };
+}
+
 module.exports = {
   createHoldMonitor,
+  createDictateSession,
   DICTATE_HOLD_VKS,
   DICTATE_MAX_MS,
+  DOUBLE_TAP_MS,
   DEFAULT_RECORDING_HOTKEY,
   DEFAULT_MODE_HOTKEY,
   DEFAULT_LANGUAGE_HOTKEY,

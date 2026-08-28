@@ -177,6 +177,7 @@ function computerStatus(opts = {}) {
       mode: String(opts.modeHotkey || "Control+Alt+M"),
       language: String(opts.languageHotkey || "Control+Alt+L"),
       assist: "Control+Enter",
+      handsfree: "double-tap recording",
     },
     stt: {
       url: String((opts.stt && opts.stt.url) || "http://127.0.0.1:8766").slice(0, 120),
@@ -199,6 +200,7 @@ function computerStatus(opts = {}) {
           }
         : sessionLabel({})),
       maxMs: Number(opts.sessionMaxMs) > 0 ? Number(opts.sessionMaxMs) : 120000,
+      dictate: String(opts.dictateMode || "off").slice(0, 24),
     },
     scribe: {
       available: opts.scribeAvailable === true || opts.actAvailable === true,
