@@ -65,7 +65,7 @@ const {
   isUsableTarget,
   pickWindowSource,
 } = require("./netie/delivery");
-const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetingNotes, exportMeetingRecap, exportMeetingSay, normalizeMeetingKind } = require("./netie/meeting");
+const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetingNotes, exportMeetingRecap, exportMeetingSay, exportMeetingEmail, normalizeMeetingKind } = require("./netie/meeting");
 const { createHoldMonitor, DICTATE_HOLD_VKS, comboVks, normalizeDictateHotkeys } = require("./netie/holdkey");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
@@ -219,12 +219,14 @@ const pendingScribe = createPendingScribe();
 /** Last Cortex-gated meeting recap/say. Copied from main, never from the renderer. */
 let lastMeetingRecap = "";
 let lastMeetingSay = "";
+let lastMeetingEmail = "";
 function rememberMeetingShare(kind, text) {
   const k = normalizeMeetingKind(kind);
   const body = String(text || "").trim();
   if (!body) return;
   if (k === "recap") lastMeetingRecap = body;
   if (k === "say") lastMeetingSay = body;
+  if (k === "email") lastMeetingEmail = body;
 }
 
 /** Worker GetWindowRect is physical. Clicks use DIP. Convert when Electron screen is up. */
@@ -452,6 +454,7 @@ const liveCoordinator = createCoordinator({
   meetingNotes: () => (notes.file ? notes.tail(8000) : null),
   meetingRecap: () => lastMeetingRecap || null,
   meetingSay: () => lastMeetingSay || null,
+  meetingEmail: () => lastMeetingEmail || null,
   scribePending: () => pendingScribe.peek(),
 });
 const brain = new PersonalBrain({
@@ -3532,7 +3535,13 @@ ipcMain.handle("hud:ask", async (_e, payload) => {
     const failureMeet = rMeet.ok ? null : humanizeError(rMeet.text || rMeet.error);
     if (failureMeet) console.error("hud:ask meeting failed:", failureMeet.raw);
     const meetMeta =
-      assist.kind === "recap" ? "Meeting recap" : assist.kind === "followups" ? "Meeting follow-ups" : "Meeting assist";
+      assist.kind === "recap"
+        ? "Meeting recap"
+        : assist.kind === "followups"
+          ? "Meeting follow-ups"
+          : assist.kind === "email"
+            ? "Meeting email"
+            : "Meeting assist";
     sendHud({
       type: "answer",
       meta: rMeet.ok ? meetMeta : shortError(rMeet.text || rMeet.error),
@@ -4746,6 +4755,20 @@ ipcMain.handle("hud:meetingNotes", async (_e, payload) => {
     try {
       await driver.clipboardSet(exp.markdown);
       sendHud({ type: "answer", meta: "Say", text: "Meeting say copied." });
+      return { ok: true, copied: true };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
+  }
+  if (action === "email" || action === "copy-email") {
+    const exp = exportMeetingEmail(lastMeetingEmail);
+    if (!exp.ok) {
+      sendHud({ type: "answer", meta: "Email", text: exp.reason });
+      return { ok: false, error: exp.reason };
+    }
+    try {
+      await driver.clipboardSet(exp.markdown);
+      sendHud({ type: "answer", meta: "Email", text: "Meeting email copied." });
       return { ok: true, copied: true };
     } catch (err) {
       return { ok: false, error: String(err.message || err) };

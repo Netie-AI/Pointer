@@ -130,11 +130,13 @@ function test(name, fn) {
     assert.strictEqual(shown.meeting.export, "GET /api/meeting?export=1");
     assert.strictEqual(shown.meeting.recap, "GET /api/meeting?recap=1");
     assert.strictEqual(shown.meeting.say, "GET /api/meeting?say=1");
-    assert.deepStrictEqual(shown.meeting.kinds, ["say", "recap", "followups"]);
+    assert.strictEqual(shown.meeting.email, "GET /api/meeting?email=1");
+    assert.deepStrictEqual(shown.meeting.kinds, ["say", "recap", "followups", "email"]);
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?notes=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?export=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?recap=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/meeting?say=1"));
+    assert.ok(shown.drive.instructions.includes("GET /api/meeting?email=1"));
     assert.ok(shown.drive.instructions.includes("POST /api/meeting screenshot false"));
     assert.ok(shown.drive.instructions.includes("focus: notepad"));
     assert.ok(shown.drive.instructions.includes("focus: notepad then type: hello"));

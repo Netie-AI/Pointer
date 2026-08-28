@@ -68,8 +68,10 @@ async function run() {
       assert.ok(/exportMeetingRecap/.test(main), "Copy recap must export the last recap in main");
       assert.ok(/rememberMeetingShare/.test(main), "a Recap or Say answer must be remembered in main");
       assert.ok(/exportMeetingSay/.test(main), "Copy say must export the last Say in main");
+      assert.ok(/exportMeetingEmail/.test(main), "Copy email must export the last email in main");
       assert.ok(/action === "say"/.test(main), "hud:meetingNotes say must not take renderer text");
       assert.ok(/action === "recap"/.test(main), "hud:meetingNotes recap must not take renderer text");
+      assert.ok(/action === "email"/.test(main), "hud:meetingNotes email must not take renderer text");
       assert.ok(/ipcMain\.handle\("hud:meetingNotes"/.test(main), "hud:meetingNotes must exist");
       const assistFn = main.slice(main.indexOf("meetingAssist: async"));
       assert.ok(/params\.screenshot !== false/.test(assistFn), "meeting_assist must capture unless screenshot is false");

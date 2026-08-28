@@ -49,8 +49,16 @@ function test(name, fn) {
     const qs = buildMeetingAssist({ kind: "follow-ups", notes: "We ship Friday." });
     assert.strictEqual(qs.kind, "followups");
     assert.match(qs.asked, /follow-up questions/i);
+    const mail = buildMeetingAssist({ kind: "email", notes: "We ship Friday. Sam owns QA." });
+    assert.strictEqual(mail.kind, "email");
+    assert.match(mail.asked, /follow-up email/i);
+    assert.match(mail.system, /follow-up email/i);
     const { publicMeetingNotes, normalizeMeetingKind } = require("../electron/netie/meeting");
     assert.strictEqual(normalizeMeetingKind("FOLLOW_UPS"), "followups");
+    assert.strictEqual(normalizeMeetingKind("email"), "email");
+    assert.strictEqual(normalizeMeetingKind("mail"), "email");
+    assert.strictEqual(normalizeMeetingKind("follow-up-email"), "email");
+    assert.strictEqual(normalizeMeetingKind("unknown"), "say");
     const missing = publicMeetingNotes(null);
     assert.strictEqual(missing.present, false);
     const live = publicMeetingNotes("ship Friday");
@@ -85,6 +93,23 @@ function test(name, fn) {
     assert.strictEqual(missingSay.present, false);
     const liveSay = publicMeetingSay("Confirm Friday.");
     assert.match(liveSay.note, /untrusted model text/);
+    const { exportMeetingEmail, publicMeetingEmail } = require("../electron/netie/meeting");
+    const noEmail = exportMeetingEmail("");
+    assert.strictEqual(noEmail.ok, false);
+    const emailWs = exportMeetingEmail("   ");
+    assert.strictEqual(emailWs.ok, false);
+    const emailShare = exportMeetingEmail("Hi team,\nShip Friday.");
+    assert.strictEqual(emailShare.ok, true);
+    assert.match(emailShare.markdown, /^# Meeting follow-up/m);
+    assert.match(emailShare.markdown, /Untrusted model text/);
+    assert.match(emailShare.markdown, /Hi team,/);
+    assert.match(emailShare.note, /untrusted model text/);
+    const missingEmail = publicMeetingEmail(null);
+    assert.strictEqual(missingEmail.present, false);
+    const liveEmail = publicMeetingEmail("Hi team,\nShip Friday.");
+    assert.strictEqual(liveEmail.present, true);
+    assert.match(liveEmail.note, /untrusted model text/);
+    assert.match(liveEmail.text, /Hi team/);
   });
 
   await test("notes.tail returns the live file without leaking after stop", () => {
@@ -144,6 +169,14 @@ function test(name, fn) {
     });
     assert.ok(recap.result);
     assert.strictEqual(recap.result.kind, "recap");
+    const mail = await mcp.handle({
+      jsonrpc: "2.0",
+      id: 33,
+      method: "computer.meeting_assist",
+      params: { notes: "ship Friday", kind: "email" },
+    });
+    assert.ok(mail.result);
+    assert.strictEqual(mail.result.kind, "email");
   });
 
   await test("live suggest waits for enough new notes and debounce", () => {

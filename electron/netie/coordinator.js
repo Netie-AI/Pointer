@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
 const { TOOLS, CATALOG } = require("./mcp-abi");
-const { publicMeetingNotes, exportMeetingNotes, publicMeetingRecap, exportMeetingRecap, publicMeetingSay, exportMeetingSay } = require("./meeting");
+const { publicMeetingNotes, exportMeetingNotes, publicMeetingRecap, exportMeetingRecap, publicMeetingSay, exportMeetingSay, publicMeetingEmail, exportMeetingEmail } = require("./meeting");
 const { publicPendingTranscript } = require("./pending-scribe");
 
 const LANES = Object.freeze(["pointer-act", "cursor-cloud", "cortex", "craft"]);
@@ -157,6 +157,21 @@ function createCoordinator(opts = {}) {
       const say = publicMeetingSay(raw);
       const exp = exportMeetingSay(say.text);
       const body = { ok: true, say, markdown: exp.markdown, exported: exp.ok };
+      if (!exp.ok) body.reason = exp.reason;
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(body));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/meeting" && queryFlag(url, "email")) {
+      let raw = null;
+      try {
+        raw = typeof opts.meetingEmail === "function" ? opts.meetingEmail() : null;
+      } catch {
+        raw = null;
+      }
+      const email = publicMeetingEmail(raw);
+      const exp = exportMeetingEmail(email.text);
+      const body = { ok: true, email, markdown: exp.markdown, exported: exp.ok };
       if (!exp.ok) body.reason = exp.reason;
       res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(body));

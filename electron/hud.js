@@ -947,11 +947,13 @@ async function doAsk(opts = {}) {
       ? "Recap"
       : kind === "followups"
         ? "Follow-ups"
-        : appMode === "meeting"
-          ? "what should I say"
-          : "what am I looking at");
+        : kind === "email"
+          ? "Email"
+          : appMode === "meeting"
+            ? "what should I say"
+            : "what am I looking at");
   const asked =
-    kind === "recap" || kind === "followups"
+    kind === "recap" || kind === "followups" || kind === "email"
       ? message
       : message ||
         (appMode === "meeting"
@@ -1074,6 +1076,13 @@ if ($("btn-followups")) {
     doAsk({ kind: "followups" });
   });
 }
+if ($("btn-email")) {
+  $("btn-email").addEventListener("click", () => {
+    askInput.value = "";
+    setChatOpen(true);
+    doAsk({ kind: "email" });
+  });
+}
 if ($("btn-copy-notes")) {
   $("btn-copy-notes").addEventListener("click", () => {
     invoke("hud:meetingNotes", { action: "copy" });
@@ -1087,6 +1096,11 @@ if ($("btn-copy-recap")) {
 if ($("btn-copy-say")) {
   $("btn-copy-say").addEventListener("click", () => {
     invoke("hud:meetingNotes", { action: "say" });
+  });
+}
+if ($("btn-copy-email")) {
+  $("btn-copy-email").addEventListener("click", () => {
+    invoke("hud:meetingNotes", { action: "email" });
   });
 }
 if (notesChip) {

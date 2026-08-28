@@ -57,6 +57,13 @@ function test(name, fn) {
     assert.ok(meeting.inputSchema.properties.screenshot);
     assert.match(meeting.description, /export=1/);
     assert.match(meeting.description, /say=1/);
+    assert.match(meeting.description, /email=1/);
+    assert.deepStrictEqual(meeting.inputSchema.properties.kind.enum, [
+      "say",
+      "recap",
+      "followups",
+      "email",
+    ]);
     const scribe = r.result.catalog.find((t) => t.name === "computer.scribe");
     assert.ok(scribe.inputSchema.properties.retry);
     assert.ok(scribe.inputSchema.properties.dictate);
