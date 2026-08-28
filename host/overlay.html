@@ -1203,18 +1203,25 @@
         const next = demoStep > 0 ? "Sarah Chen" : "";
         const saved = Boolean(inboxSaved);
         if (next === inboxTypedTo && saved === lastInboxSaved) return;
+        const wasSaved = lastInboxSaved;
         inboxTypedTo = next;
         lastInboxSaved = saved;
         paintWalkDesktop();
         const href = saved ? "/workspace?id=live-meeting" : "/workspace?id=live-inbox";
         highlightWalkWindow(href);
         const filedEl = document.getElementById("walk-filed");
-        if (filedEl && saved) {
-          filedEl.hidden = false;
-          filedEl.textContent = "Opened Live answer. Never sent.";
+        if (filedEl) {
+          filedEl.hidden = !saved;
+          filedEl.textContent = saved ? "Opened Live answer. Never sent." : "";
         }
         if (saved) paintWalkDock(href);
-        else {
+        else if (wasSaved) {
+          const dock = document.getElementById("walk-dock");
+          if (dock) {
+            dock.hidden = true;
+            dock.classList.remove("show");
+          }
+        } else {
           const dock = document.getElementById("walk-dock");
           if (dock && dock.classList.contains("show")) paintWalkDock(href);
         }

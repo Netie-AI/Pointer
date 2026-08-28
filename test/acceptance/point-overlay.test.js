@@ -178,6 +178,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/if \(saved\) \{/.test(walk) && /paint\(\[\]\)/.test(walk), "after Save overlay leftover BOX yields to Live answer");
       assert.ok(/next\.hidden = saved/.test(walk), "after Save overlay Got it hides so Live answer leads");
       assert.ok(/saved \? "18%" : "72%"/.test(walk), "after Save Live answer takes the main window");
+      assert.ok(/filedEl\.hidden = !saved/.test(walk), "Back after Save clears Opened Live answer from the cue");
       assert.ok(/done && inboxSaved && kind === "button"/.test(walk), "saved Save BOX drops Click Save");
       assert.ok(/boxed && done && kind === "field"/.test(walk), "typed To is not covered by a done Email BOX");
       assert.ok(/Never sent/.test(walk) && /saved on This computer - send is parked/.test(walk), "Save never sends");
