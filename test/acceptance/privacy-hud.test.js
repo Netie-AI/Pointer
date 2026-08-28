@@ -158,7 +158,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/hudShowMeLeft = 8/.test(js), "HUD Show me caps at 8 steps");
       assert.ok(!/SpeechRecognition/.test(js), "HUD Talk does not ship mic audio to Chromium SpeechRecognition");
       assert.ok(!/doAct\(\)/.test(js.slice(js.indexOf("function toggleHudShowMe"), js.indexOf("function boxCenter"))), "HUD Show me / Talk Ask, never Act");
-      const drawFn = js.slice(js.indexOf("function toggleHudDraw"), js.indexOf("function endHudDraw") + 400);
+      const drawFn = js.slice(js.indexOf("function toggleHudDraw"), js.indexOf("function boxCenter"));
       assert.ok(/hud:frameRegion/.test(drawFn), "HUD Draw posts a region");
       assert.ok(!/hud:act/.test(drawFn) && !/doAct\(\)/.test(drawFn), "HUD Draw never Acts");
       const css = read("electron/hud.css");
