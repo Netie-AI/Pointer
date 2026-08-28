@@ -176,7 +176,7 @@ pre {
   align-items: center;
   gap: 8px 12px;
   padding: 8px 14px;
-  border-radius: var(--lg-radius-pill);
+  border-radius: var(--lg-radius);
   background: var(--lg-shine), var(--lg-fill);
   border: 1px solid var(--lg-edge);
   box-shadow: var(--lg-shadow);

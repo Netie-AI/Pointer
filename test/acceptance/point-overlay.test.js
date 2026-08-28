@@ -148,6 +148,14 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       const walk = read("host/overlay.html");
       assert.ok(/pointer-events:\s*none/.test(walk), "the screen walk must not eat clicks");
       assert.ok(/id="walk-chrome"/.test(walk), "overlay keeps walk chrome");
+      assert.ok(
+        !/id="walk-chrome" class="[^"]*lg-pill/.test(walk),
+        "tall walk chrome must not use pill radius 999px (that becomes a circle)"
+      );
+      assert.ok(
+        /#walk-chrome[\s\S]{0,280}border-radius:\s*var\(--lg-radius/.test(walk),
+        "walk chrome is a 22px glass island, not a stadium"
+      );
       assert.ok(/id="walk-copy"/.test(walk) && /id="walk-acts"/.test(walk) && /id="walk-live-stack"/.test(walk) && /walk-copy\.stack/.test(walk), "overlay walk chrome stacks cue lines instead of ellipsis");
       assert.ok(/layoutWalkUnderChrome/.test(walk) && /!hasApi && shown/.test(walk), "demo overlay sits This computer and the BOX below chrome; live overlay keeps display percents");
       assert.ok(/#walk-cue, #walk-then, #walk-fill, #walk-asked, #walk-you, #walk-live, #walk-also, #walk-heard, #walk-avoid, #walk-filed/.test(walk) && /white-space:\s*normal/.test(walk), "overlay cue lines wrap");
