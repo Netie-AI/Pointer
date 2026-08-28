@@ -284,9 +284,12 @@ pre {
   height: min(56vh, 520px);
   min-height: 280px;
   margin: 0 0 12px;
-  background: rgba(12, 16, 24, 0.55);
+  background: var(--lg-shine), var(--lg-fill);
   border: 1px solid var(--lg-edge-soft);
   border-radius: 16px;
+  box-shadow: var(--lg-shadow);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
   overflow: hidden;
   pointer-events: none;
   touch-action: none;
@@ -869,6 +872,7 @@ button.artifact.open { border-color: var(--lg-accent); }
   .work-card,
   .room-dock-tile,
   .meeting-talk,
+  .teach-map,
   .teach-map-rail,
   .teach-map-cue,
   .teach-map-then {
@@ -891,6 +895,7 @@ button.artifact.open { border-color: var(--lg-accent); }
   .work-card,
   .room-dock-tile,
   .meeting-talk,
+  .teach-map,
   .teach-map-rail,
   .teach-map-cue,
   .teach-map-then {

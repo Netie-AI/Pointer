@@ -1,9 +1,12 @@
 ## 2026-08-28 - Liquid glass HUD, overlay, and host
 
 HUD, overlay walk chrome, and host catalog share Apple Regular liquid
-Host sticky cue bar and overlay walk chrome use 22px glass
-islands (not 999px pills, which ballooned into a circle). Chips stay
-capsules. Live overlay body stays transparent.
+glass (lensing shine, 28px blur, capsule chips). Home rooms, sticky cue
+bar, This computer dock, and file windows use those tokens over a
+desktop wash. Run still refuses. Never send. Tall chrome is a 22px
+island; chips stay pills. Live overlay body stays transparent.
+`@supports not` and reduced-transparency fall back to solid frost. No
+floating orb. P-05 and P-06 stay parked.
 
 ## 2026-08-28 - Three-OS packs (linux, win, mac)
 

@@ -357,6 +357,17 @@ function readAsset(file) {
     assert.match(cssText, /workspace-catalog/);
     assert.match(cssText, /scroll-margin-top/);
     assert.match(cssText, /scroll-margin-top: 200px/);
+    assert.match(cssText, /@import url\("glass.css"\)/);
+    assert.match(cssText, /#12141c/);
+    assert.match(cssText, /radial-gradient/);
+    assert.match(cssText, /\.live-cue-bar/);
+    assert.match(cssText, /#computer-dock/);
+    assert.match(cssText, /\.desk-window/);
+    assert.match(cssText, /\.room-dock-tile/);
+    assert.match(cssText, /--lg-shine/);
+    assert.match(cssText, /#computer-run/);
+    assert.match(cssText, /--lg-warn/);
+    assert.doesNotMatch(cssText, /Send mail|Approve/);
     assert.match(app, /demoFrameTeach/);
     assert.match(app, /Draw a larger BOX \(0\.4%\)/);
     assert.match(app, /Walk is full - 8 boxes/);
