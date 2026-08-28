@@ -255,6 +255,7 @@ function computerStatus(opts = {}) {
         "replace: hello",
         "press ctrl+s",
         "GET /api/observe?screenshot=1",
+        "GET /api/observe?hud=1",
         "GET /api/observe?clipboard=1",
         "GET /api/observe?selection=1",
         "GET /api/observe?captions=1",
@@ -321,6 +322,41 @@ function publicScreenshot(shot) {
     truncated: tooBig,
     dataUrl: tooBig ? "" : dataUrl,
   };
+}
+
+/** HUD chrome PNG for agents. Null unless asked. Content-protected is a visible no. */
+function publicHud(raw) {
+  if (raw == null) return null;
+  if (raw && raw.present === false) {
+    return {
+      present: false,
+      reason: String(raw.reason || "unavailable").slice(0, 48),
+      note: "HUD chrome is hidden or content-protected",
+    };
+  }
+  const shot = publicScreenshot(typeof raw === "string" ? raw : raw);
+  if (!shot || !shot.present) {
+    return {
+      present: false,
+      reason: (raw && raw.reason) || "empty",
+      note: "HUD chrome was not captured",
+    };
+  }
+  const out = {
+    ...shot,
+    note: "HUD chrome visible to screen capture",
+  };
+  const x = Number(raw && raw.x);
+  const y = Number(raw && raw.y);
+  const width = Number(raw && raw.width);
+  const height = Number(raw && raw.height);
+  if (Number.isFinite(x) && Number.isFinite(y) && width > 0 && height > 0) {
+    out.x = Math.round(x);
+    out.y = Math.round(y);
+    out.width = Math.round(width);
+    out.height = Math.round(height);
+  }
+  return out;
 }
 
 function publicClipboard(text) {
@@ -397,6 +433,7 @@ function computerObserve(opts = {}) {
     windows,
     elements: Array.isArray(opts.elements) ? opts.elements.slice(0, 40) : [],
     screenshot: publicScreenshot(opts.screenshot),
+    hud: publicHud(opts.hud),
     clipboard: publicClipboard(opts.clipboard),
     selection: publicSelection(opts.selection),
     captions: publicCaptions(opts.captions),
@@ -418,6 +455,7 @@ module.exports = {
   computerObserve,
   publicWindow,
   publicScreenshot,
+  publicHud,
   publicClipboard,
   publicSelection,
   publicCaptions,

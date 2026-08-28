@@ -19,7 +19,8 @@
    Dictation auto-stops at 120s. LIVE captions peek the open utterance
    (partials replace the tail; notes/scribe/commands stay final-only).
    `GET /api/observe?captions=1` is the same lines for agents.
-   BYOK STT/LLM (keys stay OpenVault).
+   `GET /api/observe?hud=1` is the HUD chrome PNG (view/test first;
+   content-protected is a visible no). BYOK STT/LLM (keys stay OpenVault).
    P-04 parked.
 2. **Generative tools + coworker desks (DR-0004 / DR-0005).** Coordinator
    `127.0.0.1:18010`. Public Worker is pages only; `/mcp` stays local.

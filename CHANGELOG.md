@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Observe HUD chrome for agents
+
+Loopback `computer.observe` and `GET /api/observe?hud=1` return a PNG of
+Pointer chrome plus its screen rect, so other agents can see and test
+the HUD. Content-protected chrome is a visible no. Not Cluely stealth.
+No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Observe LIVE captions for agents
 
 Loopback `computer.observe` and `GET /api/observe?captions=1` return the
