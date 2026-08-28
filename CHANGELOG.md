@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Hands-free double-tap dictation
+
+Willow-class: hold Ctrl+Alt+Space to talk, release to stop. A second press
+inside 400ms keeps the take going without holding. Tap again or Esc or the
+120s cap stops it. Linux dry-run stays tap-to-toggle. `computer.status`
+publishes `session.dictate` and `hotkeys.handsfree`. No GPLv3 dump.
+
 ## 2026-08-28 - Meeting pack plus 120s dictation cap
 
 Loopback `GET /api/meeting?pack=1` returns notes plus last recap / say /

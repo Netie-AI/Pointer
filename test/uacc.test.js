@@ -110,6 +110,8 @@ function test(name, fn) {
     assert.strictEqual(shown.mode, "agent");
     assert.strictEqual(shown.hotkeys.recording, "Control+Alt+Space");
     assert.strictEqual(shown.hotkeys.assist, "Control+Enter");
+    assert.strictEqual(shown.hotkeys.handsfree, "double-tap recording");
+    assert.strictEqual(shown.session.dictate, "off");
     assert.strictEqual(shown.stt.local, true);
     assert.strictEqual(shown.llm.local, true);
     assert.strictEqual(shown.llm.model, "gemini-2.0-flash");

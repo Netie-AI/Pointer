@@ -1,6 +1,6 @@
 "use strict";
 const assert = require("assert");
-const { createHoldMonitor, DICTATE_HOLD_VKS, DICTATE_MAX_MS, canonicalizeHotkey, comboVks, normalizeDictateHotkeys } = require("../electron/netie/holdkey");
+const { createHoldMonitor, createDictateSession, DICTATE_HOLD_VKS, DICTATE_MAX_MS, DOUBLE_TAP_MS, canonicalizeHotkey, comboVks, normalizeDictateHotkeys } = require("../electron/netie/holdkey");
 const { InputDriver, MOD_VK, VK } = require("../electron/netie/driver");
 
 let pass = 0;
@@ -157,8 +157,81 @@ function test(name, fn) {
     const main = fs.readFileSync(path.join(__dirname, "..", "electron", "main.js"), "utf8");
     assert.match(main, /DICTATE_MAX_MS/);
     assert.match(main, /120s session cap/);
+    assert.match(main, /Hands-free dictation/);
+    assert.match(main, /createDictateSession/);
     const hudLive = fs.readFileSync(path.join(__dirname, "..", "electron", "netie", "hud-live.js"), "utf8");
     assert.match(hudLive, /maxMs = 120000/);
+    assert.strictEqual(DOUBLE_TAP_MS, 400);
+  });
+
+  await test("Linux toggleOnPress stays tap-to-toggle", () => {
+    const stops = [];
+    const g = createDictateSession({
+      toggleOnPress: true,
+      maxMs: 0,
+      setTimeout: () => 1,
+      clearTimeout: () => {},
+      onStop: (info) => stops.push(info.reason),
+    });
+    assert.strictEqual(g.press().action, "start");
+    assert.strictEqual(g.mode, "hold");
+    assert.strictEqual(g.release().action, "ignore");
+    assert.strictEqual(g.press().action, "stop");
+    assert.deepStrictEqual(stops, ["tap"]);
+    assert.strictEqual(g.listening, false);
+  });
+
+  await test("double-tap after release becomes hands-free", () => {
+    let delayed = null;
+    let hands = 0;
+    const stops = [];
+    const g = createDictateSession({
+      doubleTapMs: 40,
+      maxMs: 0,
+      setTimeout: (fn) => {
+        delayed = fn;
+        return 2;
+      },
+      clearTimeout: () => {
+        delayed = null;
+      },
+      onHandsfree: () => {
+        hands += 1;
+      },
+      onStop: (info) => stops.push(info.reason),
+    });
+    assert.strictEqual(g.press().action, "start");
+    assert.strictEqual(g.release().action, "pending");
+    assert.strictEqual(g.listening, true);
+    assert.strictEqual(g.press().action, "handsfree");
+    assert.strictEqual(g.mode, "handsfree");
+    assert.strictEqual(hands, 1);
+    assert.strictEqual(stops.length, 0);
+    assert.strictEqual(g.press().action, "stop");
+    assert.deepStrictEqual(stops, ["tap"]);
+  });
+
+  await test("single release without a second tap stops after the double-tap window", () => {
+    let delayed = null;
+    const stops = [];
+    const g = createDictateSession({
+      doubleTapMs: 40,
+      maxMs: 0,
+      setTimeout: (fn, ms) => {
+        delayed = { fn, ms };
+        return 3;
+      },
+      clearTimeout: () => {
+        delayed = null;
+      },
+      onStop: (info) => stops.push(info.reason),
+    });
+    g.press();
+    g.release();
+    assert.strictEqual(delayed.ms, 40);
+    delayed.fn();
+    assert.deepStrictEqual(stops, ["release"]);
+    assert.strictEqual(g.listening, false);
   });
 
   await test("keysHeld dry-run never claims a physical hold", async () => {

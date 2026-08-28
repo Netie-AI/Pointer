@@ -10,7 +10,8 @@
    Loopback MCP `computer.status` / `observe` / `act` / `scribe` /
    `meeting_assist` plus `/api/computer` `/api/observe` `/api/scribe`
    `/api/meeting`. Act/scribe fail-closed without Cortex. Transcribe
-   types; Scribe rewrites then pastes. Hold Ctrl+Alt+Space. Meeting
+   types; Scribe rewrites then pastes. Hold Ctrl+Alt+Space. Double-tap
+   keeps going (hands-free). Meeting
    Suggest/Recap/Follow-ups/Email/Actions. HUD lists 12 languages
    (English STT stays auto; Ctrl+Alt+L still English/Traditional Chinese).
    Teach LINE/PATH/BOX. `click window:` uses observed rects. Privacy

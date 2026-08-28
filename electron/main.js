@@ -67,7 +67,7 @@ const {
   pickWindowSource,
 } = require("./netie/delivery");
 const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetingNotes, exportMeetingRecap, exportMeetingSay, exportMeetingEmail, exportMeetingActions, normalizeMeetingKind } = require("./netie/meeting");
-const { createHoldMonitor, DICTATE_HOLD_VKS, DICTATE_MAX_MS, comboVks, normalizeDictateHotkeys } = require("./netie/holdkey");
+const { createHoldMonitor, createDictateSession, DICTATE_HOLD_VKS, DICTATE_MAX_MS, DOUBLE_TAP_MS, comboVks, normalizeDictateHotkeys } = require("./netie/holdkey");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
 const { shouldAcceptFrame, detectCaptureCommand } = require("./netie/capture-gate");
@@ -354,6 +354,7 @@ function liveComputerStatus() {
     llm: { url: loc.llmUrl, local: loc.llmLocal, model: llmModel },
     session: liveSession(),
     sessionMaxMs: DICTATE_MAX_MS,
+    dictateMode: dictateGesture.listening ? dictateGesture.mode : "off",
   });
 }
 
@@ -852,27 +853,50 @@ const driver = new InputDriver({
   toPhysical: (pt) => screen.dipToScreenPoint(pt),
 });
 
-/** OpenWillow hold-to-talk: stop on key up, or at 120s even on tap-to-toggle. */
+/** OpenWillow hold-to-talk; Willow double-tap stays hands-free. Session owns the 120s cap. */
 const dictateHold = createHoldMonitor({
   intervalMs: 40,
-  maxMs: DICTATE_MAX_MS,
+  maxMs: 0,
   poll: () => {
     const acc = settings.get("recordingHotkey") || "Control+Alt+Space";
     const vks = comboVks(acc);
     return driver.keysHeld(vks.length ? vks : DICTATE_HOLD_VKS);
   },
   onRelease: (sample) => {
-    if (!listenMic) return;
-    if (appMode !== "transcribe" && appMode !== "scribe") return;
-    listenMic = false;
-    sendHudQuiet({ type: "auto-listen", mic: false, system: listenSystem, paused: false });
+    if (sample && sample.reason === "max") {
+      dictateGesture.cancel("max");
+      return;
+    }
+    dictateGesture.release();
+  },
+});
+
+const dictateGesture = createDictateSession({
+  maxMs: DICTATE_MAX_MS,
+  doubleTapMs: DOUBLE_TAP_MS,
+  toggleOnPress: () => Boolean(driver.dryRun),
+  onHandsfree: () => {
+    dictateHold.stop();
     sendHudQuiet({
       type: "insight",
-      text:
-        sample && sample.reason === "max"
-          ? "Dictation off - 120s session cap."
-          : "Dictation off - key released.",
+      text: "Hands-free dictation - tap the recording hotkey or Esc to stop.",
     });
+  },
+  onStop: ({ reason }) => {
+    dictateHold.stop();
+    listenMic = false;
+    sendHudQuiet({ type: "auto-listen", mic: false, system: listenSystem, paused: hudPaused });
+    const text =
+      reason === "max"
+        ? "Dictation off - 120s session cap."
+        : reason === "scribe-pending"
+          ? "Scribe pending cancelled."
+          : reason === "cancel"
+            ? "Dictation cancelled."
+            : reason === "tap" || reason === "mode"
+              ? "Dictation off."
+              : "Dictation off - key released.";
+    sendHudQuiet({ type: "insight", text });
     syncDictateCancelHotkey();
   },
 });
@@ -1142,7 +1166,7 @@ function applyAppMode(modeId, { reason = "" } = {}) {
     scribeSession = { gated: false };
   }
   if (appMode !== "transcribe" && appMode !== "scribe") {
-    dictateHold.stop();
+    dictateGesture.cancel("mode");
   }
   syncDictateCancelHotkey();
   refreshTrayMenu();
@@ -2084,9 +2108,7 @@ async function snapshotDeliveryNow() {
 
 async function toggleDictateHotkey() {
   const target = await snapshotDeliveryNow();
-  const delivering = appMode === "transcribe" || appMode === "scribe";
-  if (delivering && listenMic) {
-    dictateHold.stop();
+  if (driver.dryRun && listenMic && dictateGesture.mode === "idle") {
     listenMic = false;
     sendHudQuiet({ type: "auto-listen", mic: false, system: listenSystem, paused: false });
     sendHudQuiet({
@@ -2098,6 +2120,17 @@ async function toggleDictateHotkey() {
     syncDictateCancelHotkey();
     return { ok: true, listening: false, target };
   }
+  const gesture = dictateGesture.press();
+  if (gesture.action === "ignore") {
+    return { ok: true, listening: true, target, dictate: gesture.mode };
+  }
+  if (gesture.action === "stop") {
+    return { ok: true, listening: false, target };
+  }
+  if (gesture.action === "handsfree") {
+    return { ok: true, listening: true, handsfree: true, target };
+  }
+  const delivering = appMode === "transcribe" || appMode === "scribe";
   if (!delivering) {
     applyAppMode("transcribe", { reason: "hotkey" });
   } else {
@@ -2112,8 +2145,8 @@ async function toggleDictateHotkey() {
   sendHudQuiet({
     type: "insight",
     text: target.present
-      ? `Hold to talk - speaking into ${target.title || "the remembered app"}. Release to stop.`
-      : "Hold to talk - click an editor, then speak. Release to stop.",
+      ? `Hold to talk - speaking into ${target.title || "the remembered app"}. Double-tap to keep going. Release to stop.`
+      : "Hold to talk - click an editor, then speak. Double-tap to keep going. Release to stop.",
   });
   syncDictateCancelHotkey();
   return { ok: true, listening: true, target };
@@ -2578,15 +2611,9 @@ function releaseKillSwitch() {
 }
 
 function cancelDictateListen() {
-  dictateHold.stop();
-  listenMic = false;
   const hadPending = pendingScribe.clear();
   if (hadPending) publishScribePending();
-  sendHudQuiet({ type: "auto-listen", mic: false, system: listenSystem, paused: hudPaused });
-  sendHudQuiet({
-    type: "insight",
-    text: hadPending ? "Scribe pending cancelled." : "Dictation cancelled.",
-  });
+  dictateGesture.cancel(hadPending ? "scribe-pending" : "cancel");
 }
 
 function syncDictateCancelHotkey() {
