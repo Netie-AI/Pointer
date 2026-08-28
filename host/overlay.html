@@ -994,15 +994,13 @@
       function onDesk(q) {
         const text = String(q || "").trim();
         if (!text) return;
-        if (hasApi) {
-          api.invoke("teach-overlay:ask", { message: text, act: false });
-          return;
-        }
         const href = overlayDeskHref(text);
-        if (demo) {
-          if (href) openDeskWindow(href);
+        if (href) openDeskWindow(href);
+        if (hasApi) {
+          if (!href) api.invoke("teach-overlay:ask", { message: text, act: false });
           return;
         }
+        if (demo) return;
         fetch("/api/ask", {
           method: "POST",
           headers: { "content-type": "application/json" },

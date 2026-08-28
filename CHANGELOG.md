@@ -1,3 +1,10 @@
+## 2026-08-28 - Live overlay desk Ask paints captions locally
+
+Live Electron overlay Ask for Live answer / mail / Notes / Needs you
+paints chrome captions on the overlay itself. Teach-advance stays
+Got it / Back. Never send. Never speak meeting. Never Act. P-05 and
+P-06 stay parked.
+
 ## 2026-08-28 - Overlay Live captions stay after Ask
 
 Ask Live answer keeps They asked / You / Live captions in overlay

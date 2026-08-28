@@ -989,6 +989,9 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /else if \(liveAsked\)/);
   assert.match(teachOverlay, /let liveAsked = false/);
   assert.match(teachOverlay, /paintLiveChrome\(liveAsked\)/);
+  const deskAsk = teachOverlay.slice(teachOverlay.indexOf("function onDesk"), teachOverlay.indexOf("function submitWalkAsk"));
+  assert.match(deskAsk, /if \(href\) openDeskWindow\(href\)/);
+  assert.match(deskAsk, /if \(!href\) api\.invoke/);
   assert.match(teachOverlay, /onRailStep/);
   assert.match(teachOverlay, /data-rail/);
   assert.match(teachOverlay, /data-step/);

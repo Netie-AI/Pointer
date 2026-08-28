@@ -505,6 +505,8 @@ function readAsset(file) {
     assert.match(overlayText, /else if \(liveAsked\)/);
     assert.match(overlayText, /let liveAsked = false/);
     assert.match(overlayText, /paintLiveChrome\(liveAsked\)/);
+    assert.match(overlayText, /if \(href\) openDeskWindow\(href\)/);
+    assert.match(overlayText, /if \(!href\) api\.invoke/);
     assert.match(overlayText, /id="walk-dock"/);
     assert.match(overlayText, /copy\.id = "walk-dock-copy"/);
     assert.match(overlayText, /copyWalkDock/);

@@ -183,6 +183,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/saved \? "18%" : "72%"/.test(walk), "after Save Live answer takes the main window");
       assert.ok(/filedEl\.hidden = false/.test(walk) && /else if \(liveAsked\)/.test(walk), "Back after Save clears Opened Live answer from the cue unless Live answer is still asked");
       assert.ok(/let liveAsked = false/.test(walk) && /paintLiveChrome\(liveAsked\)/.test(walk), "Ask Live answer keeps captions while the Email walk continues");
+      assert.ok(/if \(href\) openDeskWindow\(href\)/.test(walk) && /if \(!href\) api\.invoke/.test(walk), "live overlay desk Ask paints captions locally and does not teach-advance");
       assert.ok(/done && inboxSaved && kind === "button"/.test(walk), "saved Save BOX drops Click Save");
       assert.ok(/boxed && done && kind === "field"/.test(walk), "typed To is not covered by a done Email BOX");
       assert.ok(/Never sent/.test(walk) && /saved on This computer - send is parked/.test(walk), "Save never sends");
