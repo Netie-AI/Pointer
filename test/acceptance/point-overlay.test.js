@@ -149,7 +149,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/pointer-events:\s*none/.test(walk), "the screen walk must not eat clicks");
       assert.ok(/id="walk-chrome"/.test(walk), "overlay keeps walk chrome");
       assert.ok(/id="walk-copy"/.test(walk) && /id="walk-acts"/.test(walk), "overlay walk chrome stacks cue lines instead of ellipsis");
-      assert.ok(/#walk-cue, #walk-then, #walk-fill, #walk-filed/.test(walk) && /white-space:\s*normal/.test(walk), "overlay cue lines wrap");
+      assert.ok(/#walk-cue, #walk-then, #walk-fill, #walk-asked, #walk-you, #walk-live, #walk-filed/.test(walk) && /white-space:\s*normal/.test(walk), "overlay cue lines wrap");
       assert.ok(/id="walk-draw"/.test(walk) && />Draw</.test(walk), "overlay can stack a drawn BOX");
       assert.ok(/id="draw-stroke"/.test(walk), "overlay paints the freehand stroke");
       assert.ok(/id="walk-ink"/.test(walk), "overlay keeps stored freehand ink");
