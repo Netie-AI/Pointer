@@ -39,6 +39,8 @@ is Got it (Ask, never Act). Draw around a control to
 stack a BOX and keep the freehand stroke on the walk. Copy next / Copy say-this
 copy the cue line. Overlay current BOX shows Click / Type in / Look at
 plus field / button faces at those measured percents (not only `1 Save`).
+OS voice speaks Click/Type in on the current BOX (overlay, HUD, `/teach`);
+never meeting. Current BOX pulses in place (not a cursor ring).
 Loopback `/meeting` Ask chips file an unsent follow-up
 and a Word draft from the stored transcript (never send, never Word.app,
 teach walks stay on `/teach`). Loopback sticky chrome has a fixed Ask bar
@@ -61,7 +63,8 @@ sent (never invent, never send). Opening a review paints Needs you
 (never approve). Loopback `/document` `/inbox` `/security` paint the
 same windows. Home theater paints those windows on the rail and a room
 dock of links (no markdown dump). Session markdown stays copy-only. The
-desks catalog lives on `/workspace`.
+desks catalog lives on `/workspace`. `?demo=1` is a sample coworker catalog
+(not live, no runtime).
 Loopback `/document`
 downloads a generated `.docx` from the live draft (never Act, never
 Word.app). Public `/api/document.docx` is 404. Loopback `/meeting` paints the You/Them

@@ -1,3 +1,11 @@
+## 2026-08-28 - Teach speaks the current BOX; demo catalog is online
+
+OS voice speaks Click/Type in on the current BOX (overlay, HUD, `/teach`).
+Never meeting. Never a cheater overlay. Current BOX pulses in place (not
+a cursor ring). `?demo=1` paints a sample coworker catalog with no runtime
+and no live session. Public APIs stay 404. Ask/Draw stay on the laptop.
+Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Home is windows; This computer holds the catalog
 
 Loopback `/` no longer paints the desks catalog dump. Workspace poller

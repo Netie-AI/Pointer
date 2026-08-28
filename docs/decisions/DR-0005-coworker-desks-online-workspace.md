@@ -182,3 +182,6 @@ returns a redacted review (never approval). Public `/api/security.md`
 stays 404. Cue still says not approval.
 Public POST
 `/api/ask` stays 404.
+OS voice speaks Click/Type in on the current BOX (overlay, HUD, `/teach`);
+never meeting. Current BOX pulses in place (not a cursor ring). `?demo=1`
+is a sample catalog (not live, no runtime, Ask stays on the laptop).

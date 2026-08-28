@@ -11,40 +11,17 @@
    `/teach` `/security` `/document` `/inbox` `/lanes` `/skills`
    `/workspace`). Public Worker is the same catalog; `/mcp` stays on
    the laptop. P-05 parked.
-2. **Coworker desks (DR-0005).** Meeting assist is a grounded stack:
-   Say this / Also / Don't say. OpenVault may refine say-this in 300ms;
-   timeout or ungrounded lines keep the heuristic (never invent, never
-   send, never a stealth overlay). The HUD and loopback host cue bars keep
-   that stack plus last You/Them and Live captions (STT or stored ring)
-   when chrome hides. `/teach` sticky chrome and the walk stage show
-   Click/Type in on the current BOX (not `Next: N of M`). `/teach` sticky
-   chrome is teach-only (Then / Got it). `/meeting` and home keep the
-   live answer. Loopback `/`
-   paints teach path, meeting card, Today plate,
-   and filed desk windows. `/meeting` is a live answer: They asked, last
-   You/Them, Live captions, and say-this (never a cheater overlay).
-   `/teach` stacks drawn BOX steps (current hold,
-   later dashed), Back/Got it Ask, never invented coords. Overlay stays
-   numbered BOX tokens (`1 Save`). Current BOX paints
-   Click / Type in / Look at plus field / button faces at those percents
-   (HUD and overlay, same as `/teach` This screen). A tap on the current
-   BOX is Got it (Ask, never Act). Overlay Draw stores a freehand BOX
-   and keeps that stroke on the walk. Cap 8. Tiny boxes fail closed at
-   0.4%. `/teach` This screen paints measured controls (field / button)
-   at those BOX percents.
-   Compact HUD `cueDisplay` for `point` strips `N of M`.
-   This session links `/workspace?id=` to the live document, inbox, or
-   security file and shows Download generated .docx / unsent .eml /
-   review.md there (never approval). Download packet zips those files.
-   The open file leads `/workspace` with This session files as tabs.
-   `/workspace` paints those files as a desktop grid on This computer.
-   Opening Teach walk paints This screen. Opening Meeting paints the
-   Live answer. Word / mail / review paint Notes / Unsent mail / Needs you
-   on `/workspace` and `/document` `/inbox` `/security`. Unsent `To` is a
-   Heard name or not sent (never invent, never send). Home rail is those
-   windows plus a room dock. Session markdown stays copy-only. Public those
-   paths stay 404.
-   `/workspace` Run is a named refuse (P-06). Public catalog empty.
+2. **Coworker desks (DR-0005).** Meeting assist is Say this / Also / Don't
+   say (300ms OpenVault refine, fail-closed). HUD/host cue bars keep that
+   stack plus You/Them and Live captions when chrome hides. `/teach` is
+   teach-only Click/Type in (Then / Got it). OS voice speaks that cue
+   (never meeting). Current BOX pulses on overlay, HUD, and This screen.
+   `/meeting` is a Live answer, never a cheater overlay. Overlay Draw
+   stores a freehand BOX (cap 8, 0.4% fail-closed). Home rail is filed
+   windows plus a room dock. Session markdown is copy-only. Unsent `To`
+   is a Heard name or not sent. `/workspace` is a desktop grid; Run
+   refuses (P-06). Public live paths stay 404. `?demo=1` is a sample
+   catalog (not live, no runtime).
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

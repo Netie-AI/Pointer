@@ -98,6 +98,7 @@ function readAsset(file) {
     assert.strictEqual(html.status, 200);
     const page = await html.text();
     assert.match(page, /no runtime/i);
+    assert.match(page, /Demo coworker/);
     assert.match(page, /id="desks"/);
     assert.match(page, /id="computer-dock"/);
     assert.match(page, /id="computer-run"/);
@@ -172,6 +173,7 @@ function readAsset(file) {
     assert.match(homeText, /id="rooms"/);
     assert.match(homeText, /room-dock/);
     assert.match(homeText, /This computer/);
+    assert.match(homeText, /Demo coworker/);
     assert.match(homeText, /id="stage"/);
     assert.match(homeText, /id="session"/);
     assert.match(homeText, /id="session-files"/);
@@ -267,6 +269,11 @@ function readAsset(file) {
     assert.match(app, /paintTeachInk/);
     assert.match(app, /teach-map-ink/);
     assert.match(app, /teachActionLine/);
+    assert.match(app, /speakTeachCue/);
+    assert.match(app, /isDemoPage/);
+    assert.match(app, /demoHome/);
+    assert.match(app, /Demo catalog/);
+    assert.match(app, /if \(onTeach\) speakTeachCue/);
     assert.match(app, /showMeeting = !onTeach/);
     assert.match(app, /onTeach/);
     assert.match(app, /Then: /);
@@ -285,6 +292,8 @@ function readAsset(file) {
     assert.match(cssText, /\.teach-map\.draw/);
     assert.match(cssText, /teach-map-key/);
     assert.match(cssText, /teach-map-hint\.add/);
+    assert.match(cssText, /teach-now-pulse/);
+    assert.match(cssText, /teach-map-box\.now/);
     assert.match(cssText, /meeting-card-say/);
     assert.match(cssText, /meeting-card-kicker/);
     assert.match(cssText, /meeting-card-captions/);

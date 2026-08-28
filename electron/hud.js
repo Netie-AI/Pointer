@@ -115,6 +115,23 @@ function cueCopyLabel(kind) {
   if (kind === "warn") return "Copy review";
   return "Copy say-this";
 }
+let lastSpokenTeach = "";
+function speakTeachCue(line) {
+  const text = String(line || "")
+    .replace(/^\d+\s+of\s+\d+\s+/i, "")
+    .trim();
+  if (!text || text === lastSpokenTeach) return;
+  if (typeof document !== "undefined" && document.hidden) return;
+  const synth = typeof window !== "undefined" && window.speechSynthesis;
+  if (!synth || typeof SpeechSynthesisUtterance === "undefined") return;
+  lastSpokenTeach = text;
+  try {
+    synth.cancel();
+    synth.speak(new SpeechSynthesisUtterance(text));
+  } catch {
+    lastSpokenTeach = "";
+  }
+}
 function cueDisplay(kind, cue) {
   if (!cue) return "";
   if (kind === "point") {
@@ -362,6 +379,7 @@ function paintLiveBrief(event) {
     barCopy.hidden = !cue;
     barCopy.textContent = cueCopyLabel(kind);
   }
+  if (kind === "point") speakTeachCue(cue);
   paintMeetingTalk(event, asked);
 }
 
@@ -1952,6 +1970,7 @@ function renderPoints(points, ttlMs, hold) {
     mark.className = boxed ? "point-mark point-box" : "point-mark";
     if (later) mark.classList.add("later");
     if (done) mark.classList.add("done");
+    if (boxed && !later && !done) mark.classList.add("now");
     if (boxed) {
       mark.style.left = `${point.leftPct}%`;
       mark.style.top = `${point.topPct}%`;

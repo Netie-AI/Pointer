@@ -955,6 +955,10 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /demoAdvance/);
   assert.match(teachOverlay, /html\.demo/);
   assert.match(teachOverlay, /#point-layer/);
+  assert.match(teachOverlay, /teach-now-pulse/);
+  assert.match(teachOverlay, /speechSynthesis/);
+  assert.match(teachOverlay, /speakTeachCue/);
+  assert.doesNotMatch(teachOverlay, /Say this:/);
   const overlayAsk = main.slice(main.indexOf('ipcMain.handle("teach-overlay:ask"'), main.indexOf('ipcMain.handle("hud:setMode"'));
   assert.match(overlayAsk, /teachAdvance/);
   assert.match(overlayAsk, /act: false/);
@@ -1583,6 +1587,12 @@ test("desk chips ask, never act", () => {
   assert.match(fs.readFileSync(path.join(__dirname, "..", "host", "security.html"), "utf8"), /Needs you from this laptop/);
   assert.match(hostApp, /## Draft to write/);
   assert.match(hostApp, /teachActionLine/);
+  assert.match(hostApp, /speakTeachCue/);
+  assert.match(hostApp, /speechSynthesis/);
+  assert.match(hostApp, /isDemoPage/);
+  assert.match(hostApp, /demoHome/);
+  assert.match(hostApp, /Demo catalog/);
+  assert.match(hostApp, /if \(onTeach\) speakTeachCue/);
   assert.match(hostApp, /showMeeting = !onTeach/);
   assert.match(hostApp, /onTeach/);
   assert.match(hostApp, /Then: /);
@@ -1687,6 +1697,9 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /point-box/);
   assert.match(hud, /point-face/);
   assert.match(hud, /overlayControlFace/);
+  assert.match(hud, /speakTeachCue/);
+  assert.match(hud, /kind === "point"\) speakTeachCue/);
+  assert.match(hud, /classList.add\("now"\)/);
   assert.match(hud, /later/);
   assert.match(hud, /event\.hold/);
   assert.match(hud, /renderPoints\(event\.points, event\.ttlMs, event\.hold\)/);
@@ -1730,6 +1743,8 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.doesNotMatch(css, /chat-open \.live-cue-bar/);
   assert.doesNotMatch(css, /\.hud\.morph-hidden \.live-cue-bar[\s\S]{0,80}display:\s*none/);
   assert.match(css, /\.hud\.morph-hidden \.subtitle-live/);
+  assert.match(css, /teach-now-pulse/);
+  assert.match(css, /\.point-mark\.point-box\.now/);
   const liveFn = hud.slice(hud.indexOf("function paintLiveBrief"), hud.indexOf("const hudSettings"));
   assert.match(liveFn, /live-cue-bar/);
   assert.match(liveFn, /live-cue-also/);

@@ -94,6 +94,10 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   mail / review paints Notes / Unsent mail / Needs you on `/workspace`
   and on `/document` `/inbox` `/security`. Home `/` paints those windows
   on the rail and a room dock. Session markdown stays copy-only. Public catalog stays empty.
+- OS voice speaks Click/Type in on the current BOX (overlay, HUD, `/teach`).
+  Never meeting. Current BOX pulses in place (not a cursor ring).
+- `?demo=1` paints a sample coworker catalog (not live, no runtime, Ask
+  stays on the laptop). Public APIs stay 404.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
 ## Traps

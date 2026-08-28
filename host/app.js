@@ -13,7 +13,41 @@ function el(tag, className) {
  * Loopback catalog stays current while the tab is open.
  * Public localFirst snapshots are empty and must not poll.
  */
+function isDemoPage() {
+  try {
+    return /(?:^|[?&])demo=1(?:&|$)/.test(String(location.search || ""));
+  } catch {
+    return false;
+  }
+}
+
+function demoHref(path) {
+  const href = String(path || "");
+  if (!isDemoPage()) return href;
+  if (/[?&]demo=1(?:&|$)/.test(href)) return href;
+  return href.indexOf("?") >= 0 ? href + "&demo=1" : href + "?demo=1";
+}
+
+let lastSpokenTeach = "";
+function speakTeachCue(line) {
+  const text = String(line || "")
+    .replace(/^\d+\s+of\s+\d+\s+/i, "")
+    .trim();
+  if (!text || text === lastSpokenTeach) return;
+  if (typeof document !== "undefined" && document.hidden) return;
+  const synth = typeof window !== "undefined" && window.speechSynthesis;
+  if (!synth || typeof SpeechSynthesisUtterance === "undefined") return;
+  lastSpokenTeach = text;
+  try {
+    synth.cancel();
+    synth.speak(new SpeechSynthesisUtterance(text));
+  } catch {
+    lastSpokenTeach = "";
+  }
+}
+
 function pollWhileLive(load) {
+  if (isDemoPage()) return;
   let timer = null;
   function tick() {
     if (typeof document !== "undefined" && document.hidden) return;
@@ -155,7 +189,7 @@ function paintSessionTile(row) {
 function sessionLinkHref(row) {
   const href = String((row && row.href) || "").trim();
   if (/^\/(workspace|meeting|teach|today|document|security|inbox)(\?id=[A-Za-z0-9._-]+)?$/.test(href)) {
-    return href;
+    return demoHref(href);
   }
   const desk = String((row && row.desk) || "");
   if (
@@ -166,9 +200,9 @@ function sessionLinkHref(row) {
     desk === "security" ||
     desk === "inbox"
   ) {
-    return "/" + desk;
+    return demoHref("/" + desk);
   }
-  return "/workspace";
+  return demoHref("/workspace");
 }
 
 function paintWorkingSet() {
@@ -511,6 +545,21 @@ function paintOpenFileBody(root, body, text) {
   const art = body && body.artifact;
   const desk = String((art && art.desk) || "").toLowerCase();
   const id = String((art && art.id) || "").toLowerCase();
+  if (isDemoPage()) {
+    const home = demoHome();
+    if (desk === "teach" || id === "live-teach") {
+      applyOpenTeach(root, home.rooms.teach);
+      return;
+    }
+    if (desk === "meeting" || id === "live-meeting") {
+      applyOpenMeeting(root, home.rooms.meeting);
+      return;
+    }
+    if (desk === "today" || id === "standing-today") {
+      applyOpenToday(root, home.rooms.today, text);
+      return;
+    }
+  }
   if (desk === "teach" || id === "live-teach") {
     fetch("/api/teach")
       .then(function (r) {
@@ -568,6 +617,10 @@ function paintOpenFileBody(root, body, text) {
 function openArtifact(id) {
   const root = document.getElementById("artifact-body");
   if (!root || !id) return;
+  if (isDemoPage()) {
+    openDemoArtifact(id);
+    return;
+  }
   fetch("/api/workspace?id=" + encodeURIComponent(id))
     .then((r) => r.json().then((body) => body))
     .then((body) => {
@@ -835,6 +888,16 @@ function pageDesk() {
 }
 
 function postAsk(ask) {
+  if (isDemoPage()) {
+    const line = "Demo catalog. Ask stays on the laptop. Never Act.";
+    ["host-filed", "today-filed", "artifact-filed", "meeting-filed"].forEach(function (id) {
+      const filed = document.getElementById(id);
+      if (!filed) return;
+      filed.hidden = false;
+      filed.textContent = line;
+    });
+    return;
+  }
   const payload = { ask: ask, act: false };
   if (lastOpenId) payload.id = lastOpenId;
   fetch("/api/ask", {
@@ -1091,6 +1154,10 @@ function paintMeetingChips(chips) {
 }
 
 function postMeeting(ask) {
+  if (isDemoPage()) {
+    postAsk(ask);
+    return;
+  }
   fetch("/api/meeting", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -1122,6 +1189,13 @@ function postMeeting(ask) {
 }
 
 function postTeach(ask, apply) {
+  if (isDemoPage()) {
+    demoAdvanceTeach(ask);
+    const m = demoTeachRoom();
+    if (typeof apply === "function") apply(m);
+    applyDemoCatalog();
+    return;
+  }
   fetch("/api/teach", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -1352,6 +1426,7 @@ function paintChrome(home) {
   }
   if (textEl) textEl.textContent = cueLine;
   lastChromeCue = onTeach ? teachAction || teachCue : meetingCue || plate;
+  if (onTeach) speakTeachCue(teachAction || teachCue);
   bar.hidden = false;
   const canWalk = onTeach && Boolean(teach.advance);
   const back = document.getElementById("live-cue-back");
@@ -1384,6 +1459,14 @@ function hitTeachBox(box, xPct, yPct) {
 }
 
 function postTeachFrame(box, apply) {
+  if (isDemoPage()) {
+    const filed = document.getElementById("host-filed");
+    if (filed) {
+      filed.hidden = false;
+      filed.textContent = "Demo catalog. Draw stays on the live laptop overlay. Never Act.";
+    }
+    return;
+  }
   fetch("/api/teach", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -1782,9 +1865,9 @@ function paintSecurityCard(root, m, href) {
 function paintWorkRail(root, rooms) {
   if (!root) return;
   const rail = el("div", "work-rail");
-  paintInboxCard(rail, (rooms && rooms.inbox) || {}, "/workspace?id=live-inbox");
-  paintDocumentCard(rail, (rooms && rooms.document) || {}, "/workspace?id=live-document");
-  paintSecurityCard(rail, (rooms && rooms.security) || {}, "/workspace?id=live-security");
+  paintInboxCard(rail, (rooms && rooms.inbox) || {}, demoHref("/workspace?id=live-inbox"));
+  paintDocumentCard(rail, (rooms && rooms.document) || {}, demoHref("/workspace?id=live-document"));
+  paintSecurityCard(rail, (rooms && rooms.security) || {}, demoHref("/workspace?id=live-security"));
   if (rail.childNodes.length) root.appendChild(rail);
 }
 
@@ -1818,7 +1901,7 @@ function paintRooms(rooms, localFirst) {
   ["teach", "meeting", "today", "document", "inbox", "security"].forEach(function (id) {
     const r = (rooms && rooms[id]) || {};
     const a = el("a", "room-dock-tile");
-    a.href = "/" + id;
+    a.href = demoHref("/" + id);
     const kicker = el("span", "room-dock-kicker");
     kicker.textContent = labels[id] || id;
     a.appendChild(kicker);
@@ -1875,7 +1958,7 @@ function paintSession(session, localFirst) {
     if (filesEl) {
       filesEl.replaceChildren();
       const note = el("p", "muted");
-      note.textContent = "Live session stays on the laptop. Open 127.0.0.1:18010 while Pointer is running.";
+      note.textContent = "Live session stays on the laptop. Open 127.0.0.1:18010 while Pointer is running, or /workspace?demo=1 for a sample coworker.";
       filesEl.appendChild(note);
     }
     paintOpenFileTabs([]);
@@ -2170,3 +2253,272 @@ if (!document.getElementById("rooms")) {
       });
   });
 }
+
+let demoTeachStep = 0;
+
+function demoTeachWalk() {
+  return [
+    {
+      leftPct: 18,
+      topPct: 28,
+      wPct: 48,
+      hPct: 14,
+      label: "1 Email",
+      cue: "Type in Email",
+      face: "field",
+      caption: "Email",
+      stroke: [
+        { x: 18, y: 28 },
+        { x: 66, y: 28 },
+        { x: 66, y: 42 },
+        { x: 18, y: 42 },
+        { x: 18, y: 28 },
+      ],
+    },
+    {
+      leftPct: 52,
+      topPct: 52,
+      wPct: 22,
+      hPct: 12,
+      label: "2 Save",
+      cue: "Click Save",
+      face: "button",
+      caption: "Save",
+    },
+  ];
+}
+
+function demoAdvanceTeach(ask) {
+  const q = String(ask || "").toLowerCase();
+  const last = demoTeachWalk().length - 1;
+  if (/\bback\b/.test(q)) demoTeachStep = Math.max(0, demoTeachStep - 1);
+  else demoTeachStep = Math.min(last, demoTeachStep + 1);
+}
+
+function demoTeachRoom() {
+  const walk = demoTeachWalk();
+  const step = Math.max(0, Math.min(demoTeachStep, walk.length - 1));
+  const path = walk.map(function (p, i) {
+    return Object.assign({}, p, {
+      now: i === step,
+      later: i > step,
+      done: i < step,
+    });
+  });
+  return {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    desk: "teach",
+    advance: true,
+    title: "Teach walk",
+    action: walk[step].cue,
+    cue: walk[step].cue,
+    rest: walk[step + 1] ? walk[step + 1].cue : "",
+    path: path,
+    deliverable: "Demo walk. Type in Email, then Click Save. Never Act.",
+    reason: "Demo catalog. Not your live session. Never Act.",
+  };
+}
+
+function demoHome() {
+  const teach = demoTeachRoom();
+  const meeting = {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    desk: "meeting",
+    title: "Live answer",
+    asked: "Can we ship Friday?",
+    cue: "Friday works if the deck is in tonight.",
+    heard: "Sarah Chen / Friday / $40k",
+    also: "Name the Friday hold.",
+    avoid: "Don't promise a send.",
+    turns: [
+      { speaker: "them", text: "Can we ship Friday?" },
+      { speaker: "you", text: "Friday works if the deck is in tonight." },
+    ],
+    captions: [{ text: "Can we ship Friday?" }],
+    deliverable: "Demo meeting. Never send. Never a cheater overlay.",
+  };
+  const today = {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    desk: "today",
+    title: "Today",
+    cue: "Send the deck Friday",
+    plate: ["Send the deck Friday", "Word notes waiting"],
+    deliverable: "## On your plate\n- Send the deck Friday\n- Word notes waiting",
+  };
+  const document = {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    desk: "document",
+    title: "Notes from Friday",
+    cue: "draft only - not a .docx",
+    preview: "Recap\nFriday works if the deck is in tonight.\n\nCommitments\nSend the deck Friday.",
+    deliverable: "## Draft to write\nRecap\nFriday works if the deck is in tonight.\n\nCommitments\nSend the deck Friday.",
+  };
+  const inbox = {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    desk: "inbox",
+    title: "Draft follow-up (not sent)",
+    cue: "not sent",
+    preview: "To: Sarah Chen\nSubject: Friday deck\n\nFriday works if the deck is in tonight.",
+    deliverable: "## Draft\nTo: Sarah Chen\nSubject: Friday deck\n\nFriday works if the deck is in tonight.",
+  };
+  const security = {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    desk: "security",
+    title: "Needs you",
+    cue: "not approval",
+    findings: [{ file: "notes", kind: "secret", excerpt: "[redacted]" }],
+    deliverable: "## Findings (redacted)\n- notes secret ([redacted])\n\nNeeds you. Never approval.",
+  };
+  const files = [
+    { id: "live-teach", desk: "teach", title: "Teach walk", cue: teach.cue, href: "/workspace?id=live-teach" },
+    { id: "live-meeting", desk: "meeting", title: "Live answer", cue: meeting.cue, href: "/workspace?id=live-meeting" },
+    { id: "live-document", desk: "document", title: "Notes from Friday", cue: document.cue, href: "/workspace?id=live-document" },
+    { id: "live-inbox", desk: "inbox", title: "Unsent mail", cue: inbox.cue, href: "/workspace?id=live-inbox" },
+    { id: "live-security", desk: "security", title: "Needs you", cue: security.cue, href: "/workspace?id=live-security" },
+  ];
+  return {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    reason: "Demo catalog. Not your live session. Run is refused (P-06).",
+    rooms: { teach: teach, meeting: meeting, today: today, document: document, inbox: inbox, security: security },
+    session: {
+      asked: meeting.asked,
+      heard: meeting.heard,
+      cue: meeting.cue,
+      plate: today.cue,
+      files: files,
+      markdown: "Demo session. Never Act. Never send.",
+      empty: false,
+    },
+    desks: [
+      { id: "teach", label: "Teach", job: "Walk this screen", deliverable: "measured BOX", act: "never" },
+      { id: "meeting", label: "Meeting", job: "Live answer", deliverable: "say-this", act: "never" },
+      { id: "today", label: "Today", job: "Standing plate", deliverable: "commitments", act: "never" },
+      { id: "document", label: "Notes", job: "Word draft", deliverable: "generated .docx", act: "never" },
+      { id: "inbox", label: "Unsent mail", job: "Follow-up", deliverable: "unsent .eml", act: "never", parked: true },
+      { id: "security", label: "Needs you", job: "Review", deliverable: "redacted review", act: "never" },
+    ],
+    artifacts: files.map(function (row) {
+      return { id: row.id, desk: row.desk, title: row.title };
+    }),
+  };
+}
+
+function demoArtifact(id) {
+  const home = demoHome();
+  const rooms = home.rooms || {};
+  const key = String(id || "").toLowerCase();
+  const map = {
+    "live-teach": rooms.teach,
+    "live-meeting": rooms.meeting,
+    "live-document": rooms.document,
+    "live-inbox": rooms.inbox,
+    "live-security": rooms.security,
+    "standing-today": rooms.today,
+  };
+  const m = map[key];
+  if (!m) return null;
+  return {
+    ok: true,
+    exec: false,
+    act: false,
+    demo: true,
+    localFirst: false,
+    artifact: {
+      id: key,
+      desk: m.desk,
+      title: m.title,
+      cue: m.cue,
+      preview: m.preview,
+      findings: m.findings,
+      body: m.deliverable,
+    },
+    chips: [],
+  };
+}
+
+function openDemoArtifact(id) {
+  const root = document.getElementById("artifact-body");
+  if (!root || !id) return;
+  const body = demoArtifact(id);
+  if (!body) {
+    paintOpenPre(root, "Demo catalog has no file " + id);
+    setFinishedDownloads(null, { localFirst: true });
+    return;
+  }
+  const text = String(body.artifact.body || "");
+  root.replaceChildren();
+  paintOpenFileBody(root, body, text);
+  setWorkingSet(String(body.artifact.id || id), String(body.artifact.title || id));
+  lastArtifactText = text;
+  lastArtifactFile = briefFileName(body.artifact.desk || id);
+  lastOpenId = String(body.artifact.id || id);
+  paintDeskChips("artifact-chips", []);
+  const copyBtn = document.getElementById("artifact-copy");
+  const dlBtn = document.getElementById("artifact-download");
+  if (copyBtn) copyBtn.hidden = !text;
+  if (dlBtn) dlBtn.hidden = true;
+  setFinishedDownloads(null, { localFirst: true, exec: false });
+}
+
+function applyDemoCatalog() {
+  const home = demoHome();
+  show("policy", home.reason);
+  show("hint", home.reason);
+  paintComputerDock({ localFirst: false, reason: home.reason });
+  paintDesks(home.desks);
+  artifactCache = home.artifacts || [];
+  paintArtifacts(home.artifacts || []);
+  paintRooms(home.rooms, false);
+  paintStage(home.rooms, false);
+  paintSession(home.session, false);
+  paintChrome(home);
+  if (pageDesk() === "today") applyToday(home.rooms.today);
+  const pages = [
+    ["teach-brief", "teach-cue-web", "refused: teach must not grow a runtime", null, home.rooms.teach],
+    ["meeting-brief", "meeting-cue-web", "refused: meeting must not grow a runtime", "meeting-asked-web", home.rooms.meeting],
+    ["document-brief", "document-cue-web", "refused: document must not grow a runtime", null, home.rooms.document],
+    ["inbox-brief", "inbox-cue-web", "refused: inbox must not grow a runtime", null, home.rooms.inbox],
+    ["security-brief", "security-cue-web", "refused: security must not grow a runtime", null, home.rooms.security],
+  ];
+  pages.forEach(function (row) {
+    const page = document.getElementById(row[0]);
+    if (!page) return;
+    applyLiveRoom(page, row[0], row[1], row[3], row[2], row[4]);
+  });
+  if (!openedQueryId) {
+    openedQueryId = true;
+    const qid = workspaceQueryId();
+    if (qid) openDemoArtifact(qid);
+  }
+}
+
+if (isDemoPage()) applyDemoCatalog();
+

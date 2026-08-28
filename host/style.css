@@ -406,6 +406,13 @@ pre {
   border-color: #333;
   opacity: 0.4;
 }
+.teach-map-box.now {
+  animation: teach-now-pulse 1.4s ease-in-out infinite;
+}
+@keyframes teach-now-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(110, 168, 255, 0.45); }
+  50% { box-shadow: 0 0 0 8px rgba(110, 168, 255, 0); }
+}
 .teach-map-rail {
   position: absolute;
   right: 8px;

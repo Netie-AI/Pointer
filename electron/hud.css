@@ -327,6 +327,14 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   background: transparent;
   opacity: 0.4;
 }
+.point-mark.point-box.now {
+  animation: teach-now-pulse 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes teach-now-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent), transparent 55%); }
+  50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent), transparent 100%); }
+}
 @keyframes point-box-in { from { opacity: 0; } }
 
 /* P4-BG-AGENTS — background work is a status line, not a stage orb. */
