@@ -41,6 +41,9 @@ copy the cue line. Overlay current BOX shows Click / Type in / Look at
 plus field / button faces at those measured percents (not only `1 Save`).
 OS voice speaks Click/Type in on the current BOX (overlay, HUD, `/teach`);
 never meeting. Current BOX pulses in place (not a cursor ring).
+Public and loopback `/overlay` is that same walk full-screen (demo
+online when APIs are empty; live path on the laptop). Overlay Draw
+stacks a BOX (cap 8, 0.4% fail-closed). Last BOX says Last step.
 Loopback `/meeting` Ask chips file an unsent follow-up
 and a Word draft from the stored transcript (never send, never Word.app,
 teach walks stay on `/teach`). Loopback sticky chrome has a fixed Ask bar

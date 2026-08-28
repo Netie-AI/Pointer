@@ -1244,7 +1244,7 @@ function ensureTeachOverlay() {
   });
   return new Promise((resolve) => {
     win.webContents.once("did-finish-load", () => resolve(win));
-    win.loadFile(path.join(__dirname, "teach-overlay.html"));
+    win.loadFile(path.join(__dirname, "..", "host", "overlay.html"));
   });
 }
 

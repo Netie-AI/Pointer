@@ -5,6 +5,7 @@ const path = require("path");
 const {
   PAGES,
   pageFor,
+  fileFor,
   publicSnapshot,
   handlePublicRequest,
   createPublicFetch,
@@ -47,6 +48,8 @@ function readAsset(file) {
     assert.strictEqual(pageFor("/security"), "security");
     assert.strictEqual(pageFor("/document"), "document");
     assert.strictEqual(pageFor("/inbox"), "inbox");
+    assert.strictEqual(pageFor("/overlay"), null);
+    assert.strictEqual(fileFor("/overlay"), "overlay.html");
     assert.strictEqual(pageFor("/secret"), null);
   });
 
@@ -176,6 +179,7 @@ function readAsset(file) {
     assert.match(homeText, /id="rooms"/);
     assert.match(homeText, /room-dock/);
     assert.match(homeText, /This computer/);
+    assert.match(homeText, /This display/);
     assert.match(homeText, /sample coworker/);
     assert.match(homeText, /Demo coworker/);
     assert.match(homeText, /id="stage"/);
@@ -297,6 +301,7 @@ function readAsset(file) {
     assert.match(app, /showMeeting = !onTeach/);
     assert.match(app, /onTeach/);
     assert.match(app, /Then: /);
+    assert.match(app, /Last step/);
     assert.match(app, /canWalk = onTeach &&/);
     assert.match(app, /meeting-card-kicker/);
     assert.match(app, /meeting-card-captions/);
@@ -442,6 +447,18 @@ function readAsset(file) {
     assert.match(teachText, /id="teach-back"/);
     assert.match(teachText, /Walk path/);
     assert.match(teachText, /This screen/);
+    assert.match(teachText, /This display/);
+    const overlay = await fetch(new Request("https://host.netie.ai/overlay"));
+    assert.strictEqual(overlay.status, 200);
+    const overlayText = await overlay.text();
+    assert.match(overlayText, /id="walk-chrome"/);
+    assert.match(overlayText, /Got it/);
+    assert.match(overlayText, /Last step/);
+    assert.match(overlayText, /demoFrame/);
+    assert.match(overlayText, /Type in Email/);
+    assert.doesNotMatch(overlayText, /innerHTML/);
+    assert.doesNotMatch(overlayText, /Send mail|Approve/);
+    assert.doesNotMatch(overlayText, /clicky-orb|stage-orb|chat-bubble/);
     const teachApi = handlePublicRequest({ method: "GET", pathname: "/api/teach" });
     assert.strictEqual(JSON.parse(teachApi.body).localFirst, true);
     assert.strictEqual(JSON.parse(teachApi.body).exec, false);

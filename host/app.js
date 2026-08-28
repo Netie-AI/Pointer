@@ -1188,8 +1188,9 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
   const restEl = document.getElementById(pageId.replace("-brief", "-rest-web"));
   const rest = String((m && m.rest) || "").trim();
   if (restEl) {
-    restEl.hidden = !rest;
-    restEl.textContent = rest ? "Then: " + rest : "";
+    const line = rest ? "Then: " + rest : String((m && (m.action || m.cue)) || "").trim() ? "Last step" : "";
+    restEl.hidden = !line;
+    restEl.textContent = line;
   }
   setTeachButtons(m);
   paintDeskChips(pageId.replace("-brief", "-chips"), (m && m.chips) || []);
@@ -1470,8 +1471,9 @@ function paintChrome(home) {
   }
   if (heardEl) {
     if (onTeach) {
-      heardEl.hidden = !teachRest;
-      heardEl.textContent = teachRest ? "Then: " + teachRest : "";
+      const thenLine = teachRest ? "Then: " + teachRest : cueLine ? "Last step" : "";
+      heardEl.hidden = !thenLine;
+      heardEl.textContent = thenLine;
     } else {
       heardEl.hidden = !heard;
       heardEl.textContent = heard ? "Heard: " + heard : "";
@@ -1809,9 +1811,9 @@ function paintTeachMap(root, m, opts) {
     next.textContent = action;
     map.appendChild(next);
   }
-  if (rest) {
+  if (rest || action) {
     const then = el("p", "teach-map-then");
-    then.textContent = "Then: " + rest;
+    then.textContent = rest ? "Then: " + rest : "Last step";
     map.appendChild(then);
   }
   boxes.forEach((p) => {

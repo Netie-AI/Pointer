@@ -1,3 +1,11 @@
+## 2026-08-28 - Public /overlay is the teach walk; Last step is honest
+
+Public `/overlay` serves the same click-through teach page the laptop
+HUD loads. Online with no live walk it is the labeled demo (Email then
+Save). Draw stacks a BOX (cap 8, 0.4% fail-closed). Last BOX says Last
+step, not an empty Then. Got it Ask, never Act. Run still refuses
+(P-06). P-05 stays parked.
+
 ## 2026-08-28 - Demo chips Ask the next desk
 
 Fixed cue bar chips Ask Got it, Draft email, Notes, Needs you, and

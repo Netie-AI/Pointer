@@ -193,3 +193,6 @@ Needs you / Live answer).
 `/workspace` opens a file as a window on This computer (not a dump below
 the catalog). Home This screen Draw stacks a BOX (cap 8, 0.4% fail-closed)
 and tap on the current BOX is Got it (Ask, never Act).
+Public `/overlay` is the same teach walk the laptop HUD loads (demo
+online, live on loopback). Overlay Draw stacks a BOX (cap 8, 0.4%
+fail-closed). Last BOX says Last step, not an empty Then.

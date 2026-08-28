@@ -26,7 +26,9 @@
    Public pages paint the labeled demo coworker (not your session, no
    runtime). Demo Ask opens the matching window on This computer
    (never send, never a .docx, never approval). Cue-bar chips Ask
-   Got it / Draft email / Notes / Needs you / Live answer.
+   Got it / Draft email / Notes / Needs you / Live answer. Public
+   `/overlay` is the same teach walk (Draw stacks a BOX; Last step
+   when nothing remains). Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

@@ -189,11 +189,13 @@
         0%, 100% { box-shadow: 0 0 0 0 rgba(110, 168, 255, 0.45); }
         50% { box-shadow: 0 0 0 8px rgba(110, 168, 255, 0); }
       }
-      html.demo, html.demo body {
+      html.demo, html.demo body,
+      html.host, html.host body {
         pointer-events: auto;
         background: #243044;
       }
-      html.demo #point-layer .point-box:not(.later):not(.done) {
+      html.demo #point-layer .point-box:not(.later):not(.done),
+      html.host #point-layer .point-box:not(.later):not(.done) {
         pointer-events: auto;
         cursor: pointer;
       }
@@ -217,10 +219,21 @@
       const cueEl = document.getElementById("walk-cue");
       const thenEl = document.getElementById("walk-then");
       const api = window.netieTeachOverlay;
+      const hasApi = Boolean(api && typeof api.invoke === "function");
       let mouseOverChrome = false;
-      const demo = /(?:^|[?&])demo=1(?:&|$)/.test(location.search);
+      const demoQuery = /(?:^|[?&])demo=1(?:&|$)/.test(location.search);
+      let demo = demoQuery;
       if (demo) document.documentElement.classList.add("demo");
+      else if (!hasApi) document.documentElement.classList.add("host");
       let demoAdvance = function () {};
+      let demoWalk = [];
+      let demoStep = 0;
+
+      function restLine(rest, cue) {
+        const t = String(rest || "").trim();
+        if (t) return "Then: " + t;
+        return String(cue || "").trim() ? "Last step" : "";
+      }
 
       function overlayControlFace(cue) {
         const t = String(cue || "").toLowerCase();
@@ -286,14 +299,10 @@
             kbd.textContent = String(point.key).slice(0, 12);
             mark.appendChild(kbd);
           }
-          if (demo && boxed && !later && !done) {
+          if (!hasApi && boxed && !later && !done) {
             mark.addEventListener("click", function (ev) {
               ev.preventDefault();
-              if (api && typeof api.invoke === "function") {
-                api.invoke("teach-overlay:ask", { message: "i clicked", act: false });
-                return;
-              }
-              demoAdvance();
+              onAsk("i clicked");
             });
           }
           layer.appendChild(mark);
@@ -334,8 +343,9 @@
           cueEl.textContent = action;
         }
         if (thenEl) {
-          thenEl.hidden = !rest;
-          thenEl.textContent = rest ? "Then: " + rest : "";
+          const line = restLine(rest, cue);
+          thenEl.hidden = !line;
+          thenEl.textContent = line;
         }
         if (chromeBar) chromeBar.classList.toggle("show", Boolean(cue));
         const action = String(cue || "").replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
@@ -457,11 +467,7 @@
         const q = btn && String(btn.getAttribute("data-q") || "").trim();
         if (!q) return;
         ev.preventDefault();
-        if (api && typeof api.invoke === "function") {
-          api.invoke("teach-overlay:ask", { message: q, act: false });
-          return;
-        }
-        if (demo) demoAdvance(q);
+        onAsk(q);
       }
 
       if (chromeBar) chromeBar.addEventListener("click", onAdvance);
@@ -483,6 +489,173 @@
         pushStroke(drag.stroke, p);
         paintGhost();
       }, true);
+      function demoClipBox(left, top, w, h) {
+        if (!Number.isFinite(left) || !Number.isFinite(top) || !(w > 0) || !(h > 0)) return null;
+        if (left < 0 || top < 0 || left >= 100 || top >= 100) return null;
+        const right = Math.min(100, left + w);
+        const bottom = Math.min(100, top + h);
+        const ww = right - Math.max(0, left);
+        const hh = bottom - Math.max(0, top);
+        if (ww < 0.4 || hh < 0.4) return null;
+        return { leftPct: Math.max(0, left), topPct: Math.max(0, top), wPct: ww, hPct: hh };
+      }
+
+      function demoParseFrame(spec) {
+        if (!spec || typeof spec !== "object") return null;
+        const stroke = Array.isArray(spec.stroke) ? spec.stroke : [];
+        if (stroke.length >= 2) {
+          let x0 = Infinity;
+          let y0 = Infinity;
+          let x1 = -Infinity;
+          let y1 = -Infinity;
+          stroke.forEach(function (p) {
+            const x = Number(p && p.x);
+            const y = Number(p && p.y);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+            x0 = Math.min(x0, x);
+            y0 = Math.min(y0, y);
+            x1 = Math.max(x1, x);
+            y1 = Math.max(y1, y);
+          });
+          return demoClipBox(x0, y0, x1 - x0, y1 - y0);
+        }
+        const x0 = Number(spec.x0);
+        const y0 = Number(spec.y0);
+        const x1 = Number(spec.x1);
+        const y1 = Number(spec.y1);
+        if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return null;
+        return demoClipBox(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
+      }
+
+      function paintDemoState() {
+        const pts = demoWalk.map(function (p, i) {
+          return Object.assign({}, p, {
+            later: i > demoStep,
+            done: i < demoStep,
+          });
+        });
+        paint(pts);
+        const now = demoWalk[demoStep] || {};
+        const next = demoWalk[demoStep + 1] || {};
+        paintChrome({
+          cue: now.label || now.cue || "",
+          rest: next.label || next.cue || "",
+        });
+      }
+
+      function demoFrame(spec) {
+        if (demoWalk.length >= 8) return false;
+        const box = demoParseFrame(spec);
+        if (!box) return false;
+        const n = demoWalk.length + 1;
+        const ink = Array.isArray(spec && spec.stroke)
+          ? spec.stroke.filter(function (p) {
+              return Number.isFinite(Number(p && p.x)) && Number.isFinite(Number(p && p.y));
+            }).slice(0, 80).map(function (p) {
+              return { x: Number(p.x), y: Number(p.y) };
+            })
+          : [];
+        demoWalk.push({
+          leftPct: box.leftPct,
+          topPct: box.topPct,
+          wPct: box.wPct,
+          hPct: box.hPct,
+          label: "Look at region " + n,
+          face: "region",
+          caption: "region " + n,
+          stroke: ink.length >= 2 ? ink : undefined,
+        });
+        paintDemoState();
+        return true;
+      }
+
+      function applyLive(m) {
+        const path = Array.isArray(m && m.path) ? m.path : [];
+        paint(path);
+        paintChrome({
+          cue: (m && (m.action || m.cue)) || "",
+          rest: (m && m.rest) || "",
+        });
+      }
+
+      function onAsk(q) {
+        const text = String(q || "").trim();
+        if (!text) return;
+        if (hasApi) {
+          api.invoke("teach-overlay:ask", { message: text, act: false });
+          return;
+        }
+        if (demo) demoAdvance(q);
+        else {
+          fetch("/api/teach", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ ask: text, act: false }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (m) {
+              if (!m || m.act || m.exec) return;
+              if (m.ok) applyLive(m);
+            })
+            .catch(function () {});
+        }
+      }
+
+      function onFrame(box) {
+        if (hasApi) {
+          api.invoke("teach-overlay:frame", { region: box, act: false });
+          return;
+        }
+        if (demo) {
+          demoFrame(box);
+          return;
+        }
+        fetch("/api/teach", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ region: box, act: false }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (m) {
+            if (!m || !m.ok || m.act || m.exec) return;
+            applyLive(m);
+          })
+          .catch(function () {});
+      }
+
+      function startDemo() {
+        demo = true;
+        document.documentElement.classList.add("demo");
+        document.documentElement.classList.remove("host");
+        demoWalk = [
+          {
+            leftPct: 18,
+            topPct: 28,
+            wPct: 48,
+            hPct: 14,
+            label: "Type in Email",
+            face: "field",
+            caption: "Email",
+            stroke: [
+              { x: 18, y: 28 },
+              { x: 66, y: 28 },
+              { x: 66, y: 42 },
+              { x: 18, y: 42 },
+              { x: 18, y: 28 },
+            ],
+          },
+          { leftPct: 52, topPct: 52, wPct: 22, hPct: 12, label: "Click Save", face: "button", caption: "Save" },
+        ];
+        demoStep = 0;
+        demoAdvance = function (q) {
+          const last = demoWalk.length - 1;
+          if (/\bback\b/i.test(String(q || ""))) demoStep = Math.max(0, demoStep - 1);
+          else if (demoStep < last) demoStep += 1;
+          paintDemoState();
+        };
+        paintDemoState();
+      }
+
       function endDrag() {
         if (!drawing || !drag) return;
         const stroke = drag.stroke ? drag.stroke.slice() : [];
@@ -492,9 +665,7 @@
         clearStroke();
         setDraw(false);
         if (stroke.length < 2) return;
-        if (api && typeof api.invoke === "function") {
-          api.invoke("teach-overlay:frame", { region: box, act: false });
-        }
+        onFrame(box);
       }
       document.addEventListener("pointerup", endDrag);
       document.addEventListener("pointercancel", function () {
@@ -515,53 +686,22 @@
           paint(event && event.points);
           paintChrome(event);
         });
-      }
-      if (/(?:^|[?&])demo=1(?:&|$)/.test(location.search)) {
-        document.documentElement.style.background = "#243044";
-        document.body.style.background = "#243044";
-        const demoWalk = [
-          {
-            leftPct: 18,
-            topPct: 28,
-            wPct: 48,
-            hPct: 14,
-            label: "Type in Email",
-            face: "field",
-            caption: "Email",
-            stroke: [
-              { x: 18, y: 28 },
-              { x: 66, y: 28 },
-              { x: 66, y: 42 },
-              { x: 18, y: 42 },
-              { x: 18, y: 28 },
-            ],
-          },
-          { leftPct: 52, topPct: 52, wPct: 22, hPct: 12, label: "Click Save", face: "button", caption: "Save" },
-        ];
-        let demoStep = 0;
-        demoAdvance = function (q) {
-          const last = demoWalk.length - 1;
-          if (/\bback\b/i.test(String(q || ""))) demoStep = Math.max(0, demoStep - 1);
-          else if (demoStep < last) demoStep += 1;
-          const pts = demoWalk.map(function (p, i) {
-            return Object.assign({}, p, {
-              later: i > demoStep,
-              done: i < demoStep,
-            });
+      } else if (demoQuery) {
+        startDemo();
+      } else {
+        fetch("/api/teach")
+          .then(function (r) { return r.json(); })
+          .then(function (m) {
+            if (m && !m.localFirst && !m.exec && Array.isArray(m.path) && m.path.length) {
+              demo = false;
+              applyLive(m);
+              return;
+            }
+            startDemo();
+          })
+          .catch(function () {
+            startDemo();
           });
-          paint(pts);
-          paintChrome({
-            cue: demoWalk[demoStep] ? demoWalk[demoStep].label : "",
-            rest: demoWalk[demoStep + 1] ? demoWalk[demoStep + 1].label : "",
-          });
-        };
-        paint(demoWalk.map(function (p, i) {
-          return Object.assign({}, p, { later: i > 0, done: false });
-        }));
-        paintChrome({
-          cue: "1 of 2 Type in Email",
-          rest: "Click Save",
-        });
       }
     </script>
   </body>

@@ -242,8 +242,12 @@ function paintLiveBrief(event) {
   const rest = String((event && event.rest) || "").trim().slice(0, 160);
   const heard = String((event && event.heard) || "").trim().slice(0, 160);
   const askedLine =
-    kind === "point" && rest
-      ? `Then: ${rest}`
+    kind === "point"
+      ? rest
+        ? `Then: ${rest}`
+        : cue
+          ? "Last step"
+          : ""
       : [
           asked ? `They asked: ${asked}` : "",
           heard ? `Heard: ${heard}` : "",
