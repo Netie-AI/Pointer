@@ -959,7 +959,7 @@ function demoAskChips() {
   ];
 }
 
-function revealHomeWindow(id) {
+function revealHomeWindow(id, hold) {
   const map = {
     "live-inbox": ".desk-inbox",
     "live-document": ".desk-document",
@@ -976,8 +976,14 @@ function revealHomeWindow(id) {
     el.classList.remove("desk-window-now");
   });
   node.classList.add("desk-window-now");
-  if (typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "nearest" });
+  if (!hold && typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "nearest" });
   return true;
+}
+
+function stayOnTeachMap() {
+  revealHomeWindow("live-inbox", true);
+  const map = document.querySelector("#stage .teach-map");
+  if (map && typeof map.scrollIntoView === "function") map.scrollIntoView({ block: "nearest" });
 }
 
 function demoHighlightWalk() {
@@ -997,7 +1003,7 @@ function demoHighlightWalk() {
   }
   const filed = document.getElementById("host-filed");
   if (filed && /Opened Live answer\. Never sent/.test(String(filed.textContent || ""))) showFiled("");
-  revealHomeWindow("live-inbox");
+  stayOnTeachMap();
 }
 
 function demoAsk(ask) {
@@ -1028,7 +1034,7 @@ function demoAsk(ask) {
     return;
   }
   if (desk === "meeting" && document.getElementById("stage") && !demoInboxSaved()) {
-    revealHomeWindow("live-inbox");
+    stayOnTeachMap();
     return;
   }
   if (revealHomeWindow(id)) return;

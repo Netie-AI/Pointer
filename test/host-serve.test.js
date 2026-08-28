@@ -310,10 +310,11 @@ function readAsset(file) {
     assert.doesNotMatch(demoAskFn, /location\.href/);
     assert.match(demoAskFn, /desk === "meeting"/);
     assert.match(demoAskFn, /!demoInboxSaved\(\)/);
-    assert.match(demoAskFn, /revealHomeWindow\("live-inbox"\)/);
+    assert.match(demoAskFn, /stayOnTeachMap/);
     assert.match(app, /revealHomeWindow/);
     assert.match(app, /desk-window-now/);
     assert.match(app, /demoHighlightWalk/);
+    assert.match(app, /stayOnTeachMap/);
     assert.match(app, /revealHomeWindow\("live-meeting"\)/);
     assert.match(app, /Opened Live answer. Never sent/);
     assert.match(app, /Never a cheater overlay/);
@@ -355,6 +356,7 @@ function readAsset(file) {
     assert.match(cssText, /teach-map\.tap/);
     assert.match(cssText, /workspace-catalog/);
     assert.match(cssText, /scroll-margin-top/);
+    assert.match(cssText, /scroll-margin-top: 200px/);
     assert.match(app, /demoFrameTeach/);
     assert.match(app, /Draw a larger BOX \(0\.4%\)/);
     assert.match(app, /Walk is full - 8 boxes/);
