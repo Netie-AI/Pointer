@@ -43,6 +43,18 @@ check("uia_invoke names the control and does not claim a cursor warp", () => {
   assert.ok(/without moving the cursor/i.test(d.text));
 });
 
+check("uia_wait names the control", () => {
+  const d = describeAction({ type: "uia_wait", target: "Save" });
+  assert.ok(d.text.includes("Save"));
+  assert.ok(/wait for/i.test(d.text));
+});
+
+check("uia_select names the tab", () => {
+  const d = describeAction({ type: "uia_select", target: "Home" });
+  assert.ok(d.text.includes("Home"));
+  assert.ok(/select/i.test(d.text));
+});
+
 check("uia_set names the field and does not claim a cursor warp", () => {
   const d = describeAction({ type: "uia_set", target: "Search", value: "hello" });
   assert.ok(d.text.includes("Search"));

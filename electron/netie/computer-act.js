@@ -117,7 +117,7 @@ function windowClickPoint(win) {
 const MAX_CHAIN = 8;
 
 function looksLocalStep(text) {
-  return /^(?:please\s+)?(?:observe|screenshot|screen info|type\s+in\s*:|type\s*:|dictate\s*:|click|doubleclick|rightclick|hover|invoke\s*:|toggle\s*:|check\s*:|uncheck\s*:|expand\s*:|collapse\s*:|fill\s*:|set\s*:|wait|scroll|press\s+|open\s*:|focus|deliver\s*:|replace\s*:|copy|paste|select)/i.test(
+  return /^(?:please\s+)?(?:observe|screenshot|screen info|type\s+in\s*:|type\s*:|dictate\s*:|click|doubleclick|rightclick|hover|invoke\s*:|toggle\s*:|check\s*:|uncheck\s*:|expand\s*:|collapse\s*:|fill\s*:|set\s*:|select\s*:|wait\s+for|wait|scroll|press\s+|open\s*:|focus|deliver\s*:|replace\s*:|copy|paste|select)/i.test(
     String(text || "").trim()
   );
 }
@@ -146,6 +146,16 @@ function planOneInstruction(instruction, opts = {}) {
   }
   if (/^(?:please\s+)?(?:observe|screenshot|screen info)$/i.test(text)) {
     return { ok: true, source: "observe", actions: [{ type: "observe" }] };
+  }
+  const waitFor = text.match(/^(?:please\s+)?wait\s+for\s*:\s*(.+)$/i);
+  if (waitFor && waitFor[1].trim()) {
+    const rest = waitFor[1].trim();
+    const timed = rest.match(/^(.+?)\s+(\d+)\s*(?:ms)?$/i);
+    const target = timed ? timed[1].trim() : rest;
+    const ms = timed ? Math.min(15000, Math.max(200, Number(timed[2]))) : 5000;
+    if (target && !/^\d+$/.test(target)) {
+      return { ok: true, source: "wait-for", actions: [{ type: "uia_wait", target, ms }] };
+    }
   }
   const waited = text.match(/^(?:please\s+)?wait(?:\s|:)\s*(\d+)\s*(?:ms|milliseconds?)?$/i);
   if (waited) {
@@ -230,6 +240,12 @@ function planOneInstruction(instruction, opts = {}) {
     invoked.actions[0].type = "uia_invoke";
     invoked.source = "invoke";
     return invoked;
+  }
+  const selected = parseNamedInstruction("select", text);
+  if (selected && selected.actions && selected.actions[0]) {
+    selected.actions[0].type = "uia_select";
+    selected.source = "select";
+    return selected;
   }
   const filled = parseNamedFill(text);
   if (filled) return filled;

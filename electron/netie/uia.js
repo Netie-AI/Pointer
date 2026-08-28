@@ -666,6 +666,158 @@ async function expandControl(label, opts = {}) {
   return parseExpandOutput(out);
 }
 
+const DEFAULT_WAIT_FOR_MS = 5000;
+const MAX_WAIT_FOR_MS = 15000;
+
+/**
+ * UACC wait_for_element: poll the foreground tree until a named control
+ * exists. Read-only. Timeout is a visible no so the next click does not
+ * aim at a screen that is not ready.
+ */
+async function waitForControl(label, opts = {}) {
+  const clean = String(label || "").trim();
+  if (!clean || typeof opts.run !== "function") return { ok: false, reason: "no runner" };
+  const budget = Math.min(MAX_WAIT_FOR_MS, Math.max(1, Number(opts.ms) || DEFAULT_WAIT_FOR_MS));
+  const step = Math.min(1000, Math.max(1, Number(opts.stepMs) || 200));
+  const now = typeof opts.now === "function" ? opts.now : Date.now;
+  const pause =
+    typeof opts.sleep === "function" ? opts.sleep : (ms) => new Promise((r) => setTimeout(r, ms));
+  const t0 = now();
+  let probes = 0;
+  while (now() - t0 <= budget) {
+    probes += 1;
+    let stdout;
+    try {
+      stdout = await opts.run(buildProbeScript(clean, opts));
+    } catch {
+      return { ok: false, reason: "uia unavailable", waitedMs: Math.max(0, now() - t0), probes };
+    }
+    const best = chooseCandidate(clean, parseProbeOutput(stdout), opts);
+    if (best) {
+      return {
+        ok: true,
+        via: "uia-wait",
+        name: best.candidate.name,
+        controlType: String(best.candidate.controlType || "").slice(0, 40),
+        waitedMs: Math.max(0, now() - t0),
+        probes,
+      };
+    }
+    if (now() - t0 + step > budget) break;
+    await pause(step);
+  }
+  return { ok: false, reason: "timeout", waitedMs: Math.max(0, now() - t0), probes };
+}
+
+/** Tab / list / radio / tree. A Button named "Home" is not a selection item. */
+const SELECT_CONTROL_TYPES = Object.freeze([
+  "TabItem",
+  "ListItem",
+  "RadioButton",
+  "DataItem",
+  "TreeItem",
+]);
+
+function canSelect(candidate) {
+  const t = String((candidate && candidate.controlType) || "");
+  if (!SELECT_CONTROL_TYPES.includes(t)) return false;
+  if (candidate && candidate.enabled === false) return false;
+  return true;
+}
+
+function pickSelectCandidate(label, candidates, opts) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  const selectable = list.filter(canSelect);
+  return chooseCandidate(label, selectable.length ? selectable : list, opts);
+}
+
+/**
+ * PowerShell that finds the named tab/list/radio in the foreground window
+ * and SelectionItemPattern-selects it. No SetCursorPos. No SendInput.
+ */
+function buildSelectScript(name, controlType, opts = {}) {
+  const max = Number(opts.max) || MAX_CANDIDATES;
+  const type = String(controlType || "TabItem").replace(/[^A-Za-z]/g, "") || "TabItem";
+  return [
+    "$ErrorActionPreference='Stop'",
+    "Add-Type -AssemblyName UIAutomationClient,UIAutomationTypes | Out-Null",
+    "Add-Type -Namespace Native -Name Win -MemberDefinition '[DllImport(\"user32.dll\")]public static extern System.IntPtr GetForegroundWindow();' | Out-Null",
+    "$h=[Native.Win]::GetForegroundWindow()",
+    "if($h -eq [System.IntPtr]::Zero){ '{\"ok\":false,\"reason\":\"no foreground\"}'; exit 0 }",
+    "$root=[System.Windows.Automation.AutomationElement]::FromHandle($h)",
+    "if($root -eq $null){ '{\"ok\":false,\"reason\":\"no element\"}'; exit 0 }",
+    `$want=${psLiteral(name)}`,
+    `$type=${psLiteral(type)}`,
+    "$walker=[System.Windows.Automation.TreeWalker]::ControlViewWalker",
+    "$queue=New-Object System.Collections.Queue",
+    "$queue.Enqueue($root) | Out-Null",
+    "$seen=0",
+    `while($queue.Count -gt 0 -and $seen -lt ${max}){`,
+    "  $el=$queue.Dequeue(); $seen++",
+    "  try{",
+    "    $child=$walker.GetFirstChild($el)",
+    "    while($child -ne $null){ $queue.Enqueue($child) | Out-Null; $child=$walker.GetNextSibling($child) }",
+    "    $n=$el.Current.Name; $t=$el.Current.ControlType.ProgrammaticName -replace '^ControlType\\.',''",
+    "    if($n -eq $want -and $t -eq $type -and $el.Current.IsEnabled){",
+    "      $pat=$el.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern)",
+    "      if($pat -eq $null){ '{\"ok\":false,\"reason\":\"no select\"}'; exit 0 }",
+    "      $pat.Select()",
+    "      [pscustomobject]@{ok=$true;selected=$true;name=$n;controlType=$t} | ConvertTo-Json -Compress",
+    "      exit 0",
+    "    }",
+    "  } catch {}",
+    "}",
+    "'{\"ok\":false,\"reason\":\"no matching control\"}'",
+  ].join("\n");
+}
+
+function parseSelectOutput(stdout) {
+  const raw = String(stdout || "").trim();
+  if (!raw) return { ok: false, reason: "empty" };
+  try {
+    const data = JSON.parse(raw);
+    if (data && data.ok && data.selected) {
+      return {
+        ok: true,
+        selected: true,
+        via: "uia-select",
+        name: String(data.name || "").slice(0, 80),
+        controlType: String(data.controlType || "").slice(0, 40),
+      };
+    }
+    return { ok: false, reason: (data && data.reason) || "select failed" };
+  } catch {
+    return { ok: false, reason: "bad probe" };
+  }
+}
+
+/**
+ * HeyClicky-class tab/list pick: SelectionItemPattern. No cursor warp.
+ * Miss or non-selectable is a visible no so SendInput can still aim.
+ * TreeItem is missing from TARGET_CONTROL_TYPES, so the probe uses
+ * SELECT_CONTROL_TYPES (same pattern as expand).
+ */
+async function selectControl(label, opts = {}) {
+  const clean = String(label || "").trim();
+  if (!clean || typeof opts.run !== "function") return { ok: false, reason: "no runner" };
+  let stdout;
+  try {
+    stdout = await opts.run(buildProbeScript(clean, { ...opts, types: SELECT_CONTROL_TYPES }));
+  } catch {
+    return { ok: false, reason: "uia unavailable" };
+  }
+  const best = pickSelectCandidate(clean, parseProbeOutput(stdout), opts);
+  if (!best) return { ok: false, reason: "no matching control" };
+  if (!canSelect(best.candidate)) return { ok: false, reason: "not selectable" };
+  let out;
+  try {
+    out = await opts.run(buildSelectScript(best.candidate.name, best.candidate.controlType, opts));
+  } catch {
+    return { ok: false, reason: "select failed" };
+  }
+  return parseSelectOutput(out);
+}
+
 /**
  * Locate a control through UIA.
  *
@@ -994,6 +1146,15 @@ module.exports = {
   buildExpandScript,
   parseExpandOutput,
   expandControl,
+  waitForControl,
+  DEFAULT_WAIT_FOR_MS,
+  MAX_WAIT_FOR_MS,
+  SELECT_CONTROL_TYPES,
+  canSelect,
+  pickSelectCandidate,
+  buildSelectScript,
+  parseSelectOutput,
+  selectControl,
   findControl,
   listControls,
   listForegroundControls,

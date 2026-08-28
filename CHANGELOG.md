@@ -2,6 +2,15 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - UIA wait-for and named select
+
+`wait for: Save` polls the foreground automation tree until that control
+exists (default 5000ms, cap 15000). Timeout is a visible no. `select: Home`
+uses SelectionItemPattern on TabItem / ListItem / RadioButton / DataItem /
+TreeItem without moving the cursor. Button / Edit / CheckBox stay not
+selectable. Cortex `/dms/secure` then reviewPlan still gates Act. No GPLv3
+dump. No third-party MCP.
+
 ## 2026-08-28 - UIA ValuePattern for named fields
 
 `fill: Search: hello` and `type in:` try SetValue on the foreground

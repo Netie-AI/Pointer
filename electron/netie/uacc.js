@@ -45,6 +45,8 @@ const SEARCH_TOKENS = Object.freeze([
   "list windows",
   "list monitors",
   "active window",
+  "wait for",
+  "wait for element",
   "smart click",
   "smart type",
   "computer control",
@@ -178,6 +180,8 @@ function computerStatus(opts = {}) {
       uiaExpand: true,
       uiaInvoke: true,
       uiaSet: true,
+      uiaWait: true,
+      uiaSelect: true,
       reason:
         opts.actAvailable === true
           ? "Cortex /dms/secure then reviewPlan"
@@ -266,6 +270,7 @@ function computerStatus(opts = {}) {
         "click 40 50",
         "click: Save",
         "invoke: Save",
+        "select: Home",
         "toggle: Remember me",
         "check: Remember me",
         "uncheck: Remember me",
@@ -276,6 +281,7 @@ function computerStatus(opts = {}) {
         "rightclick: Close",
         "hover 40 50",
         "wait 400",
+        "wait for: Save",
         "scroll down",
         "focus: notepad",
         "focus: notepad then type: hello",

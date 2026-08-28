@@ -376,6 +376,66 @@ test("dry-run uia_invoke is a no-op success; live miss is a visible no", async (
   assert.match(String(miss.error || ""), /no matching/);
 });
 
+test("dry-run uia_wait is a no-op success; live miss is a visible no", async () => {
+  const dry = new InputDriver({ dryRun: true });
+  const ok = await dry.perform({ type: "uia_wait", target: "Save", ms: 8000 });
+  assert.strictEqual(ok.ok, true);
+  assert.strictEqual(ok.via, "uia-wait");
+  assert.strictEqual(ok.dryRun, true);
+  const missing = await dry.perform({ type: "uia_wait" });
+  assert.strictEqual(missing.ok, false);
+  let called = "";
+  const live = new InputDriver({
+    uiaWait: async (target, ms) => {
+      called = `${target}:${ms}`;
+      return { ok: true, name: target, via: "uia-wait", waitedMs: 12, probes: 1 };
+    },
+  });
+  const hit = await live.perform({ type: "uia_wait", target: "Save", ms: 4000 });
+  assert.strictEqual(hit.ok, true);
+  assert.strictEqual(called, "Save:4000");
+  assert.strictEqual(hit.name, "Save");
+  const none = new InputDriver({});
+  const noFn = await none.perform({ type: "uia_wait", target: "Save" });
+  assert.strictEqual(noFn.ok, false);
+  const failed = new InputDriver({
+    uiaWait: async () => ({ ok: false, reason: "timeout", waitedMs: 40 }),
+  });
+  const miss = await failed.perform({ type: "uia_wait", target: "Save" });
+  assert.strictEqual(miss.ok, false);
+  assert.match(String(miss.error || ""), /timeout/);
+});
+
+test("dry-run uia_select is a no-op success; live miss is a visible no", async () => {
+  const dry = new InputDriver({ dryRun: true });
+  const ok = await dry.perform({ type: "uia_select", target: "Home" });
+  assert.strictEqual(ok.ok, true);
+  assert.strictEqual(ok.via, "uia-select");
+  assert.strictEqual(ok.keepCursor, true);
+  assert.strictEqual(ok.keepFocus, true);
+  const missing = await dry.perform({ type: "uia_select" });
+  assert.strictEqual(missing.ok, false);
+  let called = "";
+  const live = new InputDriver({
+    uiaSelect: async (target) => {
+      called = target;
+      return { ok: true, name: target, via: "uia-select", controlType: "TabItem" };
+    },
+  });
+  const hit = await live.perform({ type: "uia_select", target: "Home" });
+  assert.strictEqual(hit.ok, true);
+  assert.strictEqual(called, "Home");
+  const none = new InputDriver({});
+  const noFn = await none.perform({ type: "uia_select", target: "Home" });
+  assert.strictEqual(noFn.ok, false);
+  const failed = new InputDriver({
+    uiaSelect: async () => ({ ok: false, reason: "no matching control" }),
+  });
+  const miss = await failed.perform({ type: "uia_select", target: "Home" });
+  assert.strictEqual(miss.ok, false);
+  assert.match(String(miss.error || ""), /no matching/);
+});
+
 test("dry-run uia_set is a no-op success; live miss is a visible no", async () => {
   const dry = new InputDriver({ dryRun: true });
   const ok = await dry.perform({ type: "uia_set", target: "Search", value: "hello" });

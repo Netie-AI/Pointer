@@ -110,6 +110,8 @@ function test(name, fn) {
     assert.strictEqual(shown.act.uiaExpand, true);
     assert.strictEqual(shown.act.uiaInvoke, true);
     assert.strictEqual(shown.act.uiaSet, true);
+    assert.strictEqual(shown.act.uiaWait, true);
+    assert.strictEqual(shown.act.uiaSelect, true);
     assert.strictEqual(shown.delivery.present, false);
     assert.strictEqual(shown.mode, "agent");
     assert.strictEqual(shown.hotkeys.recording, "Control+Alt+Space");
@@ -158,6 +160,7 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("focus: notepad then type: hello"));
     assert.ok(shown.drive.instructions.includes("click: Save"));
     assert.ok(shown.drive.instructions.includes("invoke: Save"));
+    assert.ok(shown.drive.instructions.includes("select: Home"));
     assert.ok(shown.drive.instructions.includes("fill: Search: hello"));
     assert.ok(shown.drive.instructions.includes("type in: Search: hello"));
     assert.ok(shown.drive.instructions.includes("set: Search: hello"));
@@ -168,6 +171,7 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("collapse: Documents"));
     assert.ok(shown.drive.instructions.includes("click window: notepad"));
     assert.ok(shown.drive.instructions.includes("wait 400"));
+    assert.ok(shown.drive.instructions.includes("wait for: Save"));
     assert.ok(shown.drive.instructions.includes("replace: hello"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?screenshot=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?clipboard=1"));

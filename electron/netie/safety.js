@@ -94,6 +94,7 @@ function classifyAction(action) {
     case "screenshot":
     case "read":
     case "wait":
+    case "uia_wait":
     case "movecursor":
     case "hover":
     case "scroll":
@@ -141,6 +142,7 @@ function classifyAction(action) {
     case "uia_toggle":
     case "uia_expand":
     case "uia_invoke":
+    case "uia_select":
     case "press":
     case "keypress":
     case "navigate":

@@ -120,6 +120,10 @@ function describeAction(action) {
       verb = "Invoke";
       text = `Invoke${where || " the named control"} without moving the cursor`;
       break;
+    case "uia_select":
+      verb = "Select";
+      text = `Select${where || " the named tab or list item"}`;
+      break;
     case "uia_toggle": {
       verb = "Toggle";
       const want = String(a.want || "flip").toLowerCase();
@@ -193,6 +197,10 @@ function describeAction(action) {
     case "wait":
       verb = "Wait";
       text = `Wait ${clip(a.ms || a.value || "a moment", 20)}`;
+      break;
+    case "uia_wait":
+      verb = "Wait";
+      text = `Wait for${where || " a named control"}`;
       break;
 
     case "clipboard_verify":

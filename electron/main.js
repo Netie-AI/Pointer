@@ -29,7 +29,7 @@ const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
 const { ensureActionCoords, hasScreenPoint } = require("./netie/targeting");
-const { dumpForeground, readSelection, listControls, toggleControl, expandControl, invokeControl, setValueControl } = require("./netie/uia");
+const { dumpForeground, readSelection, listControls, toggleControl, expandControl, invokeControl, setValueControl, waitForControl, selectControl } = require("./netie/uia");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
@@ -940,6 +940,8 @@ const driver = new InputDriver({
   uiaExpand: (target, want) => expandControl(target, { run: runUiaProbe, want }),
   uiaInvoke: (target) => invokeControl(target, { run: runUiaProbe }),
   uiaSet: (target, value) => setValueControl(target, value, { run: runUiaProbe }),
+  uiaWait: (target, ms) => waitForControl(target, { run: runUiaProbe, ms }),
+  uiaSelect: (target) => selectControl(target, { run: runUiaProbe }),
 });
 let coreLive = { ok: false, engine: "none" };
 
