@@ -320,6 +320,9 @@ function readAsset(file) {
     assert.match(app, /Then: /);
     assert.match(app, /Last step/);
     assert.match(app, /canWalk = onTeach &&/);
+    assert.match(app, /demoWalkOn/);
+    assert.match(app, /canBack/);
+    assert.match(app, /openDemoArtifact\("live-meeting"\)/);
     assert.match(app, /meeting-card-kicker/);
     assert.match(app, /meeting-card-captions/);
     assert.match(app, /meetingCopyText/);

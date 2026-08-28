@@ -42,7 +42,8 @@
    answer on overlay and home (never send, never speak meeting).
    Overlay Live answer is They asked / You / Say this / Also /
    Don't say (HUD docks that stack). After Save, home This screen
-   yields to Live answer. Cue Copy clips that stack. Never a
+   yields to Live answer. Back restores the walk. Workspace Save
+   opens Live answer. Cue Copy clips that stack. Never a
    cheater overlay. Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 

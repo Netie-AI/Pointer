@@ -978,6 +978,14 @@ function revealHomeWindow(id) {
 }
 
 function demoHighlightWalk() {
+  if (isWorkspacePage() && document.getElementById("artifact-body")) {
+    if (workspaceQueryId()) return;
+    if (demoInboxSaved()) {
+      showFiled("Saved on This computer. Opened Live answer. Never sent.");
+      openDemoArtifact("live-meeting");
+    }
+    return;
+  }
   if (!document.getElementById("stage")) return;
   if (demoInboxSaved()) {
     showFiled("Saved on This computer. Opened Live answer. Never sent.");
@@ -1586,11 +1594,14 @@ function paintChrome(home) {
   if (onTeach) speakTeachCue(teachRest ? teachAction || teachCue : teachAction || teachCue ? (teachAction || teachCue) + ". Last step" : "");
   bar.hidden = false;
   const canWalk = onTeach && Boolean(teach.advance);
+  const demoWalkOn = isDemoCatalog() && (onHome || isWorkspacePage());
+  const canBack = Boolean(canWalk || (demoWalkOn && (demoTeachStep > 0 || demoInboxSaved())));
+  const canNext = Boolean(canWalk || (demoWalkOn && !demoInboxSaved()));
   const back = document.getElementById("live-cue-back");
   const next = document.getElementById("live-cue-next");
   const copy = document.getElementById("live-cue-copy");
-  if (back) back.hidden = !canWalk;
-  if (next) next.hidden = !canWalk;
+  if (back) back.hidden = !canBack;
+  if (next) next.hidden = !canNext;
   if (copy) copy.hidden = !lastChromeCue;
   paintDeskChips(
     "host-ask-chips",

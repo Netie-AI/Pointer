@@ -1704,6 +1704,9 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /Then: /);
   assert.match(hostApp, /Last step/);
   assert.match(hostApp, /canWalk = onTeach &&/);
+  assert.match(hostApp, /demoWalkOn/);
+  assert.match(hostApp, /canBack/);
+  assert.match(hostApp, /openDemoArtifact\("live-meeting"\)/);
   assert.match(hostApp, /meeting-card-kicker/);
   assert.match(hostApp, /meeting-card-captions/);
   assert.match(hostApp, /meetingCopyText/);

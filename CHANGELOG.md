@@ -1,3 +1,9 @@
+## 2026-08-28 - Back restores the walk; workspace opens Live answer
+
+Home Back after Save restores This screen. Workspace Got it on Save
+opens Live answer on This computer. Never send. Never speak meeting.
+Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Saved walk yields to Live answer
 
 After Save, home This screen drops the leftover teach walk so Live
