@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Observe LIVE captions for agents
+
+Loopback `computer.observe` and `GET /api/observe?captions=1` return the
+last LIVE speech lines as untrusted data (partials replace the tail).
+Default observe still omits captions. Not commands. No Deepgram stream.
+No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Live captions from growing utterances
 
 Cluely-class LIVE chrome now peeks the open utterance every 400ms and

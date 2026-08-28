@@ -179,6 +179,8 @@ test("main wires the pump and marks transcript events partial", () => {
   assert.match(main, /partialPumpFor/);
   assert.match(main, /partial:\s*true/);
   assert.match(main, /\.onFinal\(\)/);
+  assert.match(main, /rememberCaption\(source, evt\.text, true\)/);
+  assert.match(main, /params\.captions === true/);
   assert.doesNotMatch(main, /rememberHeard\([^)]*partial/);
 });
 

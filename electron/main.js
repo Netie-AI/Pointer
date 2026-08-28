@@ -448,6 +448,10 @@ const liveMcp = createMcpAbi({
         selection = { ok: false, reason: "unavailable" };
       }
     }
+    let captions = null;
+    if (params && params.captions === true) {
+      captions = liveCaptions.slice();
+    }
     return computerObserve({
       captureVisible: captureVisible(),
       uacc: detectUacc(),
@@ -457,6 +461,7 @@ const liveMcp = createMcpAbi({
       screenshot,
       clipboard,
       selection,
+      captions,
       delivery: publicTarget(deliveryTarget),
     });
   },
@@ -628,6 +633,7 @@ function partialPumpFor(source) {
         transcribe: (pcm) => transcriber.transcribe(pcm),
         busyFinal: () => sttBusy > 0,
         send: (evt) => {
+          rememberCaption(source, evt.text, true);
           sendHud({
             type: "transcript",
             text: evt.text,
@@ -660,11 +666,30 @@ let meetingSuggestTimer = null;
 const meetingSuggestState = { lastAt: 0, lastNotes: "", inFlight: false };
 const LIVE_HEARD_MAX = 40;
 const liveHeard = [];
+const LIVE_CAPTION_MAX = 8;
+const liveCaptions = [];
+function rememberCaption(source, text, partial) {
+  const t = String(text || "").trim();
+  if (!t) return;
+  const src = source === "system" ? "system" : "mic";
+  const tail = liveCaptions[liveCaptions.length - 1];
+  if (tail && tail.partial && tail.source === src) liveCaptions.pop();
+  liveCaptions.push({
+    t: Date.now(),
+    source: src,
+    text: t.slice(0, 240),
+    partial: Boolean(partial),
+  });
+  if (liveCaptions.length > LIVE_CAPTION_MAX) {
+    liveCaptions.splice(0, liveCaptions.length - LIVE_CAPTION_MAX);
+  }
+}
 function rememberHeard(source, text) {
   const t = String(text || "").trim();
   if (!t) return;
   liveHeard.push({ t: Date.now(), source: source === "system" ? "system" : "mic", text: t.slice(0, 500) });
   if (liveHeard.length > LIVE_HEARD_MAX) liveHeard.splice(0, liveHeard.length - LIVE_HEARD_MAX);
+  rememberCaption(source, t, false);
 }
 function heardTranscript(extra) {
   const extraText = String(extra || "").trim();
