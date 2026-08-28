@@ -437,7 +437,7 @@
                 : point.caption || overlayControlCaption(point.label);
             mark.appendChild(face);
           }
-          if (point.label) {
+          if (point.label && !(done && inboxSaved && kind === "button")) {
             const label = document.createElement("span");
             label.className = "point-label";
             label.textContent = String(point.label).slice(0, 40);

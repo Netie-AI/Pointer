@@ -1685,6 +1685,11 @@ test("desk chips ask, never act", () => {
   assert.match(hostApp, /Ask stays on the laptop/);
   assert.match(hostApp, /revealHomeWindow/);
   assert.match(hostApp, /desk-window-now/);
+  assert.match(hostApp, /demoHighlightWalk/);
+  assert.match(hostApp, /revealHomeWindow\("live-meeting"\)/);
+  assert.match(hostApp, /Opened Live answer. Never sent/);
+  assert.match(hostApp, /revealHomeWindow\("live-inbox"\)/);
+  assert.match(hostApp, /Never a cheater overlay/);
   const demoAskFn = hostApp.slice(hostApp.indexOf("function demoAsk"), hostApp.indexOf("function postAsk"));
   assert.doesNotMatch(demoAskFn, /mode:\s*"meeting"/);
   assert.doesNotMatch(demoAskFn, /location\.href/);

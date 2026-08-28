@@ -977,6 +977,18 @@ function revealHomeWindow(id) {
   return true;
 }
 
+function demoHighlightWalk() {
+  if (!document.getElementById("stage")) return;
+  if (demoInboxSaved()) {
+    showFiled("Saved on This computer. Opened Live answer. Never sent.");
+    revealHomeWindow("live-meeting");
+    return;
+  }
+  const filed = document.getElementById("host-filed");
+  if (filed && /Opened Live answer\. Never sent/.test(String(filed.textContent || ""))) showFiled("");
+  revealHomeWindow("live-inbox");
+}
+
 function demoAsk(ask) {
   const desk = demoAskDesk(ask);
   if (desk === "teach") {
@@ -1135,7 +1147,7 @@ function paintMeetingCard(root, m) {
   const avoid = String(m.avoid || "").trim();
   if (avoid) {
     const no = el("p", "meeting-card-avoid");
-    no.textContent = "Don't say: " + avoid;
+    no.textContent = "Don't say: " + avoid + (/never a cheater overlay/i.test(avoid) ? "" : " Never a cheater overlay.");
     card.appendChild(no);
   }
   if (heard) {
@@ -1893,8 +1905,10 @@ function paintTeachMap(root, m, opts) {
     box.style.width = Number(p.wPct) + "%";
     box.style.height = Number(p.hPct) + "%";
     const lab = el("span");
-    lab.textContent = String((p.now && p.cue) || p.label || "").slice(0, 40);
-    box.appendChild(lab);
+    if (!p.done) {
+      lab.textContent = String((p.now && p.cue) || p.label || "").slice(0, 40);
+      box.appendChild(lab);
+    }
     if (p.now && p.key) {
       const k = el("kbd", "teach-map-key");
       k.textContent = String(p.key).slice(0, 12);
@@ -2823,6 +2837,7 @@ function applyDemoCatalog() {
       const qid = workspaceQueryId();
       if (qid) openDemoArtifact(qid);
     }
+    demoHighlightWalk();
   } finally {
     paintingDemo = false;
   }

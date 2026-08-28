@@ -308,6 +308,10 @@ function readAsset(file) {
     assert.doesNotMatch(demoAskFn, /location\.href/);
     assert.match(app, /revealHomeWindow/);
     assert.match(app, /desk-window-now/);
+    assert.match(app, /demoHighlightWalk/);
+    assert.match(app, /revealHomeWindow\("live-meeting"\)/);
+    assert.match(app, /Opened Live answer. Never sent/);
+    assert.match(app, /Never a cheater overlay/);
     assert.match(app, /if \(onTeach\) speakTeachCue/);
     assert.match(app, /Last step/);
     assert.match(app, /\. Last step/);

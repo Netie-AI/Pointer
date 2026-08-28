@@ -1,3 +1,10 @@
+## 2026-08-28 - Home Save docks Live answer
+
+Home Got it on Save files the unsent draft, then pulses Live answer
+(same honest stack as overlay). Unsent mail starts highlighted.
+Saved Save drops Click Save. Never send. Never speak meeting.
+Never Act. P-05 and P-06 stay parked.
+
 ## 2026-08-28 - Save then docks Live answer
 
 Got it on Save files the unsent draft, then docks Live answer
