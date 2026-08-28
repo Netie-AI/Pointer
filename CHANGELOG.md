@@ -1,3 +1,10 @@
+## 2026-08-28 - Save then docks Live answer
+
+Got it on Save files the unsent draft, then docks Live answer
+(They asked / You / Say this / Also / Heard / Don't say). Copy is
+clipboard. Never send. Never speak meeting. Never Act. P-05 and
+P-06 stay parked.
+
 ## 2026-08-28 - Live answer is the honest stack
 
 Overlay Live answer on This computer is They asked / You / Say this /

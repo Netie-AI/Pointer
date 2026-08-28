@@ -1196,9 +1196,18 @@
         inboxTypedTo = next;
         lastInboxSaved = saved;
         paintWalkDesktop();
-        highlightWalkWindow("/workspace?id=live-inbox");
-        const dock = document.getElementById("walk-dock");
-        if (dock && dock.classList.contains("show")) paintWalkDock("/workspace?id=live-inbox");
+        const href = saved ? "/workspace?id=live-meeting" : "/workspace?id=live-inbox";
+        highlightWalkWindow(href);
+        const filedEl = document.getElementById("walk-filed");
+        if (filedEl && saved) {
+          filedEl.hidden = false;
+          filedEl.textContent = "Opened Live answer. Never sent.";
+        }
+        if (saved) paintWalkDock(href);
+        else {
+          const dock = document.getElementById("walk-dock");
+          if (dock && dock.classList.contains("show")) paintWalkDock(href);
+        }
       }
 
       function endDrag() {

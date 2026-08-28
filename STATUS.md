@@ -38,10 +38,10 @@
    field instead of covering it. Draw stays a pencil until Draw or
    Escape. Dock Copy is clipboard, never send. Home Ask stays on This
    screen. Got it types the Heard name into Unsent mail To (starts
-   not sent). Got it on Save files that draft on This computer
-   (never send). Last step is spoken. Overlay Live answer on This
-   computer is They asked / You / Say this / Also / Don't say (HUD
-   docks that stack). Never a cheater overlay. Never Act.
+   not sent). Got it on Save files that draft then docks Live
+   answer (never send, never speak meeting). Overlay Live answer
+   is They asked / You / Say this / Also / Don't say (HUD docks
+   that stack). Never a cheater overlay. Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

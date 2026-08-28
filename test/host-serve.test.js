@@ -483,6 +483,8 @@ function readAsset(file) {
     assert.match(overlayText, /inboxSaved/);
     assert.match(overlayText, /Saved on This computer/);
     assert.match(overlayText, /saved on This computer - send is parked/);
+    assert.match(overlayText, /saved \? "\/workspace\?id=live-meeting"/);
+    assert.match(overlayText, /Opened Live answer. Never sent./);
     assert.match(overlayText, /id="walk-dock"/);
     assert.match(overlayText, /copy\.id = "walk-dock-copy"/);
     assert.match(overlayText, /copyWalkDock/);

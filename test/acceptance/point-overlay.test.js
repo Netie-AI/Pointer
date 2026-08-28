@@ -174,6 +174,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/syncInboxType/.test(walk) && /inboxTypedTo/.test(walk), "Got it types Heard name into Unsent mail To");
       assert.ok(/inboxTypedTo \|\| "not sent"/.test(walk), "Unsent mail To starts empty");
       assert.ok(/inboxSaved/.test(walk) && /Saved on This computer/.test(walk), "Got it on Save files the draft on This computer");
+      assert.ok(/saved \? "\/workspace\?id=live-meeting"/.test(walk) && /Opened Live answer\. Never sent/.test(walk), "Save then docks Live answer, never send");
       assert.ok(/boxed && done && kind === "field"/.test(walk), "typed To is not covered by a done Email BOX");
       assert.ok(/Never sent/.test(walk) && /saved on This computer - send is parked/.test(walk), "Save never sends");
       assert.ok(/onRailStep/.test(walk) && /data-rail/.test(walk) && /data-step/.test(walk), "overlay rail ticks jump by Ask");

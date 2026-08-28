@@ -973,6 +973,8 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /inboxSaved/);
   assert.match(teachOverlay, /Saved on This computer/);
   assert.match(teachOverlay, /saved on This computer - send is parked/);
+  assert.match(teachOverlay, /saved \? "\/workspace\?id=live-meeting"/);
+  assert.match(teachOverlay, /Opened Live answer. Never sent./);
   assert.match(teachOverlay, /onRailStep/);
   assert.match(teachOverlay, /data-rail/);
   assert.match(teachOverlay, /data-step/);
