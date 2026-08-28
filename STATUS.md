@@ -13,9 +13,11 @@
    Rust `pointer-core` on `127.0.0.1:18011` takes click/move/wheel/type/tap/combo/keys;
    PowerShell is fallback. `computer.status.core` / `.home` publish it.
    Rest of the rust rewrite is P-08.
-2. **Named UIA verbs.** `toggle:`/`check:`/`uncheck:` (TogglePattern) and
+2. **Named UIA verbs.** `click:`/`invoke:` (InvokePattern),
+   `toggle:`/`check:`/`uncheck:` (TogglePattern), and
    `expand:`/`collapse:` (ExpandCollapsePattern) keep the cursor put.
-   Leaf / non-toggleable is a visible no. Act still Cortex then reviewPlan.
+   Chrome Invoke miss falls back to SendInput. Leaf / non-toggleable is
+   a visible no. Act still Cortex then reviewPlan.
 3. **DR-0005 still holds.** Screenshotable HUD, UACC READ, IBM Plex,
    loopback `computer.status` / `observe` / `act` / `scribe` /
    `meeting_assist`. Act/scribe fail-closed without Cortex. Hands-free

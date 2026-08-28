@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - UIA InvokePattern for named clicks
+
+`click: Save` tries InvokePattern on the foreground control before
+SendInput so the cursor stays put. Chrome miss falls back to aim.
+`invoke: Save` is Invoke only. Edit/Document stay not invokable.
+Cortex `/dms/secure` then reviewPlan still gates Act. No GPLv3 dump.
+No third-party MCP.
+
 ## 2026-08-28 - UIA toggle and expand without moving the cursor
 
 `toggle:` / `check:` / `uncheck:` use TogglePattern on a named CheckBox.

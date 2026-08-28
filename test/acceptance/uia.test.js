@@ -460,6 +460,71 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
       const main = fs.readFileSync(path.join(ROOT, "electron/main.js"), "utf8");
       assert.ok(main.includes("expandControl"), "expand: must run UIA ExpandCollapse from the executor");
     }),
+
+    T("invokeControl InvokePattern-clicks a named button without moving the cursor", async () => {
+      const scripts = [];
+      const r = await uia.invokeControl("Save", {
+        run: async (script) => {
+          scripts.push(script);
+          if (/InvokePattern/.test(script)) {
+            return JSON.stringify({ ok: true, invoked: true, name: "Save", controlType: "Button" });
+          }
+          return JSON.stringify([
+            { name: "Cancel", controlType: "Button", enabled: true, rect: rect(0, 0, 100, 40) },
+            { name: "Save", controlType: "Button", enabled: true, rect: rect(200, 400, 100, 40) },
+          ]);
+        },
+      });
+      assert.strictEqual(r.ok, true);
+      assert.strictEqual(r.via, "uia-invoke");
+      assert.strictEqual(r.name, "Save");
+      assert.ok(scripts.some((s) => /InvokePattern/.test(s)), "second script must Invoke");
+      assert.ok(
+        !/SetCursorPos|SendInput|mouse_event/.test(scripts.join("\n")),
+        "Invoke must not warp or click the cursor"
+      );
+      assert.ok(uia.canInvoke({ name: "Save", controlType: "Button" }));
+      assert.strictEqual(uia.canInvoke({ name: "Name", controlType: "Edit" }), false);
+      assert.strictEqual(uia.canInvoke({ name: "Body", controlType: "Document" }), false);
+      assert.strictEqual(uia.canInvoke({ name: "Save", controlType: "Button", enabled: false }), false);
+      const parsed = uia.parseInvokeOutput(
+        JSON.stringify({ ok: true, invoked: true, name: "OK", controlType: "Button" })
+      );
+      assert.strictEqual(parsed.ok, true);
+      assert.strictEqual(parsed.via, "uia-invoke");
+    }),
+
+    T("invokeControl miss and non-invokable Edit are a visible no", async () => {
+      const edit = await uia.invokeControl("Name", {
+        run: async () =>
+          JSON.stringify([{ name: "Name", controlType: "Edit", enabled: true, rect: rect(10, 10, 200, 24) }]),
+      });
+      assert.strictEqual(edit.ok, false);
+      assert.strictEqual(edit.reason, "not invokable");
+      const miss = await uia.invokeControl("Save", {
+        run: async () =>
+          JSON.stringify([{ name: "Print", controlType: "Button", enabled: true, rect: rect(0, 0, 10, 10) }]),
+      });
+      assert.strictEqual(miss.ok, false);
+      assert.match(String(miss.reason || ""), /no matching/);
+      const boom = await uia.invokeControl("Save", {
+        run: async () => {
+          throw new Error("powershell timed out");
+        },
+      });
+      assert.strictEqual(boom.ok, false);
+      assert.strictEqual(await uia.invokeControl("", { run: async () => "[]" }).then((x) => x.ok), false);
+      const src = fs.readFileSync(path.join(ROOT, "electron/netie/uia.js"), "utf8");
+      assert.ok(/InvokePattern/.test(src), "UIA invoke must live in uia.js");
+      const main = fs.readFileSync(path.join(ROOT, "electron/main.js"), "utf8");
+      assert.ok(main.includes("invokeControl"), "named click must try UIA Invoke before SendInput");
+      assert.ok(main.includes("uia-invoke"), "a successful Invoke must be visible on the outcome");
+      assert.match(
+        main,
+        /toLowerCase\(\) === "click" && String\(action\.target/,
+        "only single click auto-Invokes; double-click stays SendInput"
+      );
+    }),
   ];
 
   const ok = await suite.run(tests);

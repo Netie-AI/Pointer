@@ -36,6 +36,13 @@ check("a click names the control", () => {
   assert.ok(d.text.includes("Send"));
 });
 
+check("uia_invoke names the control and does not claim a cursor warp", () => {
+  const d = describeAction({ type: "uia_invoke", target: "Save" });
+  assert.ok(d.text.includes("Save"));
+  assert.ok(/invoke/i.test(d.text));
+  assert.ok(/without moving the cursor/i.test(d.text));
+});
+
 check("uia_toggle names the box and the want", () => {
   const flip = describeAction({ type: "uia_toggle", target: "Remember me" });
   assert.ok(flip.text.includes("Remember me"));

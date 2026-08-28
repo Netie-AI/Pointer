@@ -176,6 +176,7 @@ function computerStatus(opts = {}) {
       gated: true,
       uiaToggle: true,
       uiaExpand: true,
+      uiaInvoke: true,
       reason:
         opts.actAvailable === true
           ? "Cortex /dms/secure then reviewPlan"
@@ -260,6 +261,7 @@ function computerStatus(opts = {}) {
         "type: hello",
         "click 40 50",
         "click: Save",
+        "invoke: Save",
         "toggle: Remember me",
         "check: Remember me",
         "uncheck: Remember me",

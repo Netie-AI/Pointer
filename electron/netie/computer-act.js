@@ -101,7 +101,7 @@ function windowClickPoint(win) {
 const MAX_CHAIN = 8;
 
 function looksLocalStep(text) {
-  return /^(?:please\s+)?(?:observe|screenshot|screen info|type\s*:|dictate\s*:|click|doubleclick|rightclick|hover|toggle\s*:|check\s*:|uncheck\s*:|expand\s*:|collapse\s*:|wait|scroll|press\s+|open\s*:|focus|deliver\s*:|replace\s*:|copy|paste|select)/i.test(
+  return /^(?:please\s+)?(?:observe|screenshot|screen info|type\s*:|dictate\s*:|click|doubleclick|rightclick|hover|invoke\s*:|toggle\s*:|check\s*:|uncheck\s*:|expand\s*:|collapse\s*:|wait|scroll|press\s+|open\s*:|focus|deliver\s*:|replace\s*:|copy|paste|select)/i.test(
     String(text || "").trim()
   );
 }
@@ -208,6 +208,12 @@ function planOneInstruction(instruction, opts = {}) {
   for (const kind of ["click", "doubleclick", "rightclick", "hover"]) {
     const named = parseNamedInstruction(kind, text);
     if (named) return named;
+  }
+  const invoked = parseNamedInstruction("invoke", text);
+  if (invoked && invoked.actions && invoked.actions[0]) {
+    invoked.actions[0].type = "uia_invoke";
+    invoked.source = "invoke";
+    return invoked;
   }
   const toggled = text.match(/^(?:please\s+)?(toggle|check|uncheck)\s*:\s*(.+)$/i);
   if (toggled && String(toggled[2] || "").trim()) {

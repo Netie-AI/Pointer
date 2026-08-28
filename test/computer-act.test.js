@@ -258,6 +258,14 @@ function test(name, fn) {
     const named = planFromInstruction("click: Save");
     assert.strictEqual(named.actions[0].type, "click");
     assert.strictEqual(named.actions[0].target, "Save");
+    const invoked = planFromInstruction("invoke: Save");
+    assert.strictEqual(invoked.ok, true);
+    assert.strictEqual(invoked.source, "invoke");
+    assert.strictEqual(invoked.actions[0].type, "uia_invoke");
+    assert.strictEqual(invoked.actions[0].target, "Save");
+    const please = planFromInstruction("please invoke: OK");
+    assert.strictEqual(please.actions[0].type, "uia_invoke");
+    assert.strictEqual(please.actions[0].target, "OK");
     const toggled = planFromInstruction("toggle: Remember me");
     assert.strictEqual(toggled.ok, true);
     assert.strictEqual(toggled.source, "toggle");
@@ -367,6 +375,13 @@ function test(name, fn) {
     assert.strictEqual(expandThen.actions[0].type, "uia_expand");
     assert.strictEqual(expandThen.actions[0].target, "Documents");
     assert.strictEqual(expandThen.actions[1].type, "type");
+    const invokeThen = planFromInstruction("invoke: Save then type: hello");
+    assert.strictEqual(invokeThen.ok, true);
+    assert.strictEqual(invokeThen.source, "chain");
+    assert.strictEqual(invokeThen.actions[0].type, "uia_invoke");
+    assert.strictEqual(invokeThen.actions[0].target, "Save");
+    assert.strictEqual(invokeThen.actions[1].type, "type");
+    assert.strictEqual(invokeThen.actions[1].value, "hello");
   });
 
   await test("computer.act click window: uses observed rects and keeps named click: Save", async () => {

@@ -110,6 +110,10 @@ function describeAction(action) {
       verb = "Click";
       text = `Click${where || " the targeted control"}`;
       break;
+    case "uia_invoke":
+      verb = "Invoke";
+      text = `Invoke${where || " the named control"} without moving the cursor`;
+      break;
     case "uia_toggle": {
       verb = "Toggle";
       const want = String(a.want || "flip").toLowerCase();

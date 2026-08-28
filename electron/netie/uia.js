@@ -24,6 +24,12 @@ const TARGET_CONTROL_TYPES = Object.freeze([
   "MenuItem", "ListItem", "TabItem", "Text", "Document", "SplitButton",
 ]);
 
+/** Controls that expose InvokePattern. Edit/Document need focus+type, not Invoke. */
+const INVOKE_CONTROL_TYPES = Object.freeze([
+  "Button", "Hyperlink", "MenuItem", "SplitButton", "CheckBox", "RadioButton",
+  "TabItem", "ListItem",
+]);
+
 /** Bound the tree walk — a Chrome window can expose tens of thousands of nodes. */
 const MAX_CANDIDATES = 400;
 
@@ -204,6 +210,99 @@ function parseProbeOutput(stdout) {
   } catch {
     return [];
   }
+}
+
+function canInvoke(candidate) {
+  const t = String((candidate && candidate.controlType) || "");
+  if (!INVOKE_CONTROL_TYPES.includes(t)) return false;
+  if (candidate && candidate.enabled === false) return false;
+  return true;
+}
+
+/**
+ * PowerShell that finds the named control in the foreground window and
+ * InvokePattern-clicks it. No SetCursorPos. No SendInput. Chrome often
+ * ignores this; those clicks still fall back to the driver.
+ */
+function buildInvokeScript(name, controlType, opts = {}) {
+  const max = Number(opts.max) || MAX_CANDIDATES;
+  const type = String(controlType || "Button").replace(/[^A-Za-z]/g, "") || "Button";
+  return [
+    "$ErrorActionPreference='Stop'",
+    "Add-Type -AssemblyName UIAutomationClient,UIAutomationTypes | Out-Null",
+    "Add-Type -Namespace Native -Name Win -MemberDefinition '[DllImport(\"user32.dll\")]public static extern System.IntPtr GetForegroundWindow();' | Out-Null",
+    "$h=[Native.Win]::GetForegroundWindow()",
+    "if($h -eq [System.IntPtr]::Zero){ '{\"ok\":false,\"reason\":\"no foreground\"}'; exit 0 }",
+    "$root=[System.Windows.Automation.AutomationElement]::FromHandle($h)",
+    "if($root -eq $null){ '{\"ok\":false,\"reason\":\"no element\"}'; exit 0 }",
+    `$want=${psLiteral(name)}`,
+    `$type=${psLiteral(type)}`,
+    "$walker=[System.Windows.Automation.TreeWalker]::ControlViewWalker",
+    "$queue=New-Object System.Collections.Queue",
+    "$queue.Enqueue($root) | Out-Null",
+    "$seen=0",
+    `while($queue.Count -gt 0 -and $seen -lt ${max}){`,
+    "  $el=$queue.Dequeue(); $seen++",
+    "  try{",
+    "    $child=$walker.GetFirstChild($el)",
+    "    while($child -ne $null){ $queue.Enqueue($child) | Out-Null; $child=$walker.GetNextSibling($child) }",
+    "    $n=$el.Current.Name; $t=$el.Current.ControlType.ProgrammaticName -replace '^ControlType\\.',''",
+    "    if($n -eq $want -and $t -eq $type -and $el.Current.IsEnabled){",
+    "      $pat=$el.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)",
+    "      if($pat -eq $null){ '{\"ok\":false,\"reason\":\"no invoke\"}'; exit 0 }",
+    "      $pat.Invoke()",
+    "      [pscustomobject]@{ok=$true;invoked=$true;name=$n;controlType=$t} | ConvertTo-Json -Compress",
+    "      exit 0",
+    "    }",
+    "  } catch {}",
+    "}",
+    "'{\"ok\":false,\"reason\":\"no matching control\"}'",
+  ].join("\n");
+}
+
+function parseInvokeOutput(stdout) {
+  const raw = String(stdout || "").trim();
+  if (!raw) return { ok: false, reason: "empty" };
+  try {
+    const data = JSON.parse(raw);
+    if (data && data.ok && data.invoked) {
+      return {
+        ok: true,
+        invoked: true,
+        via: "uia-invoke",
+        name: String(data.name || "").slice(0, 80),
+        controlType: String(data.controlType || "").slice(0, 40),
+      };
+    }
+    return { ok: false, reason: (data && data.reason) || "invoke failed" };
+  } catch {
+    return { ok: false, reason: "bad probe" };
+  }
+}
+
+/**
+ * HeyClicky-class click: InvokePattern on a named control. No cursor warp.
+ * Miss or non-invokable is a visible no so SendInput can still aim.
+ */
+async function invokeControl(label, opts = {}) {
+  const clean = String(label || "").trim();
+  if (!clean || typeof opts.run !== "function") return { ok: false, reason: "no runner" };
+  let stdout;
+  try {
+    stdout = await opts.run(buildProbeScript(clean, opts));
+  } catch {
+    return { ok: false, reason: "uia unavailable" };
+  }
+  const best = chooseCandidate(clean, parseProbeOutput(stdout), opts);
+  if (!best) return { ok: false, reason: "no matching control" };
+  if (!canInvoke(best.candidate)) return { ok: false, reason: "not invokable" };
+  let invoked;
+  try {
+    invoked = await opts.run(buildInvokeScript(best.candidate.name, best.candidate.controlType, opts));
+  } catch {
+    return { ok: false, reason: "invoke failed" };
+  }
+  return parseInvokeOutput(invoked);
 }
 
 /** CheckBox / RadioButton. A Button named "Remember me" is not a toggle. */
@@ -750,6 +849,7 @@ async function readSelection(opts = {}) {
 
 module.exports = {
   TARGET_CONTROL_TYPES,
+  INVOKE_CONTROL_TYPES,
   MAX_CANDIDATES,
   MAX_TEACH_POINTS,
   MAX_SELECTION_CHARS,
@@ -762,6 +862,10 @@ module.exports = {
   formatBoxToken,
   buildProbeScript,
   parseProbeOutput,
+  canInvoke,
+  buildInvokeScript,
+  parseInvokeOutput,
+  invokeControl,
   TOGGLE_CONTROL_TYPES,
   canToggle,
   normalizeWant,
