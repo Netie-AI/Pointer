@@ -56,6 +56,7 @@ assert.match(packAll, /spawn/);
 const driver = fs.readFileSync(path.join(ROOT, "electron", "netie", "driver.js"), "utf8");
 assert.match(driver, /actRefuseReason/);
 assert.match(driver, /isOsAct/);
+assert.match(driver, /_allowOsAct/);
 assert.doesNotMatch(driver, /xdotool/);
 
 console.log("PASS three-OS pack config is original and fail-closed off Windows");

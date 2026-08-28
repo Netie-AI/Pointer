@@ -224,8 +224,7 @@ test("dry-run supports drag/open/clipboard without spawning", async () => {
 
 test("off-Windows Act is fail-closed and does not spawn powershell", async () => {
   if (process.platform === "win32") return;
-  const state = {};
-  const d = new InputDriver({ spawnImpl: fakeSpawn(() => ({}), state) });
+  const d = new InputDriver();
   const out = await d.perform(
     { type: "click", xPct: 50, yPct: 50 },
     { region: { x: 0, y: 0, width: 100, height: 100 } }
@@ -233,7 +232,9 @@ test("off-Windows Act is fail-closed and does not spawn powershell", async () =>
   assert.strictEqual(out.ok, false);
   assert.strictEqual(out.act, false);
   assert.match(String(out.error || ""), /fail-closed/);
-  assert.strictEqual(state.spawned || 0, 0);
+  assert.strictEqual(d._worker, null);
+  const fg = await d.foreground();
+  assert.deepStrictEqual(fg, { title: "?", proc: "?" });
   const wait = await d.perform({ type: "wait", ms: 1 });
   assert.strictEqual(wait.ok, true);
   d.dispose();

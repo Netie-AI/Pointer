@@ -17,6 +17,8 @@
  * behaviour, and what unit tests assert).
  *
  * Set dryRun:true in tests to skip OS calls entirely.
+ * Inject spawnImpl (fake worker) to exercise the protocol off Windows.
+ * Production linux/mac never inject spawnImpl: OS Act stays fail-closed.
  */
 
 const { spawn } = require("child_process");
@@ -275,6 +277,9 @@ class InputDriver {
     this.dryRun = Boolean(opts.dryRun);
     this.toPhysical = opts.toPhysical || null;
     this._spawn = opts.spawnImpl || spawn;
+    // Production never injects spawnImpl. A fake worker is the unit harness
+    // so linux/mac CI can still assert the JSON-lines protocol.
+    this._harness = typeof opts.spawnImpl === "function";
     this._opTimeoutMs = opts.opTimeoutMs || 8000;
     this._startTimeoutMs = opts.startTimeoutMs || 15000;
     this.last = null;
@@ -319,9 +324,13 @@ class InputDriver {
     }
   }
 
+  _allowOsAct() {
+    return this.dryRun || this._harness || actOs();
+  }
+
   _ensureWorker() {
     if (this._worker) return this._worker;
-    if (!actOs() && !this.dryRun) {
+    if (!this._allowOsAct()) {
       throw new Error(actRefuseReason());
     }
     const encoded = Buffer.from(WORKER_SCRIPT, "utf16le").toString("base64");
@@ -434,7 +443,7 @@ class InputDriver {
 
   /** Foreground window { title, proc } via the same worker — no process spawn per tick. */
   async foreground() {
-    if (this.dryRun) return { title: "?", proc: "?" };
+    if (this.dryRun || (!actOs() && !this._harness)) return { title: "?", proc: "?" };
     const r = await this._send({ op: "fg" }, { timeoutMs: 2500 });
     return { title: r.title || "?", proc: r.proc || "?" };
   }
@@ -653,7 +662,7 @@ class InputDriver {
    */
   async perform(action, ctx = {}) {
     const type = String(action.type || "").toLowerCase();
-    if (isOsAct(type) && !actOs() && !this.dryRun) {
+    if (isOsAct(type) && !this._allowOsAct()) {
       return { ok: false, error: actRefuseReason(), act: false, platform: process.platform };
     }
     const region = ctx.region || { x: 0, y: 0, width: 0, height: 0 };
