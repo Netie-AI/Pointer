@@ -875,8 +875,10 @@
           filedEl.hidden = !line;
           filedEl.textContent = line;
         }
-        paintWalkDock(next);
-        highlightWalkWindow(next);
+        const stayWalk = Boolean(/live-meeting/.test(next) && !inboxSaved);
+        if (stayWalk) hideWalkDock();
+        else paintWalkDock(next);
+        highlightWalkWindow(stayWalk ? "/workspace?id=live-inbox" : next);
         paintLiveChrome(inboxSaved || liveAsked);
       }
 
@@ -1320,8 +1322,7 @@
             filedEl.textContent = "";
           }
         }
-        if (saved || wasSaved) hideWalkDock();
-        else if (liveAsked) paintWalkDock("/workspace?id=live-meeting");
+        if (saved || wasSaved || liveAsked) hideWalkDock();
         else {
           const dock = document.getElementById("walk-dock");
           if (dock && dock.classList.contains("show")) paintWalkDock(href);

@@ -306,6 +306,9 @@ function readAsset(file) {
     const demoAskFn = app.slice(app.indexOf("function demoAsk"), app.indexOf("function postAsk"));
     assert.doesNotMatch(demoAskFn, /mode:\s*"meeting"/);
     assert.doesNotMatch(demoAskFn, /location\.href/);
+    assert.match(demoAskFn, /desk === "meeting"/);
+    assert.match(demoAskFn, /!demoInboxSaved\(\)/);
+    assert.match(demoAskFn, /revealHomeWindow\("live-inbox"\)/);
     assert.match(app, /revealHomeWindow/);
     assert.match(app, /desk-window-now/);
     assert.match(app, /demoHighlightWalk/);
@@ -507,6 +510,8 @@ function readAsset(file) {
     assert.match(overlayText, /paintLiveChrome\(liveAsked\)/);
     assert.match(overlayText, /if \(href\) openDeskWindow\(href\)/);
     assert.match(overlayText, /if \(!href\) api\.invoke/);
+    assert.match(overlayText, /stayWalk/);
+    assert.match(overlayText, /if \(saved \|\| wasSaved \|\| liveAsked\) hideWalkDock\(\)/);
     assert.match(overlayText, /id="walk-dock"/);
     assert.match(overlayText, /copy\.id = "walk-dock-copy"/);
     assert.match(overlayText, /copyWalkDock/);
@@ -516,7 +521,6 @@ function readAsset(file) {
     assert.match(overlayText, /id="walk-asked"/);
     assert.match(overlayText, /id="walk-live"/);
     assert.match(overlayText, /paintLiveChrome/);
-    assert.match(overlayText, /if \(saved \|\| wasSaved\) hideWalkDock\(\)/);
     assert.match(overlayText, /html\.demo \.point-face\.field/);
     assert.match(overlayText, /id="walk-desktop"/);
     assert.match(overlayText, /paintWalkDesktop/);

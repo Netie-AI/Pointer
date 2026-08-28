@@ -950,7 +950,7 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   assert.match(teachOverlay, /id="walk-asked"/);
   assert.match(teachOverlay, /id="walk-live"/);
   assert.match(teachOverlay, /paintLiveChrome/);
-  assert.match(teachOverlay, /if \(saved \|\| wasSaved\) hideWalkDock\(\)/);
+  assert.match(teachOverlay, /if \(saved \|\| wasSaved \|\| liveAsked\) hideWalkDock\(\)/);
   assert.match(teachOverlay, /navigator\.clipboard\.writeText/);
   assert.match(teachOverlay, /html\.demo \.point-face\.field/);
   assert.match(teachOverlay, /stroke-width: 1\.35/);
@@ -970,6 +970,8 @@ test("teach assist emits POINT tokens from measured controls only", () => {
   const openFn = teachOverlay.slice(teachOverlay.indexOf("function openDeskWindow"), teachOverlay.indexOf("function onDesk"));
   assert.match(openFn, /paintWalkDock/);
   assert.match(openFn, /highlightWalkWindow/);
+  assert.match(openFn, /stayWalk/);
+  assert.match(openFn, /hideWalkDock/);
   assert.doesNotMatch(openFn, /window\.open/);
   assert.doesNotMatch(openFn, /location\.href/);
   assert.match(teachOverlay, /walk-filed/);
@@ -1714,6 +1716,9 @@ test("desk chips ask, never act", () => {
   const demoAskFn = hostApp.slice(hostApp.indexOf("function demoAsk"), hostApp.indexOf("function postAsk"));
   assert.doesNotMatch(demoAskFn, /mode:\s*"meeting"/);
   assert.doesNotMatch(demoAskFn, /location\.href/);
+  assert.match(demoAskFn, /desk === "meeting"/);
+  assert.match(demoAskFn, /!demoInboxSaved\(\)/);
+  assert.match(demoAskFn, /revealHomeWindow\("live-inbox"\)/);
   assert.match(hostApp, /demoAskChips/);
   assert.match(hostApp, /host-ask-chips/);
   assert.match(hostApp, /Draft email/);
@@ -1833,6 +1838,8 @@ test("live meeting pump ships one brief after quiet and skips duplicates", () =>
   assert.match(hud, /overlayControlFace/);
   assert.match(hud, /speakTeachCue/);
   assert.match(hud, /kind === "point"/);
+  assert.match(hud, /kind === "point" \? lastCueAsked/);
+  assert.match(hud, /kind === "point"\) hideLiveCueDock/);
   assert.match(hud, /Type " \+ nowFill/);
   assert.match(hud, /classList.add\("now"\)/);
   assert.match(hud, /later/);

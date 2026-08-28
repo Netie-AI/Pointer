@@ -155,7 +155,7 @@ function lastTalkLine(turns, speaker) {
 function paintLiveCueCaptions() {
   const cap = $("live-cue-captions");
   if (!cap) return false;
-  if (lastCueKind === "point" || lastCueKind === "warn") {
+  if ((lastCueKind === "point" || lastCueKind === "warn") && !lastCueAsked) {
     cap.replaceChildren();
     cap.hidden = true;
     const bar = $("live-cue-bar");
@@ -388,7 +388,8 @@ function paintLiveBrief(event) {
   const kind = rawKind === "point" || rawKind === "warn" ? rawKind : "say";
   lastCueText = cue;
   lastCueKind = kind;
-  const asked = String((event && event.asked) || "").trim().slice(0, 160);
+  const askedRaw = String((event && event.asked) || "").trim().slice(0, 160);
+  const asked = askedRaw || (kind === "point" ? lastCueAsked : "");
   const rest = String((event && event.rest) || "").trim().slice(0, 160);
   const heard = String((event && event.heard) || "").trim().slice(0, 160);
   const askedLine =
@@ -407,13 +408,17 @@ function paintLiveBrief(event) {
           .slice(0, 220);
   const cueLine = cueDisplay(kind, cue);
   const meetingDesk = String((event && event.desk) || "") === "meeting" && kind === "say";
-  const themLine = meetingDesk ? lastTalkLine(event.turns, "them") : "";
-  const youLine = meetingDesk ? lastTalkLine(event.turns, "you") : "";
+  const talkTurns = meetingDesk
+    ? (Array.isArray(event && event.turns) ? event.turns : [])
+    : (kind === "point" && asked ? lastCueTurns : []);
+  const themLine = lastTalkLine(talkTurns, "them");
+  const youLine = lastTalkLine(talkTurns, "you");
   const themShow = Boolean(themLine && themLine !== asked);
   const youShow = Boolean(youLine);
   lastCueAsked = asked;
   lastThemLine = themLine;
-  lastCueTurns = meetingDesk && Array.isArray(event && event.turns) ? event.turns : [];
+  if (meetingDesk) lastCueTurns = talkTurns;
+  else if (kind !== "point") lastCueTurns = [];
   if (!text || (event && event.act)) {
     brief.hidden = true;
     if (meta) meta.hidden = true;
@@ -509,7 +514,8 @@ function paintLiveBrief(event) {
   if (bar) bar.hidden = !cueBarHasBrief;
   paintLiveCueCaptions();
   paintLiveCueRail(kind === "point" ? event.path : []);
-  paintLiveCueDock(event);
+  if (kind === "point") hideLiveCueDock();
+  else paintLiveCueDock(event);
   if (barAsked) {
     barAsked.hidden = !askedLine;
     barAsked.textContent = askedLine;

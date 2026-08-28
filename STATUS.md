@@ -43,8 +43,9 @@
    Overlay Live answer is They asked / You / Say this / Also /
    Don't say (HUD docks that stack). Chrome keeps They asked /
    You / Live captions after Ask or Save (live overlay paints those
-   locally, never teach-advance). Leftover BOX yields. Back restores.
-   Copy clips that stack. Never a cheater overlay. Never Act.
+   locally, never teach-advance). Ask Live answer keeps Email
+   pointing; leftover BOX yields. Back restores. Copy clips that
+   stack. Never a cheater overlay. Never Act.
 3. **EPIC-P04 and EPIC-P07 remain open.** Compute box is P-06.
 
 ## Next

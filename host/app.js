@@ -1024,6 +1024,10 @@ function demoAsk(ask) {
     openDemoArtifact(id);
     return;
   }
+  if (desk === "meeting" && document.getElementById("stage") && !demoInboxSaved()) {
+    revealHomeWindow("live-inbox");
+    return;
+  }
   if (revealHomeWindow(id)) return;
 }
 

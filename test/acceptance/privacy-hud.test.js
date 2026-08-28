@@ -172,6 +172,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/textContent/.test(liveFn));
       assert.ok(/paintMeetingTalk/.test(liveFn));
       assert.ok(/paintLiveCueCaptions/.test(liveFn));
+      assert.ok(/kind === "point" \? lastCueAsked/.test(js), "HUD keeps They asked during a teach walk after Live answer");
+      assert.ok(/kind === "point"\) hideLiveCueDock/.test(liveFn), "HUD teach walk does not cover the BOX with a Live answer dock");
       assert.ok(/event\.turns/.test(js));
       assert.ok(!/innerHTML/.test(liveFn));
       const capFn = js.slice(js.indexOf("function paintLiveCueCaptions"), js.indexOf("function paintMeetingTalk"));

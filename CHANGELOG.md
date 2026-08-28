@@ -1,3 +1,12 @@
+## 2026-08-28 - Ask Live answer keeps Email pointing
+
+Ask Live answer keeps Unsent mail as the current window and drops the
+duplicate Live answer dock, so Click/Type in still points at Email.
+Chrome keeps They asked / You / Live. Home Ask stays on This screen
+the same way until Save. HUD teach walks keep those captions and do
+not cover the BOX. Never send. Never speak meeting. Never Act. P-05
+and P-06 stay parked.
+
 ## 2026-08-28 - Live overlay desk Ask paints captions locally
 
 Live Electron overlay Ask for Live answer / mail / Notes / Needs you
