@@ -2,6 +2,12 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - HUD Report a problem
+
+Fixed top chrome has Report a problem. The panel copies a local note
+to the clipboard and writes a file on this device. No cloud relay.
+No telemetry flush. Ticket #29 stays open.
+
 ## 2026-08-28 - Token-aware Claude 5-hour then Cursor
 
 Prefer Claude Code while the 5-hour window is open; instruction or

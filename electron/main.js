@@ -71,6 +71,7 @@ const { buildMeetingAssist, runMeetingAssist, shouldRefreshSuggest, exportMeetin
 const { createHoldMonitor, createDictateSession, DICTATE_HOLD_VKS, DICTATE_MAX_MS, DOUBLE_TAP_MS, comboVks, normalizeDictateHotkeys } = require("./netie/holdkey");
 const { resolveVaultTemplates, hasRawTemplate, missingVaultKeys } = require("./netie/vault-fill");
 const { fieldsToPrompts, validateAnswers, describeResult } = require("./netie/enquire");
+const { buildReport, writeReport } = require("./netie/bug-report");
 const { shouldAcceptFrame, detectCaptureCommand } = require("./netie/capture-gate");
 /** Plan parked while the human answers the enquire panel. */
 let pendingEnquire = null;
@@ -4163,6 +4164,30 @@ ipcMain.handle("hud:copyText", async (_e, payload) => {
   } catch (err) {
     return { ok: false, act: false, reason: String(err && err.message ? err.message : err) };
   }
+});
+
+ipcMain.handle("hud:reportProblem", async (_e, payload) => {
+  const built = buildReport({
+    note: payload && payload.note,
+    mode: payload && payload.mode,
+    session: payload && payload.session,
+  });
+  let copied = false;
+  try {
+    clipboard.writeText(built.text.slice(0, 2000));
+    copied = true;
+  } catch {
+    copied = false;
+  }
+  const saved = writeReport(built.text);
+  return {
+    ok: Boolean(copied || (saved && saved.ok)),
+    act: false,
+    copied,
+    saved: Boolean(saved && saved.ok),
+    path: saved && saved.ok ? saved.path : "",
+    noteLen: built.noteLen,
+  };
 });
 
 /**

@@ -335,14 +335,17 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   color: var(--muted); font-size: 10px; font-weight: 800;
   letter-spacing: 0.08em; text-transform: uppercase;
 }
-.enquire-field input {
+.enquire-field input,
+.enquire-field textarea {
   width: 100%; padding: 8px 10px; border-radius: 12px;
   border: 1px solid var(--line-soft); background: var(--field); color: var(--text);
 }
-.enquire-field input:focus-visible {
+.enquire-field input:focus-visible,
+.enquire-field textarea:focus-visible {
   outline: 2px solid var(--accent-solid); outline-offset: 1px;
 }
-.enquire-field input::placeholder { color: var(--muted); }
+.enquire-field input::placeholder,
+.enquire-field textarea::placeholder { color: var(--muted); }
 .enquire-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .enquire-actions .text-btn { margin-left: 0; }
 

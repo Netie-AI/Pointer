@@ -154,6 +154,9 @@
               </div>
             </div>
           </div>
+          <button type="button" class="ask-pill ghost" id="btn-report" title="Report a problem">
+            <span>Report a problem</span>
+          </button>
           <button type="button" class="ask-pill ghost" id="btn-hide-top" title="Show / Hide">
             <span>Show/Hide</span>
             <kbd>Ctrl</kbd><kbd>`</kbd>
@@ -334,6 +337,23 @@
       <!-- P5-ENQUIRE: a real <form>, so Enter submits, <label for> binds to the
            input, and focus order is the browser's job rather than ours. Fields
            are built at runtime from the missing vault keys. -->
+      <form class="enquire chrome" id="report-panel" hidden>
+        <header class="panel-head">
+          <span>Report a problem</span>
+        </header>
+        <p class="enquire-why">
+          Stays on this device. Copy puts a note on the clipboard. No cloud relay.
+        </p>
+        <label class="enquire-field" for="report-note">
+          <span>What went wrong</span>
+          <textarea id="report-note" name="note" rows="3" maxlength="500" autocomplete="off"></textarea>
+        </label>
+        <div class="enquire-actions">
+          <button type="submit" class="ask-pill" id="btn-report-send">Copy report</button>
+          <button type="button" class="text-btn" id="btn-report-cancel">Not now</button>
+        </div>
+      </form>
+
       <form class="enquire glass chrome" id="enquire-panel" hidden>
         <header class="panel-head">
           <span class="spark">✦</span>
