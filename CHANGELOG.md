@@ -9,6 +9,15 @@ calls SelectionItemPattern on the foreground TabItem/ListItem/Radio.
 Button/Edit/CheckBox stay not selectable. Cortex gate unchanged. No
 GPLv3 dump. No third-party MCP.
 
+## 2026-08-28 - Token-aware Claude 5-hour then Cursor
+
+Prefer Claude Code while the 5-hour window is open; instruction or
+limit-used routes to Cursor. `computer.status.route` publishes that
+window plus running token totals from OpenVault hops. `use Claude` /
+`use Cursor` recipes still fail-closed through Cortex then reviewPlan.
+Act review is observe then reviewPlan then click/copy/paste. No GPLv3
+dump. No third-party MCP.
+
 ## 2026-08-28 - Observe LIVE captions for agents
 
 Loopback `computer.observe` and `GET /api/observe?captions=1` return the
