@@ -253,6 +253,30 @@ test("visionChat uses live chatUrl; custody stays on OpenVault", async () => {
   assert.ok(html.includes('id="set-llm-model"'));
 });
 
+test("visionChat reports usage and calls onUsage", async () => {
+  const noted = [];
+  const f = mockFetch([
+    ["/dms/secure", { json: { ok: true, blocked: false, text: "hi" } }],
+    [
+      "/v1/chat/completions",
+      {
+        json: {
+          choices: [{ message: { content: "ok" } }],
+          usage: { prompt_tokens: 11, completion_tokens: 7, total_tokens: 18 },
+        },
+      },
+    ],
+    ["/dms/audit/append", { json: { ok: true } }],
+  ]);
+  const eco = new NetieEcosystem({ fetchImpl: f, onUsage: (u) => noted.push(u) });
+  const r = await eco.visionChat({ message: "hi" });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.usage.total, 18);
+  assert.strictEqual(noted.length, 1);
+  assert.strictEqual(noted[0].prompt, 11);
+  assert.strictEqual(noted[0].completion, 7);
+});
+
 test("visionChat asks the model to emit Clicky overlay tokens", async () => {
   const f = mockFetch([
     ["/dms/secure", { json: { ok: true, blocked: false, text: "how do I save" } }],

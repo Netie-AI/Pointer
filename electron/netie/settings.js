@@ -35,6 +35,10 @@ const DEFAULTS = Object.freeze({
    * (hud-live.createAutoSend) for anyone who wants hands-free.
    */
   autoSend: false,
+  /** Running OpenAI-shaped token totals from OpenVault hops. */
+  tokenUsage: { prompt: 0, completion: 0, total: 0 },
+  /** Claude Code 5-hour window. exhausted routes coding work to Cursor. */
+  claudeRoute: { startedAt: 0, exhausted: false, exhaustedAt: 0 },
   /** LIVE subtitle tracks the mouse instead of sitting under the top bar. */
   followCursor: true,
   /** How many transcript lines the LIVE subtitle keeps on screen. */

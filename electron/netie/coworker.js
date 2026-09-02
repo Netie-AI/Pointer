@@ -75,7 +75,7 @@ function plannerGrounding(instruction, opts = {}) {
       "Coworker rules:",
       "1. Prefer copy/paste and hotkeys over generating text.",
       "2. If a recipe or skill fits, use it - do not invent a long click path.",
-      "3. For coding apps, ask Netie vs Cursor vs Claude Code when ambiguous.",
+      "3. For coding apps, prefer Claude Code while the 5-hour window is open; when that limit is used, open Cursor.",
       "4. If Cursor context looks full (token circle), open a new chat and continue with @ past chats / STATUS.md.",
       "5. Expand hidden panels like a human - Window menu, enable, expand.",
       "6. Word documents: word_docx_write (or word_from_clipboard for a selection). Do not click the Word UI.",

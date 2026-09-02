@@ -169,6 +169,7 @@ function computerStatus(opts = {}) {
         opts.actAvailable === true
           ? "Cortex /dms/secure then reviewPlan"
           : "no Cortex /dms/secure gate",
+      review: "observe then reviewPlan then click/copy/paste",
     },
     delivery: opts.delivery || { present: false, title: "", hwnd: false },
     mode: String(opts.mode || "agent"),
@@ -202,6 +203,13 @@ function computerStatus(opts = {}) {
       maxMs: Number(opts.sessionMaxMs) > 0 ? Number(opts.sessionMaxMs) : 120000,
       dictate: String(opts.dictateMode || "off").slice(0, 24),
       partials: opts.sessionPartials !== false,
+    },
+    route: opts.route || {
+      claude: "open",
+      cursor: "ready",
+      windowMs: 18000000,
+      remainingMs: 18000000,
+      tokens: { prompt: 0, completion: 0, total: 0, text: "0 tokens" },
     },
     scribe: {
       available: opts.scribeAvailable === true || opts.actAvailable === true,
@@ -261,6 +269,8 @@ function computerStatus(opts = {}) {
         "GET /api/observe?selection=1",
         "GET /api/observe?captions=1",
         "observe windows include x y width height cx cy",
+        "use Claude",
+        "use Cursor",
         "GET /api/meeting?notes=1",
         "GET /api/meeting?export=1",
         "GET /api/meeting?recap=1",

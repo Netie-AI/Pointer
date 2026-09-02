@@ -186,6 +186,16 @@ test("claude to cursor and create slides", () => {
   assert.strictEqual(matchRecipe("context almost full continue in new chat").id, "continue_due_context");
 });
 
+test("use Claude / use Cursor recipes do not steal the handoff", () => {
+  assert.strictEqual(matchRecipe("use claude").id, "use_claude");
+  assert.strictEqual(matchRecipe("open Claude Code").id, "use_claude");
+  assert.strictEqual(matchRecipe("use cursor").id, "use_cursor");
+  assert.strictEqual(matchRecipe("the 5-hour limit is done").id, "use_cursor");
+  assert.strictEqual(matchRecipe("hand off claude output to cursor").id, "claude_to_cursor");
+  assert.ok(matchRecipe("use claude").actions.some((a) => a.type === "open" && a.target === "claude"));
+  assert.ok(matchRecipe("use cursor").actions.some((a) => a.type === "open" && a.target === "Cursor"));
+});
+
 test("ambiguous prose does not match", () => {
   assert.strictEqual(matchRecipe("copy this, then email it to Pat"), null);
   assert.strictEqual(matchRecipe(""), null);
