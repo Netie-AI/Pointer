@@ -17,9 +17,12 @@
  * behaviour, and what unit tests assert).
  *
  * Set dryRun:true in tests to skip OS calls entirely.
+ * Inject spawnImpl (fake worker) to exercise the protocol off Windows.
+ * Production linux/mac never inject spawnImpl: OS Act stays fail-closed.
  */
 
 const { spawn } = require("child_process");
+const { actOs, actRefuseReason, isOsAct } = require("./platform");
 
 // C# helper + command loop. Compiled once per worker lifetime.
 const WORKER_SCRIPT = `
@@ -329,6 +332,9 @@ class InputDriver {
     this.dryRun = Boolean(opts.dryRun);
     this.toPhysical = opts.toPhysical || null;
     this._spawn = opts.spawnImpl || spawn;
+    // Production never injects spawnImpl. A fake worker is the unit harness
+    // so linux/mac CI can still assert the JSON-lines protocol.
+    this._harness = typeof opts.spawnImpl === "function";
     this._opTimeoutMs = opts.opTimeoutMs || 8000;
     this._startTimeoutMs = opts.startTimeoutMs || 15000;
     this.last = null;
@@ -373,8 +379,15 @@ class InputDriver {
     }
   }
 
+  _allowOsAct() {
+    return this.dryRun || this._harness || actOs();
+  }
+
   _ensureWorker() {
     if (this._worker) return this._worker;
+    if (!this._allowOsAct()) {
+      throw new Error(actRefuseReason());
+    }
     const encoded = Buffer.from(WORKER_SCRIPT, "utf16le").toString("base64");
     const child = this._spawn(
       "powershell.exe",
@@ -485,7 +498,7 @@ class InputDriver {
 
   /** Foreground window { hwnd, title, proc, optional screen box } via the same worker. */
   async foreground() {
-    if (this.dryRun) return { hwnd: "0", title: "?", proc: "?" };
+    if (this.dryRun || (!actOs() && !this._harness)) return { hwnd: "0", title: "?", proc: "?" };
     const r = await this._send({ op: "fg" }, { timeoutMs: 2500 });
     return attachWindowBox(
       { hwnd: String(r.hwnd || "0"), title: r.title || "?", proc: r.proc || "?" },
@@ -505,7 +518,7 @@ class InputDriver {
   /** Visible titled windows for computer.observe. Dry-run stays empty. */
   async listWindows() {
     this.last = { op: "windows" };
-    if (this.dryRun) return [];
+    if (this.dryRun || (!actOs() && !this._harness)) return [];
     const r = await this._send({ op: "windows" }, { timeoutMs: 4000 });
     const raw = Array.isArray(r.windows) ? r.windows : [];
     return raw
@@ -534,6 +547,7 @@ class InputDriver {
       .slice(0, 8);
     this.last = { op: "keys", vks: list };
     if (this.dryRun) return { ok: true, down: false, dryRun: true, ...this.last };
+    if (!actOs() && !this._harness) return { ok: true, down: false, ...this.last };
     if (!list.length) return { ok: true, down: false, ...this.last };
     const r = await this._send({ op: "keys", vks: list }, { timeoutMs: 1500 });
     return { ok: true, down: r.down === true, ...this.last };
@@ -753,6 +767,9 @@ class InputDriver {
    */
   async perform(action, ctx = {}) {
     const type = String(action.type || "").toLowerCase();
+    if (isOsAct(type) && !this._allowOsAct()) {
+      return { ok: false, error: actRefuseReason(), act: false, platform: process.platform };
+    }
     const region = ctx.region || { x: 0, y: 0, width: 0, height: 0 };
     const { sx, sy } = this._resolvePoint(action, region);
 

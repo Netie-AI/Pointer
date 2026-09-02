@@ -213,26 +213,94 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
           !/class="[^"]*point-layer[^"]*chrome/.test(html),
         "the point layer must not be .chrome"
       );
-      const walk = read("electron/teach-overlay.html");
+      const walk = read("host/overlay.html");
       assert.ok(/pointer-events:\s*none/.test(walk), "the screen walk must not eat clicks");
+      assert.ok(/id="walk-chrome"/.test(walk), "overlay keeps walk chrome");
+      assert.ok(
+        !/id="walk-chrome" class="[^"]*lg-pill/.test(walk),
+        "tall walk chrome must not use pill radius 999px (that becomes a circle)"
+      );
+      assert.ok(
+        /#walk-chrome[\s\S]{0,280}border-radius:\s*var\(--lg-radius/.test(walk),
+        "walk chrome is a 22px glass island, not a stadium"
+      );
+      assert.ok(/id="walk-copy"/.test(walk) && /id="walk-acts"/.test(walk) && /id="walk-live-stack"/.test(walk) && /walk-copy\.stack/.test(walk), "overlay walk chrome stacks cue lines instead of ellipsis");
+      assert.ok(/layoutWalkUnderChrome/.test(walk) && /!hasApi && shown/.test(walk), "demo overlay sits This computer and the BOX below chrome; live overlay keeps display percents");
+      assert.ok(/#walk-cue, #walk-then, #walk-fill, #walk-asked, #walk-you, #walk-live, #walk-also, #walk-heard, #walk-avoid, #walk-filed/.test(walk) && /white-space:\s*normal/.test(walk), "overlay cue lines wrap");
       assert.ok(/id="walk-draw"/.test(walk) && />Draw</.test(walk), "overlay can stack a drawn BOX");
+      assert.ok(/drawBtn\.hidden = saved/.test(walk) && /setDraw\(false\)/.test(walk), "overlay Draw drops after Save");
       assert.ok(/id="draw-stroke"/.test(walk), "overlay paints the freehand stroke");
       assert.ok(/id="walk-ink"/.test(walk), "overlay keeps stored freehand ink");
+      assert.ok(/id="walk-fly"/.test(walk) && /paintWalkFly/.test(walk), "overlay flies the BOX from the last control to the current one");
+      assert.ok(/id="walk-show"/.test(walk) && />Show me</.test(walk) && /toggleShowMe/.test(walk) && /showMeLeft = 8/.test(walk), "Show me speaks the walk and Got its, never Act");
       assert.ok(/paintWalkInk/.test(walk), "stored ink is SVG, not innerHTML");
       assert.ok(/createElementNS/.test(walk), "stroke is SVG, not innerHTML");
       assert.ok(/teach-overlay:frame/.test(walk), "drawn overlay boxes POST a region, never Act");
+      assert.ok(/id="walk-dock"/.test(walk) && /paintWalkDock/.test(walk) && /walk-filed/.test(walk), "overlay desk chips dock the filed file on the walk");
+      assert.ok(/copy\.id = "walk-dock-copy"/.test(walk) && /copyWalkDock/.test(walk) && /navigator\.clipboard\.writeText/.test(walk), "overlay dock Copy is clipboard, never send");
+      assert.ok(/id="walk-stack-copy"/.test(walk) && /copyWalkStack/.test(walk) && /overlayDockSpec\("\/workspace\?id=live-meeting"\)/.test(walk), "overlay chrome Copy clips the honest Live answer stack");
+      assert.ok(/id="walk-asked"/.test(walk) && /id="walk-live"/.test(walk) && /id="walk-also"/.test(walk) && /id="walk-avoid"/.test(walk) && /paintLiveChrome/.test(walk), "overlay chrome keeps They asked / You / Live / Also / Don't say after Ask or Save");
+      assert.ok(/if \(saved \|\| wasSaved \|\| liveAsked\) hideWalkDock\(\)/.test(walk), "after Save or Live answer Ask the leftover Live answer dock drops so Email pointing stays");
+      assert.ok(/html\.demo \.point-face\.field/.test(walk) && /background:\s*transparent/.test(walk), "demo BOX highlights the window instead of covering it");
+      assert.ok(/leftPct:\s*12/.test(walk) && /topPct:\s*21/.test(walk), "demo Email BOX sits on Unsent mail To, not a covering Email face");
+      assert.ok(/stroke-width:\s*1\.35/.test(walk), "overlay Draw ink is a visible pencil");
+      assert.ok(/setDraw\(!drawing\)/.test(walk), "Draw stays armed until Draw or Escape");
+      assert.ok(/id="walk-desktop"/.test(walk) && /paintWalkDesktop/.test(walk) && /walk-win-inbox/.test(walk), "demo overlay is This computer under the walk");
+      assert.ok(/highlightWalkWindow\("\/workspace\?id=live-inbox"\)/.test(walk), "demo walk starts on Unsent mail");
+      assert.ok(/html\.demo #walk-desktop/.test(walk) && /This computer - no runtime/.test(walk), "live Electron overlay stays transparent");
+      assert.ok(/highlightWalkWindow/.test(walk), "desk chips highlight the filed window on This computer");
+      assert.ok(/Unsent mail/.test(walk) && /not sent/.test(walk), "overlay mail dock is unsent");
+      assert.ok(/They asked/.test(walk) && /Say this/.test(walk) && /Never a cheater overlay/.test(walk), "overlay Live answer is the honest stack");
+      const openFn = walk.slice(walk.indexOf("function openDeskWindow"), walk.indexOf("function onDesk"));
+      assert.ok(!/location\.href/.test(openFn) && !/window\.open/.test(openFn), "desk chips must not leave the overlay");
+      assert.ok(/spoken \+ "\. Then "/.test(walk), "overlay speaks Then remaining");
+      assert.ok(/syncInboxType/.test(walk) && /inboxTypedTo/.test(walk), "Got it types Heard name into Unsent mail To");
+      assert.ok(/inboxTypedTo \|\| "not sent"/.test(walk), "Unsent mail To starts empty");
+      assert.ok(/inboxSaved/.test(walk) && /Saved on This computer/.test(walk), "Got it on Save files the draft on This computer");
+      assert.ok(/saved \? "\/workspace\?id=live-meeting"/.test(walk) && /Opened Live answer\. Never sent/.test(walk), "Save then docks Live answer, never send");
+      assert.ok(/if \(saved\) \{/.test(walk) && /paint\(\[\]\)/.test(walk), "after Save overlay leftover BOX yields to Live answer");
+      assert.ok(/next\.hidden = saved/.test(walk), "after Save overlay Got it hides so Live answer leads");
+      assert.ok(/saved \? "18%" : "72%"/.test(walk), "after Save Live answer takes the main window");
+      assert.ok(/filedEl\.hidden = false/.test(walk) && /else if \(liveAsked\)/.test(walk), "Back after Save clears Opened Live answer from the cue unless Live answer is still asked");
+      assert.ok(/let liveAsked = false/.test(walk) && /paintLiveChrome\(liveAsked\)/.test(walk), "Ask Live answer keeps captions while the Email walk continues");
+      assert.ok(/stayWalk/.test(walk) && /highlightWalkWindow\(stayWalk \? "\/workspace\?id=live-inbox" : next\)/.test(walk), "Ask Live answer keeps Unsent mail highlighted so Email pointing stays");
+      assert.ok(/saved \? "62%" : "22%"/.test(walk), "Ask Live answer keeps Live answer as a side tile until Save");
+      assert.ok(/if \(href\) openDeskWindow\(href\)/.test(walk) && /if \(!href\) api\.invoke/.test(walk), "live overlay desk Ask paints captions locally and does not teach-advance");
+      assert.ok(/done && inboxSaved && kind === "button"/.test(walk), "saved Save BOX drops Click Save");
+      assert.ok(/boxed && done && kind === "field"/.test(walk), "typed To is not covered by a done Email BOX");
+      assert.ok(/Never sent/.test(walk) && /saved on This computer - send is parked/.test(walk), "Save never sends");
+      assert.ok(/onRailStep/.test(walk) && /data-rail/.test(walk) && /data-step/.test(walk), "overlay rail ticks jump by Ask");
+      assert.ok(/spoken \+ "\. Last step"/.test(walk), "overlay speaks Last step on the last BOX");
       assert.ok(/Got it/.test(walk) && /data-q="got it, next"/.test(walk), "Got it Asks, never Acts");
       assert.ok(/Then:/.test(walk), "Then remaining stays on the overlay");
+      assert.ok(/id="walk-rail"/.test(walk) && /walk-rail-tick/.test(walk), "overlay paints a remaining walk rail");
+      assert.ok(/id="walk-chips"/.test(walk) && /Draft email/.test(walk), "overlay chips Ask the next desk");
+      assert.ok(/overlayDeskHref/.test(walk) && /live-inbox/.test(walk), "overlay desk chips open fixed workspace ids");
+      assert.ok(/looksWalkAsk/.test(walk) && /what should i \(say\|type\|put\)/.test(walk), "Ask what to type opens Live answer, not Got it");
+      assert.ok(/data-desk/.test(walk), "desk chips are not teach advance");
+      assert.ok(/ev.key === "Enter"/.test(walk), "Enter Asks Got it");
+      assert.ok(/id="walk-ask"/.test(walk) && /id="walk-ask-go"/.test(walk) && /submitWalkAsk/.test(walk), "overlay chrome Ask never Acts");
+      assert.ok(/id="walk-talk"/.test(walk) && /talkAboutNow/.test(walk) && /overlayTalk/.test(walk), "Talk asks about this BOX without a mic STT path");
+      assert.ok(!/SpeechRecognition/.test(walk), "overlay Talk does not ship mic audio to Chromium SpeechRecognition");
+      assert.ok(/closest\("#walk-ask-form"\)/.test(walk), "Enter in overlay Ask submits Ask, not Got it");
+      assert.ok(!/Send mail|Approve/.test(walk), "overlay never sends or approves");
+      assert.ok(/demoFrame/.test(walk) && /0\.4/.test(walk), "demo overlay Draw stacks a BOX with the 0.4% floor");
+      assert.ok(/demoWalk.length >= 8/.test(walk), "demo overlay Draw caps at 8");
       assert.ok(/\\d\+\\s\+of\\s\+\\d\+/.test(walk), "overlay chrome strips N of M from the action");
       assert.ok(/i clicked/.test(walk), "demo click on the current BOX Asks, never Acts");
       assert.ok(/html\.demo, html\.demo body/.test(walk), "demo overlay can receive a click on the current BOX");
       assert.ok(/point-key/.test(walk), "current overlay box can show Tab/Enter");
       assert.ok(/point-face/.test(walk) && /\.point-face\.field/.test(walk), "overlay paints field faces at measured percents");
       assert.ok(/Type in Email/.test(walk) && /Click Save/.test(walk), "demo walk is Email then Save, not hollow regions");
+      assert.ok(/teach-now-pulse/.test(walk) && /speechSynthesis/.test(walk), "overlay speaks Click/Type in and pulses the current BOX");
+      assert.ok(/speakTeachCue/.test(walk), "overlay speak is teach-only");
+      assert.ok(/if \(demo\) demoAdvance\(q\)/.test(walk), "demo overlay Got it advances without Electron");
       const hudJs = read("electron/hud.js");
       assert.ok(/point-face/.test(hudJs) && /overlayControlFace/.test(hudJs), "HUD paints the same control faces");
+      assert.ok(/speakTeachCue/.test(hudJs) && /kind === "point"/.test(hudJs) && /Type " \+ nowFill/.test(hudJs), "HUD speaks Type Heard name on a field");
       const hudCss = read("electron/hud.css");
       assert.ok(/\.point-face\.field/.test(hudCss) && /\.point-face\.button/.test(hudCss), "HUD CSS paints field and button faces");
+      assert.ok(/teach-now-pulse/.test(hudCss) && /\.point-mark\.point-box\.now/.test(hudCss), "HUD pulses the current BOX, not a cursor ring");
       assert.ok(!/innerHTML/.test(walk), "the walk paints with createElement");
       assert.ok(
         !/id="clicky-orb"|class="clicky-orb"|stage-orb|chat-bubble/.test(walk),
@@ -240,6 +308,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       );
       const main = read("electron/main.js");
       assert.ok(main.includes("sendTeachOverlay"), "held BOX walks also paint on the display overlay");
+      assert.ok(/host", "overlay.html"/.test(main), "Electron loads the host overlay page");
       assert.ok(/setIgnoreMouseEvents\(true/.test(main), "the display overlay is click-through");
     }),
   ];

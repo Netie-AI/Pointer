@@ -816,6 +816,9 @@ function publishLiveCoworker(assist) {
     turns: Array.isArray(assist.turns) ? assist.turns.slice(0, 12) : [],
     also: assist.also || "",
     avoid: assist.avoid || "",
+    path: Array.isArray(assist.path) ? assist.path.slice(0, 8) : [],
+    preview: String(assist.preview || "").slice(0, 400),
+    title: String(assist.title || "").slice(0, 80),
     cueKind:
       assist.cueKind ||
       (assist.desk === "teach" ? "point" : assist.desk === "security" ? "warn" : "say"),
@@ -864,7 +867,7 @@ function localMeetingReply(message, extraTranscript, extra) {
     });
     if (!assist.ok) {
       const q = String(message || "").toLowerCase();
-      if (/\b(recap|what should i say|assist|next steps?|action item)\b/.test(q)) return assist;
+      if (/\b(recap|what should i (say|type|put)|assist|next steps?|action item)\b/.test(q)) return assist;
       return null;
     }
     if (!assist.skipLlm) return null;
@@ -1801,7 +1804,7 @@ function ensureTeachOverlay() {
   });
   return new Promise((resolve) => {
     win.webContents.once("did-finish-load", () => resolve(win));
-    win.loadFile(path.join(__dirname, "teach-overlay.html"));
+    win.loadFile(path.join(__dirname, "..", "host", "overlay.html"));
   });
 }
 
@@ -4251,6 +4254,7 @@ async function runDeskAssist(message, extraTranscript) {
       framed: Boolean(measured.framed),
       step: teachStep,
       live: true,
+      transcript: heardTranscript(extraTranscript),
     });
   }
   return todayAssist({ state: sessionCoworkerState(), question: message });
@@ -4767,7 +4771,22 @@ ipcMain.handle("hud:openPanel", async () => {
   return { ok: true, surface: "hud" };
 });
 
-ipcMain.handle("hud:frameRegion", async () => {
+ipcMain.handle("hud:frameRegion", async (_e, payload) => {
+  const region = payload && (payload.region || payload.frame);
+  if (region && typeof region === "object") {
+    const ws = liveCoordinator && liveCoordinator.workspace;
+    if (!ws || typeof ws.put !== "function") {
+      return { ok: false, act: false, exec: false, desk: "teach", reason: "workspace missing" };
+    }
+    liveTeachPump.reset();
+    const drawn = frameLiveTeach(ws, region);
+    if (drawn && drawn.ok && !drawn.act) {
+      teachLive = true;
+      if (Number.isInteger(drawn.step)) teachStep = drawn.step;
+      publishTeachOverlay(drawn);
+    }
+    return { ...(drawn || { ok: false }), live: undefined, act: false, exec: false };
+  }
   // HUD Frame is Ask: walk the framed region. Tray Frame stays capture for Act.
   openOverlay({ teach: true });
   return { ok: true, desk: "teach", act: false };

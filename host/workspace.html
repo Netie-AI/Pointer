@@ -19,11 +19,12 @@
       <a href="/inbox">inbox</a>
       <a href="/lanes">lanes</a>
       <a href="/skills">skills</a>
+      <a href="/overlay">overlay</a>
       <a href="/workspace">workspace</a>
     </nav>
   </header>
   <main>
-    <p>A computer you can open. Files on this computer are a desktop grid. This session files are tabs on the open file. Open a Teach walk to see This screen. Open a Meeting for the Live answer. Open a Word file for Notes, unsent mail for a compose window, or a security review for Needs you. Download generated .docx / unsent .eml / review.md. Never send. Never approve. Download packet is a zip of those finished files (never exec). Run is a named refuse (no runtime, P-06). Act stays on the laptop.</p>
+    <p>A computer you can open. Files on this computer are a desktop grid. Click a file to open it as a window on This computer. This session files are tabs on the open file. Open a Teach walk to see This screen. Open a Meeting for the Live answer. Open a Word file for Notes, unsent mail for a compose window, or a security review for Needs you. Download generated .docx / unsent .eml / review.md. Never send. Never approve. Download packet is a zip of those finished files (never exec). Run is a named refuse (no runtime, P-06). Act stays on the laptop. Public host paints a sample coworker. <a href="/workspace?demo=1">Demo coworker</a> is the same catalog.</p>
     <p id="policy" class="refuse">loading policy...</p>
     <section id="computer-dock" hidden>
       <p class="kicker">This computer</p>
@@ -32,6 +33,21 @@
         <button type="button" id="computer-run">Run</button>
       </p>
       <p id="computer-refuse" class="refuse" hidden></p>
+      <section id="open-file" hidden>
+        <h2>Open window</h2>
+        <nav id="open-file-tabs" class="open-file-tabs" hidden></nav>
+        <p id="open-file-kicker" class="kicker" hidden></p>
+        <p id="artifact-chips" class="desk-chips"></p>
+        <p id="artifact-filed" class="muted" hidden></p>
+        <p>
+          <button type="button" id="artifact-copy" hidden>Copy artifact</button>
+          <button type="button" id="artifact-download" hidden>Download artifact</button>
+          <button type="button" id="docx-download" hidden>Download .docx</button>
+          <button type="button" id="eml-download" hidden>Download .eml</button>
+          <button type="button" id="report-download" hidden>Download review</button>
+        </p>
+        <article id="artifact-body"></article>
+      </section>
       <p class="kicker" id="computer-files-kicker">Files on this computer</p>
       <div id="session-files" class="session-grid"></div>
     </section>
@@ -47,27 +63,14 @@
         <button type="button" id="session-download" hidden>Download packet</button>
       </p>
     </section>
-    <h2>Desks</h2>
-    <p>Teach, meeting, today, document, and security. Inbox drafts only (P-05).</p>
-    <div class="desks" id="desks"></div>
-    <h2>Artifacts</h2>
-    <p><input id="artifact-filter" type="search" placeholder="Filter artifacts" aria-label="Filter artifacts" /></p>
-    <ul id="artifacts"></ul>
-    <section id="open-file">
-      <h2>Open artifact</h2>
-      <nav id="open-file-tabs" class="open-file-tabs" hidden></nav>
-      <p id="open-file-kicker" class="kicker" hidden></p>
-      <p id="artifact-chips" class="desk-chips"></p>
-      <p id="artifact-filed" class="muted" hidden></p>
-      <p>
-        <button type="button" id="artifact-copy" hidden>Copy artifact</button>
-        <button type="button" id="artifact-download" hidden>Download artifact</button>
-        <button type="button" id="docx-download" hidden>Download .docx</button>
-        <button type="button" id="eml-download" hidden>Download .eml</button>
-        <button type="button" id="report-download" hidden>Download review</button>
-      </p>
-      <article id="artifact-body"></article>
-    </section>
+    <div class="workspace-catalog">
+      <h2>Desks</h2>
+      <p>Teach, meeting, today, document, and security. Inbox drafts only (P-05).</p>
+      <div class="desks" id="desks"></div>
+      <h2>Artifacts</h2>
+      <p><input id="artifact-filter" type="search" placeholder="Filter artifacts" aria-label="Filter artifacts" /></p>
+      <ul id="artifacts"></ul>
+    </div>
     <p id="hint" class="muted"></p>
   </main>
   <script src="app.js"></script>

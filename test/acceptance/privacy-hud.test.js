@@ -99,13 +99,16 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       );
     }),
 
-    // ── solid HUD (no liquid glass) ────────────────────────────────────────
-    T("core HUD panels are solid type, not backdrop-filter glass", async () => {
+    // ── liquid glass with solid frost fallback (Windows / reduced transparency)
+    T("core HUD panels use liquid glass with a solid frost fallback", async () => {
       const css = read("electron/hud.css");
-      assert.ok(!/backdrop-filter/.test(css), "PRODUCT_SURFACE forbids backdrop-filter on core HUD");
       assert.ok(/Pointer Display/.test(css), "classy display face must be declared");
       assert.ok(/IBMPlexSerif/.test(css), "IBM Plex Serif files must be referenced");
-      assert.ok(/background:\s*var\(--panel\)/.test(css), "panels use a solid fill");
+      assert.ok(/IBMPlexSans/.test(css), "IBM Plex Sans files must be referenced");
+      assert.ok(/backdrop-filter/.test(css), "liquid glass uses backdrop-filter where supported");
+      assert.ok(/@supports not/.test(css), "Windows without blur falls back to solid frost");
+      assert.ok(/prefers-reduced-transparency/.test(css), "reduced transparency is solid frost");
+      assert.ok(/--lg-fill-strong/.test(css), "fallback fill is opaque frost, not empty");
     }),
 
     T("the HUD stays tight: CSP unweakened, no floating companion", async () => {
@@ -187,10 +190,32 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/id="live-cue-them"/.test(read("electron/hud.html")), "Them lives on the live cue bar");
       assert.ok(/id="live-cue-you"/.test(read("electron/hud.html")), "You lives on the live cue bar");
       assert.ok(/id="live-cue-captions"/.test(read("electron/hud.html")), "Live captions live on the cue bar");
+      assert.ok(/id="live-cue-rail"/.test(read("electron/hud.html")), "remaining walk rail lives on the cue bar");
+      assert.ok(/id="live-cue-chips"/.test(read("electron/hud.html")), "desk chips live on the cue bar");
+      assert.ok(/id="live-cue-dock"/.test(read("electron/hud.html")), "filed desk docks on the cue bar");
+      assert.ok(/live-cue-dock-copy/.test(js) && /hud:copyText/.test(js), "HUD dock Copy is clipboard, never send");
+      assert.ok(/paintLiveCueDock/.test(js) && /Unsent mail/.test(js), "HUD docks Unsent mail, never send");
+      assert.ok(/desk === "meeting"/.test(js) && /never a cheater overlay/.test(js), "HUD docks Live answer, never a cheater overlay");
+      assert.ok(/Draft email/.test(read("electron/hud.html")) && !/Send mail|Approve/.test(read("electron/hud.html")), "cue chips Ask, never send");
       assert.ok(/id="btn-live-next"/.test(read("electron/hud.html")), "Got it lives in the top cue bar");
+      assert.ok(/id="btn-live-show"/.test(read("electron/hud.html")), "Show me lives in the top cue bar");
+      assert.ok(/id="btn-live-talk"/.test(read("electron/hud.html")), "Talk lives in the top cue bar");
+      assert.ok(/id="btn-live-draw"/.test(read("electron/hud.html")), "Draw lives in the top cue bar");
+      assert.ok(/id="hud-fly"/.test(read("electron/hud.html")), "HUD fly is a sibling of the point layer");
+      assert.ok(/id="hud-draw-stroke"/.test(read("electron/hud.html")), "HUD Draw stroke is a sibling of the point layer");
+      assert.ok(/toggleHudShowMe/.test(js) && /hudTalk/.test(js) && /paintHudFly/.test(js), "HUD Show me / Talk / fly match overlay");
+      assert.ok(/toggleHudDraw/.test(js) && /endHudDraw/.test(js), "HUD Draw pencils a BOX like overlay");
+      assert.ok(/hudShowMeLeft = 8/.test(js), "HUD Show me caps at 8 steps");
+      assert.ok(!/SpeechRecognition/.test(js), "HUD Talk does not ship mic audio to Chromium SpeechRecognition");
+      assert.ok(!/doAct\(\)/.test(js.slice(js.indexOf("function toggleHudShowMe"), js.indexOf("function boxCenter"))), "HUD Show me / Talk Ask, never Act");
+      const drawFn = js.slice(js.indexOf("function toggleHudDraw"), js.indexOf("function boxCenter"));
+      assert.ok(/hud:frameRegion/.test(drawFn), "HUD Draw posts a region");
+      assert.ok(!/hud:act/.test(drawFn) && !/doAct\(\)/.test(drawFn), "HUD Draw never Acts");
       const css = read("electron/hud.css");
       assert.ok(/\.live-cue-bar/.test(css), "live cue bar has chrome");
       assert.ok(/\.live-cue-caption/.test(css), "Live captions have chrome");
+      assert.ok(/\.live-cue-rail/.test(css) && /\.live-cue-chips/.test(css), "cue rail and chips have chrome");
+      assert.ok(/\.live-cue-dock/.test(css) && /live-cue-dock\[hidden\]/.test(css), "cue dock stays unless hidden");
       assert.ok(!/\.hud\.chat-open \.live-cue-bar/.test(css), "live cue bar must not wait for chat");
       assert.ok(/\.hud\.morph-hidden \.live-cue-bar/.test(css), "compact HUD still positions the cue bar");
       assert.ok(
@@ -210,6 +235,9 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/textContent/.test(liveFn));
       assert.ok(/paintMeetingTalk/.test(liveFn));
       assert.ok(/paintLiveCueCaptions/.test(liveFn));
+      assert.ok(/kind === "point" \? lastCueAsked/.test(js), "HUD keeps They asked during a teach walk after Live answer");
+      assert.ok(/kind === "point" \? lastCueAlso/.test(js), "HUD keeps Also / Don't say during a teach walk after Live answer");
+      assert.ok(/kind === "point"\) hideLiveCueDock/.test(liveFn), "HUD teach walk does not cover the BOX with a Live answer dock");
       assert.ok(/event\.turns/.test(js));
       assert.ok(!/innerHTML/.test(liveFn));
       const capFn = js.slice(js.indexOf("function paintLiveCueCaptions"), js.indexOf("function paintMeetingTalk"));

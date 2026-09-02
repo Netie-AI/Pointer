@@ -1,0 +1,1630 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Netie teach overlay</title>
+    <link rel="stylesheet" href="glass.css" />
+    <style>
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        pointer-events: none;
+        user-select: none;
+      }
+      #walk-chrome {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        max-width: min(760px, 92vw);
+        padding: 8px 12px;
+        border-radius: var(--lg-radius, 22px);
+        color: var(--lg-text);
+        font: 650 12px var(--lg-font, "Segoe UI", system-ui, sans-serif);
+        pointer-events: auto;
+      }
+      #walk-chrome.show { display: flex; }
+      #walk-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        min-width: 0;
+      }
+      #walk-copy {
+        flex: 1;
+        min-width: 0;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2px;
+      }
+      #walk-copy.stack {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+        gap: 4px 14px;
+        align-items: start;
+      }
+      #walk-teach, #walk-live-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      #walk-live-stack[hidden] { display: none; }
+      #walk-acts {
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: 6px;
+      }
+      #walk-rail, #walk-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 0;
+      }
+      #walk-ask-form {
+        display: flex;
+        gap: 6px;
+        margin: 0;
+        pointer-events: auto;
+      }
+      #walk-ask {
+        flex: 1;
+        min-width: 0;
+      }
+      .walk-rail-tick {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 12px;
+        border-radius: var(--lg-radius-pill);
+        border: 1px solid var(--lg-edge-soft);
+        color: var(--lg-accent);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+        cursor: pointer;
+        font: inherit;
+        pointer-events: auto;
+      }
+      .walk-rail-tick.now {
+        color: var(--lg-text);
+        border-color: var(--lg-accent);
+        background: rgba(158, 192, 255, 0.18);
+        cursor: default;
+      }
+      .walk-rail-tick.later { opacity: 0.7; }
+      .walk-rail-tick.done { opacity: 0.4; color: var(--lg-text); }
+      body.draw { pointer-events: auto; cursor: crosshair; }
+      #draw-stroke, #walk-ink, #walk-fly {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      #draw-stroke { z-index: 3; }
+      #walk-ink { z-index: 2; }
+      #walk-fly { z-index: 3; }
+      #draw-stroke polyline, #walk-ink polyline {
+        fill: none;
+        stroke: #9ad;
+        stroke-width: 1.35;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      #walk-fly path {
+        fill: none;
+        stroke: #6ea8ff;
+        stroke-width: 1.5;
+        stroke-linecap: round;
+        stroke-dasharray: 140;
+        stroke-dashoffset: 140;
+        animation: walk-fly-draw 640ms ease-out forwards;
+      }
+      @keyframes walk-fly-draw {
+        to { stroke-dashoffset: 0; }
+      }
+      #walk-ink polyline.then, #walk-ink polyline.done {
+        stroke: #567;
+        stroke-width: 1.1;
+      }
+      #draw-ghost {
+        position: absolute;
+        z-index: 3;
+        border: 2px dashed #9ad;
+        border-radius: 8px;
+        pointer-events: none;
+      }
+      #walk-cue, #walk-then, #walk-fill, #walk-asked, #walk-you, #walk-live, #walk-also, #walk-heard, #walk-avoid, #walk-filed {
+        margin: 0;
+        white-space: normal;
+        overflow: visible;
+      }
+      #walk-then, #walk-fill, #walk-asked, #walk-you, #walk-live, #walk-also, #walk-heard, #walk-avoid, #walk-filed {
+        color: var(--lg-accent);
+        font-weight: 500;
+      }
+      #walk-dock {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 2;
+        display: none;
+        width: min(320px, 42vw);
+        max-height: 42vh;
+        overflow: auto;
+        padding: 10px 12px;
+        color: var(--lg-text);
+        font: 500 12px var(--lg-font, "Segoe UI", system-ui, sans-serif);
+        pointer-events: auto;
+      }
+      #walk-dock.show { display: block; }
+      #walk-dock .dock-kicker {
+        margin: 0 0 4px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--lg-accent);
+        font-size: 11px;
+      }
+      #walk-dock .dock-row, #walk-dock .dock-body, #walk-dock .dock-foot { margin: 0 0 6px; }
+      #walk-dock .dock-foot { color: var(--lg-warn); }
+      #walk-dock .dock-body { white-space: pre-wrap; color: var(--lg-muted); }
+      #walk-chrome button,
+      #walk-dock button {
+        pointer-events: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        padding: 5px 12px;
+        border-radius: var(--lg-radius-pill);
+        border: 1px solid var(--lg-edge-soft);
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--lg-accent);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+        cursor: pointer;
+        font: inherit;
+        transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), background 160ms ease,
+          border-color 160ms ease, box-shadow 160ms ease;
+      }
+      #walk-chrome button:hover,
+      #walk-dock button:hover {
+        background: rgba(255, 255, 255, 0.16);
+        border-color: var(--lg-edge);
+        color: var(--lg-text);
+      }
+      #walk-chrome button:active,
+      #walk-dock button:active {
+        transform: scale(0.97);
+      }
+      #point-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+      .point-mark {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        display: grid;
+        place-items: center;
+        pointer-events: none;
+      }
+      .point-mark::before, .point-mark::after {
+        content: "";
+        position: absolute;
+        background: #6ea8ff;
+        opacity: 0.85;
+      }
+      .point-mark::before { width: 26px; height: 1.5px; }
+      .point-mark::after { width: 1.5px; height: 26px; }
+      .point-ring {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        border: 1.5px solid rgba(110, 168, 255, 0.6);
+      }
+      .point-label {
+        position: absolute;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 3px 8px;
+        border-radius: var(--lg-radius-pill);
+        white-space: nowrap;
+        background: var(--lg-shine), var(--lg-fill);
+        border: 1px solid var(--lg-edge-soft);
+        color: var(--lg-text);
+        font: 650 11px var(--lg-font, "Segoe UI", system-ui, sans-serif);
+        box-shadow: var(--lg-shadow);
+      }
+      .point-mark.point-box {
+        transform: none;
+        border: 2px solid #6ea8ff;
+        border-radius: 8px;
+        background: rgba(110, 168, 255, 0.12);
+        pointer-events: none;
+      }
+      .point-mark.point-box .point-label { top: -22px; }
+      .point-key {
+        position: absolute;
+        top: -22px;
+        right: 6px;
+        padding: 2px 6px;
+        border-radius: 6px;
+        background: #1a1a1a;
+        border: 1px solid #345;
+        color: #9ad;
+        font: 650 10px "Segoe UI", system-ui, sans-serif;
+      }
+      .point-mark.point-box .point-key { top: -22px; }
+      .point-mark.point-box::before, .point-mark.point-box::after { display: none; }
+      .point-face {
+        position: absolute;
+        inset: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        font: 650 11px "Segoe UI", system-ui, sans-serif;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .point-face.field {
+        background: #e8eef4;
+        border: 1px solid #9ad;
+        border-radius: 4px;
+        color: #111;
+      }
+      html.demo .point-face.field,
+      html.host .point-face.field {
+        background: transparent;
+        color: transparent;
+        border: 1px solid rgba(110, 168, 255, 0.85);
+      }
+      .point-face.button {
+        background: #345;
+        border: 1px solid #6be;
+        border-radius: 6px;
+        color: #eee;
+      }
+      .point-face.region {
+        background: #15202c;
+        border: 1px dashed #567;
+        border-radius: 6px;
+        color: #eee;
+      }
+      .point-mark.later::before, .point-mark.later::after,
+      .point-mark.done::before, .point-mark.done::after { display: none; }
+      .point-mark.point-box.later {
+        border-style: dashed;
+        border-color: rgba(110, 168, 255, 0.45);
+        background: transparent;
+      }
+      .point-mark.point-box.done {
+        border-color: rgba(238, 238, 238, 0.28);
+        background: transparent;
+        opacity: 0.4;
+      }
+      .point-mark.point-box.now {
+        animation: teach-now-pulse 1.4s ease-in-out infinite;
+      }
+      @keyframes teach-now-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(110, 168, 255, 0.45); }
+        50% { box-shadow: 0 0 0 8px rgba(110, 168, 255, 0); }
+      }
+      html.demo, html.demo body,
+      html.host, html.host body {
+        pointer-events: auto;
+        background-color: #12141c;
+        background-image:
+          radial-gradient(ellipse 90% 60% at 18% 22%, rgba(72, 96, 140, 0.38), transparent 62%),
+          radial-gradient(ellipse 70% 50% at 82% 68%, rgba(88, 68, 118, 0.28), transparent 58%),
+          radial-gradient(ellipse 55% 40% at 50% 88%, rgba(40, 56, 88, 0.32), transparent 55%);
+      }
+      html.demo #point-layer .point-box:not(.later):not(.done),
+      html.host #point-layer .point-box:not(.later):not(.done) {
+        pointer-events: auto;
+        cursor: pointer;
+      }
+      #walk-desktop {
+        display: none;
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+      }
+      html.demo #walk-desktop, html.host #walk-desktop { display: block; }
+      #walk-desktop-kicker {
+        position: absolute;
+        left: 16px;
+        top: 88px;
+        margin: 0;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--lg-accent);
+        font: 650 11px var(--lg-font, "Segoe UI", system-ui, sans-serif);
+      }
+      .walk-win {
+        position: absolute;
+        overflow: auto;
+        padding: 10px 12px;
+        background: var(--lg-shine), var(--lg-fill);
+        border: 1px solid var(--lg-edge-soft);
+        border-radius: 16px;
+        box-shadow: var(--lg-shadow);
+        -webkit-backdrop-filter: var(--lg-blur);
+        backdrop-filter: var(--lg-blur);
+        color: var(--lg-text);
+        font: 500 12px var(--lg-font, "Segoe UI", system-ui, sans-serif);
+      }
+      .walk-win.now {
+        outline: 2px solid #6ea8ff;
+        animation: teach-now-pulse 1.4s ease-in-out infinite;
+      }
+      .walk-win .dock-kicker {
+        margin: 0 0 4px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--lg-accent);
+        font-size: 11px;
+      }
+      .walk-win .dock-row, .walk-win .dock-body, .walk-win .dock-foot { margin: 0 0 6px; }
+      .walk-win .dock-foot { color: var(--lg-warn); }
+      .walk-win .dock-body { white-space: pre-wrap; color: var(--lg-muted); }
+      .dock-row.typed, .walk-win .dock-row.typed {
+        outline: 1px solid rgba(110, 168, 255, 0.7);
+        border-radius: 6px;
+        padding: 2px 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="walk-chrome" class="lg chrome">
+      <div id="walk-row">
+        <div id="walk-copy">
+          <div id="walk-teach">
+            <p id="walk-cue"></p>
+            <p id="walk-then" hidden></p>
+            <p id="walk-fill" hidden></p>
+          </div>
+          <div id="walk-live-stack" hidden>
+            <p id="walk-asked" hidden></p>
+            <p id="walk-you" hidden></p>
+            <p id="walk-live" hidden></p>
+            <p id="walk-also" hidden></p>
+            <p id="walk-heard" hidden></p>
+            <p id="walk-avoid" hidden></p>
+            <p id="walk-filed" hidden></p>
+          </div>
+        </div>
+        <div id="walk-acts">
+          <button type="button" id="walk-back" data-q="back">Back</button>
+          <button type="button" id="walk-next" data-q="got it, next">Got it</button>
+          <button type="button" id="walk-show">Show me</button>
+          <button type="button" id="walk-stack-copy">Copy</button>
+          <button type="button" id="walk-draw">Draw</button>
+        </div>
+      </div>
+      <div id="walk-rail"></div>
+      <p id="walk-chips">
+        <button type="button" data-desk="1" data-q="draft a follow-up email from this meeting">Draft email</button>
+        <button type="button" data-desk="1" data-q="write this recap in Word">Notes</button>
+        <button type="button" data-desk="1" data-q="Security review this session">Needs you</button>
+        <button type="button" data-desk="1" data-q="what should I say">Live answer</button>
+      </p>
+      <form id="walk-ask-form">
+        <input id="walk-ask" class="lg-field" type="text" autocomplete="off" aria-label="Ask the coworker" placeholder="Ask the coworker (never Act)" />
+        <button type="button" id="walk-talk" title="Ask about this BOX (never Act)">Talk</button>
+        <button type="submit" id="walk-ask-go">Ask</button>
+      </form>
+    </div>
+    <aside id="walk-dock" class="lg-card chrome" hidden></aside>
+    <div id="walk-desktop" aria-hidden="true"></div>
+    <svg id="walk-ink" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
+    <svg id="walk-fly" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
+    <svg id="draw-stroke" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
+    <div id="draw-ghost" class="point-mark point-box" hidden></div>
+    <div id="point-layer" aria-hidden="true"></div>
+    <script>
+      const layer = document.getElementById("point-layer");
+      const chromeBar = document.getElementById("walk-chrome");
+      const cueEl = document.getElementById("walk-cue");
+      const thenEl = document.getElementById("walk-then");
+      const railEl = document.getElementById("walk-rail");
+      const api = window.netieTeachOverlay;
+      const hasApi = Boolean(api && typeof api.invoke === "function");
+      let mouseOverChrome = false;
+      const demoQuery = /(?:^|[?&])demo=1(?:&|$)/.test(location.search);
+      let demo = demoQuery;
+      if (demo) document.documentElement.classList.add("demo");
+      else if (!hasApi) document.documentElement.classList.add("host");
+      let demoAdvance = function () {};
+      let demoWalk = [];
+      let demoStep = 0;
+      let inboxTypedTo = "";
+      let inboxSaved = false;
+      let liveAsked = false;
+      let lastInboxSaved = false;
+      let lastRailPoints = [];
+      let showMeOn = false;
+      let showMeTimer = 0;
+      let showMeLeft = 0;
+      let lastFlyKey = "";
+      let lastFlyAt = null;
+
+      function restLine(rest, cue) {
+        if (/^saved on this computer/i.test(String(cue || ""))) return "";
+        const t = String(rest || "").trim();
+        if (t) return "Then: " + t;
+        return String(cue || "").trim() ? "Last step" : "";
+      }
+
+      function overlayControlFace(cue) {
+        const t = String(cue || "").toLowerCase();
+        if (/\btype in\b|\bedit\b|\bemail\b|\bfield\b|\binput\b/.test(t)) return "field";
+        if (/\bclick\b|\bsave\b|\bcancel\b|\bbutton\b|\bsubmit\b/.test(t)) return "button";
+        return "region";
+      }
+
+      function overlayControlCaption(cue) {
+        return (
+          String(cue || "control")
+            .replace(/^\d+\s+of\s+\d+\s+/i, "")
+            .replace(/^\d+\s+/, "")
+            .replace(/^(type in|click|look at)\s+/i, "")
+            .replace(/\s+then\s+tab$/i, "")
+            .trim()
+            .slice(0, 24) || "control"
+        );
+      }
+
+      function paint(points) {
+        if (!layer) return;
+        while (layer.firstChild) layer.removeChild(layer.firstChild);
+        (points || []).forEach(function (point) {
+          const boxed = Number(point.wPct) > 0 && Number(point.hPct) > 0;
+          const later = Boolean(point.later);
+          const done = Boolean(point.done);
+          const kind = point.face || overlayControlFace(point.label);
+          if (boxed && done && kind === "field") return;
+          const mark = document.createElement("div");
+          mark.className = boxed ? "point-mark point-box" : "point-mark";
+          if (later) mark.classList.add("later");
+          if (done) mark.classList.add("done");
+          if (boxed && !later && !done) mark.classList.add("now");
+          if (boxed) {
+            mark.style.left = Number(point.leftPct) + "%";
+            mark.style.top = Number(point.topPct) + "%";
+            mark.style.width = Number(point.wPct) + "%";
+            mark.style.height = Number(point.hPct) + "%";
+          } else {
+            mark.style.left = Number(point.xPct) + "%";
+            mark.style.top = Number(point.yPct) + "%";
+          }
+          if (!later && !done && !boxed) {
+            const ring = document.createElement("div");
+            ring.className = "point-ring";
+            mark.appendChild(ring);
+          }
+          if (boxed) {
+            const face = document.createElement("div");
+            face.className = "point-face " + (kind === "field" ? "field" : kind === "button" ? "button" : "region");
+            face.textContent =
+              done && kind === "button" && inboxSaved
+                ? "Saved"
+                : !later && !done && point.fill
+                ? String(point.fill).slice(0, 24)
+                : point.caption || overlayControlCaption(point.label);
+            mark.appendChild(face);
+          }
+          if (point.label && !(done && inboxSaved && kind === "button")) {
+            const label = document.createElement("span");
+            label.className = "point-label";
+            label.textContent = String(point.label).slice(0, 40);
+            mark.appendChild(label);
+          }
+          if (!later && !done && point.key) {
+            const kbd = document.createElement("span");
+            kbd.className = "point-key";
+            kbd.textContent = String(point.key).slice(0, 12);
+            mark.appendChild(kbd);
+          }
+          if (!hasApi && boxed && !later && !done) {
+            mark.addEventListener("click", function (ev) {
+              ev.preventDefault();
+              onAsk("i clicked");
+            });
+          }
+          layer.appendChild(mark);
+        });
+        paintWalkInk(points);
+        paintWalkFly(points);
+        paintRail(points);
+      }
+
+      function paintRail(points) {
+        if (!railEl) return;
+        lastRailPoints = Array.isArray(points) ? points : [];
+        while (railEl.firstChild) railEl.removeChild(railEl.firstChild);
+        lastRailPoints.forEach(function (point, i) {
+          const tick = document.createElement("button");
+          tick.type = "button";
+          tick.className = "walk-rail-tick";
+          if (point && point.later) tick.classList.add("later");
+          else if (point && point.done) tick.classList.add("done");
+          else tick.classList.add("now");
+          tick.setAttribute("data-rail", "1");
+          tick.setAttribute("data-step", String(i));
+          tick.textContent = overlayControlCaption((point && (point.caption || point.label || point.cue)) || String(i + 1));
+          railEl.appendChild(tick);
+        });
+        railEl.hidden = !railEl.childNodes.length;
+      }
+
+      function onRailStep(i) {
+        const want = Number(i);
+        if (!Number.isInteger(want) || want < 0) return;
+        stopShowMe();
+        let now = 0;
+        lastRailPoints.forEach(function (p, idx) {
+          if (p && p.now) now = idx;
+          else if (p && !p.later && !p.done) now = idx;
+        });
+        if (want === now) return;
+        if (demo) {
+          inboxSaved = false;
+          demoStep = Math.max(0, Math.min(want, demoWalk.length - 1));
+          paintDemoState();
+          syncInboxType();
+          return;
+        }
+        onAsk(want < now ? "back" : "got it, next");
+      }
+
+      function paintWalkInk(points) {
+        const ink = document.getElementById("walk-ink");
+        if (!ink) return;
+        while (ink.firstChild) ink.removeChild(ink.firstChild);
+        let n = 0;
+        (points || []).forEach(function (point) {
+          const pts = point && Array.isArray(point.stroke) ? point.stroke : [];
+          if (pts.length < 2) return;
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+          line.setAttribute(
+            "points",
+            pts
+              .map(function (p) {
+                return Number(p.x) + " " + Number(p.y);
+              })
+              .join(" ")
+          );
+          if (point.later) line.classList.add("then");
+          if (point.done) line.classList.add("done");
+          ink.appendChild(line);
+          n += 1;
+        });
+        ink.hidden = n === 0;
+      }
+
+      function boxCenter(point) {
+        if (!point) return null;
+        if (Number(point.wPct) > 0 && Number(point.hPct) > 0) {
+          return {
+            x: Number(point.leftPct) + Number(point.wPct) / 2,
+            y: Number(point.topPct) + Number(point.hPct) / 2,
+          };
+        }
+        const x = Number(point.xPct);
+        const y = Number(point.yPct);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        return { x: x, y: y };
+      }
+
+      function paintWalkFly(points) {
+        const fly = document.getElementById("walk-fly");
+        if (!fly) return;
+        while (fly.firstChild) fly.removeChild(fly.firstChild);
+        const now = (points || []).find(function (p) {
+          return p && !p.later && !p.done;
+        });
+        const to = boxCenter(now);
+        const key = to ? [to.x.toFixed(2), to.y.toFixed(2)].join(",") : "";
+        if (!to || !lastFlyAt || key === lastFlyKey) {
+          lastFlyKey = key;
+          if (to) lastFlyAt = to;
+          fly.hidden = true;
+          return;
+        }
+        const from = lastFlyAt;
+        lastFlyKey = key;
+        lastFlyAt = to;
+        const mx = (from.x + to.x) / 2;
+        const my = Math.max(2, Math.min(from.y, to.y) - 10);
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute(
+          "d",
+          "M " + from.x + " " + from.y + " Q " + mx + " " + my + " " + to.x + " " + to.y
+        );
+        fly.appendChild(path);
+        fly.hidden = false;
+      }
+
+      function stopShowMe() {
+        showMeOn = false;
+        if (showMeTimer) {
+          clearTimeout(showMeTimer);
+          showMeTimer = 0;
+        }
+        const btn = document.getElementById("walk-show");
+        if (btn) btn.textContent = "Show me";
+      }
+
+      function showMeStep() {
+        if (!showMeOn || inboxSaved || showMeLeft <= 0) {
+          stopShowMe();
+          return;
+        }
+        showMeLeft -= 1;
+        onAsk("got it, next");
+        if (inboxSaved || showMeLeft <= 0) {
+          stopShowMe();
+          return;
+        }
+        showMeTimer = setTimeout(showMeStep, 1700);
+      }
+
+      function toggleShowMe() {
+        if (showMeOn) {
+          stopShowMe();
+          return;
+        }
+        if (inboxSaved) return;
+        showMeOn = true;
+        showMeLeft = 8;
+        const btn = document.getElementById("walk-show");
+        if (btn) btn.textContent = "Stop";
+        showMeTimer = setTimeout(showMeStep, 1700);
+      }
+
+      function paintChrome(event) {
+        const cue = String((event && event.cue) || "").trim();
+        const rest = String((event && event.rest) || "").trim();
+        const fill = String((event && event.fill) || "").trim();
+        const action = String(cue || "").replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
+        if (cueEl) cueEl.textContent = action;
+        if (thenEl) {
+          const line = restLine(rest, cue);
+          thenEl.hidden = !line;
+          thenEl.textContent = line;
+        }
+        const fillEl = document.getElementById("walk-fill");
+        if (fillEl) {
+          fillEl.hidden = !fill;
+          fillEl.textContent = fill;
+        }
+        if (chromeBar) chromeBar.classList.toggle("show", Boolean(cue));
+        const spoken = fill && /^type in\b/i.test(action) ? "Type " + fill : action;
+        const restSpeak = String(rest || "").replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
+        if (/^saved on this computer/i.test(action)) {
+          stopShowMe();
+          speakTeachCue("Saved on This computer. Never sent.");
+        } else {
+          speakTeachCue(restSpeak ? spoken + ". Then " + restSpeak : spoken ? spoken + ". Last step" : "");
+        }
+        layoutWalkUnderChrome();
+      }
+
+      let lastSpokenTeach = "";
+      function speakTeachCue(line) {
+        const text = String(line || "").trim();
+        if (!text || text === lastSpokenTeach) return;
+        if (document.hidden) return;
+        if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") return;
+        lastSpokenTeach = text;
+        try {
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+        } catch (err) {
+          lastSpokenTeach = "";
+        }
+      }
+
+      function syncClickThrough(over) {
+        if (over === mouseOverChrome) return;
+        mouseOverChrome = over;
+        if (api && typeof api.invoke === "function") {
+          api.invoke("teach-overlay:setIgnoreMouse", { ignore: !over });
+        }
+      }
+
+      const ghost = document.getElementById("draw-ghost");
+      const strokeSvg = document.getElementById("draw-stroke");
+      let drawing = false;
+      let drag = null;
+
+      function clearStroke() {
+        if (!strokeSvg) return;
+        while (strokeSvg.firstChild) strokeSvg.removeChild(strokeSvg.firstChild);
+        strokeSvg.hidden = true;
+      }
+
+      function setDraw(on) {
+        drawing = Boolean(on);
+        document.body.classList.toggle("draw", drawing);
+        if (drawing) stopShowMe();
+        if (ghost) ghost.hidden = true;
+        clearStroke();
+        drag = null;
+        if (api && typeof api.invoke === "function") {
+          api.invoke("teach-overlay:setIgnoreMouse", { ignore: !drawing && !mouseOverChrome });
+        }
+      }
+
+      function pctFromEvent(ev) {
+        const root = document.getElementById("point-layer");
+        const box = root && root.getBoundingClientRect ? root.getBoundingClientRect() : null;
+        const w = (box && box.width) || window.innerWidth || 1;
+        const h = (box && box.height) || window.innerHeight || 1;
+        const left = box ? box.left : 0;
+        const top = box ? box.top : 0;
+        return {
+          x: Math.max(0, Math.min(100, ((ev.clientX - left) / w) * 100)),
+          y: Math.max(0, Math.min(100, ((ev.clientY - top) / h) * 100)),
+        };
+      }
+
+      function pushStroke(pts, p) {
+        const last = pts[pts.length - 1];
+        if (!last) {
+          pts.push(p);
+          return;
+        }
+        const dx = p.x - last.x;
+        const dy = p.y - last.y;
+        if (dx * dx + dy * dy < 0.12) return;
+        if (pts.length >= 80) pts[pts.length - 1] = p;
+        else pts.push(p);
+      }
+
+      function paintStroke(pts) {
+        if (!strokeSvg) return;
+        while (strokeSvg.firstChild) strokeSvg.removeChild(strokeSvg.firstChild);
+        if (!pts || pts.length < 2) {
+          strokeSvg.hidden = true;
+          return;
+        }
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+        let points = "";
+        for (let i = 0; i < pts.length; i++) {
+          points += (i ? " " : "") + pts[i].x + "," + pts[i].y;
+        }
+        line.setAttribute("points", points);
+        strokeSvg.appendChild(line);
+        strokeSvg.hidden = false;
+      }
+
+      function paintGhost() {
+        if (!drag || !ghost) return;
+        const pts = drag.stroke || [];
+        let x0 = drag.x0;
+        let y0 = drag.y0;
+        let x1 = drag.x1;
+        let y1 = drag.y1;
+        for (let i = 0; i < pts.length; i++) {
+          x0 = Math.min(x0, pts[i].x);
+          y0 = Math.min(y0, pts[i].y);
+          x1 = Math.max(x1, pts[i].x);
+          y1 = Math.max(y1, pts[i].y);
+        }
+        ghost.style.left = x0 + "%";
+        ghost.style.top = y0 + "%";
+        ghost.style.width = Math.abs(x1 - x0) + "%";
+        ghost.style.height = Math.abs(y1 - y0) + "%";
+        ghost.hidden = false;
+        paintStroke(pts);
+      }
+
+      function looksWalkAsk(ask) {
+        const t = String(ask || "").trim();
+        if (!t) return false;
+        if (/\b(got it|next control|i clicked|walk me through|teach me|on (my )?screen|back)\b/i.test(t)) return false;
+        return /\?/.test(t) || /^(what|why|how|who|when|where|which)\b/i.test(t);
+      }
+
+      function overlayDeskHref(ask) {
+        const t = String(ask || "").toLowerCase();
+        if (!t) return "";
+        if (/\b(got it|next control|i clicked|walk me through|teach me|on (my )?screen|back)\b/.test(t)) return "";
+        if (/\b(security review|vuln|cve)\b/.test(t)) return "/workspace?id=live-security";
+        if (/\b(what should i (say|type|put)|what do i (say|type)|what to (say|type))\b/.test(t)) {
+          return "/workspace?id=live-meeting";
+        }
+        if (/\b(?:microsoft\s+)?word\b/.test(t) || /\bdocx\b/.test(t)) return "/workspace?id=live-document";
+        if (/\b(inbox|gmail|outlook|slack reply|email|follow-?up)\b/.test(t)) return "/workspace?id=live-inbox";
+        if (
+          (/\b(meeting|standup|what should i say|next steps?|action items?)\b/.test(t) || /\brecap\b/.test(t)) &&
+          !/\b(inbox|gmail|outlook|email|word|docx)\b/.test(t)
+        ) {
+          return "/workspace?id=live-meeting";
+        }
+        if (looksWalkAsk(ask)) return "/workspace?id=live-meeting";
+        return "";
+      }
+
+      function overlayFiledLine(href) {
+        if (/live-inbox/.test(href)) return "Opened unsent mail. Never sent.";
+        if (/live-document/.test(href)) return "Opened Notes. Never a .docx.";
+        if (/live-security/.test(href)) return "Opened Needs you. Never approval.";
+        if (/live-meeting/.test(href)) return "Opened Live answer.";
+        return "";
+      }
+
+      function overlayDockSpec(href) {
+        if (/live-inbox/.test(href)) {
+          return {
+            kicker: "Unsent mail",
+            rows: [
+              { label: "To", value: inboxTypedTo || "not sent" },
+              { label: "Subject", value: "Friday deck" },
+            ],
+            body: "Friday works if the deck is in tonight.",
+            foot: inboxSaved
+              ? "saved on This computer - send is parked (P-05)"
+              : "not sent - send is parked (P-05)",
+          };
+        }
+        if (/live-document/.test(href)) {
+          return {
+            kicker: "Notes",
+            body: "Recap\nFriday works if the deck is in tonight.",
+            foot: "not a .docx - Word.app still needs Cortex",
+          };
+        }
+        if (/live-security/.test(href)) {
+          return {
+            kicker: "Needs you",
+            body: "Needs you. Never approval.",
+            foot: "not approval",
+          };
+        }
+        if (/live-meeting/.test(href)) {
+          return {
+            kicker: "Live answer",
+            rows: [
+              { label: "They asked", value: "Can we ship Friday?" },
+              { label: "You", value: "Friday works if the deck is in tonight." },
+              { label: "Say this", value: "Friday works if the deck is in tonight." },
+              { label: "Also", value: "Name the Friday hold." },
+              { label: "Heard", value: "Sarah Chen / Friday / $40k" },
+            ],
+            foot: "Don't say: Don't promise a send. Never a cheater overlay.",
+          };
+        }
+        return null;
+      }
+
+      function overlayRow(spec, label) {
+        const rows = (spec && spec.rows) || [];
+        for (let i = 0; i < rows.length; i++) {
+          if (rows[i] && rows[i].label === label) return String(rows[i].value || "");
+        }
+        return "";
+      }
+
+      function hideWalkDock() {
+        const dock = document.getElementById("walk-dock");
+        if (!dock) return;
+        dock.hidden = true;
+        dock.classList.remove("show");
+      }
+
+      function layoutWalkUnderChrome() {
+        function apply() {
+          const chrome = document.getElementById("walk-chrome");
+          const shown = Boolean(chrome && chrome.classList.contains("show"));
+          const pad = (!hasApi && shown) ? Math.ceil(chrome.getBoundingClientRect().height + 12) : 0;
+          ["walk-desktop", "point-layer", "walk-ink", "walk-fly", "draw-stroke"].forEach(function (id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.style.top = pad ? pad + "px" : "";
+          });
+        }
+        apply();
+        if (typeof requestAnimationFrame === "function") requestAnimationFrame(apply);
+      }
+
+      function paintLiveChrome(on) {
+        const spec = on ? overlayDockSpec("/workspace?id=live-meeting") : null;
+        const asked = overlayRow(spec, "They asked");
+        const you = overlayRow(spec, "You");
+        const also = overlayRow(spec, "Also");
+        const heard = overlayRow(spec, "Heard");
+        const avoid = String((spec && spec.foot) || "").replace(/\s*Never a cheater overlay\.?/i, "").replace(/\s*-\s*$/, "").trim();
+        const askedEl = document.getElementById("walk-asked");
+        const youEl = document.getElementById("walk-you");
+        const liveEl = document.getElementById("walk-live");
+        const alsoEl = document.getElementById("walk-also");
+        const heardEl = document.getElementById("walk-heard");
+        const avoidEl = document.getElementById("walk-avoid");
+        const copy = document.getElementById("walk-copy");
+        const stack = document.getElementById("walk-live-stack");
+        if (askedEl) {
+          askedEl.hidden = !asked;
+          askedEl.textContent = asked ? "They asked: " + asked : "";
+        }
+        if (youEl) {
+          youEl.hidden = !you;
+          youEl.textContent = you ? "You: " + you : "";
+        }
+        if (liveEl) {
+          liveEl.hidden = !asked;
+          liveEl.textContent = asked ? "Live: " + asked : "";
+        }
+        if (alsoEl) {
+          alsoEl.hidden = !also;
+          alsoEl.textContent = also ? "Also: " + also : "";
+        }
+        if (heardEl) {
+          heardEl.hidden = !heard;
+          heardEl.textContent = heard ? "Heard: " + heard : "";
+        }
+        if (avoidEl) {
+          avoidEl.hidden = !avoid;
+          avoidEl.textContent = avoid;
+        }
+        if (stack) stack.hidden = !on;
+        if (copy) copy.classList.toggle("stack", Boolean(on));
+        layoutWalkUnderChrome();
+      }
+
+      let lastDockCopy = "";
+      function paintWalkDock(href) {
+        const dock = document.getElementById("walk-dock");
+        if (!dock) return;
+        const spec = overlayDockSpec(href);
+        while (dock.firstChild) dock.removeChild(dock.firstChild);
+        if (!spec) {
+          dock.hidden = true;
+          dock.classList.remove("show");
+          return;
+        }
+        const kick = document.createElement("p");
+        kick.className = "dock-kicker";
+        kick.textContent = spec.kicker;
+        dock.appendChild(kick);
+        (spec.rows || []).forEach(function (row) {
+          dock.appendChild(paintDockRow(row));
+        });
+        if (spec.body) {
+          const body = document.createElement("p");
+          body.className = "dock-body";
+          body.textContent = spec.body;
+          dock.appendChild(body);
+        }
+        if (spec.foot) {
+          const foot = document.createElement("p");
+          foot.className = "dock-foot";
+          foot.textContent = spec.foot;
+          dock.appendChild(foot);
+        }
+        const close = document.createElement("button");
+        close.type = "button";
+        close.id = "walk-dock-close";
+        close.textContent = "Close";
+        dock.appendChild(close);
+        const copy = document.createElement("button");
+        copy.type = "button";
+        copy.id = "walk-dock-copy";
+        copy.textContent = "Copy";
+        dock.appendChild(copy);
+        lastDockCopy = dockCopyText(spec);
+        dock.hidden = false;
+        dock.classList.add("show");
+      }
+
+      function dockCopyText(spec) {
+        const lines = [String((spec && spec.kicker) || "")];
+        ((spec && spec.rows) || []).forEach(function (row) {
+          lines.push(String((row && row.label) || "") + ": " + String((row && row.value) || ""));
+        });
+        if (spec && spec.body) lines.push(String(spec.body));
+        if (spec && spec.foot) lines.push(String(spec.foot));
+        return lines.filter(Boolean).join("\n");
+      }
+
+      function copyOverlayText(text, btnId) {
+        const line = String(text || "").trim();
+        const btn = document.getElementById(btnId);
+        if (!line) return;
+        const done = function (ok) {
+          if (btn) btn.textContent = ok ? "Copied" : "Copy failed";
+          setTimeout(function () {
+            if (btn) btn.textContent = "Copy";
+          }, 1200);
+        };
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          navigator.clipboard.writeText(line).then(function () { done(true); }).catch(function () { done(false); });
+          return;
+        }
+        done(false);
+      }
+
+      function copyWalkDock() {
+        copyOverlayText(lastDockCopy, "walk-dock-copy");
+      }
+
+      function copyWalkStack() {
+        copyOverlayText(dockCopyText(overlayDockSpec("/workspace?id=live-meeting")), "walk-stack-copy");
+      }
+
+      function openDeskWindow(href) {
+        const next = String(href || "");
+        if (!next || !/^\/workspace\?id=(live-inbox|live-document|live-security|live-meeting)$/.test(next)) return;
+        if (/live-meeting/.test(next)) liveAsked = true;
+        else if (!inboxSaved) liveAsked = false;
+        const line = overlayFiledLine(next);
+        const filedEl = document.getElementById("walk-filed");
+        if (filedEl) {
+          filedEl.hidden = !line;
+          filedEl.textContent = line;
+        }
+        const stayWalk = Boolean(/live-meeting/.test(next) && !inboxSaved);
+        if (stayWalk) hideWalkDock();
+        else paintWalkDock(next);
+        highlightWalkWindow(stayWalk ? "/workspace?id=live-inbox" : next);
+        paintLiveChrome(inboxSaved || liveAsked);
+      }
+
+      function highlightWalkWindow(href) {
+        const root = document.getElementById("walk-desktop");
+        if (!root) return;
+        const map = {
+          "live-inbox": "walk-win-inbox",
+          "live-document": "walk-win-notes",
+          "live-security": "walk-win-security",
+          "live-meeting": "walk-win-meeting",
+        };
+        const id = map[String(href || "").replace(/^.*id=/, "")];
+        root.querySelectorAll(".walk-win.now").forEach(function (el) {
+          el.classList.remove("now");
+        });
+        const node = id && document.getElementById(id);
+        if (node) node.classList.add("now");
+      }
+
+      function paintDockRow(row) {
+        const p = document.createElement("p");
+        p.className = "dock-row";
+        const label = String((row && row.label) || "");
+        const value = String((row && row.value) || "");
+        if (label === "To" && value && value !== "not sent") p.classList.add("typed");
+        const lab = document.createElement("span");
+        lab.textContent = label + " ";
+        const val = document.createElement("b");
+        val.textContent = value;
+        p.appendChild(lab);
+        p.appendChild(val);
+        return p;
+      }
+
+      function appendDockBits(root, spec) {
+        const kick = document.createElement("p");
+        kick.className = "dock-kicker";
+        kick.textContent = spec.kicker;
+        root.appendChild(kick);
+        (spec.rows || []).forEach(function (row) {
+          root.appendChild(paintDockRow(row));
+        });
+        if (spec.body) {
+          const body = document.createElement("p");
+          body.className = "dock-body";
+          body.textContent = spec.body;
+          root.appendChild(body);
+        }
+        if (spec.foot) {
+          const foot = document.createElement("p");
+          foot.className = "dock-foot";
+          foot.textContent = spec.foot;
+          root.appendChild(foot);
+        }
+      }
+
+      function paintWalkDesktop() {
+        const root = document.getElementById("walk-desktop");
+        if (!root) return;
+        while (root.firstChild) root.removeChild(root.firstChild);
+        const kicker = document.createElement("p");
+        kicker.id = "walk-desktop-kicker";
+        kicker.textContent = "This computer - no runtime";
+        root.appendChild(kicker);
+        const saved = Boolean(inboxSaved);
+        [
+          {
+            id: "walk-win-inbox",
+            href: "/workspace?id=live-inbox",
+            left: "10%",
+            top: saved ? "72%" : "18%",
+            width: saved ? "86%" : "62%",
+            height: saved ? "26%" : "52%",
+          },
+          {
+            id: "walk-win-notes",
+            href: "/workspace?id=live-document",
+            left: "74%",
+            top: "18%",
+            width: "22%",
+            height: "28%",
+          },
+          {
+            id: "walk-win-security",
+            href: "/workspace?id=live-security",
+            left: "74%",
+            top: "50%",
+            width: "22%",
+            height: "20%",
+          },
+          {
+            id: "walk-win-meeting",
+            href: "/workspace?id=live-meeting",
+            left: saved ? "10%" : "74%",
+            top: saved ? "18%" : "72%",
+            width: saved ? "62%" : "22%",
+            height: saved ? "52%" : "20%",
+          },
+        ].forEach(function (win) {
+          const spec = overlayDockSpec(win.href);
+          if (!spec) return;
+          const node = document.createElement("article");
+          node.id = win.id;
+          node.className = "walk-win";
+          node.style.left = win.left;
+          node.style.top = win.top;
+          node.style.width = win.width;
+          node.style.height = win.height;
+          appendDockBits(node, spec);
+          root.appendChild(node);
+        });
+      }
+
+      function onDesk(q) {
+        const text = String(q || "").trim();
+        if (!text) return;
+        const href = overlayDeskHref(text);
+        if (href) openDeskWindow(href);
+        if (hasApi) {
+          if (!href) api.invoke("teach-overlay:ask", { message: text, act: false });
+          return;
+        }
+        if (demo) return;
+        fetch("/api/ask", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ask: text, act: false }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (out) {
+            if (out && out.act) return;
+            const next = (out && out.href) || href;
+            openDeskWindow(next);
+          })
+          .catch(function () {
+            openDeskWindow(href);
+          });
+      }
+
+      function talkAboutNow() {
+        const cue = String((cueEl && cueEl.textContent) || "").trim();
+        if (/^type in\b/i.test(cue)) return "what should I type?";
+        return "what should I say?";
+      }
+
+      function overlayTalk() {
+        stopShowMe();
+        const q = talkAboutNow();
+        const input = document.getElementById("walk-ask");
+        if (input) input.value = q;
+        submitWalkAsk();
+      }
+
+      function submitWalkAsk() {
+        const input = document.getElementById("walk-ask");
+        const q = String((input && input.value) || "").trim();
+        if (!q) return;
+        if (input) input.value = "";
+        stopShowMe();
+        if (overlayDeskHref(q)) onDesk(q);
+        else onAsk(q);
+      }
+
+      function onAdvance(ev) {
+        if (ev.target && ev.target.closest && ev.target.closest("#walk-draw")) {
+          ev.preventDefault();
+          stopShowMe();
+          setDraw(!drawing);
+          return;
+        }
+        if (ev.target && ev.target.closest && ev.target.closest("#walk-show")) {
+          ev.preventDefault();
+          toggleShowMe();
+          return;
+        }
+        if (ev.target && ev.target.closest && ev.target.closest("#walk-talk")) {
+          ev.preventDefault();
+          overlayTalk();
+          return;
+        }
+        if (ev.target && ev.target.closest && ev.target.closest("#walk-stack-copy")) {
+          ev.preventDefault();
+          copyWalkStack();
+          return;
+        }
+        if (ev.target && ev.target.closest && ev.target.closest("#walk-dock-copy")) {
+          ev.preventDefault();
+          copyWalkDock();
+          return;
+        }
+        if (ev.target && ev.target.closest && ev.target.closest("#walk-dock-close")) {
+          ev.preventDefault();
+          const dock = document.getElementById("walk-dock");
+          if (dock) {
+            while (dock.firstChild) dock.removeChild(dock.firstChild);
+            dock.hidden = true;
+            dock.classList.remove("show");
+          }
+          return;
+        }
+        const railBtn = ev.target && ev.target.closest ? ev.target.closest("button[data-rail]") : null;
+        if (railBtn) {
+          ev.preventDefault();
+          onRailStep(Number(railBtn.getAttribute("data-step")));
+          return;
+        }
+        const btn = ev.target && ev.target.closest ? ev.target.closest("button[data-q]") : null;
+        const q = btn && String(btn.getAttribute("data-q") || "").trim();
+        if (!q) return;
+        ev.preventDefault();
+        stopShowMe();
+        if (btn.getAttribute("data-desk")) onDesk(q);
+        else onAsk(q);
+      }
+
+      if (chromeBar) chromeBar.addEventListener("click", onAdvance);
+      const askForm = document.getElementById("walk-ask-form");
+      if (askForm) {
+        askForm.addEventListener("submit", function (ev) {
+          ev.preventDefault();
+          submitWalkAsk();
+        });
+      }
+      const dockBar = document.getElementById("walk-dock");
+      if (dockBar) dockBar.addEventListener("click", onAdvance);
+      document.addEventListener("pointerdown", function (ev) {
+        if (!drawing || (ev.button != null && ev.button !== 0)) return;
+        if (ev.target && ev.target.closest && ev.target.closest(".chrome")) return;
+        const p = pctFromEvent(ev);
+        drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y, stroke: [p] };
+        paintGhost();
+        ev.preventDefault();
+      });
+      document.addEventListener("pointermove", function (ev) {
+        const over = Boolean(ev.target && ev.target.closest && ev.target.closest(".chrome"));
+        if (!drawing) syncClickThrough(over);
+        if (!drawing || !drag) return;
+        const p = pctFromEvent(ev);
+        drag.x1 = p.x;
+        drag.y1 = p.y;
+        pushStroke(drag.stroke, p);
+        paintGhost();
+      }, true);
+      function demoClipBox(left, top, w, h) {
+        if (!Number.isFinite(left) || !Number.isFinite(top) || !(w > 0) || !(h > 0)) return null;
+        if (left < 0 || top < 0 || left >= 100 || top >= 100) return null;
+        const right = Math.min(100, left + w);
+        const bottom = Math.min(100, top + h);
+        const ww = right - Math.max(0, left);
+        const hh = bottom - Math.max(0, top);
+        if (ww < 0.4 || hh < 0.4) return null;
+        return { leftPct: Math.max(0, left), topPct: Math.max(0, top), wPct: ww, hPct: hh };
+      }
+
+      function demoParseFrame(spec) {
+        if (!spec || typeof spec !== "object") return null;
+        const stroke = Array.isArray(spec.stroke) ? spec.stroke : [];
+        if (stroke.length >= 2) {
+          let x0 = Infinity;
+          let y0 = Infinity;
+          let x1 = -Infinity;
+          let y1 = -Infinity;
+          stroke.forEach(function (p) {
+            const x = Number(p && p.x);
+            const y = Number(p && p.y);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+            x0 = Math.min(x0, x);
+            y0 = Math.min(y0, y);
+            x1 = Math.max(x1, x);
+            y1 = Math.max(y1, y);
+          });
+          return demoClipBox(x0, y0, x1 - x0, y1 - y0);
+        }
+        const x0 = Number(spec.x0);
+        const y0 = Number(spec.y0);
+        const x1 = Number(spec.x1);
+        const y1 = Number(spec.y1);
+        if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return null;
+        return demoClipBox(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
+      }
+
+      function paintDemoState() {
+        const saved = Boolean(inboxSaved);
+        const back = document.getElementById("walk-back");
+        const next = document.getElementById("walk-next");
+        const show = document.getElementById("walk-show");
+        const drawBtn = document.getElementById("walk-draw");
+        if (back) back.hidden = !(saved || demoStep > 0);
+        if (next) next.hidden = saved;
+        if (show) show.hidden = saved;
+        if (drawBtn) drawBtn.hidden = saved;
+        if (saved) {
+          stopShowMe();
+          setDraw(false);
+          liveAsked = true;
+          paint([]);
+          paintLiveChrome(true);
+          paintChrome({ cue: "Saved on This computer", rest: "", fill: "" });
+          return;
+        }
+        paintLiveChrome(liveAsked);
+        const pts = demoWalk.map(function (p, i) {
+          return Object.assign({}, p, {
+            later: i > demoStep,
+            done: i < demoStep,
+          });
+        });
+        paint(pts);
+        const now = demoWalk[demoStep] || {};
+        const rest = demoWalk[demoStep + 1] || {};
+        paintChrome({
+          cue: now.label || now.cue || "",
+          rest: rest.label || rest.cue || "",
+          fill: now.fill || "",
+        });
+      }
+
+      function demoFrame(spec) {
+        if (demoWalk.length >= 8) return false;
+        const box = demoParseFrame(spec);
+        if (!box) return false;
+        const n = demoWalk.length + 1;
+        const ink = Array.isArray(spec && spec.stroke)
+          ? spec.stroke.filter(function (p) {
+              return Number.isFinite(Number(p && p.x)) && Number.isFinite(Number(p && p.y));
+            }).slice(0, 80).map(function (p) {
+              return { x: Number(p.x), y: Number(p.y) };
+            })
+          : [];
+        demoWalk.push({
+          leftPct: box.leftPct,
+          topPct: box.topPct,
+          wPct: box.wPct,
+          hPct: box.hPct,
+          label: "Look at region " + n,
+          face: "region",
+          caption: "region " + n,
+          stroke: ink.length >= 2 ? ink : undefined,
+        });
+        if (inboxSaved) {
+          inboxSaved = false;
+          liveAsked = false;
+          demoStep = demoWalk.length - 1;
+        }
+        paintDemoState();
+        syncInboxType();
+        return true;
+      }
+
+      function applyLive(m) {
+        const path = Array.isArray(m && m.path) ? m.path : [];
+        paint(path);
+        const now = path.find(function (p) { return p && p.now; }) || path[0] || {};
+        paintChrome({
+          cue: (m && (m.action || m.cue)) || "",
+          rest: (m && m.rest) || "",
+          fill: (m && m.fill) || now.fill || "",
+        });
+      }
+
+      function onAsk(q) {
+        const text = String(q || "").trim();
+        if (!text) return;
+        if (hasApi) {
+          api.invoke("teach-overlay:ask", { message: text, act: false });
+          return;
+        }
+        if (demo) demoAdvance(q);
+        else {
+          fetch("/api/teach", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ ask: text, act: false }),
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (m) {
+              if (!m || m.act || m.exec) return;
+              if (m.ok) applyLive(m);
+            })
+            .catch(function () {});
+        }
+      }
+
+      function onFrame(box) {
+        if (hasApi) {
+          api.invoke("teach-overlay:frame", { region: box, act: false });
+          return;
+        }
+        if (demo) {
+          demoFrame(box);
+          return;
+        }
+        fetch("/api/teach", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ region: box, act: false }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (m) {
+            if (!m || !m.ok || m.act || m.exec) return;
+            applyLive(m);
+          })
+          .catch(function () {});
+      }
+
+      function startDemo() {
+        demo = true;
+        document.documentElement.classList.add("demo");
+        document.documentElement.classList.remove("host");
+        demoWalk = [
+          {
+            leftPct: 12,
+            topPct: 21,
+            wPct: 56,
+            hPct: 5,
+            label: "Type in Email",
+            face: "field",
+            caption: "Email",
+            fill: "Sarah Chen",
+            stroke: [
+              { x: 12, y: 21 },
+              { x: 68, y: 21 },
+              { x: 68, y: 26 },
+              { x: 12, y: 26 },
+              { x: 12, y: 21 },
+            ],
+          },
+          { leftPct: 46, topPct: 58, wPct: 22, hPct: 10, label: "Click Save", face: "button", caption: "Save" },
+        ];
+        demoStep = 0;
+        demoAdvance = function (q) {
+          const last = demoWalk.length - 1;
+          if (/\bback\b/i.test(String(q || ""))) {
+            if (inboxSaved) {
+              inboxSaved = false;
+              liveAsked = false;
+            } else demoStep = Math.max(0, demoStep - 1);
+          } else if (demoStep < last) demoStep += 1;
+          else inboxSaved = true;
+          paintDemoState();
+          syncInboxType();
+        };
+        inboxTypedTo = "";
+        inboxSaved = false;
+        liveAsked = false;
+        lastInboxSaved = false;
+        lastFlyKey = "";
+        lastFlyAt = null;
+        stopShowMe();
+        paintWalkDesktop();
+        highlightWalkWindow("/workspace?id=live-inbox");
+        paintDemoState();
+      }
+
+      function syncInboxType() {
+        if (!demo) return;
+        const next = demoStep > 0 ? "Sarah Chen" : "";
+        const saved = Boolean(inboxSaved);
+        if (next === inboxTypedTo && saved === lastInboxSaved) return;
+        const wasSaved = lastInboxSaved;
+        inboxTypedTo = next;
+        lastInboxSaved = saved;
+        paintWalkDesktop();
+        const href = saved ? "/workspace?id=live-meeting" : "/workspace?id=live-inbox";
+        highlightWalkWindow(href);
+        const filedEl = document.getElementById("walk-filed");
+        if (filedEl) {
+          if (saved) {
+            filedEl.hidden = false;
+            filedEl.textContent = "Opened Live answer. Never sent.";
+          } else if (liveAsked) {
+            filedEl.hidden = false;
+            filedEl.textContent = overlayFiledLine("/workspace?id=live-meeting");
+          } else {
+            filedEl.hidden = true;
+            filedEl.textContent = "";
+          }
+        }
+        if (saved || wasSaved || liveAsked) hideWalkDock();
+        else {
+          const dock = document.getElementById("walk-dock");
+          if (dock && dock.classList.contains("show")) paintWalkDock(href);
+        }
+      }
+
+      function endDrag() {
+        if (!drawing || !drag) return;
+        const stroke = drag.stroke ? drag.stroke.slice() : [];
+        const box = { x0: drag.x0, y0: drag.y0, x1: drag.x1, y1: drag.y1, stroke: stroke };
+        drag = null;
+        if (ghost) ghost.hidden = true;
+        clearStroke();
+        if (stroke.length < 2) return;
+        onFrame(box);
+      }
+      document.addEventListener("pointerup", endDrag);
+      document.addEventListener("pointercancel", function () {
+        drag = null;
+        if (ghost) ghost.hidden = true;
+        clearStroke();
+      });
+      document.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape") {
+          stopShowMe();
+          if (drawing) {
+            setDraw(false);
+            return;
+          }
+        }
+        if (ev.key === "Enter" && !drawing && !ev.repeat) {
+          if (ev.target && ev.target.closest && ev.target.closest("button")) return;
+          if (ev.target && ev.target.closest && ev.target.closest("#walk-ask-form")) return;
+          ev.preventDefault();
+          stopShowMe();
+          onAsk("got it, next");
+        }
+      });
+      document.addEventListener("pointerleave", function () {
+        if (!drawing) syncClickThrough(false);
+      }, true);
+      window.addEventListener("resize", layoutWalkUnderChrome);
+
+      if (api && typeof api.onPoint === "function") {
+        api.onPoint(function (event) {
+          paint(event && event.points);
+          paintChrome(event);
+        });
+      } else if (demoQuery) {
+        startDemo();
+      } else {
+        fetch("/api/teach")
+          .then(function (r) { return r.json(); })
+          .then(function (m) {
+            if (m && !m.localFirst && !m.exec && Array.isArray(m.path) && m.path.length) {
+              demo = false;
+              applyLive(m);
+              return;
+            }
+            startDemo();
+          })
+          .catch(function () {
+            startDemo();
+          });
+      }
+    </script>
+  </body>
+</html>

@@ -279,6 +279,25 @@ test("dry-run supports drag/open/clipboard without spawning", async () => {
   assert.strictEqual((await d.perform({ type: "open", path: "C:\\Windows\\notepad.exe" })).ok, true);
 });
 
+test("off-Windows Act is fail-closed and does not spawn powershell", async () => {
+  if (process.platform === "win32") return;
+  const d = new InputDriver();
+  const out = await d.perform(
+    { type: "click", xPct: 50, yPct: 50 },
+    { region: { x: 0, y: 0, width: 100, height: 100 } }
+  );
+  assert.strictEqual(out.ok, false);
+  assert.strictEqual(out.act, false);
+  assert.match(String(out.error || ""), /fail-closed/);
+  assert.strictEqual(d._worker, null);
+  const fg = await d.foreground();
+  assert.deepStrictEqual(fg, { hwnd: "0", title: "?", proc: "?" });
+  assert.deepStrictEqual(await d.listWindows(), []);
+  const wait = await d.perform({ type: "wait", ms: 1 });
+  assert.strictEqual(wait.ok, true);
+  d.dispose();
+});
+
 test("keysHeld reports the worker down flag", async () => {
   const state = {};
   const d = new InputDriver({

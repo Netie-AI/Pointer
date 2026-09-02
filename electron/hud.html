@@ -165,7 +165,7 @@
         <span class="suggest-kicker">Say</span>
         <span class="suggest-text" id="suggest-text"></span>
       </div>
-      <div class="live-cue-bar chrome" id="live-cue-bar" hidden>
+      <div class="live-cue-bar glass chrome" id="live-cue-bar" hidden>
         <p class="live-cue-asked" id="live-cue-asked" hidden></p>
         <p class="live-cue-them" id="live-cue-them" hidden></p>
         <p class="live-cue-you" id="live-cue-you" hidden></p>
@@ -176,8 +176,19 @@
         <div class="live-cue-actions">
           <button type="button" class="text-btn cue-advance" id="btn-live-back" data-q="back" hidden>Back</button>
           <button type="button" class="text-btn cue-advance" id="btn-live-next" data-q="got it, next" hidden>Got it</button>
+          <button type="button" class="text-btn" id="btn-live-show" hidden>Show me</button>
+          <button type="button" class="text-btn" id="btn-live-talk" title="Ask about this BOX (never Act)" hidden>Talk</button>
+          <button type="button" class="text-btn" id="btn-live-draw" title="Draw a BOX on this display (never Act)" hidden>Draw</button>
           <button type="button" class="text-btn" id="btn-live-copy" hidden>Copy</button>
         </div>
+        <div class="live-cue-rail" id="live-cue-rail" hidden></div>
+        <p class="live-cue-chips" id="live-cue-chips">
+          <button type="button" class="text-btn cue-advance" data-q="draft a follow-up email from this meeting">Draft email</button>
+          <button type="button" class="text-btn cue-advance" data-q="write this recap in Word">Notes</button>
+          <button type="button" class="text-btn cue-advance" data-q="Security review this session">Needs you</button>
+          <button type="button" class="text-btn cue-advance" data-q="what should I say">Live answer</button>
+        </p>
+        <aside class="live-cue-dock chrome" id="live-cue-dock" hidden></aside>
       </div>
 
       <div class="subtitle-live glass chrome" id="subtitle-bar" hidden aria-hidden="true">
@@ -352,6 +363,9 @@
       <!-- P3-POINT-OVERLAY: a crosshair and a label, nothing that could grow
            back into a floating companion. Never .chrome — it must not eat clicks. -->
       <div class="point-layer" id="point-layer" aria-hidden="true"></div>
+      <svg id="hud-fly" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
+      <svg id="hud-draw-stroke" viewBox="0 0 100 100" preserveAspectRatio="none" hidden></svg>
+      <div id="hud-draw-ghost" class="point-mark point-box" hidden></div>
 
       <div class="bg-status chrome" id="bg-status">
         <span id="bg-status-text"></span>

@@ -39,6 +39,27 @@ is Got it (Ask, never Act). Draw around a control to
 stack a BOX and keep the freehand stroke on the walk. Copy next / Copy say-this
 copy the cue line. Overlay current BOX shows Click / Type in / Look at
 plus field / button faces at those measured percents (not only `1 Save`).
+OS voice speaks Click/Type in on the current BOX (overlay, HUD, `/teach`);
+never meeting. Current BOX pulses in place (not a cursor ring).
+Public and loopback `/overlay` is that same walk full-screen (demo
+online when APIs are empty; live path on the laptop). Overlay Draw
+stacks a BOX (cap 8, 0.4% fail-closed). Last BOX says Last step.
+Public overlay paints This computer (Unsent mail / Notes / Needs you /
+Live answer) under the walk; demo BOX highlights that window instead of
+covering it; Draw stays a pencil; dock Copy is clipboard never send;
+the live Electron overlay stays transparent on the real display.
+Overlay chrome keeps a remaining walk rail and Ask chips (Draft email /
+Notes / Needs you / Live answer). Walk chrome stacks Type in Email /
+Then / fill so the cue stays readable. Desk chips dock the filed file on the
+walk. HUD cue bar docks that same Unsent mail / Notes / Needs you /
+Live answer window (They asked / You / Say this / Also / Don't say,
+never a cheater overlay).
+Home Ask stays on This screen and highlights that window.
+Got it types the Heard name into Unsent mail To (starts not sent).
+Got it on Save files that draft then docks Live answer on overlay and home (never send, never speak meeting). After Save, home This screen yields to Live answer. Overlay chrome keeps They asked / You / Live captions after Ask or Save (never spoken). Back restores the walk. Workspace Save opens Live answer on This computer. Cue Copy clips They asked / You / Say this / Also / Heard / Don't say.
+Enter in overlay Ask submits Ask; Enter outside is Got it. Never send.
+The laptop HUD cue bar paints that same remaining rail and those chips
+when chrome hides. OS voice says Last step on the last BOX.
 Loopback `/meeting` Ask chips file an unsent follow-up
 and a Word draft from the stored transcript (never send, never Word.app,
 teach walks stay on `/teach`). Loopback sticky chrome has a fixed Ask bar
@@ -61,7 +82,8 @@ sent (never invent, never send). Opening a review paints Needs you
 (never approve). Loopback `/document` `/inbox` `/security` paint the
 same windows. Home theater paints those windows on the rail and a room
 dock of links (no markdown dump). Session markdown stays copy-only. The
-desks catalog lives on `/workspace`.
+desks catalog lives on `/workspace`. `?demo=1` is a sample coworker catalog
+(not live, no runtime).
 Loopback `/document`
 downloads a generated `.docx` from the live draft (never Act, never
 Word.app). Public `/api/document.docx` is 404. Loopback `/meeting` paints the You/Them
@@ -100,7 +122,11 @@ Baseline probe: `node scripts/stt_baseline.js`. Notes: [`docs/STT_OCR.md`](STT_O
 
 ## Windows-safe visual direction
 
-No `backdrop-filter` in core HUD surfaces (Windows Electron corruption risk). Netie Pointer uses solid panels, IBM Plex Serif + Sans, spring-style transitions, and press-on-down feedback. The HUD is screenshotable by default (DR-0005) so UACC and other agents can detect it.
+Liquid glass uses `backdrop-filter` where Chromium supports it (lensing + frost).
+`@supports not` and `prefers-reduced-transparency` fall back to solid frost so
+Windows Electron stays readable if blur corrupts. IBM Plex Serif + Sans, spring-style
+transitions, and press-on-down stay. The HUD is screenshotable by default (DR-0005)
+so UACC and other agents can detect it. No floating Clicky ring.
 
 ## Lag stance
 

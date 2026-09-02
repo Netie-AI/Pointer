@@ -33,6 +33,7 @@ const PAGE_FILES = Object.freeze({
   "/lanes": "lanes.html",
   "/skills": "skills.html",
   "/workspace": "workspace.html",
+  "/overlay": "overlay.html",
 });
 
 const PUBLIC_FILES = Object.freeze([
@@ -46,7 +47,9 @@ const PUBLIC_FILES = Object.freeze([
   "lanes.html",
   "skills.html",
   "workspace.html",
+  "overlay.html",
   "style.css",
+  "glass.css",
   "app.js",
 ]);
 const PUBLIC_FILE_SET = new Set(PUBLIC_FILES);

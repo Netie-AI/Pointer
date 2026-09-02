@@ -13,10 +13,65 @@ function el(tag, className) {
  * Loopback catalog stays current while the tab is open.
  * Public localFirst snapshots are empty and must not poll.
  */
+function isDemoPage() {
+  try {
+    return /(?:^|[?&])demo=1(?:&|$)/.test(String(location.search || ""));
+  } catch {
+    return false;
+  }
+}
+
+let demoCatalogOn = false;
+let paintingDemo = false;
+function isDemoCatalog() {
+  return isDemoPage() || demoCatalogOn;
+}
+
+function demoHref(path) {
+  const href = String(path || "");
+  if (!isDemoPage()) return href;
+  if (/[?&]demo=1(?:&|$)/.test(href)) return href;
+  return href.indexOf("?") >= 0 ? href + "&demo=1" : href + "?demo=1";
+}
+
+function paintDemoIfPublic(snapshot) {
+  if (paintingDemo) return false;
+  if (demoCatalogOn) return true;
+  if (snapshot && snapshot.exec) return false;
+  if (isDemoPage() || (snapshot && snapshot.localFirst)) {
+    applyDemoCatalog();
+    return true;
+  }
+  return false;
+}
+
+let lastSpokenTeach = "";
+function speakTeachCue(line) {
+  const text = String(line || "")
+    .replace(/^\d+\s+of\s+\d+\s+/i, "")
+    .trim();
+  if (!text || text === lastSpokenTeach) return;
+  if (typeof document !== "undefined" && document.hidden) return;
+  const synth = typeof window !== "undefined" && window.speechSynthesis;
+  if (!synth || typeof SpeechSynthesisUtterance === "undefined") return;
+  lastSpokenTeach = text;
+  try {
+    synth.cancel();
+    synth.speak(new SpeechSynthesisUtterance(text));
+  } catch {
+    lastSpokenTeach = "";
+  }
+}
+
 function pollWhileLive(load) {
+  if (isDemoPage()) return;
   let timer = null;
   function tick() {
     if (typeof document !== "undefined" && document.hidden) return;
+    if (isDemoCatalog()) {
+      arm(false);
+      return;
+    }
     load();
   }
   function arm(keep) {
@@ -155,7 +210,7 @@ function paintSessionTile(row) {
 function sessionLinkHref(row) {
   const href = String((row && row.href) || "").trim();
   if (/^\/(workspace|meeting|teach|today|document|security|inbox)(\?id=[A-Za-z0-9._-]+)?$/.test(href)) {
-    return href;
+    return demoHref(href);
   }
   const desk = String((row && row.desk) || "");
   if (
@@ -166,9 +221,9 @@ function sessionLinkHref(row) {
     desk === "security" ||
     desk === "inbox"
   ) {
-    return "/" + desk;
+    return demoHref("/" + desk);
   }
-  return "/workspace";
+  return demoHref("/workspace");
 }
 
 function paintWorkingSet() {
@@ -214,6 +269,8 @@ function paintOpenFileHero() {
   const main = document.querySelector("main");
   if (!main || !isWorkspacePage()) return;
   main.classList.toggle("workspace-open-file", Boolean(lastOpenId));
+  const win = document.getElementById("open-file");
+  if (win) win.hidden = !lastOpenId;
   paintOpenFileTabs();
 }
 
@@ -347,6 +404,9 @@ function paintDeskWindow(root, spec) {
     lab.textContent = String((row && row.label) || "");
     const val = document.createElement("b");
     val.textContent = String((row && row.value) || "");
+    if (String((row && row.label) || "") === "To" && String((row && row.value) || "") && String((row && row.value) || "") !== "not sent") {
+      p.classList.add("typed");
+    }
     p.appendChild(lab);
     p.appendChild(val);
     win.appendChild(p);
@@ -470,7 +530,9 @@ function applyOpenInbox(root, art, text) {
       { label: "Subject", value: subject },
     ],
     body: inboxComposeBody(draft),
-    foot: "not sent - send is parked (P-05)",
+    foot: /saved on this computer/i.test(String((art && art.cue) || ""))
+      ? "saved on This computer - send is parked (P-05)"
+      : "not sent - send is parked (P-05)",
     href: art && art.href,
   });
 }
@@ -511,6 +573,21 @@ function paintOpenFileBody(root, body, text) {
   const art = body && body.artifact;
   const desk = String((art && art.desk) || "").toLowerCase();
   const id = String((art && art.id) || "").toLowerCase();
+  if (isDemoCatalog()) {
+    const home = demoHome();
+    if (desk === "teach" || id === "live-teach") {
+      applyOpenTeach(root, home.rooms.teach);
+      return;
+    }
+    if (desk === "meeting" || id === "live-meeting") {
+      applyOpenMeeting(root, home.rooms.meeting);
+      return;
+    }
+    if (desk === "today" || id === "standing-today") {
+      applyOpenToday(root, home.rooms.today, text);
+      return;
+    }
+  }
   if (desk === "teach" || id === "live-teach") {
     fetch("/api/teach")
       .then(function (r) {
@@ -568,6 +645,10 @@ function paintOpenFileBody(root, body, text) {
 function openArtifact(id) {
   const root = document.getElementById("artifact-body");
   if (!root || !id) return;
+  if (isDemoCatalog()) {
+    openDemoArtifact(id);
+    return;
+  }
   fetch("/api/workspace?id=" + encodeURIComponent(id))
     .then((r) => r.json().then((body) => body))
     .then((body) => {
@@ -737,6 +818,7 @@ if (workspacePage) {
         });
         return false;
       }
+      if (paintDemoIfPublic(ws) || paintDemoIfPublic(state)) return false;
       show(
         "policy",
         (ws && ws.reason) || "workspace has no runtime; Act stays on the laptop"
@@ -781,6 +863,7 @@ function applyToday(t) {
     show("policy", "refused: today must not grow a runtime");
     return false;
   }
+  if (paintDemoIfPublic(t)) return false;
   show("policy", (t && t.reason) || "standing brief; Act stays on the laptop");
   const plate = document.getElementById("today-cue-web");
   const plateText = String((t && t.cue) || "").trim();
@@ -834,7 +917,141 @@ function pageDesk() {
   return "";
 }
 
+function showFiled(line) {
+  const text = String(line || "");
+  ["host-filed", "today-filed", "artifact-filed", "meeting-filed"].forEach(function (id) {
+    const filed = document.getElementById(id);
+    if (!filed) return;
+    filed.hidden = !text;
+    filed.textContent = text;
+  });
+}
+
+function demoAskDesk(ask) {
+  const t = String(ask || "").toLowerCase();
+  if (!t) return "";
+  if (/\b(got it|next control|i clicked|walk me through|teach me|on (my )?screen|back)\b/.test(t)) {
+    return "teach";
+  }
+  if (/\b(security review|vuln|cve)\b/.test(t)) return "security";
+  if (/\b(what should i (say|type|put)|what do i (say|type)|what to (say|type))\b/.test(t)) {
+    return "meeting";
+  }
+  if (/\b(?:microsoft\s+)?word\b/.test(t) || /\bdocx\b/.test(t)) return "document";
+  if (/\b(inbox|gmail|outlook|slack reply|email|follow-?up)\b/.test(t)) return "inbox";
+  if (
+    (/\b(meeting|standup|what should i say|next steps?|action items?)\b/.test(t) || /\brecap\b/.test(t)) &&
+    !/\b(inbox|gmail|outlook|email|word|docx)\b/.test(t)
+  ) {
+    return "meeting";
+  }
+  if (/\b(on my plate|today'?s brief|morning brief)\b/.test(t)) return "today";
+  return "";
+}
+
+function demoAskChips() {
+  return [
+    { q: "got it, next", label: "Got it" },
+    { q: "draft a follow-up email from this meeting", label: "Draft email" },
+    { q: "write this recap in Word", label: "Notes" },
+    { q: "Security review this session", label: "Needs you" },
+    { q: "what should I say", label: "Live answer" },
+  ];
+}
+
+function revealHomeWindow(id, hold) {
+  const map = {
+    "live-inbox": ".desk-inbox",
+    "live-document": ".desk-document",
+    "live-security": ".desk-security",
+    "live-meeting": ".meeting-card",
+    "standing-today": ".today-plate",
+  };
+  const sel = map[String(id || "")];
+  const root = document.getElementById("stage");
+  if (!sel || !root) return false;
+  const node = root.querySelector(sel);
+  if (!node) return false;
+  root.querySelectorAll(".desk-window-now").forEach(function (el) {
+    el.classList.remove("desk-window-now");
+  });
+  node.classList.add("desk-window-now");
+  if (!hold && typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "nearest" });
+  return true;
+}
+
+function stayOnTeachMap() {
+  revealHomeWindow("live-inbox", true);
+  const map = document.querySelector("#stage .teach-map");
+  if (map && typeof map.scrollIntoView === "function") map.scrollIntoView({ block: "nearest" });
+}
+
+function demoHighlightWalk() {
+  if (isWorkspacePage() && document.getElementById("artifact-body")) {
+    if (workspaceQueryId()) return;
+    if (demoInboxSaved()) {
+      showFiled("Saved on This computer. Opened Live answer. Never sent.");
+      openDemoArtifact("live-meeting");
+    }
+    return;
+  }
+  if (!document.getElementById("stage")) return;
+  if (demoInboxSaved()) {
+    showFiled("Saved on This computer. Opened Live answer. Never sent.");
+    revealHomeWindow("live-meeting");
+    return;
+  }
+  const filed = document.getElementById("host-filed");
+  if (filed && /Opened Live answer\. Never sent/.test(String(filed.textContent || ""))) showFiled("");
+  stayOnTeachMap();
+}
+
+function demoAsk(ask) {
+  const desk = demoAskDesk(ask);
+  if (desk === "teach") {
+    postTeach(ask);
+    return;
+  }
+  const ids = {
+    inbox: "live-inbox",
+    document: "live-document",
+    security: "live-security",
+    meeting: "live-meeting",
+    today: "standing-today",
+  };
+  const id = ids[desk];
+  if (!id) {
+    showFiled("Demo catalog. Ask stays on the laptop. Never Act.");
+    return;
+  }
+  if (desk === "inbox") showFiled("Demo catalog. Opened unsent mail. Never sent. Never Act.");
+  else if (desk === "document") showFiled("Demo catalog. Opened Notes. Never a .docx. Never Act.");
+  else if (desk === "security") showFiled("Demo catalog. Opened Needs you. Never approval. Never Act.");
+  else if (desk === "meeting") showFiled("Demo catalog. Opened Live answer. Never a cheater overlay. Never Act.");
+  else showFiled("Demo catalog. Opened Today. Never Act.");
+  if (isWorkspacePage()) {
+    openDemoArtifact(id);
+    return;
+  }
+  if (desk === "meeting" && document.getElementById("stage") && !demoInboxSaved()) {
+    stayOnTeachMap();
+    return;
+  }
+  if (revealHomeWindow(id)) return;
+}
+
+function talkAboutNow() {
+  const text = String((document.getElementById("live-cue-text") || {}).textContent || "").trim();
+  if (/^type in\b/i.test(text)) return "what should I type?";
+  return "what should I say?";
+}
+
 function postAsk(ask) {
+  stopHostShowMe();
+  if (isDemoCatalog()) {
+    demoAsk(ask);
+    return;
+  }
   const payload = { ask: ask, act: false };
   if (lastOpenId) payload.id = lastOpenId;
   fetch("/api/ask", {
@@ -958,7 +1175,7 @@ function paintMeetingCard(root, m) {
   const avoid = String(m.avoid || "").trim();
   if (avoid) {
     const no = el("p", "meeting-card-avoid");
-    no.textContent = "Don't say: " + avoid;
+    no.textContent = "Don't say: " + avoid + (/never a cheater overlay/i.test(avoid) ? "" : " Never a cheater overlay.");
     card.appendChild(no);
   }
   if (heard) {
@@ -1002,6 +1219,7 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
     show("policy", refuse || "refused: coworker room must not grow a runtime");
     return false;
   }
+  if (paintDemoIfPublic(m)) return false;
   show("policy", (m && m.reason) || "live coworker; Act stays on the laptop");
   const cue = cueId ? document.getElementById(cueId) : null;
   const text = String((m && m.cue) || "").trim();
@@ -1036,8 +1254,9 @@ function applyLiveRoom(page, pageId, cueId, askedId, refuse, m) {
   const restEl = document.getElementById(pageId.replace("-brief", "-rest-web"));
   const rest = String((m && m.rest) || "").trim();
   if (restEl) {
-    restEl.hidden = !rest;
-    restEl.textContent = rest ? "Then: " + rest : "";
+    const line = rest ? "Then: " + rest : String((m && (m.action || m.cue)) || "").trim() ? "Last step" : "";
+    restEl.hidden = !line;
+    restEl.textContent = line;
   }
   setTeachButtons(m);
   paintDeskChips(pageId.replace("-brief", "-chips"), (m && m.chips) || []);
@@ -1091,6 +1310,10 @@ function paintMeetingChips(chips) {
 }
 
 function postMeeting(ask) {
+  if (isDemoCatalog()) {
+    postAsk(ask);
+    return;
+  }
   fetch("/api/meeting", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -1122,6 +1345,14 @@ function postMeeting(ask) {
 }
 
 function postTeach(ask, apply) {
+  if (!hostShowMeTick) stopHostShowMe();
+  if (isDemoCatalog()) {
+    demoAdvanceTeach(ask);
+    const m = demoTeachRoom();
+    if (typeof apply === "function") apply(m);
+    applyDemoCatalog();
+    return;
+  }
   fetch("/api/teach", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -1160,6 +1391,59 @@ function wireTeachAdvance(apply) {
 }
 
 let lastChromeCue = "";
+let hostShowMeOn = false;
+let hostShowMeTimer = 0;
+let hostShowMeTick = false;
+let hostShowMeLeft = 0;
+let lastTeachFlyKey = "";
+let lastTeachFlyAt = null;
+let lastTeachFlyD = "";
+
+function stopHostShowMe() {
+  hostShowMeOn = false;
+  if (hostShowMeTimer) {
+    clearTimeout(hostShowMeTimer);
+    hostShowMeTimer = 0;
+  }
+  const btn = document.getElementById("live-cue-show");
+  if (btn) btn.textContent = "Show me";
+}
+
+function hostShowMeStep() {
+  if (!hostShowMeOn || hostShowMeLeft <= 0) {
+    stopHostShowMe();
+    return;
+  }
+  const next = document.getElementById("live-cue-next");
+  if (next && next.hidden) {
+    stopHostShowMe();
+    return;
+  }
+  hostShowMeLeft -= 1;
+  hostShowMeTick = true;
+  postTeach("got it, next");
+  hostShowMeTick = false;
+  const still = document.getElementById("live-cue-next");
+  if ((still && still.hidden) || hostShowMeLeft <= 0) {
+    stopHostShowMe();
+    return;
+  }
+  hostShowMeTimer = setTimeout(hostShowMeStep, 1700);
+}
+
+function toggleHostShowMe() {
+  if (hostShowMeOn) {
+    stopHostShowMe();
+    return;
+  }
+  const next = document.getElementById("live-cue-next");
+  if (next && next.hidden) return;
+  hostShowMeOn = true;
+  hostShowMeLeft = 8;
+  const btn = document.getElementById("live-cue-show");
+  if (btn) btn.textContent = "Stop";
+  hostShowMeTimer = setTimeout(hostShowMeStep, 1700);
+}
 
 function chromeBtn(id, label) {
   const b = el("button");
@@ -1182,6 +1466,27 @@ function lastTalkLine(turns, speaker) {
   return "";
 }
 
+function meetingCopyText(m) {
+  const asked = String((m && m.asked) || "").trim();
+  const cue = String((m && m.cue) || "").trim();
+  const also = String((m && m.also) || "").trim();
+  const avoid = String((m && m.avoid) || "").trim();
+  const heard = String((m && m.heard) || "").trim();
+  const you = lastTalkLine(m && m.turns, "you");
+  const lines = ["Live answer"];
+  if (asked) lines.push("They asked: " + asked);
+  if (you) lines.push("You: " + you);
+  if (cue) lines.push("Say this: " + cue);
+  if (also) lines.push("Also: " + also);
+  if (heard) lines.push("Heard: " + heard);
+  if (avoid) {
+    lines.push("Don't say: " + avoid + (/never a cheater overlay/i.test(avoid) ? "" : " Never a cheater overlay."));
+  } else {
+    lines.push("Never a cheater overlay.");
+  }
+  return lines.filter(Boolean).join("\n");
+}
+
 function ensureLiveCueBar() {
   let bar = document.getElementById("live-cue-bar");
   if (bar) return bar;
@@ -1199,9 +1504,11 @@ function ensureLiveCueBar() {
   const actions = el("div", "live-cue-actions");
   const back = chromeBtn("live-cue-back", "Back");
   const next = chromeBtn("live-cue-next", "Got it");
+  const show = chromeBtn("live-cue-show", "Show me");
   const copy = chromeBtn("live-cue-copy", "Copy");
   actions.appendChild(back);
   actions.appendChild(next);
+  actions.appendChild(show);
   actions.appendChild(copy);
   bar.appendChild(asked);
   bar.appendChild(heard);
@@ -1231,6 +1538,9 @@ function ensureLiveCueBar() {
   openChip.id = "host-open";
   openChip.hidden = true;
   bar.appendChild(openChip);
+  const chips = el("p", "desk-chips");
+  chips.id = "host-ask-chips";
+  bar.appendChild(chips);
   const form = el("form", "live-cue-ask");
   form.id = "host-ask-form";
   const input = document.createElement("input");
@@ -1243,7 +1553,13 @@ function ensureLiveCueBar() {
   go.id = "host-ask-go";
   go.type = "submit";
   go.textContent = "Ask";
+  const talk = el("button");
+  talk.id = "host-ask-talk";
+  talk.type = "button";
+  talk.title = "Ask about this BOX (never Act)";
+  talk.textContent = "Talk";
   form.appendChild(input);
+  form.appendChild(talk);
   form.appendChild(go);
   const filed = el("p", "muted");
   filed.id = "host-filed";
@@ -1255,12 +1571,17 @@ function ensureLiveCueBar() {
   else document.body.insertBefore(bar, document.body.firstChild);
   back.addEventListener("click", function () { postTeach("back"); });
   next.addEventListener("click", function () { postTeach("got it, next"); });
+  show.addEventListener("click", function () { toggleHostShowMe(); });
   copy.addEventListener("click", function () { copyPlain(lastChromeCue); });
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
     const q = String(input.value || "").trim();
     if (!q) return;
     postAsk(q);
+  });
+  talk.addEventListener("click", function () {
+    stopHostShowMe();
+    postAsk(talkAboutNow());
   });
   return bar;
 }
@@ -1288,10 +1609,11 @@ function paintChrome(home) {
   const onMeeting = Boolean(document.getElementById("meeting-brief"));
   const onHome = Boolean(document.getElementById("stage"));
   const showMeeting = !onTeach && (onMeeting || onHome);
+  const walkCue = onTeach || (onHome && Boolean(document.querySelector(".teach-map")));
   let cueLine = "";
-  if (onTeach && teachAction) cueLine = teachAction;
+  if (walkCue && teachAction) cueLine = teachAction;
   else if (showMeeting && asked && meetingCue) cueLine = "Say this: " + meetingCue;
-  else if (onTeach) cueLine = teachAction || String(teachCue).replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
+  else if (walkCue) cueLine = teachAction || String(teachCue).replace(/^\d+\s+of\s+\d+\s+/i, "").trim();
   else if (showMeeting && meetingCue) cueLine = "Say this: " + meetingCue;
   else if (plate) cueLine = "Plate: " + plate;
   else if (meetingCue) cueLine = "Say this: " + meetingCue;
@@ -1304,8 +1626,9 @@ function paintChrome(home) {
   }
   if (heardEl) {
     if (onTeach) {
-      heardEl.hidden = !teachRest;
-      heardEl.textContent = teachRest ? "Then: " + teachRest : "";
+      const thenLine = teachRest ? "Then: " + teachRest : cueLine ? "Last step" : "";
+      heardEl.hidden = !thenLine;
+      heardEl.textContent = thenLine;
     } else {
       heardEl.hidden = !heard;
       heardEl.textContent = heard ? "Heard: " + heard : "";
@@ -1351,15 +1674,34 @@ function paintChrome(home) {
     cap.hidden = !cap.childNodes.length;
   }
   if (textEl) textEl.textContent = cueLine;
-  lastChromeCue = onTeach ? teachAction || teachCue : meetingCue || plate;
+  lastChromeCue = walkCue
+    ? teachAction || teachCue
+    : showMeeting
+      ? meetingCopyText(meeting)
+      : meetingCue || plate;
+  if (walkCue) speakTeachCue(teachRest ? teachAction || teachCue : teachAction || teachCue ? (teachAction || teachCue) + ". Last step" : "");
   bar.hidden = false;
   const canWalk = onTeach && Boolean(teach.advance);
+  const demoWalkOn = isDemoCatalog() && (onHome || isWorkspacePage());
+  const canBack = Boolean(canWalk || (demoWalkOn && (demoTeachStep > 0 || demoInboxSaved())));
+  const canNext = Boolean(canWalk || (demoWalkOn && !demoInboxSaved()));
   const back = document.getElementById("live-cue-back");
   const next = document.getElementById("live-cue-next");
+  const show = document.getElementById("live-cue-show");
   const copy = document.getElementById("live-cue-copy");
-  if (back) back.hidden = !canWalk;
-  if (next) next.hidden = !canWalk;
+  if (back) back.hidden = !canBack;
+  if (next) next.hidden = !canNext;
+  if (show) show.hidden = !canNext;
+  if (!canNext) stopHostShowMe();
   if (copy) copy.hidden = !lastChromeCue;
+  paintDeskChips(
+    "host-ask-chips",
+    home && Array.isArray(home.chips) && home.chips.length
+      ? home.chips
+      : isDemoCatalog()
+        ? demoAskChips()
+        : []
+  );
   paintWorkingSet();
 }
 
@@ -1384,6 +1726,24 @@ function hitTeachBox(box, xPct, yPct) {
 }
 
 function postTeachFrame(box, apply) {
+  if (isDemoCatalog()) {
+    const ok = demoFrameTeach(box);
+    const filed = document.getElementById("host-filed");
+    if (filed) {
+      filed.hidden = false;
+      filed.textContent = ok
+        ? "Demo catalog. Drew a BOX. Never Act."
+        : demoTeachWalk().length >= 8
+          ? "Demo catalog. Walk is full - 8 boxes. Never Act."
+          : "Demo catalog. Draw a larger BOX (0.4%). Never Act.";
+    }
+    if (ok) {
+      const m = demoTeachRoom();
+      if (typeof apply === "function") apply(m);
+      applyDemoCatalog();
+    }
+    return;
+  }
   fetch("/api/teach", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -1468,6 +1828,7 @@ function wireTeachFrame(map, apply, current) {
   }
   map.addEventListener("pointerdown", function (ev) {
     if (ev.button != null && ev.button !== 0) return;
+    if (ev.target && ev.target.closest && ev.target.closest("[data-rail]")) return;
     const p = pctFromEvent(ev);
     drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y, stroke: [p] };
     if (!ghost) {
@@ -1513,6 +1874,22 @@ function wireTeachFrame(map, apply, current) {
   });
 }
 
+function wireTeachTap(map, apply, current) {
+  if (!map || map.dataset.tapped === "1") return;
+  map.dataset.tapped = "1";
+  map.addEventListener("click", function (ev) {
+    if (ev.target && ev.target.closest && ev.target.closest("[data-rail]")) return;
+    const r = map.getBoundingClientRect();
+    const w = r.width || 1;
+    const h = r.height || 1;
+    const x = ((ev.clientX - r.left) / w) * 100;
+    const y = ((ev.clientY - r.top) / h) * 100;
+    if (!hitTeachBox(current, x, y)) return;
+    postTeach("i clicked", apply);
+    ev.preventDefault();
+  });
+}
+
 function teachActionLine(m) {
   const action = String((m && m.action) || "").trim();
   if (action) return action;
@@ -1536,6 +1913,60 @@ function teachControlCaption(p) {
     .replace(/\s+then\s+tab$/i, "")
     .trim()
     .slice(0, 24) || "control";
+}
+
+function teachBoxCenter(p) {
+  if (!p) return null;
+  if (Number(p.wPct) > 0 && Number(p.hPct) > 0) {
+    return {
+      x: Number(p.leftPct) + Number(p.wPct) / 2,
+      y: Number(p.topPct) + Number(p.hPct) / 2,
+    };
+  }
+  const x = Number(p.xPct);
+  const y = Number(p.yPct);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return { x: x, y: y };
+}
+
+function appendTeachFly(map, d, held) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "teach-map-fly");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", d);
+  if (held) path.setAttribute("class", "held");
+  svg.appendChild(path);
+  map.appendChild(svg);
+}
+
+function paintTeachFly(map, boxes) {
+  if (!map) return;
+  const now = (boxes || []).find(function (p) {
+    return p && p.now;
+  });
+  const to = teachBoxCenter(now);
+  const key = to ? [to.x.toFixed(2), to.y.toFixed(2)].join(",") : "";
+  if (!to) {
+    lastTeachFlyKey = "";
+    lastTeachFlyD = "";
+    return;
+  }
+  if (!lastTeachFlyAt || key === lastTeachFlyKey) {
+    lastTeachFlyKey = key;
+    lastTeachFlyAt = to;
+    if (lastTeachFlyD) appendTeachFly(map, lastTeachFlyD, true);
+    return;
+  }
+  const from = lastTeachFlyAt;
+  lastTeachFlyKey = key;
+  lastTeachFlyAt = to;
+  if (from.x === to.x && from.y === to.y) return;
+  const mx = (from.x + to.x) / 2;
+  const my = Math.max(2, Math.min(from.y, to.y) - 10);
+  lastTeachFlyD = "M " + from.x + " " + from.y + " Q " + mx + " " + my + " " + to.x + " " + to.y;
+  appendTeachFly(map, lastTeachFlyD, false);
 }
 
 function paintTeachInk(map, boxes) {
@@ -1564,9 +1995,31 @@ function paintTeachInk(map, boxes) {
   map.appendChild(svg);
 }
 
+function onTeachRailStep(i, path, apply) {
+  const want = Number(i);
+  if (!Number.isInteger(want) || want < 0) return;
+  let now = 0;
+  (path || []).forEach(function (p, idx) {
+    if (p && p.now) now = idx;
+    else if (p && !p.later && !p.done) now = idx;
+  });
+  if (want === now && !(isDemoCatalog() && demoInboxSaved())) return;
+  if (isDemoCatalog()) {
+    const last = demoTeachWalk().length - 1;
+    if (want === demoTeachStep && !demoInboxSaved()) return;
+    demoTeachStep = Math.max(0, Math.min(want, last));
+    const m = demoTeachRoom();
+    if (typeof apply === "function") apply(m);
+    applyDemoCatalog();
+    return;
+  }
+  postTeach(want < now ? "back" : "got it, next", apply);
+}
+
 function paintTeachMap(root, m, opts) {
   if (!root || (m && m.desk && m.desk !== "teach") || (m && m.localFirst)) return;
   const draw = Boolean(opts && opts.draw) && !(m && m.localFirst) && !(m && m.exec);
+  const tap = !draw && Boolean(opts && opts.tap) && !(m && m.localFirst) && !(m && m.exec);
   const path = Array.isArray(m && m.path) && m.path.length ? m.path : [];
   const markers = Array.isArray(m && m.markers) ? m.markers : [];
   const boxes = path.length
@@ -1576,7 +2029,7 @@ function paintTeachMap(root, m, opts) {
     ? path.filter((p) => p.now && Number.isFinite(Number(p.xPct)) && Number.isFinite(Number(p.yPct)))
     : markers.filter((p) => Number.isFinite(Number(p.xPct)) && Number.isFinite(Number(p.yPct)));
   if (!boxes.length && !dots.length && !draw) return;
-  const map = el("div", draw ? "teach-map draw" : "teach-map");
+  const map = el("div", draw ? "teach-map draw" : tap ? "teach-map tap" : "teach-map");
   map.setAttribute("role", draw ? "application" : "img");
   const action = teachActionLine(m);
   const rest = String((m && m.rest) || "").trim();
@@ -1590,6 +2043,10 @@ function paintTeachMap(root, m, opts) {
       ? "Click the current BOX to Got it. Draw another BOX to add a step."
       : "Draw around a control. Pointer stores a BOX and will not click.";
     map.appendChild(hint);
+  } else if (tap) {
+    const hint = el("p", "teach-map-hint");
+    hint.textContent = "Click the current BOX to Got it. Never Act.";
+    map.appendChild(hint);
   }
   if (action) {
     const next = el("p", "teach-map-cue");
@@ -1600,16 +2057,26 @@ function paintTeachMap(root, m, opts) {
     const then = el("p", "teach-map-then");
     then.textContent = "Then: " + rest;
     map.appendChild(then);
+  } else if (action && !/^saved on this computer/i.test(action)) {
+    const then = el("p", "teach-map-then");
+    then.textContent = "Last step";
+    map.appendChild(then);
   }
   boxes.forEach((p) => {
     const face = teachControlFace(p);
+    if (p.done && face === "field") return;
     const control = el("div", "teach-map-control " + face);
     control.style.left = Number(p.leftPct) + "%";
     control.style.top = Number(p.topPct) + "%";
     control.style.width = Number(p.wPct) + "%";
     control.style.height = Number(p.hPct) + "%";
     const faceLab = el("span", "teach-map-face");
-    faceLab.textContent = teachControlCaption(p);
+    faceLab.textContent =
+      p.done && face === "button" && /save/i.test(String((p.caption || p.label || p.cue) || ""))
+        ? "Saved"
+        : p.now && p.fill
+        ? String(p.fill).slice(0, 24)
+        : teachControlCaption(p);
     control.appendChild(faceLab);
     map.appendChild(control);
     const cls = p.now ? "teach-map-box now" : p.later ? "teach-map-box then" : path.length ? "teach-map-box done" : "teach-map-box now";
@@ -1619,8 +2086,10 @@ function paintTeachMap(root, m, opts) {
     box.style.width = Number(p.wPct) + "%";
     box.style.height = Number(p.hPct) + "%";
     const lab = el("span");
-    lab.textContent = String((p.now && p.cue) || p.label || "").slice(0, 40);
-    box.appendChild(lab);
+    if (!p.done) {
+      lab.textContent = String((p.now && p.cue) || p.label || "").slice(0, 40);
+      box.appendChild(lab);
+    }
     if (p.now && p.key) {
       const k = el("kbd", "teach-map-key");
       k.textContent = String(p.key).slice(0, 12);
@@ -1629,6 +2098,7 @@ function paintTeachMap(root, m, opts) {
     map.appendChild(box);
   });
   paintTeachInk(map, boxes);
+  paintTeachFly(map, boxes);
   dots.forEach((p) => {
     const mark = el("div", "teach-map-mark");
     mark.style.left = Number(p.xPct) + "%";
@@ -1637,14 +2107,26 @@ function paintTeachMap(root, m, opts) {
   });
   if (path.length) {
     const rail = el("ol", "teach-map-rail");
-    path.forEach((p) => {
-      const li = el("li", p.now ? "now" : p.later ? "then" : "done");
-      li.textContent = String(p.cue || p.label || "").slice(0, 80);
-      rail.appendChild(li);
+    path.forEach((p, i) => {
+      const tick = el("button", p.now ? "now" : p.later ? "then" : "done");
+      tick.type = "button";
+      tick.setAttribute("data-rail", "1");
+      tick.setAttribute("data-step", String(i));
+      tick.textContent = teachControlCaption(p);
+      tick.addEventListener("pointerdown", function (ev) {
+        ev.stopPropagation();
+      });
+      tick.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        onTeachRailStep(i, path, opts && opts.apply);
+      });
+      rail.appendChild(tick);
     });
     map.appendChild(rail);
   }
   if (draw) wireTeachFrame(map, opts.apply, boxes.find(function (p) { return p.now; }) || null);
+  else if (tap) wireTeachTap(map, opts.apply, boxes.find(function (p) { return p.now; }) || null);
   root.appendChild(map);
 }
 
@@ -1782,10 +2264,22 @@ function paintSecurityCard(root, m, href) {
 function paintWorkRail(root, rooms) {
   if (!root) return;
   const rail = el("div", "work-rail");
-  paintInboxCard(rail, (rooms && rooms.inbox) || {}, "/workspace?id=live-inbox");
-  paintDocumentCard(rail, (rooms && rooms.document) || {}, "/workspace?id=live-document");
-  paintSecurityCard(rail, (rooms && rooms.security) || {}, "/workspace?id=live-security");
+  paintInboxCard(rail, (rooms && rooms.inbox) || {}, demoHref("/workspace?id=live-inbox"));
+  paintDocumentCard(rail, (rooms && rooms.document) || {}, demoHref("/workspace?id=live-document"));
+  paintSecurityCard(rail, (rooms && rooms.security) || {}, demoHref("/workspace?id=live-security"));
   if (rail.childNodes.length) root.appendChild(rail);
+}
+
+function applyHomeTeach(m) {
+  const root = document.getElementById("stage");
+  if (!root || !m) return;
+  const map = root.querySelector(".teach-map");
+  const holder = document.createElement("div");
+  paintTeachMap(holder, m, { draw: true, apply: applyHomeTeach });
+  const nextMap = holder.querySelector(".teach-map");
+  if (!nextMap) return;
+  if (map) map.replaceWith(nextMap);
+  else root.insertBefore(nextMap, root.firstChild);
 }
 
 function paintStage(rooms, localFirst) {
@@ -1796,7 +2290,9 @@ function paintStage(rooms, localFirst) {
     root.hidden = true;
     return;
   }
-  paintTeachMap(root, (rooms && rooms.teach) || {});
+  if (!(isDemoCatalog() && demoInboxSaved())) {
+    paintTeachMap(root, (rooms && rooms.teach) || {}, { draw: true, apply: applyHomeTeach });
+  }
   paintMeetingCard(root, (rooms && rooms.meeting) || {});
   paintTodayPlate(root, (rooms && rooms.today) || {});
   paintWorkRail(root, rooms);
@@ -1818,7 +2314,7 @@ function paintRooms(rooms, localFirst) {
   ["teach", "meeting", "today", "document", "inbox", "security"].forEach(function (id) {
     const r = (rooms && rooms[id]) || {};
     const a = el("a", "room-dock-tile");
-    a.href = "/" + id;
+    a.href = demoHref("/" + id);
     const kicker = el("span", "room-dock-kicker");
     kicker.textContent = labels[id] || id;
     a.appendChild(kicker);
@@ -1875,7 +2371,7 @@ function paintSession(session, localFirst) {
     if (filesEl) {
       filesEl.replaceChildren();
       const note = el("p", "muted");
-      note.textContent = "Live session stays on the laptop. Open 127.0.0.1:18010 while Pointer is running.";
+      note.textContent = "Live session stays on the laptop. Open 127.0.0.1:18010 while Pointer is running, or /workspace?demo=1 for a sample coworker.";
       filesEl.appendChild(note);
     }
     paintOpenFileTabs([]);
@@ -2098,6 +2594,7 @@ if (roomsPage) {
           show("policy", "refused: home must not grow a runtime");
           return false;
         }
+        if (paintDemoIfPublic(h)) return false;
         show("policy", (h && h.reason) || "live coworker rooms; Act stays on the laptop");
         paintRooms((h && h.rooms) || {}, Boolean(h && h.localFirst));
         paintStage((h && h.rooms) || {}, Boolean(h && h.localFirst));
@@ -2118,6 +2615,7 @@ if (lanesPage) {
           show("policy", "refused: lanes must not grow a runtime");
           return false;
         }
+        if (paintDemoIfPublic(s)) return false;
         show(
           "policy",
           s && s.localFirst
@@ -2136,6 +2634,11 @@ if (skillsPage) {
     return fetch("/api/state")
       .then((r) => r.json())
       .then((s) => {
+        if (s && s.exec) {
+          show("policy", "refused: skills must not grow a runtime");
+          return false;
+        }
+        if (paintDemoIfPublic(s)) return false;
         show(
           "policy",
           s && s.localFirst
@@ -2165,8 +2668,364 @@ if (!document.getElementById("rooms")) {
       .then((r) => r.json())
       .then(function (h) {
         if (h && h.exec) return false;
+        if (paintDemoIfPublic(h)) return false;
         paintChrome(h);
         return !(h && h.localFirst);
       });
   });
 }
+
+let demoTeachStep = 0;
+let demoDrawn = [];
+
+function demoClipBox(left, top, w, h) {
+  if (!Number.isFinite(left) || !Number.isFinite(top) || !(w > 0) || !(h > 0)) return null;
+  if (left < 0 || top < 0 || left >= 100 || top >= 100) return null;
+  const right = Math.min(100, left + w);
+  const bottom = Math.min(100, top + h);
+  const ww = right - Math.max(0, left);
+  const hh = bottom - Math.max(0, top);
+  if (ww < 0.4 || hh < 0.4) return null;
+  return { leftPct: Math.max(0, left), topPct: Math.max(0, top), wPct: ww, hPct: hh };
+}
+
+function demoParseFrame(spec) {
+  if (!spec || typeof spec !== "object") return null;
+  const stroke = Array.isArray(spec.stroke) ? spec.stroke : [];
+  if (stroke.length >= 2) {
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    stroke.forEach(function (p) {
+      const x = Number(p && p.x);
+      const y = Number(p && p.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      x0 = Math.min(x0, x);
+      y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x);
+      y1 = Math.max(y1, y);
+    });
+    return demoClipBox(x0, y0, x1 - x0, y1 - y0);
+  }
+  const x0 = Number(spec.x0);
+  const y0 = Number(spec.y0);
+  const x1 = Number(spec.x1);
+  const y1 = Number(spec.y1);
+  if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return null;
+  return demoClipBox(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
+}
+
+function demoFrameTeach(spec) {
+  if (demoTeachWalk().length >= 8) return false;
+  const box = demoParseFrame(spec);
+  if (!box) return false;
+  const wasSaved = demoInboxSaved();
+  const n = demoTeachWalk().length + 1;
+  const ink = Array.isArray(spec && spec.stroke)
+    ? spec.stroke.filter(function (p) {
+        return Number.isFinite(Number(p && p.x)) && Number.isFinite(Number(p && p.y));
+      }).slice(0, 80).map(function (p) {
+        return { x: Number(p.x), y: Number(p.y) };
+      })
+    : [];
+  demoDrawn.push({
+    leftPct: box.leftPct,
+    topPct: box.topPct,
+    wPct: box.wPct,
+    hPct: box.hPct,
+    label: n + " region",
+    cue: "Look at region " + n,
+    face: "region",
+    caption: "region " + n,
+    stroke: ink.length >= 2 ? ink : undefined,
+  });
+  if (wasSaved) demoTeachStep = demoTeachWalk().length - 1;
+  return true;
+}
+
+function demoTeachWalk() {
+  return [
+    {
+      leftPct: 18,
+      topPct: 28,
+      wPct: 48,
+      hPct: 14,
+      label: "1 Email",
+      cue: "Type in Email",
+      face: "field",
+      caption: "Email",
+      fill: "Sarah Chen",
+      stroke: [
+        { x: 18, y: 28 },
+        { x: 66, y: 28 },
+        { x: 66, y: 42 },
+        { x: 18, y: 42 },
+        { x: 18, y: 28 },
+      ],
+    },
+    {
+      leftPct: 52,
+      topPct: 52,
+      wPct: 22,
+      hPct: 12,
+      label: "2 Save",
+      cue: "Click Save",
+      face: "button",
+      caption: "Save",
+    },
+  ].concat(demoDrawn);
+}
+
+function demoAdvanceTeach(ask) {
+  const q = String(ask || "").toLowerCase();
+  const last = demoTeachWalk().length - 1;
+  if (/\bback\b/.test(q)) {
+    if (demoTeachStep >= demoTeachWalk().length) demoTeachStep = last;
+    else demoTeachStep = Math.max(0, demoTeachStep - 1);
+  } else demoTeachStep = Math.min(demoTeachWalk().length, demoTeachStep + 1);
+}
+
+function demoInboxSaved() {
+  return demoTeachStep >= demoTeachWalk().length;
+}
+
+function demoTeachRoom() {
+  const walk = demoTeachWalk();
+  const saved = demoInboxSaved();
+  const last = walk.length - 1;
+  const step = saved ? last : Math.max(0, Math.min(demoTeachStep, last));
+  const path = walk.map(function (p, i) {
+    return Object.assign({}, p, {
+      now: !saved && i === step,
+      later: !saved && i > step,
+      done: saved || i < step,
+      caption: saved && /save/i.test(String((p.caption || p.label || "") || "")) ? "Saved" : p.caption,
+    });
+  });
+  return {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    desk: "teach",
+    advance: true,
+    title: "Teach walk",
+    action: saved ? "Saved on This computer" : walk[step].cue,
+    cue: saved ? "Saved on This computer" : walk[step].cue,
+    rest: saved ? "" : walk[step + 1] ? walk[step + 1].cue : "",
+    path: path,
+    deliverable: "Demo walk. Type in Email, then Click Save. Never Act.",
+    reason: "Demo catalog. Not your live session. Never Act.",
+  };
+}
+
+function demoHome() {
+  const teach = demoTeachRoom();
+  const meeting = {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    desk: "meeting",
+    title: "Live answer",
+    asked: "Can we ship Friday?",
+    cue: "Friday works if the deck is in tonight.",
+    heard: "Sarah Chen / Friday / $40k",
+    also: "Name the Friday hold.",
+    avoid: "Don't promise a send.",
+    turns: [
+      { speaker: "them", text: "Can we ship Friday?" },
+      { speaker: "you", text: "Friday works if the deck is in tonight." },
+    ],
+    captions: [{ text: "Can we ship Friday?" }],
+    deliverable: "Demo meeting. Never send. Never a cheater overlay.",
+  };
+  const today = {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    desk: "today",
+    title: "Today",
+    cue: "Send the deck Friday",
+    plate: ["Send the deck Friday", "Word notes waiting"],
+    deliverable: "## On your plate\n- Send the deck Friday\n- Word notes waiting",
+  };
+  const document = {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    desk: "document",
+    title: "Notes from Friday",
+    cue: "draft only - not a .docx",
+    preview: "Recap\nFriday works if the deck is in tonight.\n\nCommitments\nSend the deck Friday.",
+    deliverable: "## Draft to write\nRecap\nFriday works if the deck is in tonight.\n\nCommitments\nSend the deck Friday.",
+  };
+  const inbox = {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    desk: "inbox",
+    title: "Draft follow-up (not sent)",
+    cue: demoInboxSaved() ? "saved on This computer" : "not sent",
+    preview: "To: " + (demoTeachStep > 0 ? "Sarah Chen" : "not sent") + "\nSubject: Friday deck\n\nFriday works if the deck is in tonight.",
+    deliverable: "## Draft\nTo: " + (demoTeachStep > 0 ? "Sarah Chen" : "not sent") + "\nSubject: Friday deck\n\nFriday works if the deck is in tonight.",
+  };
+  const security = {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    desk: "security",
+    title: "Needs you",
+    cue: "not approval",
+    findings: [{ file: "notes", kind: "secret", excerpt: "[redacted]" }],
+    deliverable: "## Findings (redacted)\n- notes secret ([redacted])\n\nNeeds you. Never approval.",
+  };
+  const files = [
+    { id: "live-teach", desk: "teach", title: "Teach walk", cue: teach.cue, href: "/workspace?id=live-teach" },
+    { id: "live-meeting", desk: "meeting", title: "Live answer", cue: meeting.cue, href: "/workspace?id=live-meeting" },
+    { id: "live-document", desk: "document", title: "Notes from Friday", cue: document.cue, href: "/workspace?id=live-document" },
+    { id: "live-inbox", desk: "inbox", title: "Unsent mail", cue: inbox.cue, href: "/workspace?id=live-inbox" },
+    { id: "live-security", desk: "security", title: "Needs you", cue: security.cue, href: "/workspace?id=live-security" },
+  ];
+  return {
+    ok: true,
+    act: false,
+    exec: false,
+    demo: true,
+    localFirst: false,
+    reason: "Demo catalog. Not your live session. Run is refused (P-06).",
+    rooms: { teach: teach, meeting: meeting, today: today, document: document, inbox: inbox, security: security },
+    session: {
+      asked: meeting.asked,
+      heard: meeting.heard,
+      cue: meeting.cue,
+      plate: today.cue,
+      files: files,
+      markdown: "Demo session. Never Act. Never send.",
+      empty: false,
+    },
+    desks: [
+      { id: "teach", label: "Teach", job: "Walk this screen", deliverable: "measured BOX", act: "never" },
+      { id: "meeting", label: "Meeting", job: "Live answer", deliverable: "say-this", act: "never" },
+      { id: "today", label: "Today", job: "Standing plate", deliverable: "commitments", act: "never" },
+      { id: "document", label: "Notes", job: "Word draft", deliverable: "generated .docx", act: "never" },
+      { id: "inbox", label: "Unsent mail", job: "Follow-up", deliverable: "unsent .eml", act: "never", parked: true },
+      { id: "security", label: "Needs you", job: "Review", deliverable: "redacted review", act: "never" },
+    ],
+    artifacts: files.map(function (row) {
+      return { id: row.id, desk: row.desk, title: row.title };
+    }),
+    chips: demoAskChips(),
+  };
+}
+
+function demoArtifact(id) {
+  const home = demoHome();
+  const rooms = home.rooms || {};
+  const key = String(id || "").toLowerCase();
+  const map = {
+    "live-teach": rooms.teach,
+    "live-meeting": rooms.meeting,
+    "live-document": rooms.document,
+    "live-inbox": rooms.inbox,
+    "live-security": rooms.security,
+    "standing-today": rooms.today,
+  };
+  const m = map[key];
+  if (!m) return null;
+  return {
+    ok: true,
+    exec: false,
+    act: false,
+    demo: true,
+    localFirst: false,
+    artifact: {
+      id: key,
+      desk: m.desk,
+      title: m.title,
+      cue: m.cue,
+      preview: m.preview,
+      findings: m.findings,
+      body: m.deliverable,
+    },
+    chips: [],
+  };
+}
+
+function openDemoArtifact(id) {
+  const root = document.getElementById("artifact-body");
+  if (!root || !id) return;
+  const body = demoArtifact(id);
+  if (!body) {
+    paintOpenPre(root, "Demo catalog has no file " + id);
+    setFinishedDownloads(null, { localFirst: true });
+    return;
+  }
+  const text = String(body.artifact.body || "");
+  root.replaceChildren();
+  paintOpenFileBody(root, body, text);
+  setWorkingSet(String(body.artifact.id || id), String(body.artifact.title || id));
+  lastArtifactText = text;
+  lastArtifactFile = briefFileName(body.artifact.desk || id);
+  lastOpenId = String(body.artifact.id || id);
+  paintDeskChips("artifact-chips", []);
+  const copyBtn = document.getElementById("artifact-copy");
+  const dlBtn = document.getElementById("artifact-download");
+  if (copyBtn) copyBtn.hidden = !text;
+  if (dlBtn) dlBtn.hidden = true;
+  setFinishedDownloads(null, { localFirst: true, exec: false });
+}
+
+function applyDemoCatalog() {
+  if (paintingDemo) return;
+  paintingDemo = true;
+  demoCatalogOn = true;
+  try {
+    const home = demoHome();
+    show("policy", home.reason);
+    show("hint", home.reason);
+    paintComputerDock({ localFirst: false, reason: home.reason });
+    paintDesks(home.desks);
+    artifactCache = home.artifacts || [];
+    paintArtifacts(home.artifacts || []);
+    paintRooms(home.rooms, false);
+    paintStage(home.rooms, false);
+    paintSession(home.session, false);
+    paintChrome(home);
+    if (pageDesk() === "today") applyToday(home.rooms.today);
+    const pages = [
+      ["teach-brief", "teach-cue-web", "refused: teach must not grow a runtime", null, home.rooms.teach],
+      ["meeting-brief", "meeting-cue-web", "refused: meeting must not grow a runtime", "meeting-asked-web", home.rooms.meeting],
+      ["document-brief", "document-cue-web", "refused: document must not grow a runtime", null, home.rooms.document],
+      ["inbox-brief", "inbox-cue-web", "refused: inbox must not grow a runtime", null, home.rooms.inbox],
+      ["security-brief", "security-cue-web", "refused: security must not grow a runtime", null, home.rooms.security],
+    ];
+    pages.forEach(function (row) {
+      const page = document.getElementById(row[0]);
+      if (!page) return;
+      applyLiveRoom(page, row[0], row[1], row[3], row[2], row[4]);
+    });
+    if (!openedQueryId) {
+      openedQueryId = true;
+      const qid = workspaceQueryId();
+      if (qid) openDemoArtifact(qid);
+    }
+    demoHighlightWalk();
+  } finally {
+    paintingDemo = false;
+  }
+}
+
+if (isDemoPage()) applyDemoCatalog();
+

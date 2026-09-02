@@ -1,0 +1,42 @@
+appId: ai.netie.pointer
+productName: Pointer
+copyright: Netie
+asar: true
+directories:
+  output: dist
+files:
+  - electron/**/*
+  - host/**/*
+  - package.json
+  - "!**/*.test.js"
+  - "!test/**"
+  - "!docs/**"
+extraMetadata:
+  main: electron/main.js
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: dir
+      arch:
+        - x64
+  category: Utility
+  synopsis: Pointer coworker (Ask, never Act without Cortex)
+win:
+  target:
+    - target: zip
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  signAndEditExecutable: false
+mac:
+  target:
+    - target: zip
+      arch:
+        - x64
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false

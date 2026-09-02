@@ -2,6 +2,282 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-09-02 - Merge main into honest-stack glass branch
+
+Keeps Live answer dock, liquid glass, and three-OS packs plus main's
+UACC / `computer.*` / IBM Plex / Willow dictation / LIVE captions /
+Claude 5-hour then Cursor. Act stays fail-closed off Windows. macOS
+CI containment follows APFS realpath fold (Windows still lowercases;
+Linux stays case-sensitive). No floating orb. P-05 and P-06 stay
+parked. No GPLv3 dump.
+
+## 2026-08-28 - Liquid glass HUD, overlay, and host
+
+HUD, overlay walk chrome, and host catalog share Apple Regular liquid
+glass (lensing shine, 28px blur, capsule chips). Home rooms, sticky cue
+bar, This computer dock, and file windows use those tokens over a
+desktop wash. Run still refuses. Never send. Tall chrome is a 22px
+island; chips stay pills. Live overlay body stays transparent.
+`@supports not` and reduced-transparency fall back to solid frost. No
+floating orb. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Three-OS packs (linux, win, mac)
+
+`npm run pack:linux` (AppImage), `pack:win` (zip/portable), `pack:mac`
+(zip), or `pack:all` together. SendInput Act stays Windows-only and
+fail-closed on linux/mac (no powershell spawn). HUD, overlay Draw, and
+the host still work. Original electron-builder config. Never vendors
+Clicky. P-05 and P-06 stay parked.
+
+## 2026-08-28 - HUD Draw pencils a BOX on the display
+
+HUD cue bar Draw arms a freehand pencil on the laptop display and
+stacks a BOX (0.4% fail-closed, cap 8) through `hud:frameRegion`.
+Never Act. Escape or Draw again drops the pencil. Overlay Draw
+hides after Save. Never send. Never speak meeting. P-05 and P-06
+stay parked.
+
+## 2026-08-28 - HUD and home This screen fly the BOX
+
+HUD cue bar Show me / Talk match overlay (Ask, never Act, no
+Chromium SpeechRecognition). HUD laser is a sibling of the point
+layer. Home This screen flies Email to Save the same way. Never
+send. Never speak meeting. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Talk asks about this BOX
+
+Talk in overlay/home chrome Asks about the current BOX (what should I
+type / say) and opens Live answer. No Chromium SpeechRecognition. Never
+send. Never speak meeting. Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Show me speaks the walk and flies the BOX
+
+Show me in overlay/home chrome speaks Click/Type in, flies a laser
+from the last control to the current BOX, then Got it (types Sarah
+Chen, then Save). Never a buddy orb. Never send. Never speak meeting.
+Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Ask what to type opens Live answer
+
+Ask "what should I type" (or another question) opens Live answer in
+overlay chrome and keeps Type in Email pointing. It does not silently
+Got it. Home Ask stays on This screen the same way. Never send.
+Never speak meeting. Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Overlay chrome does not cover the Email BOX
+
+Honest-stack chrome sits in two columns. Demo This computer and the
+BOX sit below that chrome so Type in Email still points. Live overlay
+keeps display percents. Never send. Never speak meeting. Never Act.
+P-05 and P-06 stay parked.
+
+## 2026-08-28 - Overlay chrome keeps the honest stack on Email
+
+Ask Live answer puts Also / Heard / Don't say in overlay chrome with
+They asked / You / Live (never spoken). Live answer stays a side tile
+until Save so Type in Email still points. HUD teach walks keep Also /
+Don't say the same way. Never send. Never Act. P-05 and P-06 stay
+parked.
+
+## 2026-08-28 - Ask Live answer keeps Email pointing
+
+Ask Live answer keeps Unsent mail as the current window and drops the
+duplicate Live answer dock, so Click/Type in still points at Email.
+Chrome keeps They asked / You / Live. Home Ask stays on This screen
+the same way until Save. HUD teach walks keep those captions and do
+not cover the BOX. Never send. Never speak meeting. Never Act. P-05
+and P-06 stay parked.
+
+## 2026-08-28 - Live overlay desk Ask paints captions locally
+
+Live Electron overlay Ask for Live answer / mail / Notes / Needs you
+paints chrome captions on the overlay itself. Teach-advance stays
+Got it / Back. Never send. Never speak meeting. Never Act. P-05 and
+P-06 stay parked.
+
+## 2026-08-28 - Overlay Live captions stay after Ask
+
+Ask Live answer keeps They asked / You / Live captions in overlay
+chrome while the Email walk continues (never spoken). Back after
+Save drops them. Never send. Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Overlay Ask stays in fixed chrome
+
+Overlay chrome Ask (never Act) opens the matching This computer
+window, same as home. Enter in Ask submits Ask; Enter outside is
+Got it. Never send. Never speak meeting. Never Act. P-05 and P-06
+stay parked.
+
+## 2026-08-28 - Overlay chrome keeps Live captions after Save
+
+After Save, overlay chrome keeps They asked / You / Live captions
+(honest, visible, never spoken). Duplicate Live answer dock drops.
+Chrome Copy still clips the stack. Never send. Never Act. P-05
+and P-06 stay parked.
+
+## 2026-08-28 - Overlay chrome Copy clips the honest stack
+
+Overlay chrome Copy clips They asked / You / Say this / Also /
+Heard / Don't say (clipboard, never send). Teach walk stays BOX
+plus voice. Never speak meeting. Never Act. P-05 and P-06 stay
+parked.
+
+## 2026-08-28 - Overlay leftover BOX yields after Save
+
+After Save, overlay leftover Email/Save BOX drops so Live answer
+leads. This computer windows stay. Back restores the walk. Never
+send. Never speak meeting. Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Back restores the walk; workspace opens Live answer
+
+Home Back after Save restores This screen. Workspace Got it on Save
+opens Live answer on This computer. Never send. Never speak meeting.
+Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Saved walk yields to Live answer
+
+After Save, home This screen drops the leftover teach walk so Live
+answer leads. Cue Copy clips They asked / You / Say this / Also /
+Heard / Don't say. Never send. Never speak meeting. Never Act.
+P-05 and P-06 stay parked.
+
+## 2026-08-28 - Home Save docks Live answer
+
+Home Got it on Save files the unsent draft, then pulses Live answer
+(same honest stack as overlay). Unsent mail starts highlighted.
+Saved Save drops Click Save. Never send. Never speak meeting.
+Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Save then docks Live answer
+
+Got it on Save files the unsent draft, then docks Live answer
+(They asked / You / Say this / Also / Heard / Don't say). Copy is
+clipboard. Never send. Never speak meeting. Never Act. P-05 and
+P-06 stay parked.
+
+## 2026-08-28 - Live answer is the honest stack
+
+Overlay Live answer on This computer is They asked / You / Say this /
+Also / Heard / Don't say. HUD cue bar docks that same stack. Copy is
+clipboard. Never a cheater overlay. Never Act. P-05 and P-06 stay
+parked.
+
+## 2026-08-28 - Got it on Save files the draft
+
+Demo overlay and home Got it on Save stores Unsent mail on This
+computer (Saved). To stays typed. Never send. Never Act. P-05 and
+P-06 stay parked.
+
+## 2026-08-28 - Got it types Unsent mail To
+
+Demo overlay and home Got it type Sarah Chen into Unsent mail To on
+This computer (starts not sent). Never send. Never Act. P-05 and P-06
+stay parked.
+
+## 2026-08-28 - Overlay highlights the window; Draw stays a pencil
+
+Demo `/overlay` BOX is a highlight on This computer (To Sarah Chen
+shows through). Draw stays armed until Draw or Escape. Dock Copy is
+clipboard, never send. Live overlay keeps opaque faces on the real
+display. Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Overlay walk sits on This computer
+
+Public `/overlay` paints Unsent mail / Notes / Needs you / Live answer
+under the teach walk (Clicky on Computer). Live Electron overlay stays
+transparent on the real display. Draft email highlights that window.
+Never send. Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Overlay chrome wraps; HUD docks the filed file
+
+Walk chrome stacks Type in Email / Then / fill / filed (no ellipsis
+row). HUD cue bar docks Unsent mail / Notes / Needs you when those
+desks file. Close hides the dock. Never send. Never Act. P-05 and
+P-06 stay parked.
+
+## 2026-08-28 - Overlay docks the filed file; home Ask stays
+
+Public `/overlay` Draft email / Notes / Needs you / Live answer docks
+Unsent mail (To Sarah Chen), Notes, Needs you, or Live answer on the
+walk. Close hides the dock. Home Ask highlights that window on This
+screen. Never a second tab. Never send. Never Act. P-05 and P-06 stay
+parked.
+
+## 2026-08-28 - Overlay stays; Email types the Heard name
+
+Public `/overlay` keeps the walk when Draft email / Notes / Needs you /
+Live answer open a window. Email BOX shows Sarah Chen (Heard). OS voice
+says Type Sarah Chen. Never send. Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Walk rail ticks jump by Ask
+
+Overlay, This screen, and HUD remaining-walk ticks Ask toward that
+step (demo jumps; live is one Got it or Back). Last BOX speaks Last
+step. Never send. Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - HUD cue bar keeps the remaining walk
+
+Laptop live cue bar paints the remaining teach rail and Ask chips
+(Draft email / Notes / Needs you / Live answer) when HUD chrome hides.
+Enter is Got it. OS voice says Last step on the last BOX. Never send.
+Never Act. P-05 and P-06 stay parked.
+
+## 2026-08-28 - Overlay chrome Asks the next desk
+
+Public `/overlay` keeps a remaining walk rail and Ask chips (Draft
+email / Notes / Needs you / Live answer). Enter is Got it. Demo chips
+open the matching window on This computer. Never send. Never approval.
+Run still refuses (P-06). Never Act. P-05 stays parked.
+
+## 2026-08-28 - Public /overlay is the teach walk; Last step is honest
+
+Public `/overlay` serves the same click-through teach page the laptop
+HUD loads. Online with no live walk it is the labeled demo (Email then
+Save). Draw stacks a BOX (cap 8, 0.4% fail-closed). Last BOX says Last
+step, not an empty Then. Got it Ask, never Act. Run still refuses
+(P-06). P-05 stays parked.
+
+## 2026-08-28 - Demo chips Ask the next desk
+
+Fixed cue bar chips Ask Got it, Draft email, Notes, Needs you, and
+Live answer. Same as typing Ask. Never send. Never approval. Run still
+refuses (P-06). Never Act. P-05 stays parked.
+
+## 2026-08-28 - Demo Ask opens the matching window
+
+Public/demo Ask files Unsent mail, Notes, Needs you, or Live answer
+on This computer. Teach Ask is still Got it. Unknown Ask stays on
+the laptop. Never send. Never a .docx. Never approval. Run still
+refuses (P-06). Never Act. P-05 stays parked.
+
+## 2026-08-28 - Demo Draw stacks a BOX on This screen
+
+Public/demo This screen Draw stores a freehand BOX (cap 8, 0.4%
+fail-closed), same rules as the laptop overlay. Home This screen is
+Draw + Got it. This computer window fills the desktop; files stay the
+dock. Run still refuses (P-06). Never Act. P-05 stays parked.
+
+## 2026-08-28 - This computer opens files as windows; home BOX is Got it
+
+Click a file on `/workspace` to open it as a window on This computer.
+Home This screen tap on the current BOX is Got it (Ask, never Act).
+Public catalog stays labeled demo. Run still refuses (P-06). Never Act.
+P-05 stays parked.
+
+## 2026-08-28 - Public host paints the sample coworker
+
+Public localFirst pages paint the labeled demo catalog (This screen,
+Live answer, Notes, Unsent mail, Needs you). Not your session. Live
+APIs stay 404. Ask stays on the laptop. Run still refuses (P-06).
+Never Act. P-05 stays parked.
+
+## 2026-08-28 - Teach speaks the current BOX; demo catalog is online
+
+OS voice speaks Click/Type in on the current BOX (overlay, HUD, `/teach`).
+Never meeting. Never a cheater overlay. Current BOX pulses in place (not
+a cursor ring). `?demo=1` paints a sample coworker catalog with no runtime
+and no live session. Public APIs stay 404. Ask/Draw stay on the laptop.
+Never Act. P-05 and P-06 stay parked.
 ## 2026-08-28 - Token-aware Claude 5-hour then Cursor
 
 Prefer Claude Code while the 5-hour window is open; instruction or

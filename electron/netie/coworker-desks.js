@@ -109,6 +109,9 @@ function pickDesk(text, opts = {}) {
   const t = spoken(text);
   if (!t) return DESKS.teach;
 
+  if (/\b(what should i (say|type|put)|what do i (say|type)|what to (say|type))\b/.test(t)) {
+    return DESKS.meeting;
+  }
   if (
     (/\b(meeting|standup|call recap|what should i say|follow-?up questions?|action items?|next steps?)\b/.test(t) ||
       /\brecap\b/.test(t)) &&
@@ -835,7 +838,7 @@ function meetingAssist({ transcript, question, notes } = {}) {
   const q = spoken(question);
   let kind = "recap";
   let explicit = !q;
-  if (/\b(what should i say|assist|reply|respond|answer them)\b/.test(q)) {
+  if (/\b(what should i (say|type|put)|what do i (say|type)|what to (say|type)|assist|reply|respond|answer them)\b/.test(q)) {
     kind = "assist";
     explicit = true;
   }
@@ -1632,6 +1635,8 @@ function freezeTeachLive(spec) {
           rect: freezeBox(c && c.rect) || { x: 0, y: 0, width: 0, height: 0 },
           via: String((c && c.via) || "").slice(0, 16),
         };
+        const fill = String((c && c.fill) || "").trim();
+        if (fill) row.fill = fill.slice(0, 40);
         const stroke = normalizeStroke(c && c.stroke);
         if (stroke.length) row.stroke = stroke;
         return row;
@@ -1807,6 +1812,18 @@ function teachKey(point) {
   return "";
 }
 
+function teachFillValue(point, facts) {
+  if (teachVerb(point && point.controlType) !== "Type in") return "";
+  const name = String((point && point.name) || "").toLowerCase();
+  if (!/\b(email|to|name|recipient|from|subject)\b/.test(name)) return "";
+  const rows = Array.isArray(facts) ? facts : [];
+  for (let i = 0; i < rows.length; i++) {
+    const f = String(rows[i] || "").trim();
+    if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+$/.test(f)) return f.slice(0, 40);
+  }
+  return "";
+}
+
 function teachStepPhrase(point) {
   const verb = teachVerb(point && point.controlType);
   const label = String((point && point.name) || "control").slice(0, 40);
@@ -1843,9 +1860,10 @@ function teachKeyName(point) {
  * Host / HUD walk path from measured controls. Overlay tokens stay current
  * only; later rects are dashed catalog marks, never clicks.
  */
-function teachPathMarks(measured, idx) {
+function teachPathMarks(measured, idx, facts) {
   const list = Array.isArray(measured) ? measured : [];
   const now = Number.isInteger(idx) && idx >= 0 ? idx : 0;
+  const heard = Array.isArray(facts) ? facts : [];
   return list.map((p, i) => {
     const row = {
       step: i,
@@ -1862,6 +1880,8 @@ function teachPathMarks(measured, idx) {
       hPct: p && p.hPct,
     };
     if (Array.isArray(p && p.stroke) && p.stroke.length >= 2) row.stroke = p.stroke;
+    const fill = String((p && p.fill) || "").trim() || teachFillValue(p, heard);
+    if (fill) row.fill = fill.slice(0, 40);
     return row;
   });
 }
@@ -1882,7 +1902,7 @@ function teachWalkPath(live) {
  * No tree => no coordinates, and vision still has to see the screen.
  * Never Acts. Never restores a floating buddy.
  */
-function teachAssist({ text, controls, screen, region, framed, step, live } = {}) {
+function teachAssist({ text, controls, screen, region, framed, step, live, transcript, heard } = {}) {
   const t = String(text || "").trim();
   const q = spoken(t);
   const adv = teachAdvance(t);
@@ -1898,6 +1918,9 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
     ? 0
     : Math.min(last, Number.isInteger(raw) && raw > 0 ? raw : raw === 0 ? 0 : 0);
   const current = measured[idx];
+  const facts = Array.isArray(heard) && heard.length
+    ? heard
+    : heardFacts(parseUtterances(transcript || ""));
   const origin = !measured.length
     ? "> do not invent coordinates"
     : current && current.via === "frame"
@@ -1956,6 +1979,7 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
     remaining: current ? Math.max(0, measured.length - idx - 1) : 0,
     cue: teachCue(current, idx, measured.length),
     rest: current ? teachRest(measured, idx) : "",
+    fill: current ? teachFillValue(current, facts) : "",
     cueKind: current ? "point" : "",
     points: current
       ? [
@@ -1970,7 +1994,7 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
           },
         ]
       : [],
-    path: current ? teachPathMarks(measured, idx) : [],
+    path: current ? teachPathMarks(measured, idx, facts) : [],
     live: freezeTeachLive({
       controls: measured.map((p) => {
         const row = {
@@ -1979,6 +2003,8 @@ function teachAssist({ text, controls, screen, region, framed, step, live } = {}
           rect: rectFromPct(p, screen),
           via: p.via || "",
         };
+        const fill = String((p && p.fill) || "").trim() || teachFillValue(p, facts);
+        if (fill) row.fill = fill.slice(0, 40);
         if (Array.isArray(p.stroke) && p.stroke.length >= 2) row.stroke = p.stroke;
         return row;
       }),

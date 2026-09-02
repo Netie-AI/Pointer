@@ -68,8 +68,22 @@ check("the root itself is contained in itself", () => {
 
 check("containment is case-insensitive on Windows only", () => {
   const upper = SANCTIONED.toUpperCase();
-  const expected = process.platform === "win32";
-  assert.strictEqual(isContained(path.join(upper, "x.docx"), SANCTIONED), expected);
+  const child = path.join(upper, "x.docx");
+  if (process.platform === "win32") {
+    assert.strictEqual(isContained(child, SANCTIONED), true);
+    return;
+  }
+  // canonical() lowercases only on win32. Linux stays case-sensitive.
+  // macOS APFS (GitHub macos-latest) is case-insensitive: realpath folds
+  // the upper path back to the on-disk inode, so containment is true even
+  // though we do not lowercase. That is the filesystem, not a policy hole.
+  let folded = false;
+  try {
+    folded = fs.realpathSync.native(SANCTIONED) === fs.realpathSync.native(upper);
+  } catch {
+    folded = false;
+  }
+  assert.strictEqual(isContained(child, SANCTIONED), folded);
 });
 
 check("UNC paths are refused outright", () => {

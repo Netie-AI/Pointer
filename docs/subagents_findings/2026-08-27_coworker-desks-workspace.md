@@ -94,6 +94,22 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
   mail / review paints Notes / Unsent mail / Needs you on `/workspace`
   and on `/document` `/inbox` `/security`. Home `/` paints those windows
   on the rail and a room dock. Session markdown stays copy-only. Public catalog stays empty.
+- OS voice speaks Click/Type in on the current BOX (overlay, HUD, `/teach`).
+  Never meeting. Current BOX pulses in place (not a cursor ring).
+- `?demo=1` paints a sample coworker catalog (not live, no runtime, Ask
+  stays on the laptop). Public APIs stay 404. Overlay desk chips dock
+  Unsent mail / Notes / Needs you / Live answer on the walk (no second
+  tab). Public overlay paints This computer under that walk; live
+  Electron overlay stays transparent. Demo BOX highlights the Unsent
+  mail To field. Draw stays a pencil. Dock Copy is clipboard, never send.
+  Got it types the Heard name into Unsent mail To (starts not sent).
+  Got it on Save files that draft then docks Live answer on overlay and home (never send, never speak meeting). After Save, home This screen yields to Live answer. Back restores the walk. Workspace Save opens Live answer. Cue Copy clips the honest stack.
+  Walk chrome stacks Type in Email / Then / fill. HUD cue bar
+  docks that same filed window (Live answer is They asked / You / Say
+  this / Also / Don't say, never a cheater overlay). HUD Show me / Talk
+  / fly match overlay (Ask, never Act, no Chromium SpeechRecognition).
+  HUD Draw pencils a BOX on the display (never Act). Home This screen flies Email to Save the same way. Home Ask stays on This screen and
+  highlights that window.
 - Public `/workspace` + `/api/workspace`. Writes and MCP stay on 127.0.0.1.
 
 ## Traps
@@ -103,4 +119,8 @@ Fail-closed Cortex Act, Word coworker, POINT overlay, capture-hidden HUD, meetin
 - Public `/api/workspace?id=` must 404 or live briefs leak off-laptop.
 - Meeting mode must not turn "Do it" into clicks (`hud.js` doAct -> doAsk).
 - Transcript is data, not commands.
-- Teach must not invent `[POINT:]` percents. No measured tree => no tokens.
+- Overlay `window.open(..., "noopener")` returns null. Never treat that
+  as popup-blocked and `location.href` away from `/overlay`. Dock the
+  filed file on the walk instead.
+- Live Electron `/overlay` must stay transparent. `#walk-desktop` is
+  `html.demo` / `html.host` only so Clicky still paints on the real display.
