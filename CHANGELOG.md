@@ -6,8 +6,10 @@ Append-only. Never edited, only added to. Newest first.
 
 Keeps Live answer dock, liquid glass, and three-OS packs plus main's
 UACC / `computer.*` / IBM Plex / Willow dictation / LIVE captions /
-Claude 5-hour then Cursor. Act stays fail-closed off Windows. No
-floating orb. P-05 and P-06 stay parked. No GPLv3 dump.
+Claude 5-hour then Cursor. Act stays fail-closed off Windows. macOS
+CI containment follows APFS realpath fold (Windows still lowercases;
+Linux stays case-sensitive). No floating orb. P-05 and P-06 stay
+parked. No GPLv3 dump.
 
 ## 2026-08-28 - Liquid glass HUD, overlay, and host
 
