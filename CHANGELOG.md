@@ -11,6 +11,15 @@ often ignores Invoke; that miss falls back to the existing aim path.
 not invokable. Double-click, right-click, hover, and type stay
 SendInput. Cortex gate unchanged. No GPLv3 dump. No third-party MCP.
 
+## 2026-08-28 - Token-aware Claude 5-hour then Cursor
+
+Prefer Claude Code while the 5-hour window is open; instruction or
+limit-used routes to Cursor. `computer.status.route` publishes that
+window plus running token totals from OpenVault hops. `use Claude` /
+`use Cursor` recipes still fail-closed through Cortex then reviewPlan.
+Act review is observe then reviewPlan then click/copy/paste. No GPLv3
+dump. No third-party MCP.
+
 ## 2026-08-28 - Observe LIVE captions for agents
 
 Loopback `computer.observe` and `GET /api/observe?captions=1` return the
