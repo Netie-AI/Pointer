@@ -29,7 +29,7 @@ const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
 const { ensureActionCoords, hasScreenPoint } = require("./netie/targeting");
-const { dumpForeground, readSelection, listControls } = require("./netie/uia");
+const { dumpForeground, readSelection, listControls, invokeControl } = require("./netie/uia");
 const { overlayRegionToScreen, regionToDisplayCrop } = require("./netie/geometry");
 const { ConversationStore } = require("./netie/conversations");
 const { SttBridge } = require("./netie/stt");
@@ -932,6 +932,7 @@ const driver = new InputDriver({
   dryRun: process.env.NETIE_CLICK_DRY_RUN === "1",
   // Worker is per-monitor DPI aware → feed it physical pixels, not DIPs.
   toPhysical: (pt) => screen.dipToScreenPoint(pt),
+  uiaInvoke: (target) => invokeControl(target, { run: runUiaProbe }),
 });
 
 /** OpenWillow hold-to-talk; Willow double-tap stays hands-free. Session owns the 120s cap. */
@@ -2902,6 +2903,27 @@ async function executeApproved(actions, opts = {}) {
       }
 
       const started = Date.now();
+      // HeyClicky-class: InvokePattern on a named click before screenshot or
+      // SendInput. No SetCursorPos. Chrome often ignores Invoke; that miss
+      // falls through to the existing aim + driver path. Double-click,
+      // right-click, hover, and type stay SendInput (Invoke is one activation).
+      const namedClick =
+        String(action.type || "").toLowerCase() === "click" && String(action.target || "").trim();
+      let invokedEarly = null;
+      if (
+        namedClick &&
+        !driver.dryRun &&
+        UIA_ENABLED &&
+        process.platform === "win32" &&
+        uiaFailures < 3
+      ) {
+        try {
+          invokedEarly = await invokeControl(action.target, { run: runUiaProbe });
+        } catch (err) {
+          invokedEarly = { ok: false, reason: String(err.message || err) };
+        }
+      }
+      const skipAim = Boolean(invokedEarly && invokedEarly.ok);
       // Refresh the screenshot before aiming, so targets created by earlier
       // steps (a launched app, an opened dialog) are actually visible.
       let refreshedView = false;
@@ -2910,7 +2932,9 @@ async function executeApproved(actions, opts = {}) {
       // switch. Absolute x/y (click window: center) counts as aimed; an
       // xPct-only check used to throw those points away and call vision.
       const mustReaim =
-        needsFreshView(action.type) && (action._reaim === true || !hasScreenPoint(action));
+        !skipAim &&
+        needsFreshView(action.type) &&
+        (action._reaim === true || !hasScreenPoint(action));
       if (!driver.dryRun && mustReaim) {
         try {
           await captureDisplayCrop(null);
@@ -2921,11 +2945,13 @@ async function executeApproved(actions, opts = {}) {
       }
       const { region, dataUrl } = currentView();
       const aimSource = refreshedView ? stripAimCoords(action) : action;
-      const enriched = await ensureActionCoords(aimSource, {
-        dataUrl,
-        eco,
-        uia: uiaContext(region),
-      });
+      const enriched = skipAim
+        ? { ...action, _targetedVia: "uia-invoke" }
+        : await ensureActionCoords(aimSource, {
+            dataUrl,
+            eco,
+            uia: uiaContext(region),
+          });
       // Auto-swap Windows pointer face per action (click vs type/agent).
       try {
         const face = modeForAction(enriched.type);
@@ -2943,6 +2969,12 @@ async function executeApproved(actions, opts = {}) {
         sendHudQuiet({
           type: "insight",
           text: `Aiming “${enriched.target || enriched.type}” by vision — the OS could not name that control.`,
+        });
+      }
+      if (skipAim) {
+        sendHudQuiet({
+          type: "insight",
+          text: `Invoked “${enriched.target}” without moving the cursor.`,
         });
       }
       sendStage({
@@ -2984,7 +3016,18 @@ async function executeApproved(actions, opts = {}) {
 
       let outcome;
       try {
-        outcome = await driver.perform(enriched, { region });
+        if (skipAim) {
+          outcome = {
+            ok: true,
+            type: enriched.type,
+            via: "uia-invoke",
+            name: invokedEarly.name,
+            keepCursor: true,
+            keepFocus: true,
+          };
+        } else {
+          outcome = await driver.perform(enriched, { region });
+        }
       } catch (err) {
         outcome = { ok: false, error: String(err.message || err) };
       }

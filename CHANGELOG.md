@@ -2,6 +2,15 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - UIA InvokePattern for named clicks
+
+HeyClicky-class: `click: Save` tries Windows InvokePattern on the
+foreground named control before SendInput. No SetCursorPos. Chrome
+often ignores Invoke; that miss falls back to the existing aim path.
+`invoke: Save` is Invoke only (visible no on miss). Edit/Document are
+not invokable. Double-click, right-click, hover, and type stay
+SendInput. Cortex gate unchanged. No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Token-aware Claude 5-hour then Cursor
 
 Prefer Claude Code while the 5-hour window is open; instruction or

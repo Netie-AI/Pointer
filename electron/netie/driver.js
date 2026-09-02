@@ -328,6 +328,7 @@ class InputDriver {
   constructor(opts = {}) {
     this.dryRun = Boolean(opts.dryRun);
     this.toPhysical = opts.toPhysical || null;
+    this.uiaInvoke = opts.uiaInvoke || null;
     this._spawn = opts.spawnImpl || spawn;
     this._opTimeoutMs = opts.opTimeoutMs || 8000;
     this._startTimeoutMs = opts.startTimeoutMs || 15000;
@@ -1003,6 +1004,21 @@ class InputDriver {
         }
         const check = clipboardMatchesSource(String(source), text);
         return { ok: check.ok, type, ...check, text };
+      }
+
+      case "uia_invoke": {
+        const target = String(action.target || action.value || "").trim();
+        this.last = { op: "uia_invoke", target };
+        if (!target) return { ok: false, type, error: "missing invoke target" };
+        if (this.dryRun) return { ok: true, type, target, via: "uia-invoke", dryRun: true };
+        if (typeof this.uiaInvoke !== "function") {
+          return { ok: false, type, error: "UIA invoke not available", target };
+        }
+        const r = await this.uiaInvoke(target);
+        if (!r || !r.ok) {
+          return { ok: false, type, error: (r && r.reason) || "invoke failed", target };
+        }
+        return { ok: true, type, target, via: "uia-invoke", name: r.name, keepCursor: true, keepFocus: true };
       }
 
       default:
