@@ -264,6 +264,32 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
       assert.strictEqual(out.xPct, 1);
       assert.strictEqual(out._targetedVia, undefined);
     }),
+
+    T("dumpForeground lists named controls for computer.observe", async () => {
+      const rows = await uia.dumpForeground({
+        run: runWith([
+          { name: "Save", controlType: "Button", enabled: true, rect: rect(200, 400, 100, 40) },
+          { name: "Cancel", controlType: "Button", enabled: true, rect: rect(0, 0, 80, 30) },
+        ]),
+        screen: SCREEN,
+      });
+      assert.ok(rows.some((r) => r.name === "Save" && r.xPct === 25));
+      assert.ok(rows.some((r) => r.name === "Cancel"));
+    }),
+
+    T("UIA selection refuses password fields and returns focused text", async () => {
+      const blocked = uia.parseSelectionOutput(JSON.stringify({ ok: false, reason: "password" }));
+      assert.strictEqual(blocked.ok, false);
+      assert.strictEqual(blocked.reason, "password");
+      assert.strictEqual(blocked.blocked, true);
+      const hit = await uia.readSelection({
+        run: async () => JSON.stringify({ ok: true, text: "Please move Friday.", via: "uia" }),
+      });
+      assert.strictEqual(hit.ok, true);
+      assert.strictEqual(hit.text, "Please move Friday.");
+      assert.ok(/IsPassword/.test(uia.buildSelectionScript()), "probe must refuse password boxes");
+      assert.ok(/TextPattern/.test(uia.buildSelectionScript()), "probe must use TextPattern");
+    }),
   ];
 
   const ok = await suite.run(tests);

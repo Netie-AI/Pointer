@@ -6,7 +6,7 @@
  */
 
 const assert = require("assert");
-const { Transcriber, cleanup } = require("../electron/netie/transcriber");
+const { Transcriber, cleanup, sanitizeSttUrl, isLoopbackSttUrl } = require("../electron/netie/transcriber");
 
 let pass = 0;
 const fails = [];
@@ -45,6 +45,78 @@ test("prefers local whisper.cpp over any network engine", async () => {
   assert.strictEqual(calls[0].bin, "C:\\w\\main.exe");
   assert.ok(calls[0].args.includes("-m") && calls[0].args.includes("C:\\w\\ggml-tiny.bin"));
   assert.ok(calls[0].args.includes("-l") && calls[0].args.includes("auto"), "multilingual auto");
+});
+
+test("Traditional Chinese pins whisper and sidecar STT to zh", async () => {
+  const calls = [];
+  const tWhisper = new Transcriber({
+    whisperBin: "C:\\w\\main.exe",
+    whisperModel: "C:\\w\\ggml-tiny.bin",
+    fsImpl: fakeFs(["C:\\w\\main.exe", "C:\\w\\ggml-tiny.bin"]),
+    language: () => "zh",
+    execFileImpl: (bin, args, opts, cb) => {
+      calls.push(args);
+      cb(null, "ok");
+    },
+    fetchImpl: () => {
+      throw new Error("must not touch the network when local whisper exists");
+    },
+  });
+  await tWhisper.transcribe(pcm());
+  assert.ok(calls[0].includes("-l") && calls[0].includes("zh"), "whisper -l zh");
+  const seen = [];
+  const tSidecar = new Transcriber({
+    fsImpl: fakeFs(),
+    openvaultUrl: "",
+    sidecarUrl: "http://127.0.0.1:8766",
+    language: () => "Traditional Chinese",
+    allowWindowsSpeech: false,
+    fetchImpl: async (url, opts) => {
+      if (String(url).endsWith("/health")) return { ok: true };
+      if (opts && opts.body && typeof opts.body.get === "function") {
+        seen.push(String(opts.body.get("language") || ""));
+      }
+      return { ok: true, json: async () => ({ text: "ok" }) };
+    },
+  });
+  await tSidecar.transcribe(pcm());
+  assert.ok(seen.includes("zh"), "sidecar language zh");
+});
+
+test("Spanish pins whisper and sidecar STT to es", async () => {
+  const calls = [];
+  const tWhisper = new Transcriber({
+    whisperBin: "C:\\w\\main.exe",
+    whisperModel: "C:\\w\\ggml-tiny.bin",
+    fsImpl: fakeFs(["C:\\w\\main.exe", "C:\\w\\ggml-tiny.bin"]),
+    language: () => "Spanish",
+    execFileImpl: (bin, args, opts, cb) => {
+      calls.push(args);
+      cb(null, "ok");
+    },
+    fetchImpl: () => {
+      throw new Error("must not touch the network when local whisper exists");
+    },
+  });
+  await tWhisper.transcribe(pcm());
+  assert.ok(calls[0].includes("-l") && calls[0].includes("es"), "whisper -l es");
+  const seen = [];
+  const tSidecar = new Transcriber({
+    fsImpl: fakeFs(),
+    openvaultUrl: "",
+    sidecarUrl: "http://127.0.0.1:8766",
+    language: () => "es-MX",
+    allowWindowsSpeech: false,
+    fetchImpl: async (url, opts) => {
+      if (String(url).endsWith("/health")) return { ok: true };
+      if (opts && opts.body && typeof opts.body.get === "function") {
+        seen.push(String(opts.body.get("language") || ""));
+      }
+      return { ok: true, json: async () => ({ text: "ok" }) };
+    },
+  });
+  await tSidecar.transcribe(pcm());
+  assert.ok(seen.includes("es"), "sidecar language es");
 });
 
 test("half-installed whisper (binary but no model) is not used", async () => {
@@ -319,6 +391,52 @@ test("#21 the revoked key is not reused when consent is granted again", async ()
   consent.on = false;
   await t.probe();
   assert.strictEqual(t._deepgramKeyCache, null, "secret survived the revoke");
+});
+
+test("sanitizeSttUrl keeps loopback bases and rejects junk", () => {
+  assert.strictEqual(sanitizeSttUrl("http://127.0.0.1:8766/"), "http://127.0.0.1:8766");
+  assert.strictEqual(
+    sanitizeSttUrl("http://127.0.0.1:8766/v1/audio/transcriptions"),
+    "http://127.0.0.1:8766"
+  );
+  assert.strictEqual(sanitizeSttUrl("javascript:alert(1)"), "");
+  assert.strictEqual(sanitizeSttUrl("ftp://127.0.0.1/stt"), "");
+  assert.strictEqual(sanitizeSttUrl(""), "");
+  assert.strictEqual(isLoopbackSttUrl("http://127.0.0.1:8766"), true);
+  assert.strictEqual(isLoopbackSttUrl("https://stt.example.com"), false);
+});
+
+test("BYOK sidecar URL is live and remote STT is not labeled local", async () => {
+  let url = "http://127.0.0.1:8766";
+  const seen = [];
+  const t = new Transcriber({
+    fsImpl: fakeFs(),
+    openvaultUrl: "",
+    allowWindowsSpeech: false,
+    sidecarUrl: () => url,
+    fetchImpl: async (u) => {
+      seen.push(u);
+      if (String(u).includes("stt.example.com")) return { ok: false };
+      if (String(u).endsWith("/health")) return { ok: true };
+      return { ok: true, json: async () => ({ text: "from byok" }) };
+    },
+  });
+  assert.strictEqual(await t.probe(), "sidecar");
+  t.engine = "sidecar";
+  t.sidecarUrl = url;
+  assert.strictEqual(t.describe().local, true);
+  url = "https://stt.example.com";
+  assert.strictEqual(await t.probe(), "none");
+  t.engine = "sidecar";
+  t.sidecarUrl = url;
+  assert.strictEqual(t.describe().local, false);
+  assert.match(t.describe().label, /leaves this device/);
+  const fs = require("fs");
+  const path = require("path");
+  const html = fs.readFileSync(path.join(__dirname, "../electron/hud.html"), "utf8");
+  assert.ok(html.includes('id="set-stt-url"'));
+  assert.ok(html.includes('id="set-llm-url"'));
+  assert.ok(html.includes('id="set-llm-model"'));
 });
 
 (async () => {

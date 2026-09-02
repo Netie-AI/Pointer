@@ -126,7 +126,11 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.strictEqual(modes.detectModeSwitch("general mode"), "general");
       assert.strictEqual(modes.detectModeSwitch("switch to general mode"), "general");
       assert.strictEqual(modes.detectModeSwitch("just listen"), "general");
-      assert.strictEqual(modes.detectModeSwitch("agent mode"), "agent");
+      assert.strictEqual(modes.detectModeSwitch("dictation mode"), "transcribe");
+      assert.strictEqual(modes.detectModeSwitch("switch to dictation"), "transcribe");
+      assert.strictEqual(modes.detectModeSwitch("scribe mode"), "scribe");
+      assert.strictEqual(modes.allowsActions("scribe"), false);
+      assert.strictEqual(modes.getMode("scribe").listens, true);
       assert.strictEqual(modes.detectModeSwitch("nothing to see here"), null);
     }),
 
@@ -271,6 +275,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       }
       // HUD-03 pill has to offer the mode, not just the module.
       assert.ok(html.includes('data-mode="general"'), "hud.html needs the General pill");
+      assert.ok(html.includes('data-mode="scribe"'), "hud.html needs the Scribe pill");
 
       // Source-level, and said plainly: nothing in this repo boots Electron, so
       // the decision (modes.allowsActions) is unit-tested above and only its
@@ -449,6 +454,7 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
     T("#25 the renderer binds every hard stop the module declares", () => {
       const js = read("electron/hud.js");
       assert.ok(/createHoldToTalk\(/.test(js), "hold-to-talk is not wired into the HUD at all");
+      assert.ok(/hud:snapshotDelivery/.test(js), "hold-to-talk must refresh the remembered target window");
       for (const evt of ["pointerup", "pointercancel", "pointerleave"]) {
         assert.ok(js.includes(`"${evt}"`), `${evt} is not bound in the renderer`);
       }
@@ -456,12 +462,98 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(/visibilitychange/.test(js), "visibilitychange is not a hard stop");
     }),
 
+    T("Cluely Assist: Ctrl+Enter asks; Shift+Enter stays a newline", () => {
+      const js = read("electron/hud.js");
+      assert.ok(/event\.assist/.test(js), "open-ask assist never reaches doAsk");
+      assert.ok(/opts\.assist === true/.test(js), "empty general Ask must not fire without Assist");
+      assert.ok(/event\.shiftKey/.test(js), "Shift+Enter must stay a newline");
+      assert.ok(
+        /doAsk\(\{\s*assist:\s*true/.test(js),
+        "Ctrl+Enter in the Ask box must Assist, not insert a newline"
+      );
+    }),
+
+    T("Cluely notes: Copy notes copies from main, chip opens the live file", () => {
+      const js = read("electron/hud.js");
+      const html = read("electron/hud.html");
+      assert.ok(/hud:meetingNotes/.test(js), "Copy notes is not wired");
+      assert.ok(/action:\s*"copy"/.test(js), "Copy notes must not send renderer text");
+      assert.ok(/action:\s*"open"/.test(js), "Notes live chip must open the live file");
+      assert.ok(/id="btn-copy-notes"/.test(html), "Copy notes pill missing from HUD");
+      assert.ok(/id="btn-copy-recap"/.test(html), "Copy recap pill missing from HUD");
+      assert.ok(/id="btn-copy-say"/.test(html), "Copy say pill missing from HUD");
+      assert.ok(/id="btn-email"/.test(html), "Email pill missing from HUD");
+      assert.ok(/id="btn-copy-email"/.test(html), "Copy email pill missing from HUD");
+      assert.ok(/id="btn-actions"/.test(html), "Actions pill missing from HUD");
+      assert.ok(/id="btn-copy-actions"/.test(html), "Copy actions pill missing from HUD");
+      assert.ok(/id="privacy-chip"/.test(html), "privacy chip missing from HUD");
+      assert.ok(/id="session-chip"/.test(html), "session chip missing from HUD");
+      assert.ok(/action:\s*"recap"/.test(js), "Copy recap must not send renderer text");
+      assert.ok(/action:\s*"say"/.test(js), "Copy say must not send renderer text");
+      assert.ok(/action:\s*"email"/.test(js), "Copy email must not send renderer text");
+      assert.ok(/action:\s*"actions"/.test(js), "Copy actions must not send renderer text");
+      assert.ok(/doAsk\(\{\s*kind:\s*"email"/.test(js), "Email pill must Ask through Cortex");
+      assert.ok(/doAsk\(\{\s*kind:\s*"actions"/.test(js), "Actions pill must Ask through Cortex");
+      assert.ok(/kind === "email"/.test(js), "empty Email click must still send kind");
+      assert.ok(/kind === "actions"/.test(js), "empty Actions click must still send kind");
+    }),
+
+    T("Cluely meeting LIVE captions are fixed chrome, not cursor-following", () => {
+      const js = read("electron/hud.js");
+      const css = read("electron/hud.css");
+      const html = read("electron/hud.html");
+      assert.ok(/function syncMeetingCaption/.test(js), "meeting captions must sync visibility");
+      assert.ok(/subtitleBar\.hidden = !show/.test(js), "Agent boot must keep the LIVE bar hidden");
+      assert.ok(
+        /appMode !== "meeting"/.test(js) && /positionSubtitle\(event\.x/.test(js),
+        "cursor events must not drive meeting captions"
+      );
+      assert.ok(/has-live-caption/.test(js), "caption state must be a HUD class, not an orb");
+      assert.ok(/\.hud\.mode-meeting \.subtitle-grip/.test(css), "meeting captions drop the drag grip");
+      assert.ok(/has-live-caption \.suggest-strip/.test(css), "Say strip must sit below LIVE captions");
+      assert.ok(/id="subtitle-bar"/.test(html) && /hidden/.test(html), "LIVE bar ships hidden");
+    }),
+
+    T("Cluely follow-ups become clickable Ask chips, not raw HTML", () => {
+      const items = live.parseFollowupItems(
+        "1. What is the timeline for Friday?\n2. Who owns QA this week?\nNot a question\n- Can we ship without Sam?"
+      );
+      assert.deepStrictEqual(items, [
+        "What is the timeline for Friday?",
+        "Who owns QA this week?",
+        "Can we ship without Sam?",
+      ]);
+      assert.deepStrictEqual(live.parseFollowupItems("just a say line"), []);
+      const js = read("electron/hud.js");
+      assert.ok(/followup-chip/.test(js), "Follow-ups must render as chips");
+      assert.ok(/btn\.textContent = q/.test(js), "chip label must be text, not HTML");
+      assert.ok(/doAsk\(\{\s*kind:\s*"say"/.test(js), "a chip click must Ask through Cortex");
+      assert.ok(
+        /applySuggest\(result\.reply[^,]+,\s*\{\s*clickable:\s*true/.test(js),
+        "Follow-ups reply must become chips"
+      );
+      assert.ok(
+        /kind === "followups" && result && result\.ok/.test(js),
+        "only Follow-ups replies become chips"
+      );
+      assert.ok(
+        !/kind === "email"[\s\S]{0,40}applySuggest/.test(js),
+        "Email must stay in the answer pane, not Follow-ups chips"
+      );
+      assert.ok(
+        !/kind === "actions"[\s\S]{0,40}applySuggest/.test(js),
+        "Actions must stay in the answer pane, not Follow-ups chips"
+      );
+      const css = read("electron/hud.css");
+      assert.ok(/\.followup-chip/.test(css), "chips need a classy type rule");
+    }),
+
     // ── #23 · attachments reach the payload ─────────────────────────────────
     T("#23 the renderer sends attachment content, not just a chip", () => {
       const js = read("electron/hud.js");
       assert.ok(/attachmentPayload\(\)/.test(js), "no attachment payload is built");
       assert.ok(
-        /invoke\("hud:ask",\s*\{\s*message,\s*attachments/.test(js),
+        /invoke\("hud:ask",\s*\{\s*message(?::\s*asked)?,\s*attachments/.test(js),
         "hud:ask does not carry attachments"
       );
       assert.ok(

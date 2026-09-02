@@ -11,6 +11,9 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { PAGES, pageFor, fileFor } = require("./host-serve");
+const { TOOLS, CATALOG } = require("./mcp-abi");
+const { publicMeetingNotes, exportMeetingNotes, publicMeetingRecap, exportMeetingRecap, publicMeetingSay, exportMeetingSay, publicMeetingEmail, exportMeetingEmail, publicMeetingActions, exportMeetingActions, exportMeetingPack } = require("./meeting");
+const { publicPendingTranscript } = require("./pending-scribe");
 const { createWorkspace } = require("./workspace");
 const { catalog, todayAssist, sessionBundle, sessionPacketParts, advanceLiveTeach, frameLiveTeach, canAdvanceTeach, askLiveCoworker, askHostCoworker, suggestsFromAssist, chipsForArtifact, liveTalkTurns, meetingCaptions, teachWalkPath, teachActionCue, documentDraftText, inboxDraftText, securityReportText, buildEml, buildSecurityReport } = require("./coworker-desks");
 const { parsePoints } = require("./point-overlay");
@@ -22,6 +25,11 @@ const HOST_DIR = path.resolve(__dirname, "..", "..", "host");
 
 function nowMs(clock) {
   return typeof clock === "function" ? clock() : Date.now();
+}
+
+function queryFlag(url, name) {
+  const v = String(url.searchParams.get(name) || "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
 }
 
 function createCoordinator(opts = {}) {
@@ -201,6 +209,197 @@ function createCoordinator(opts = {}) {
       res.end(JSON.stringify(snapshot()));
       return;
     }
+    if (req.method === "GET" && url.pathname === "/api/scribe" && queryFlag(url, "pending")) {
+      let raw = null;
+      try {
+        raw = typeof opts.scribePending === "function" ? opts.scribePending() : null;
+      } catch {
+        raw = null;
+      }
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: true, pending: publicPendingTranscript(raw) }));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/meeting" && queryFlag(url, "pack")) {
+      const read = (fn) => {
+        try {
+          return typeof fn === "function" ? fn() : null;
+        } catch {
+          return null;
+        }
+      };
+      const notes = publicMeetingNotes(read(opts.meetingNotes));
+      const recap = publicMeetingRecap(read(opts.meetingRecap));
+      const say = publicMeetingSay(read(opts.meetingSay));
+      const email = publicMeetingEmail(read(opts.meetingEmail));
+      const actions = publicMeetingActions(read(opts.meetingActions));
+      const exp = exportMeetingPack({
+        notes: notes.text,
+        recap: recap.text,
+        say: say.text,
+        email: email.text,
+        actions: actions.text,
+      });
+      const body = {
+        ok: true,
+        notes,
+        recap,
+        say,
+        email,
+        actions,
+        pack: { present: exp.ok, ...exp.present },
+        markdown: exp.markdown,
+        exported: exp.ok,
+        note: exp.note,
+      };
+      if (!exp.ok) body.reason = exp.reason;
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(body));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/meeting" && queryFlag(url, "recap")) {
+      let raw = null;
+      try {
+        raw = typeof opts.meetingRecap === "function" ? opts.meetingRecap() : null;
+      } catch {
+        raw = null;
+      }
+      const recap = publicMeetingRecap(raw);
+      const exp = exportMeetingRecap(recap.text);
+      const body = { ok: true, recap, markdown: exp.markdown, exported: exp.ok };
+      if (!exp.ok) body.reason = exp.reason;
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(body));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/meeting" && queryFlag(url, "say")) {
+      let raw = null;
+      try {
+        raw = typeof opts.meetingSay === "function" ? opts.meetingSay() : null;
+      } catch {
+        raw = null;
+      }
+      const say = publicMeetingSay(raw);
+      const exp = exportMeetingSay(say.text);
+      const body = { ok: true, say, markdown: exp.markdown, exported: exp.ok };
+      if (!exp.ok) body.reason = exp.reason;
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(body));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/meeting" && queryFlag(url, "email")) {
+      let raw = null;
+      try {
+        raw = typeof opts.meetingEmail === "function" ? opts.meetingEmail() : null;
+      } catch {
+        raw = null;
+      }
+      const email = publicMeetingEmail(raw);
+      const exp = exportMeetingEmail(email.text);
+      const body = { ok: true, email, markdown: exp.markdown, exported: exp.ok };
+      if (!exp.ok) body.reason = exp.reason;
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(body));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/meeting" && queryFlag(url, "actions")) {
+      let raw = null;
+      try {
+        raw = typeof opts.meetingActions === "function" ? opts.meetingActions() : null;
+      } catch {
+        raw = null;
+      }
+      const actions = publicMeetingActions(raw);
+      const exp = exportMeetingActions(actions.text);
+      const body = { ok: true, actions, markdown: exp.markdown, exported: exp.ok };
+      if (!exp.ok) body.reason = exp.reason;
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(body));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/meeting" && (queryFlag(url, "notes") || queryFlag(url, "export"))) {
+      let raw = null;
+      try {
+        raw = typeof opts.meetingNotes === "function" ? opts.meetingNotes() : null;
+      } catch {
+        raw = null;
+      }
+      const notes = publicMeetingNotes(raw);
+      const body = { ok: true, notes };
+      if (queryFlag(url, "export")) {
+        const exp = exportMeetingNotes(notes.text);
+        body.markdown = exp.markdown;
+        body.exported = exp.ok;
+        if (!exp.ok) body.reason = exp.reason;
+      }
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(body));
+      return;
+    }
+    if (
+      req.method === "GET" &&
+      (url.pathname === "/api/computer" || url.pathname === "/api/scribe")
+    ) {
+      const statusFn = opts.computerStatus;
+      const snap = statusFn
+        ? statusFn()
+        : { ok: true, detectable: false, reason: "computer status not wired" };
+      const pick = (out) => {
+        if (url.pathname === "/api/scribe") {
+          return { ok: true, detectable: Boolean(out && out.detectable), ...(out && out.scribe) };
+        }
+        if (url.pathname === "/api/meeting") {
+          return { ok: true, detectable: Boolean(out && out.detectable), ...(out && out.meeting) };
+        }
+        return out;
+      };
+      const body = snap && typeof snap.then === "function" ? null : snap;
+      if (body) {
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(pick(body)));
+        return;
+      }
+      Promise.resolve(snap).then((out) => {
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(pick(out)));
+      });
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/tools") {
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: true, tools: TOOLS.slice(), catalog: CATALOG.slice() }));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/observe") {
+      const mcp = opts.mcp;
+      const raw = mcp
+        ? mcp.handle(
+            {
+              jsonrpc: "2.0",
+              id: 1,
+              method: "computer.observe",
+              params: {
+                elements: queryFlag(url, "elements"),
+                screenshot: queryFlag(url, "screenshot"),
+                clipboard: queryFlag(url, "clipboard"),
+                selection: queryFlag(url, "selection"),
+                captions: queryFlag(url, "captions"),
+              },
+            },
+            { coordinator: api }
+          )
+        : {
+            jsonrpc: "2.0",
+            id: 1,
+            error: { code: -32601, message: "mcp not wired" },
+          };
+      Promise.resolve(raw).then((out) => {
+        const body = out && out.result ? out.result : out;
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(body));
+      });
+      return;
+    }
     if (req.method === "GET" && url.pathname === "/api/today") {
       const assist = todayAssist({
         state: {
@@ -273,6 +472,25 @@ function createCoordinator(opts = {}) {
           return;
         }
         const ask = String((body && (body.ask || body.text || body.q)) || "").trim();
+        const gatedAssist = Boolean(
+          body && (body.notes != null || body.instruction || body.kind || body.retry || body.dictate)
+        );
+        if (gatedAssist) {
+          const mapped = {
+            jsonrpc: "2.0",
+            id: body.id ?? 1,
+            method: "computer.meeting_assist",
+            params: body.params || body,
+          };
+          const raw = opts.mcp
+            ? opts.mcp.handle(mapped, { coordinator: api })
+            : { jsonrpc: "2.0", id: mapped.id, error: { code: -32601, message: "mcp not wired" } };
+          Promise.resolve(raw).then((out) => {
+            res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(out));
+          });
+          return;
+        }
         const out = askLiveCoworker(workspace, ask);
         if (out.ok && out.desk === "meeting") {
           sendLiveRoom(res, "meeting", "live-meeting");
@@ -493,6 +711,7 @@ function createCoordinator(opts = {}) {
       res.end(
         JSON.stringify({
           ...workspace.snapshot(),
+          exec: false,
           session: sessionBundle(workspace.list(), todayBrief.cue),
         })
       );
@@ -522,7 +741,7 @@ function createCoordinator(opts = {}) {
       });
       return;
     }
-    if (req.method === "POST" && url.pathname === "/mcp") {
+    if (req.method === "POST" && (url.pathname === "/mcp" || url.pathname === "/api/computer" || url.pathname === "/api/scribe")) {
       const chunks = [];
       req.on("data", (c) => chunks.push(c));
       req.on("end", () => {
@@ -534,14 +753,38 @@ function createCoordinator(opts = {}) {
           res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32700, message: "parse error" } }));
           return;
         }
+        if (url.pathname === "/api/computer") {
+          body = {
+            jsonrpc: "2.0",
+            id: body.id ?? 1,
+            method: "computer.act",
+            params: body.params || body,
+          };
+        } else if (url.pathname === "/api/scribe") {
+          body = {
+            jsonrpc: "2.0",
+            id: body.id ?? 1,
+            method: "computer.scribe",
+            params: body.params || body,
+          };
+        } else if (url.pathname === "/api/meeting") {
+          body = {
+            jsonrpc: "2.0",
+            id: body.id ?? 1,
+            method: "computer.meeting_assist",
+            params: body.params || body,
+          };
+        }
         const mcp = opts.mcp;
-        const out = mcp ? mcp.handle(body, { coordinator: api }) : {
+        const raw = mcp ? mcp.handle(body, { coordinator: api }) : {
           jsonrpc: "2.0",
           id: body.id ?? null,
           error: { code: -32601, message: "mcp not wired" },
         };
-        res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify(out));
+        Promise.resolve(raw).then((out) => {
+          res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify(out));
+        });
       });
       return;
     }

@@ -6,7 +6,7 @@
  */
 
 const assert = require("assert");
-const { NetieEcosystem } = require("../electron/netie/ecosystem");
+const { NetieEcosystem, sanitizeLlmUrl, sanitizeLlmModel, isLoopbackLlmUrl } = require("../electron/netie/ecosystem");
 const safety = require("../electron/netie/safety");
 
 let pass = 0;
@@ -196,6 +196,104 @@ test("the OpenVault planner is told about the Word coworker verbs", () => {
   assert.ok(/word_docx_append/.test(prompt), "_llmPlan never names word_docx_append");
   assert.ok(/word_from_clipboard/.test(prompt), "_llmPlan never names word_from_clipboard");
   assert.ok(/Omit path/.test(prompt), "_llmPlan must not invite a model-supplied path");
+});
+
+test("sanitizeLlmUrl strips completions path and rejects junk", () => {
+  assert.strictEqual(sanitizeLlmUrl("http://127.0.0.1:5000/"), "http://127.0.0.1:5000");
+  assert.strictEqual(
+    sanitizeLlmUrl("http://127.0.0.1:5000/v1/chat/completions"),
+    "http://127.0.0.1:5000"
+  );
+  assert.strictEqual(
+    sanitizeLlmUrl("https://api.groq.com/openai/v1"),
+    "https://api.groq.com/openai/v1"
+  );
+  assert.strictEqual(sanitizeLlmUrl("javascript:alert(1)"), "");
+  assert.strictEqual(sanitizeLlmUrl("ftp://127.0.0.1/llm"), "");
+  assert.strictEqual(sanitizeLlmUrl("http://user:sk-secret@127.0.0.1:5000"), "http://127.0.0.1:5000");
+  assert.strictEqual(isLoopbackLlmUrl("http://127.0.0.1:5000"), true);
+  assert.strictEqual(isLoopbackLlmUrl("https://api.groq.com/openai/v1"), false);
+});
+
+test("sanitizeLlmModel keeps ids and drops keys", () => {
+  assert.strictEqual(sanitizeLlmModel("gemini-2.0-flash"), "gemini-2.0-flash");
+  assert.strictEqual(sanitizeLlmModel("openai/gpt-4o"), "openai/gpt-4o");
+  assert.strictEqual(sanitizeLlmModel("sk-secret"), "");
+  assert.strictEqual(sanitizeLlmModel("bad model"), "");
+  assert.strictEqual(sanitizeLlmModel(""), "");
+});
+
+test("visionChat uses live chatUrl; custody stays on OpenVault", async () => {
+  let chatUrl = "http://127.0.0.1:5000";
+  const f = mockFetch([
+    ["/dms/secure", { json: { ok: true, blocked: false, text: "hi" } }],
+    ["/v1/chat/completions", { json: { choices: [{ message: { content: "ok" } }] } }],
+    ["/dms/audit/append", { json: { ok: true } }],
+    ["/v1/custody/inject", { json: { injected: true } }],
+  ]);
+  const eco = new NetieEcosystem({
+    fetchImpl: f,
+    chatUrl: () => chatUrl,
+    openvaultUrl: "http://127.0.0.1:5000",
+    model: () => "gemini-2.0-flash",
+  });
+  assert.strictEqual(eco.chatCompletionsUrl(), "http://127.0.0.1:5000/v1/chat/completions");
+  chatUrl = "https://llm.example.com/v1";
+  assert.strictEqual(eco.chatCompletionsUrl(), "https://llm.example.com/v1/chat/completions");
+  const r = await eco.visionChat({ message: "hi" });
+  assert.strictEqual(r.ok, true);
+  assert.ok(f.calls.some((c) => c.url === "https://llm.example.com/v1/chat/completions"));
+  const custody = await eco.requestCustody({ field: "password" });
+  assert.strictEqual(custody.injected, true);
+  assert.ok(f.calls.some((c) => c.url === "http://127.0.0.1:5000/v1/custody/inject"));
+  const fs = require("fs");
+  const path = require("path");
+  const html = fs.readFileSync(path.join(__dirname, "../electron/hud.html"), "utf8");
+  assert.ok(html.includes('id="set-llm-url"'));
+  assert.ok(html.includes('id="set-llm-model"'));
+});
+
+test("visionChat reports usage and calls onUsage", async () => {
+  const noted = [];
+  const f = mockFetch([
+    ["/dms/secure", { json: { ok: true, blocked: false, text: "hi" } }],
+    [
+      "/v1/chat/completions",
+      {
+        json: {
+          choices: [{ message: { content: "ok" } }],
+          usage: { prompt_tokens: 11, completion_tokens: 7, total_tokens: 18 },
+        },
+      },
+    ],
+    ["/dms/audit/append", { json: { ok: true } }],
+  ]);
+  const eco = new NetieEcosystem({ fetchImpl: f, onUsage: (u) => noted.push(u) });
+  const r = await eco.visionChat({ message: "hi" });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.usage.total, 18);
+  assert.strictEqual(noted.length, 1);
+  assert.strictEqual(noted[0].prompt, 11);
+  assert.strictEqual(noted[0].completion, 7);
+});
+
+test("visionChat asks the model to emit Clicky overlay tokens", async () => {
+  const f = mockFetch([
+    ["/dms/secure", { json: { ok: true, blocked: false, text: "how do I save" } }],
+    ["/v1/chat/completions", { json: { choices: [{ message: { content: "Click [BOX:10,20,30,12:Save]." } }] } }],
+    ["/dms/audit/append", { json: { ok: true } }],
+  ]);
+  const eco = new NetieEcosystem({ fetchImpl: f });
+  const r = await eco.visionChat({ message: "how do I save" });
+  assert.strictEqual(r.ok, true);
+  const chat = f.calls.find((c) => c.url.includes("/v1/chat/completions"));
+  assert.ok(chat && chat.body && chat.body.messages);
+  const system = String(chat.body.messages[0].content || "");
+  assert.match(system, /\[POINT:/);
+  assert.match(system, /\[LINE:/);
+  assert.match(system, /\[PATH:/);
+  assert.match(system, /\[BOX:/);
+  assert.match(system, /never act/i);
 });
 
 // ── driver: run sequentially, await each ─────────────────────────────────────

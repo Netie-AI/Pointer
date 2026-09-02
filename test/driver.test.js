@@ -88,6 +88,7 @@ test("dry-run keeps v1 contract: xPct math, type without coords, missing coords 
     { region: { x: 0, y: 0, width: 0, height: 0 } }
   );
   assert.strictEqual(miss.ok, false);
+  assert.deepStrictEqual(await d.listWindows(), []);
 });
 
 test("one persistent worker serves many ops; coords go through toPhysical", async () => {
@@ -143,17 +144,73 @@ test("type with coords clicks the field first (focus), then types", async () => 
   d.dispose();
 });
 
+test("listWindows maps screen rects from the worker", async () => {
+  const state = {};
+  const d = new InputDriver({
+    spawnImpl: fakeSpawn(
+      (m) =>
+        m.op === "windows"
+          ? {
+              windows: [
+                {
+                  hwnd: "42",
+                  title: "Notepad",
+                  proc: "notepad",
+                  x: 10,
+                  y: 20,
+                  width: 300,
+                  height: 200,
+                },
+                { hwnd: "7", title: "Skip box" },
+              ],
+            }
+          : null,
+      state
+    ),
+  });
+  const wins = await d.listWindows();
+  assert.strictEqual(wins.length, 2);
+  assert.deepStrictEqual(wins[0], {
+    hwnd: "42",
+    title: "Notepad",
+    proc: "notepad",
+    x: 10,
+    y: 20,
+    width: 300,
+    height: 200,
+  });
+  assert.deepStrictEqual(wins[1], { hwnd: "7", title: "Skip box", proc: "" });
+  const fg = new InputDriver({
+    spawnImpl: fakeSpawn((m) =>
+      m.op === "fg"
+        ? { hwnd: "42", title: "Notepad", proc: "notepad", x: 10, y: 20, width: 300, height: 200 }
+        : null
+    ),
+  });
+  assert.deepStrictEqual(await fg.foreground(), {
+    hwnd: "42",
+    title: "Notepad",
+    proc: "notepad",
+    x: 10,
+    y: 20,
+    width: 300,
+    height: 200,
+  });
+  fg.dispose();
+  d.dispose();
+});
+
 test("foreground rides the worker; dry-run stays offline", async () => {
   const state = {};
   const d = new InputDriver({
     spawnImpl: fakeSpawn((m) => (m.op === "fg" ? { title: "Notepad — todo", proc: "notepad" } : null), state),
   });
   const fg = await d.foreground();
-  assert.deepStrictEqual(fg, { title: "Notepad — todo", proc: "notepad" });
+  assert.deepStrictEqual(fg, { hwnd: "0", title: "Notepad — todo", proc: "notepad" });
   d.dispose();
 
   const dry = new InputDriver({ dryRun: true });
-  assert.deepStrictEqual(await dry.foreground(), { title: "?", proc: "?" });
+  assert.deepStrictEqual(await dry.foreground(), { hwnd: "0", title: "?", proc: "?" });
 });
 
 test("worker op error rejects; worker death fails pending and respawns next op", async () => {
@@ -234,9 +291,22 @@ test("off-Windows Act is fail-closed and does not spawn powershell", async () =>
   assert.match(String(out.error || ""), /fail-closed/);
   assert.strictEqual(d._worker, null);
   const fg = await d.foreground();
-  assert.deepStrictEqual(fg, { title: "?", proc: "?" });
+  assert.deepStrictEqual(fg, { hwnd: "0", title: "?", proc: "?" });
+  assert.deepStrictEqual(await d.listWindows(), []);
   const wait = await d.perform({ type: "wait", ms: 1 });
   assert.strictEqual(wait.ok, true);
+  d.dispose();
+});
+
+test("keysHeld reports the worker down flag", async () => {
+  const state = {};
+  const d = new InputDriver({
+    spawnImpl: fakeSpawn((m) => (m.op === "keys" ? { down: true } : null), state),
+  });
+  const r = await d.keysHeld([0x11, 0x12, 0x20]);
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.down, true);
+  assert.ok(state.ops.some((o) => o.op === "keys"));
   d.dispose();
 });
 

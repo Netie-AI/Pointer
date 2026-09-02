@@ -124,8 +124,9 @@ Baseline probe: `node scripts/stt_baseline.js`. Notes: [`docs/STT_OCR.md`](STT_O
 
 Liquid glass uses `backdrop-filter` where Chromium supports it (lensing + frost).
 `@supports not` and `prefers-reduced-transparency` fall back to solid frost so
-Windows Electron stays readable if blur corrupts. Spring-style transitions and
-press-on-down stay. No floating Clicky ring.
+Windows Electron stays readable if blur corrupts. IBM Plex Serif + Sans, spring-style
+transitions, and press-on-down stay. The HUD is screenshotable by default (DR-0005)
+so UACC and other agents can detect it. No floating Clicky ring.
 
 ## Lag stance
 

@@ -180,6 +180,26 @@ const RECIPES = Object.freeze({
     ]),
   }),
 
+  /** Prefer Claude Code while the 5-hour window is open. */
+  use_claude: Object.freeze({
+    id: "use_claude",
+    label: "Open Claude Code",
+    actions: Object.freeze([
+      { type: "open", target: "claude" },
+      { type: "wait", ms: 1200 },
+    ]),
+  }),
+
+  /** When Claude's 5-hour limit is used, continue in Cursor. */
+  use_cursor: Object.freeze({
+    id: "use_cursor",
+    label: "Open Cursor",
+    actions: Object.freeze([
+      { type: "open", target: "Cursor" },
+      { type: "wait", ms: 1200 },
+    ]),
+  }),
+
   // ── Excel ───────────────────────────────────────────────────────────────
   /** AutoSum the selection (Alt, H, U, S) — ribbon keys, stable since 2007. */
   excel_autosum: Object.freeze({
@@ -270,6 +290,30 @@ const RECIPES = Object.freeze({
     id: "find_replace",
     label: "Find and replace",
     actions: Object.freeze([{ type: "press", value: "ctrl+h" }]),
+  }),
+
+  uacc_screen_info: Object.freeze({
+    id: "uacc_screen_info",
+    label: "UACC screen info",
+    actions: Object.freeze([{ type: "observe", value: "uacc_screen_info" }]),
+  }),
+
+  uacc_find_element: Object.freeze({
+    id: "uacc_find_element",
+    label: "UACC find element",
+    actions: Object.freeze([{ type: "observe", value: "uacc_find_element" }]),
+  }),
+
+  /** OpenWillow Scribe: copy the selection so a rewrite can use it. */
+  rewrite_selection: Object.freeze({
+    id: "rewrite_selection",
+    label: "Copy selection to rewrite",
+    actions: Object.freeze([
+      { type: "clipboard_baseline" },
+      { type: "press", value: "ctrl+c" },
+      { type: "wait", ms: 120 },
+      { type: "clipboard_verify" },
+    ]),
   }),
 
   /** Continue prompt stub when context is full — copy then new chat. */
@@ -439,6 +483,17 @@ function matchRecipe(text) {
     return cloneRecipe(RECIPES.create_slides);
   }
   if (
+    /^(?:please\s+)?(?:use|open|switch\s+to)\s+claude(?:\s*code)?(?:\s+please)?$/.test(normalized)
+  ) {
+    return cloneRecipe(RECIPES.use_claude);
+  }
+  if (
+    /^(?:please\s+)?(?:use|open|switch\s+to)\s+cursor(?:\s*ide)?(?:\s+please)?$/.test(normalized) ||
+    /(?:5[\s-]*hour|five[\s-]*hour).{0,24}(?:limit|done|hit|over|exhausted)/.test(normalized)
+  ) {
+    return cloneRecipe(RECIPES.use_cursor);
+  }
+  if (
     /(?:claude|chat).{0,30}(?:to|into|->|→)\s*cursor/.test(normalized) ||
     /(?:hand\s*off|handoff|send|copy).{0,40}(?:claude|answer|output).{0,20}cursor/.test(normalized) ||
     /^(?:please\s+)?claude\s*(?:to|->|→)\s*cursor$/.test(normalized)
@@ -456,6 +511,29 @@ function matchRecipe(text) {
     return cloneRecipe(RECIPES.cursor_new_chat);
   }
 
+  if (
+    /(?:uacc|accessibility tree|text map)/.test(normalized) ||
+    /(?:what(?:'s| is)|show|get)\s+(?:on\s+)?(?:the\s+|my\s+)?screen(?:\s+info)?/.test(normalized) ||
+    /^(?:please\s+)?(?:screen\s+info|screenshot\s+map)$/.test(normalized)
+  ) {
+    return cloneRecipe(RECIPES.uacc_screen_info);
+  }
+  if (
+    /^(?:please\s+)?(?:find\s+(?:the\s+)?element|where\s+is)\b/.test(normalized) ||
+    /uacc\s+find/.test(normalized)
+  ) {
+    return cloneRecipe(RECIPES.uacc_find_element);
+  }
+  if (
+    /^(?:please\s+)?(?:rewrite|rephrase|shorten|lengthen|formalize)\s+(?:this|that|it|the selection|selection)\b/.test(
+      normalized
+    ) ||
+    /^(?:please\s+)?(?:make\s+this\s+(?:shorter|longer|formal|casual)|scribe\s+(?:this|that))\b/.test(
+      normalized
+    )
+  ) {
+    return cloneRecipe(RECIPES.rewrite_selection);
+  }
   if (/^(?:please\s+)?(?:copy|select)\s+all(?:\s+(?:of\s+)?(?:this|that|it))?$/.test(normalized)) {
     return cloneRecipe(RECIPES.copy_all);
   }

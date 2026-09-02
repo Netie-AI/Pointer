@@ -19,13 +19,36 @@
 /** `[POINT:x,y]` or `[POINT:x,y:label]`, percentages of the screen. */
 const POINT_RE = /\[POINT:\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*(?::\s*([^\]]*?))?\s*\]/gi;
 /** `[BOX:left,top,w,h:label]` — measured top-left box, percentages. */
+/** `[LINE:x1,y1,x2,y2]` or `[ARROW:...]` with optional label. */
+const LINE_RE =
+  /\[(?:LINE|ARROW):\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*(?::\s*([^\]]*?))?\s*\]/gi;
+/** `[PATH:x,y;x,y;...]` or with a trailing `:label`. */
+const PATH_RE = /\[PATH:\s*([^\]]+?)\]/gi;
 const BOX_RE =
-  /\[BOX:\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*(?::\s*([^\]]*?))?\s*\]/gi;
+  /\[(?:BOX|RECT):\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*(?::\s*([^\]]*?))?\s*\]/gi;
 
 /** A teach layer that covers the screen in dots is not teaching anything. */
 const MAX_POINTS = 8;
+const MAX_LINES = 6;
+const MAX_PATHS = 4;
+const MAX_PATH_PTS = 24;
+const MAX_BOXES = 6;
 /** Long enough to look at, short enough not to become furniture. */
 const DEFAULT_TTL_MS = 6000;
+
+function emptyParse() {
+  return { text: "", points: [], lines: [], paths: [], boxes: [], dropped: 0 };
+}
+
+function splitPathLabel(inner) {
+  const raw = String(inner || "");
+  const colon = raw.lastIndexOf(":");
+  if (colon <= 0) return { body: raw, label: "" };
+  const maybe = raw.slice(colon + 1).trim();
+  if (!maybe) return { body: raw.slice(0, colon), label: "" };
+  if (/[;,]/.test(maybe)) return { body: raw, label: "" };
+  return { body: raw.slice(0, colon), label: maybe };
+}
 
 function inRange(value) {
   return Number.isFinite(value) && value >= 0 && value <= 100;
@@ -42,24 +65,42 @@ function clipBox(leftPct, topPct, wPct, hPct) {
   return { leftPct, topPct, wPct: w, hPct: h };
 }
 
+function parsePathPoints(body) {
+  const pts = [];
+  for (const part of String(body).split(";")) {
+    const m = String(part).trim().match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+    if (!m) continue;
+    const xPct = Number(m[1]);
+    const yPct = Number(m[2]);
+    if (!inRange(xPct) || !inRange(yPct)) continue;
+    if (pts.length >= MAX_PATH_PTS) break;
+    pts.push({ xPct, yPct });
+  }
+  return pts;
+}
+
 /**
- * @param {string} raw  assistant text, possibly containing POINT / BOX tokens
- * @returns {{text:string, points:Array<object>, dropped:number}}
+ * @param {string} raw  assistant text, possibly containing POINT / LINE / PATH / BOX tokens
+ * @returns {{text:string, points:Array, lines:Array, paths:Array, boxes:Array, dropped:number}}
  */
 function parsePoints(raw) {
   const input = String(raw || "");
-  if (!input) return { text: "", points: [], dropped: 0 };
+  if (!input) return emptyParse();
 
   const points = [];
+  const lines = [];
+  const paths = [];
+  const boxes = [];
   let dropped = 0;
 
   let text = input.replace(BOX_RE, (_token, l, t, w, h, label) => {
     const box = clipBox(Number(l), Number(t), Number(w), Number(h));
-    if (!box || points.length >= MAX_POINTS) {
-      dropped += 1;
-      return label ? String(label).trim() : "";
-    }
     const clean = String(label || "").trim();
+    if (!box || boxes.length >= MAX_BOXES || points.length >= MAX_POINTS) {
+      dropped += 1;
+      return clean;
+    }
+    boxes.push({ xPct: box.leftPct, yPct: box.topPct, wPct: box.wPct, hPct: box.hPct, label: clean });
     points.push({
       xPct: box.leftPct + box.wPct / 2,
       yPct: box.topPct + box.hPct / 2,
@@ -85,12 +126,44 @@ function parsePoints(raw) {
     return clean;
   });
 
-  return { text: text.replace(/[ \t]{2,}/g, " ").trim(), points, dropped };
+  text = text.replace(LINE_RE, (_token, x1, y1, x2, y2, label) => {
+    const a = Number(x1);
+    const b = Number(y1);
+    const c = Number(x2);
+    const d = Number(y2);
+    if (!inRange(a) || !inRange(b) || !inRange(c) || !inRange(d) || lines.length >= MAX_LINES) {
+      dropped += 1;
+      return label ? String(label).trim() : "";
+    }
+    const clean = String(label || "").trim();
+    lines.push({ x1Pct: a, y1Pct: b, x2Pct: c, y2Pct: d, label: clean });
+    return clean;
+  });
+
+  text = text.replace(PATH_RE, (_token, inner) => {
+    const { body, label } = splitPathLabel(inner);
+    const pts = parsePathPoints(body);
+    const clean = String(label || "").trim();
+    if (pts.length < 2 || paths.length >= MAX_PATHS) {
+      dropped += 1;
+      return clean;
+    }
+    paths.push({ points: pts, label: clean });
+    return clean;
+  });
+
+  return { text: text.replace(/[ \t]{2,}/g, " ").trim(), points, lines, paths, boxes, dropped };
 }
 
 /** True when the text is worth sending to the overlay at all. */
 function hasPoints(raw) {
-  return parsePoints(raw).points.length > 0;
+  const parsed = parsePoints(raw);
+  return (
+    parsed.points.length > 0 ||
+    parsed.lines.length > 0 ||
+    parsed.paths.length > 0 ||
+    parsed.boxes.length > 0
+  );
 }
 
 function clipStroke(stroke) {
@@ -143,9 +216,13 @@ function laterOverlayPoints(path) {
 function toOverlayEvent(raw, opts = {}) {
   const parsed = parsePoints(raw);
   const later = laterOverlayPoints(opts.path);
+  const points = later.concat(stampCurrentAction(parsed.points, opts));
   return {
     type: "point",
-    points: later.concat(stampCurrentAction(parsed.points, opts)),
+    points,
+    lines: parsed.lines || [],
+    paths: parsed.paths || [],
+    boxes: parsed.boxes || [],
     hold: Boolean(opts.hold),
     ttlMs: holdTtl(opts),
   };
@@ -223,8 +300,14 @@ function stampCurrentAction(points, opts) {
 
 module.exports = {
   POINT_RE,
+  LINE_RE,
+  PATH_RE,
   BOX_RE,
   MAX_POINTS,
+  MAX_LINES,
+  MAX_PATHS,
+  MAX_PATH_PTS,
+  MAX_BOXES,
   DEFAULT_TTL_MS,
   parsePoints,
   hasPoints,

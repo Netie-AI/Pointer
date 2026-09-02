@@ -398,10 +398,108 @@ function pointControls(controls, screen, opts = {}) {
   return out;
 }
 
+function listForegroundControls(candidates, opts = {}) {
+  const max = Number(opts.max) > 0 ? Number(opts.max) : 40;
+  const screenRect = opts.screen;
+  return (Array.isArray(candidates) ? candidates : [])
+    .filter((c) => c && c.name && c.rect)
+    .slice(0, max)
+    .map((c) => {
+      const row = {
+        name: String(c.name).slice(0, 80),
+        controlType: String(c.controlType || ""),
+        enabled: c.enabled !== false,
+      };
+      const pct = screenRect ? rectToPct(c.rect, screenRect) : null;
+      if (pct) {
+        row.xPct = pct.xPct;
+        row.yPct = pct.yPct;
+      }
+      return row;
+    });
+}
+
+async function dumpForeground(opts = {}) {
+  if (typeof opts.run !== "function") return [];
+  let stdout;
+  try {
+    stdout = await opts.run(buildProbeScript("observe", opts));
+  } catch {
+    return [];
+  }
+  return listForegroundControls(parseProbeOutput(stdout), opts);
+}
+
+const MAX_SELECTION_CHARS = 4000;
+
+/**
+ * OpenWillow-class selection read: TextPattern on the focused control, walk
+ * parents a short way, refuse password fields. No Ctrl+C, so the pasteboard
+ * stays put and a password box is never copied.
+ */
+function buildSelectionScript() {
+  return [
+    "$ErrorActionPreference='Stop'",
+    "Add-Type -AssemblyName UIAutomationClient,UIAutomationTypes | Out-Null",
+    "$el=[System.Windows.Automation.AutomationElement]::FocusedElement",
+    "if($el -eq $null){ '{\"ok\":false,\"reason\":\"no focus\"}'; exit 0 }",
+    "$walker=[System.Windows.Automation.TreeWalker]::ControlViewWalker",
+    "for($i=0; $i -lt 8 -and $el -ne $null; $i++){",
+    "  try{ if($el.Current.IsPassword){ '{\"ok\":false,\"reason\":\"password\"}'; exit 0 } } catch {}",
+    "  try{",
+    "    $pat=$el.GetCurrentPattern([System.Windows.Automation.TextPattern]::Pattern)",
+    "    if($pat -ne $null){",
+    "      $ranges=$pat.GetSelection()",
+    "      $parts=New-Object System.Collections.ArrayList",
+    "      foreach($r in $ranges){ $t=$r.GetText(4000); if($t){ [void]$parts.Add($t) } }",
+    "      $text=(($parts -join \"`n\")).Trim()",
+    "      if($text){ [pscustomobject]@{ok=$true;text=$text;via='uia'} | ConvertTo-Json -Compress; exit 0 }",
+    "    }",
+    "  } catch {}",
+    "  try{ $el=$walker.GetParent($el) } catch { break }",
+    "}",
+    "'{\"ok\":false,\"reason\":\"no selection\"}'",
+  ].join("\n");
+}
+
+function parseSelectionOutput(stdout) {
+  const raw = String(stdout || "").trim();
+  if (!raw) return { ok: false, reason: "empty" };
+  try {
+    const data = JSON.parse(raw);
+    if (data && data.reason === "password") {
+      return { ok: false, reason: "password", blocked: true };
+    }
+    const text = String((data && data.text) || "").trim();
+    if (data && data.ok && text) {
+      return {
+        ok: true,
+        text: text.slice(0, MAX_SELECTION_CHARS),
+        via: "uia",
+      };
+    }
+    return { ok: false, reason: (data && data.reason) || "no selection" };
+  } catch {
+    return { ok: false, reason: "bad probe" };
+  }
+}
+
+async function readSelection(opts = {}) {
+  if (typeof opts.run !== "function") return { ok: false, reason: "no runner" };
+  let stdout;
+  try {
+    stdout = await opts.run(buildSelectionScript());
+  } catch {
+    return { ok: false, reason: "uia unavailable" };
+  }
+  return parseSelectionOutput(stdout);
+}
+
 module.exports = {
   TARGET_CONTROL_TYPES,
   MAX_CANDIDATES,
   MAX_TEACH_POINTS,
+  MAX_SELECTION_CHARS,
   normalize,
   scoreCandidate,
   chooseCandidate,
@@ -413,6 +511,11 @@ module.exports = {
   parseProbeOutput,
   findControl,
   listControls,
+  listForegroundControls,
+  dumpForeground,
+  buildSelectionScript,
+  parseSelectionOutput,
+  readSelection,
   pointControls,
   formatPointToken,
   ctaRank,

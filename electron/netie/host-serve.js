@@ -113,7 +113,14 @@ function handlePublicRequest({ method, pathname, search } = {}) {
   const verb = String(method || "GET").toUpperCase();
   const clean = normalizePath(pathname);
   const params = new URLSearchParams(String(search || "").replace(/^\?/, ""));
-  if (clean === "/mcp" || clean.startsWith("/mcp/")) {
+  if (
+    clean === "/mcp" ||
+    clean.startsWith("/mcp/") ||
+    clean === "/api/computer" ||
+    clean === "/api/scribe" ||
+    clean === "/api/observe" ||
+    clean === "/api/tools"
+  ) {
     return { status: 404, headers: textHeaders(), body: "mcp stays on 127.0.0.1" };
   }
   if (clean === "/api/workspace/exec" || clean === "/exec") {

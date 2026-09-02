@@ -125,6 +125,11 @@ function describeAction(action) {
       text = `Press ${clip(a.keys || a.value || a.target || "a key", 30)}`;
       break;
 
+    case "focus_hwnd":
+      verb = "Focus";
+      text = "Focus the remembered app window";
+      break;
+
     case "copy":
     case "select_copy":
     case "copy_clipboard":
