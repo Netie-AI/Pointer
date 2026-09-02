@@ -85,6 +85,7 @@ function classifyAction(action) {
     type === "paste" ||
     type === "clipboard_paste" ||
     type === "setvalue" ||
+    type === "uia_set" ||
     type === "clipboard_set";
   if (isInput && _matchesAny(hay, SECRET_TARGET_WORDS)) return ActionTier.PROHIBITED;
 
@@ -129,6 +130,7 @@ function classifyAction(action) {
     case "paste":
     case "clipboard_paste":
     case "setvalue":
+    case "uia_set":
       // Free-text into a normal field is consequential (it changes state and
       // can be submitted). Secret fields already returned PROHIBITED above.
       return ActionTier.CONSEQUENTIAL;

@@ -36,6 +36,13 @@ check("a click names the control", () => {
   assert.ok(d.text.includes("Send"));
 });
 
+check("uia_set names the field and does not claim a cursor warp", () => {
+  const d = describeAction({ type: "uia_set", target: "Search", value: "hello" });
+  assert.ok(d.text.includes("Search"));
+  assert.ok(d.text.includes("hello"));
+  assert.ok(/without moving the cursor/i.test(d.text));
+});
+
 check("a secret value is never echoed", () => {
   const d = describeAction({
     type: "type",

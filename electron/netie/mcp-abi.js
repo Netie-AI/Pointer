@@ -101,7 +101,7 @@ const CATALOG = Object.freeze([
   {
     name: "computer.act",
     description:
-      "Gated OS actions. instruction plans via recipes then type:/click:/click window:/focus:/open:/deliver:/replace:/wait/scroll/doubleclick/rightclick/hover. Chain local verbs with then: focus: notepad then type: hello or click window: notepad then type: hello. use Claude opens Claude Code while the 5-hour window is open; use Cursor when that limit is used. Clicks and launches need approved true. mode alone switches Agent/General/Transcribe/Scribe/Meeting like the tray (no Cortex).",
+      "Gated OS actions. instruction plans via recipes then type:/click:/click window:/fill: Search: hello/type in:/set:/focus:/open:/deliver:/replace:/wait/scroll/doubleclick/rightclick/hover. fill: and type in: try UIA ValuePattern first (no cursor warp); miss falls back to click then type. set: Search: hello is ValuePattern only. Chain local verbs with then: focus: notepad then type: hello or click window: notepad then type: hello. use Claude opens Claude Code while the 5-hour window is open; use Cursor when that limit is used. Clicks and launches need approved true. mode alone switches Agent/General/Transcribe/Scribe/Meeting like the tray (no Cortex).",
     inputSchema: {
       type: "object",
       properties: {
