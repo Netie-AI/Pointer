@@ -2,6 +2,22 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Clicks restore the previous window
+
+HeyClicky-class Act: a click / doubleclick / rightclick puts the
+foreground hwnd back after SendInput so typing stays in the user's
+window. Type / fill / paste-with-coords still steal focus so text
+lands. `computer.status.act.keepFocus` advertises it. warp:true
+leaves both cursor and window. No GPLv3 dump. No third-party MCP.
+
+## 2026-08-28 - Clicks restore the real cursor
+
+HeyClicky-class Act: click / doubleclick / rightclick / type-into-field
+no longer ease the OS pointer across the screen. SendInput still aims,
+then restores GetCursorPos. `hover` still travels. `warp:true` keeps
+the old animation. `computer.status.act.keepCursor` advertises it.
+No GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Token-aware Claude 5-hour then Cursor
 
 Prefer Claude Code while the 5-hour window is open; instruction or

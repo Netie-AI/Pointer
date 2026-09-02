@@ -86,6 +86,8 @@ function test(name, fn) {
     assert.ok(scribe.inputSchema.properties.dictate);
     const act = r.result.catalog.find((t) => t.name === "computer.act");
     assert.match(act.description, /focus: notepad then type: hello/);
+    assert.match(act.description, /restore the real cursor/);
+    assert.match(act.description, /previous window/);
     assert.match(act.description, /use Claude/);
     assert.match(act.description, /use Cursor/);
     assert.ok(act.inputSchema.properties.mode);

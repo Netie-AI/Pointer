@@ -37,7 +37,7 @@ the issue wins.
 | Claude 5-hour then Cursor | `electron/netie/agent-route.js`; `computer.status.route` token totals; recipes `use_claude` / `use_cursor`; open still Cortex then reviewPlan |
 | Meeting assist | `electron/netie/meeting.js`; HUD Suggest/Recap/Follow-ups/Email/Actions/Copy notes/Copy recap/Copy say/Copy email/Copy actions; Follow-ups chips; meeting LIVE captions (fixed chrome); `GET /api/meeting?notes=1` `?export=1` `?recap=1` `?say=1` `?email=1` `?actions=1` `?pack=1` |
 | Word safe API | `electron/netie/word-coworker.js` (`buildDocx` in memory; loopback `/document` downloads it; Word.app write still needs Cortex; public 404) |
-| Driver (SendInput) | `electron/netie/driver.js` |
+| Driver (SendInput) | `electron/netie/driver.js` (clicks restore the real cursor and the previous window; hover still travels; type/fill still steal focus; `warp:true` keeps the old animation) |
 | Safety / plan-guard | `electron/netie/safety.js`, `plan-guard.js` |
 | STT chain | `electron/netie/transcriber.js` |
 | UI visual refs | `docs/ui-refs/perplexity-computer/INDEX.md` |
