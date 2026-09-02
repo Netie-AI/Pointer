@@ -430,6 +430,7 @@ test("planner grounding names the desk and refuses online exec", () => {
   const g = plannerGrounding("what should I say", { mode: "meeting" });
   assert.match(g, /Active coworker desk: meeting/);
   assert.match(g, /workspace.exec/);
+  assert.match(g, /prefer Claude Code while the 5-hour window is open/);
   assert.match(deskGrounding("security"), /Never self-approve/);
   assert.match(deskGrounding("teach"), /\[POINT:/);
   assert.match(deskGrounding("teach"), /\[BOX:/);

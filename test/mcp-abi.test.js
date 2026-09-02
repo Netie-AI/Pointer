@@ -87,7 +87,12 @@ function test(name, fn) {
     const act = r.result.catalog.find((t) => t.name === "computer.act");
     assert.match(act.description, /focus: notepad then type: hello/);
     assert.match(act.description, /toggle:/);
+    assert.match(act.description, /use Claude/);
+    assert.match(act.description, /use Cursor/);
     assert.ok(act.inputSchema.properties.mode);
+    const status = r.result.catalog.find((t) => t.name === "computer.status");
+    assert.match(status.description, /token totals/);
+    assert.match(status.description, /Claude 5-hour/);
   });
 
   await test("lanes.claim goes through MCP and conflicts", async () => {

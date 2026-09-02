@@ -79,9 +79,12 @@ check("an undrivable app is NAMED and refused, never silently dropped", () => {
   assert.ok(/cannot drive/i.test(d.refusal));
 });
 
-check("recognition never claims a launch target for an undrivable app", () => {
-  assert.strictEqual(recognizeApp("post this in Slack").launch, null);
-  assert.strictEqual(recognizeApp("post this in Slack").drivable, false);
+check("Claude Code and Cursor are drivable launch targets", () => {
+  assert.strictEqual(recognizeApp("open Claude Code").id, "claude");
+  assert.strictEqual(recognizeApp("open Claude Code").launch, "claude");
+  assert.strictEqual(recognizeApp("open Claude Code").drivable, true);
+  assert.strictEqual(recognizeApp("open Cursor").id, "cursor");
+  assert.strictEqual(recognizeApp("open Cursor").launch, "cursor");
 });
 
 check("verbs are read independently of the app", () => {
