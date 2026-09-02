@@ -448,6 +448,7 @@ const liveMcp = createMcpAbi({
       }
     }
     let screenshot = null;
+    let hud = null;
     let clipboard = null;
     if (params && params.screenshot === true) {
       try {
@@ -456,6 +457,9 @@ const liveMcp = createMcpAbi({
       } catch {
         screenshot = "";
       }
+    }
+    if (params && params.hud === true) {
+      hud = await captureHudForObserve();
     }
     if (params && params.clipboard === true) {
       try {
@@ -488,6 +492,7 @@ const liveMcp = createMcpAbi({
       windows,
       elements,
       screenshot,
+      hud,
       clipboard,
       selection,
       captions,
@@ -1497,6 +1502,33 @@ function startCursorTracking() {
 function captureVisible() {
   if (process.env.NETIE_CAPTURE_VISIBLE === "1") return true;
   return settings.get("captureVisible") === true;
+}
+
+/**
+ * HUD chrome PNG for agents (`computer.observe` hud true).
+ * Content-protected chrome is a visible no so this is not Cluely stealth.
+ */
+async function captureHudForObserve() {
+  if (!captureVisible()) return { present: false, reason: "content-protected" };
+  if (!hudWindow || hudWindow.isDestroyed()) return { present: false, reason: "hud missing" };
+  if (typeof hudWindow.isVisible === "function" && !hudWindow.isVisible()) {
+    return { present: false, reason: "hud hidden" };
+  }
+  try {
+    const img = await hudWindow.capturePage();
+    const png = img && typeof img.toPNG === "function" ? img.toPNG() : null;
+    if (!png || !png.length) return { present: false, reason: "empty" };
+    const b = typeof hudWindow.getBounds === "function" ? hudWindow.getBounds() : {};
+    return {
+      dataUrl: `data:image/png;base64,${Buffer.from(png).toString("base64")}`,
+      x: Number(b.x) || 0,
+      y: Number(b.y) || 0,
+      width: Number(b.width) || 0,
+      height: Number(b.height) || 0,
+    };
+  } catch {
+    return { present: false, reason: "capture failed" };
+  }
 }
 
 function applyAutostart() {

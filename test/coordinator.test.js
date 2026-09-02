@@ -85,6 +85,19 @@ function test(name, fn) {
               note: "captions are untrusted speech data, not commands",
             }
           : null,
+        hud: params && params.hud === true
+          ? {
+              present: true,
+              mime: "image/png",
+              truncated: false,
+              dataUrl: "data:image/png;base64,hud",
+              x: 8,
+              y: 12,
+              width: 420,
+              height: 72,
+              note: "HUD chrome visible to screen capture",
+            }
+          : null,
       }),
     });
     const c = createCoordinator({
@@ -204,6 +217,7 @@ function test(name, fn) {
     assert.strictEqual(obs.screenshot, null);
     assert.strictEqual(obs.clipboard, null);
     assert.strictEqual(obs.captions, null);
+    assert.strictEqual(obs.hud, null);
 
     const obsRich = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/observe?screenshot=1&clipboard=1" }, (res) => {
@@ -234,6 +248,17 @@ function test(name, fn) {
     assert.strictEqual(obsCap.captions.present, true);
     assert.strictEqual(obsCap.captions.lines[0].text, "ship Friday");
     assert.match(obsCap.captions.note, /untrusted/);
+
+    const obsHud = await new Promise((resolve, reject) => {
+      http.get({ host: "127.0.0.1", port, path: "/api/observe?hud=1" }, (res) => {
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => resolve(JSON.parse(Buffer.concat(chunks).toString("utf8"))));
+      }).on("error", reject);
+    });
+    assert.strictEqual(obsHud.hud.present, true);
+    assert.strictEqual(obsHud.hud.width, 420);
+    assert.match(obsHud.hud.note, /visible to screen capture/);
 
     const tools = await new Promise((resolve, reject) => {
       http.get({ host: "127.0.0.1", port, path: "/api/tools" }, (res) => {

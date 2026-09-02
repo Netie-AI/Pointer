@@ -157,6 +157,7 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("wait 400"));
     assert.ok(shown.drive.instructions.includes("replace: hello"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?screenshot=1"));
+    assert.ok(shown.drive.instructions.includes("GET /api/observe?hud=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?clipboard=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?selection=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?captions=1"));
@@ -256,6 +257,7 @@ function test(name, fn) {
     assert.strictEqual(obs.foreground, null);
     assert.deepStrictEqual(obs.windows, []);
     assert.strictEqual(obs.screenshot, null);
+    assert.strictEqual(obs.hud, null);
     assert.strictEqual(obs.clipboard, null);
     assert.strictEqual(obs.selection, null);
     assert.strictEqual(obs.captions, null);
@@ -308,6 +310,32 @@ function test(name, fn) {
     const silent = computerObserve({ captureVisible: true, captions: [] });
     assert.strictEqual(silent.captions.present, false);
     assert.deepStrictEqual(silent.captions.lines, []);
+    const hudShot = computerObserve({
+      captureVisible: true,
+      hud: {
+        dataUrl: "data:image/png;base64,AAA",
+        x: 10,
+        y: 20,
+        width: 400,
+        height: 80,
+      },
+    });
+    assert.strictEqual(hudShot.hud.present, true);
+    assert.strictEqual(hudShot.hud.x, 10);
+    assert.strictEqual(hudShot.hud.y, 20);
+    assert.strictEqual(hudShot.hud.width, 400);
+    assert.strictEqual(hudShot.hud.height, 80);
+    assert.match(hudShot.hud.note, /visible to screen capture/);
+    const hidden = computerObserve({
+      captureVisible: false,
+      hud: { present: false, reason: "content-protected" },
+    });
+    assert.strictEqual(hidden.hud.present, false);
+    assert.strictEqual(hidden.hud.reason, "content-protected");
+    const main = require("fs").readFileSync(require("path").join(__dirname, "../electron/main.js"), "utf8");
+    assert.ok(main.includes("params.hud === true"), "observe hud must capture HUD chrome");
+    assert.ok(main.includes("captureHudForObserve"), "HUD shot must live next to captureVisible");
+    assert.ok(/reason: "content-protected"/.test(main), "protected HUD must refuse the agent shot");
   });
 
   await test("computer.observe includes foreground and window list for agents", () => {

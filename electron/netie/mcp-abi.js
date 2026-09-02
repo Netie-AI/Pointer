@@ -86,12 +86,13 @@ const CATALOG = Object.freeze([
   },
   {
     name: "computer.observe",
-    description: "Foreground window and titled windows with screen rects (x y width height plus center cx cy). Pass elements true for UIA, screenshot true for a PNG, clipboard true for pasteboard text, selection true for focused selected text, captions true for LIVE speech lines (untrusted data; password fields are refused).",
+    description: "Foreground window and titled windows with screen rects (x y width height plus center cx cy). Pass elements true for UIA, screenshot true for a display PNG, hud true for Pointer chrome (only when captureVisible is on; content-protected is a visible no), clipboard true for pasteboard text, selection true for focused selected text, captions true for LIVE speech lines (untrusted data; password fields are refused).",
     inputSchema: {
       type: "object",
       properties: {
         elements: { type: "boolean" },
         screenshot: { type: "boolean" },
+        hud: { type: "boolean" },
         clipboard: { type: "boolean" },
         selection: { type: "boolean" },
         captions: { type: "boolean" },

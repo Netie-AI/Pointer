@@ -381,6 +381,7 @@ function createCoordinator(opts = {}) {
               params: {
                 elements: queryFlag(url, "elements"),
                 screenshot: queryFlag(url, "screenshot"),
+                hud: queryFlag(url, "hud"),
                 clipboard: queryFlag(url, "clipboard"),
                 selection: queryFlag(url, "selection"),
                 captions: queryFlag(url, "captions"),
