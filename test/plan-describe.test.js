@@ -36,6 +36,12 @@ check("a click names the control", () => {
   assert.ok(d.text.includes("Send"));
 });
 
+check("uia_select names the tab", () => {
+  const d = describeAction({ type: "uia_select", target: "Home" });
+  assert.ok(d.text.includes("Home"));
+  assert.ok(/select/i.test(d.text));
+});
+
 check("a secret value is never echoed", () => {
   const d = describeAction({
     type: "type",

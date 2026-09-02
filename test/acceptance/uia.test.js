@@ -290,6 +290,65 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
       assert.ok(/IsPassword/.test(uia.buildSelectionScript()), "probe must refuse password boxes");
       assert.ok(/TextPattern/.test(uia.buildSelectionScript()), "probe must use TextPattern");
     }),
+
+    T("selectControl SelectionItemPattern-picks a named tab without moving the cursor", async () => {
+      const scripts = [];
+      const r = await uia.selectControl("Home", {
+        run: async (script) => {
+          scripts.push(script);
+          if (/SelectionItemPattern/.test(script)) {
+            return JSON.stringify({ ok: true, selected: true, name: "Home", controlType: "TabItem" });
+          }
+          return JSON.stringify([
+            { name: "Home", controlType: "Text", enabled: true, rect: rect(0, 0, 200, 20) },
+            { name: "Home", controlType: "TabItem", enabled: true, rect: rect(10, 40, 60, 24) },
+          ]);
+        },
+      });
+      assert.strictEqual(r.ok, true);
+      assert.strictEqual(r.via, "uia-select");
+      assert.strictEqual(r.name, "Home");
+      assert.ok(scripts.some((s) => /SelectionItemPattern/.test(s)), "second script must Select");
+      assert.ok(
+        !/SetCursorPos|SendInput|mouse_event/.test(scripts.join("\n")),
+        "Select must not warp or click the cursor"
+      );
+      assert.ok(uia.canSelect({ name: "Home", controlType: "TabItem" }));
+      assert.ok(uia.canSelect({ name: "Inbox", controlType: "ListItem" }));
+      assert.strictEqual(uia.canSelect({ name: "Save", controlType: "Button" }), false);
+      assert.strictEqual(uia.canSelect({ name: "Name", controlType: "Edit" }), false);
+      assert.strictEqual(uia.canSelect({ name: "Remember me", controlType: "CheckBox" }), false);
+      const parsed = uia.parseSelectOutput(
+        JSON.stringify({ ok: true, selected: true, name: "Inbox", controlType: "ListItem" })
+      );
+      assert.strictEqual(parsed.ok, true);
+      assert.strictEqual(parsed.via, "uia-select");
+    }),
+
+    T("selectControl miss and non-selectable Button are a visible no", async () => {
+      const btn = await uia.selectControl("Save", {
+        run: async () =>
+          JSON.stringify([{ name: "Save", controlType: "Button", enabled: true, rect: rect(10, 10, 80, 24) }]),
+      });
+      assert.strictEqual(btn.ok, false);
+      assert.strictEqual(btn.reason, "not selectable");
+      const miss = await uia.selectControl("Home", {
+        run: async () =>
+          JSON.stringify([{ name: "Print", controlType: "TabItem", enabled: true, rect: rect(0, 0, 10, 10) }]),
+      });
+      assert.strictEqual(miss.ok, false);
+      assert.match(String(miss.reason || ""), /no matching/);
+      const boom = await uia.selectControl("Home", {
+        run: async () => {
+          throw new Error("powershell timed out");
+        },
+      });
+      assert.strictEqual(boom.ok, false);
+      const src = fs.readFileSync(path.join(ROOT, "electron/netie/uia.js"), "utf8");
+      assert.ok(/SelectionItemPattern/.test(src), "UIA select must live in uia.js");
+      const main = fs.readFileSync(path.join(ROOT, "electron/main.js"), "utf8");
+      assert.ok(main.includes("selectControl"), "select: must run UIA Select from the executor");
+    }),
   ];
 
   const ok = await suite.run(tests);

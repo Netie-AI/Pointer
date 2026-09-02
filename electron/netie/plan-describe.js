@@ -110,6 +110,10 @@ function describeAction(action) {
       verb = "Click";
       text = `Click${where || " the targeted control"}`;
       break;
+    case "uia_select":
+      verb = "Select";
+      text = `Select${where || " the named tab or list item"}`;
+      break;
     case "doubleclick":
       verb = "Double-click";
       text = `Double-click${where || " the targeted control"}`;

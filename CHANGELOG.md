@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - UIA SelectionItemPattern for named tabs
+
+HeyClicky-class tab/list pick without a cursor warp: `select: Home`
+calls SelectionItemPattern on the foreground TabItem/ListItem/Radio.
+Button/Edit/CheckBox stay not selectable. Cortex gate unchanged. No
+GPLv3 dump. No third-party MCP.
+
 ## 2026-08-28 - Token-aware Claude 5-hour then Cursor
 
 Prefer Claude Code while the 5-hour window is open; instruction or
