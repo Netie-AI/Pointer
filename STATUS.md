@@ -20,7 +20,9 @@
    (partials replace the tail; notes/scribe/commands stay final-only).
    `GET /api/observe?captions=1` is the same lines for agents.
    `GET /api/observe?hud=1` is the HUD chrome PNG (view/test first;
-   content-protected is a visible no). BYOK STT/LLM (keys stay OpenVault).
+   content-protected is a visible no). `computer.status.route` is Claude 5-hour vs Cursor plus token totals.
+   `use Claude` while that window is open; `use Cursor` when it is used.
+   BYOK STT/LLM (keys stay OpenVault).
    P-04 parked.
 2. **Generative tools + coworker desks (DR-0004 / DR-0005).** Coordinator
    `127.0.0.1:18010`. Public Worker is pages only; `/mcp` stays local.

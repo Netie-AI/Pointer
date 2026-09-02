@@ -162,6 +162,12 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("GET /api/observe?selection=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?captions=1"));
     assert.ok(shown.drive.instructions.includes("observe windows include x y width height cx cy"));
+    assert.ok(shown.drive.instructions.includes("use Claude"));
+    assert.ok(shown.drive.instructions.includes("use Cursor"));
+    assert.strictEqual(shown.act.review, "observe then reviewPlan then click/copy/paste");
+    assert.strictEqual(shown.route.claude, "open");
+    assert.strictEqual(shown.route.cursor, "ready");
+    assert.strictEqual(shown.route.tokens.total, 0);
     assert.strictEqual(shown.drive.tools, "GET /api/tools");
     assert.match(shown.drive.gated, /dms\/secure/);
   });

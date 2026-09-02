@@ -210,7 +210,15 @@ const { approvalPrompt, describePlan, describeAction } = require("./netie/plan-d
 const { describeTarget, recognizeApp } = require("./netie/app-target");
 const { buildAttachmentBlock, forcesApproval } = require("./netie/attachments");
 const wordCoworker = require("./netie/word-coworker");
-const { needsAppFork, appForkPrompt, plannerGrounding } = require("./netie/coworker");
+const { needsAppFork, plannerGrounding } = require("./netie/coworker");
+const {
+  addUsage,
+  publicRoute,
+  markClaudeSession,
+  markClaudeExhausted,
+  resolveCodingRoute,
+  routeInsight,
+} = require("./netie/agent-route");
 const { pickDesk, meetingAssist, enrichMeetingAssist, finishListeningSession, securityAssist, teachAssist, inboxAssist, todayAssist, documentAssist, spawnCoworker, spawnFollowOns, suggestsFromAssist, createLiveMeetingPump, createLiveTeachPump, createBriefClock, nextTeachStep, teachAdvance, FRAME_TEACH_TEXT, shouldTeachFramedRegion, frameLiveTeach, advanceLiveTeach, canAdvanceTeach, teachActionCue } = require("./netie/coworker-desks");
 const {
   STATES: PresenceStates,
@@ -262,6 +270,10 @@ const eco = new NetieEcosystem({
   // run on each chat/plan call, so HUD llmUrl/llmModel take effect live.
   chatUrl: () => settings.get("llmUrl"),
   model: () => settings.get("llmModel") || process.env.NETIE_CLICK_MODEL || "gemini-2.0-flash",
+  onUsage: (usage) => {
+    const next = addUsage(settings.get("tokenUsage") || {}, usage);
+    settings.set({ tokenUsage: next });
+  },
 });
 /** Last non-Pointer foreground window dictation/scribe should type into. */
 let deliveryTarget = null;
@@ -334,6 +346,22 @@ function localPlanMiss(plan) {
   );
 }
 
+function applyLiveCodingRoute(text) {
+  const now = Date.now();
+  const applied = resolveCodingRoute(text, settings.get("claudeRoute") || {}, now, {
+    needsAppFork: needsAppFork(text),
+  });
+  if (applied.markExhausted) {
+    settings.set({ claudeRoute: markClaudeExhausted(settings.get("claudeRoute"), now) });
+  }
+  if (applied.app === "claude") {
+    settings.set({ claudeRoute: markClaudeSession(settings.get("claudeRoute"), now) });
+  }
+  const insight = routeInsight(applied);
+  if (insight) sendHud({ type: "insight", text: insight });
+  return applied.nextInstruction;
+}
+
 function liveComputerStatus() {
   const loc = liveLocality();
   const llmModel =
@@ -356,6 +384,7 @@ function liveComputerStatus() {
     session: liveSession(),
     sessionMaxMs: DICTATE_MAX_MS,
     dictateMode: dictateGesture.listening ? dictateGesture.mode : "off",
+    route: publicRoute(settings.get("claudeRoute") || {}, settings.get("tokenUsage") || {}, Date.now()),
   });
 }
 
@@ -476,12 +505,13 @@ const liveMcp = createMcpAbi({
       policy: () => settings.safetyPolicy(),
       matchRecipe,
       plan: async (instruction) => {
-        const local = await planLocalInstruction(instruction);
+        const goal = applyLiveCodingRoute(instruction);
+        const local = await planLocalInstruction(goal);
         if (local.ok) return local;
         if (localPlanMiss(local)) return local;
         const planned = await eco.planActions({
-          instruction,
-          hotContext: plannerContext(instruction),
+          instruction: goal,
+          hotContext: plannerContext(goal),
           policy: settings.safetyPolicy(),
         });
         if (!planned || planned.ok === false) {
@@ -3535,7 +3565,8 @@ ipcMain.handle("clicks:go", async (_e, payload) => {
         actions: [],
       };
     }
-    const recipe = expandRecipe(matchRecipe(message), recipeCoordContext());
+    const routed = applyLiveCodingRoute(message);
+    const recipe = expandRecipe(matchRecipe(routed), recipeCoordContext());
     if (recipe && recipe.actions && recipe.actions.length) {
       try {
         showStage();
@@ -4378,7 +4409,7 @@ ipcMain.handle("hud:act", async (_e, payload) => {
   // planner so; `forcesApproval` is what makes it true — an intent carrying
   // attachments can never auto-run, so an imperative buried in a document still
   // has to get past a human reading the verb-and-destination prompt (#20/#23).
-  const message = `${rawMessage}${buildAttachmentBlock(actAttachments)}`;
+  let message = `${rawMessage}${buildAttachmentBlock(actAttachments)}`;
   const attachmentsForceApproval = forcesApproval(actAttachments);
   // Force the human beat for this whole handler when files are attached. Done
   // as a policy override rather than a flag on each plan, so a future branch
@@ -4410,17 +4441,10 @@ ipcMain.handle("hud:act", async (_e, payload) => {
   pushTurn("user", message);
   sendStage({ type: "bubble", role: "user", text: message });
 
-  // Coding ask without an explicit tool → stop and ask which app.
-  if (needsAppFork(message)) {
-    const fork = appForkPrompt(message);
-    sendHud({
-      type: "answer",
-      meta: "Which app?",
-      text: `${fork.question}\n• ${fork.options.map((o) => o.label).join("\n• ")}`,
-    });
-    sendHud({ type: "insight", text: "Say: use Cursor / use Claude Code / use Netie" });
-    return { ok: true, needsChoice: true, fork };
-  }
+  // Coding ask: Claude while the 5-hour window is open, else Cursor.
+  // Explicit "use Claude" / "use Cursor" / "5 hour limit" win.
+  // Routing commands collapse to the open-app recipe; build goals keep their text.
+  message = applyLiveCodingRoute(message);
 
   // Cheap SOPs skip OpenVault LLM — not the Cortex security gate (A-0007).
   const recipe = expandRecipe(matchRecipe(message), recipeCoordContext());
