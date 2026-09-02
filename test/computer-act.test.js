@@ -204,6 +204,12 @@ function test(name, fn) {
     const opened = planFromInstruction("open: notepad");
     assert.strictEqual(opened.source, "open");
     assert.strictEqual(opened.actions[0].type, "open");
+    const claude = planFromInstruction("use claude");
+    assert.strictEqual(claude.id, "use_claude");
+    assert.ok(claude.actions.some((a) => a.type === "open" && a.target === "claude"));
+    const cursor = planFromInstruction("the 5-hour limit is done");
+    assert.strictEqual(cursor.id, "use_cursor");
+    assert.ok(cursor.actions.some((a) => a.type === "open" && a.target === "Cursor"));
     const focused = planFromInstruction("focus hwnd: 99");
     assert.strictEqual(focused.actions[0].type, "focus_hwnd");
     const byTitle = planFromInstruction("focus: notepad", {

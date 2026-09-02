@@ -22,6 +22,7 @@
 
 const { reviewPlan } = require("./safety");
 const { resolveVaultTemplates } = require("./vault-fill");
+const { extractUsage } = require("./agent-route");
 
 /**
  * The only fields a planner is allowed to contribute.
@@ -138,8 +139,15 @@ class NetieEcosystem {
   constructor(opts = {}) {
     this.cfg = { ...DEFAULTS, ...opts };
     this._fetch = opts.fetchImpl || ((...a) => globalThis.fetch(...a));
+    this._onUsage = typeof opts.onUsage === "function" ? opts.onUsage : null;
     /** null = unknown, true/false after first Cortex round-trip. */
     this.cortexOnline = null;
+  }
+
+  _noteUsage(raw) {
+    if (!this._onUsage) return;
+    const usage = extractUsage(raw);
+    if (usage.total > 0) this._onUsage(usage);
   }
 
   /**
@@ -368,8 +376,9 @@ class NetieEcosystem {
       } catch {
         /* leave raw text */
       }
+      this._noteUsage(raw);
       await this.audit("clicks.vision", { ok: res.ok, degraded: gate.degraded });
-      return { ok: res.ok, text, degraded: gate.degraded };
+      return { ok: res.ok, text, degraded: gate.degraded, usage: extractUsage(raw) };
     } catch (err) {
       return { ok: false, text: `OpenVault unreachable: ${err.message || err}`, degraded: gate.degraded };
     }
@@ -603,6 +612,7 @@ class NetieEcosystem {
       "x-openfree-identity": `${this.cfg.deviceId}`,
     });
     const raw = await res.text();
+    this._noteUsage(raw);
     return this._parseActions(raw);
   }
 
@@ -711,4 +721,5 @@ module.exports = {
   sanitizeLlmUrl,
   sanitizeLlmModel,
   isLoopbackLlmUrl,
+  extractUsage,
 };
