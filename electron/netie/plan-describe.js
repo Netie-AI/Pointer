@@ -110,6 +110,14 @@ function describeAction(action) {
       verb = "Click";
       text = `Click${where || " the targeted control"}`;
       break;
+    case "uia_toggle": {
+      verb = "Toggle";
+      const want = String(a.want || "flip").toLowerCase();
+      if (want === "on") text = `Check${where || " the named box"}`;
+      else if (want === "off") text = `Uncheck${where || " the named box"}`;
+      else text = `Toggle${where || " the named box"}`;
+      break;
+    }
     case "doubleclick":
       verb = "Double-click";
       text = `Double-click${where || " the targeted control"}`;

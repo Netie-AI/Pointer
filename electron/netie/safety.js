@@ -136,6 +136,7 @@ function classifyAction(action) {
     case "click":
     case "doubleclick":
     case "rightclick":
+    case "uia_toggle":
     case "press":
     case "keypress":
     case "navigate":

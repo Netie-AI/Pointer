@@ -328,6 +328,7 @@ class InputDriver {
   constructor(opts = {}) {
     this.dryRun = Boolean(opts.dryRun);
     this.toPhysical = opts.toPhysical || null;
+    this.uiaToggle = opts.uiaToggle || null;
     this._spawn = opts.spawnImpl || spawn;
     this._opTimeoutMs = opts.opTimeoutMs || 8000;
     this._startTimeoutMs = opts.startTimeoutMs || 15000;
@@ -1003,6 +1004,44 @@ class InputDriver {
         }
         const check = clipboardMatchesSource(String(source), text);
         return { ok: check.ok, type, ...check, text };
+      }
+
+      case "uia_toggle": {
+        const target = String(action.target || action.value || "").trim();
+        const want = String(action.want || "flip").toLowerCase();
+        this.last = { op: "uia_toggle", target, want };
+        if (!target) return { ok: false, type, error: "missing toggle target" };
+        if (this.dryRun) {
+          return {
+            ok: true,
+            type,
+            target,
+            want,
+            via: "uia-toggle",
+            dryRun: true,
+            keepCursor: true,
+            keepFocus: true,
+          };
+        }
+        if (typeof this.uiaToggle !== "function") {
+          return { ok: false, type, error: "UIA toggle not available", target };
+        }
+        const r = await this.uiaToggle(target, want);
+        if (!r || !r.ok) {
+          return { ok: false, type, error: (r && r.reason) || "toggle failed", target };
+        }
+        return {
+          ok: true,
+          type,
+          target,
+          want: r.want || want,
+          via: "uia-toggle",
+          name: r.name,
+          state: r.state,
+          changed: r.changed,
+          keepCursor: true,
+          keepFocus: true,
+        };
       }
 
       default:

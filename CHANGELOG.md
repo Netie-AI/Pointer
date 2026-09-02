@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - UIA TogglePattern for named checkboxes
+
+HeyClicky-class checkbox without a cursor warp: `toggle: Remember me`
+calls TogglePattern on the foreground CheckBox/RadioButton.
+`check:` / `uncheck:` Toggle until On/Off. Radio uncheck is a visible
+no. Button/Edit stay not toggleable. Cortex gate unchanged. No GPLv3
+dump. No third-party MCP.
+
 ## 2026-08-28 - Token-aware Claude 5-hour then Cursor
 
 Prefer Claude Code while the 5-hour window is open; instruction or

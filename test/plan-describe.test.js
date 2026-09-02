@@ -36,6 +36,16 @@ check("a click names the control", () => {
   assert.ok(d.text.includes("Send"));
 });
 
+check("uia_toggle names the box and the want", () => {
+  const flip = describeAction({ type: "uia_toggle", target: "Remember me" });
+  assert.ok(flip.text.includes("Remember me"));
+  assert.ok(/toggle/i.test(flip.text));
+  const on = describeAction({ type: "uia_toggle", target: "Remember me", want: "on" });
+  assert.ok(/check/i.test(on.text));
+  const off = describeAction({ type: "uia_toggle", target: "Remember me", want: "off" });
+  assert.ok(/uncheck/i.test(off.text));
+});
+
 check("a secret value is never echoed", () => {
   const d = describeAction({
     type: "type",

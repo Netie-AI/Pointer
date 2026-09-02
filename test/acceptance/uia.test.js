@@ -290,6 +290,90 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
       assert.ok(/IsPassword/.test(uia.buildSelectionScript()), "probe must refuse password boxes");
       assert.ok(/TextPattern/.test(uia.buildSelectionScript()), "probe must use TextPattern");
     }),
+
+    T("toggleControl TogglePattern-flips a named checkbox without moving the cursor", async () => {
+      const scripts = [];
+      const r = await uia.toggleControl("Remember me", {
+        run: async (script) => {
+          scripts.push(script);
+          if (/TogglePattern/.test(script)) {
+            return JSON.stringify({
+              ok: true,
+              toggled: true,
+              changed: true,
+              name: "Remember me",
+              controlType: "CheckBox",
+              state: "On",
+              want: "flip",
+            });
+          }
+          return JSON.stringify([
+            { name: "Remember me", controlType: "Text", enabled: true, rect: rect(0, 0, 200, 20) },
+            { name: "Remember me", controlType: "CheckBox", enabled: true, rect: rect(10, 40, 18, 18) },
+          ]);
+        },
+      });
+      assert.strictEqual(r.ok, true);
+      assert.strictEqual(r.via, "uia-toggle");
+      assert.strictEqual(r.name, "Remember me");
+      assert.strictEqual(r.state, "On");
+      assert.ok(scripts.some((s) => /TogglePattern/.test(s)), "second script must Toggle");
+      assert.ok(
+        !/SetCursorPos|SendInput|mouse_event/.test(scripts.join("\n")),
+        "Toggle must not warp or click the cursor"
+      );
+      assert.ok(uia.canToggle({ name: "Remember me", controlType: "CheckBox" }));
+      assert.ok(uia.canToggle({ name: "Option A", controlType: "RadioButton" }));
+      assert.strictEqual(uia.canToggle({ name: "Save", controlType: "Button" }), false);
+      assert.strictEqual(uia.canToggle({ name: "Name", controlType: "Edit" }), false);
+      assert.strictEqual(uia.canToggle({ name: "Remember me", controlType: "CheckBox", enabled: false }), false);
+      assert.strictEqual(uia.normalizeWant("check"), "on");
+      assert.strictEqual(uia.normalizeWant("uncheck"), "off");
+      const parsed = uia.parseToggleOutput(
+        JSON.stringify({
+          ok: true,
+          toggled: true,
+          changed: false,
+          name: "Remember me",
+          controlType: "CheckBox",
+          state: "On",
+          want: "on",
+        })
+      );
+      assert.strictEqual(parsed.ok, true);
+      assert.strictEqual(parsed.changed, false);
+      assert.strictEqual(parsed.via, "uia-toggle");
+    }),
+
+    T("toggleControl miss and non-toggleable Button are a visible no", async () => {
+      const btn = await uia.toggleControl("Save", {
+        run: async () =>
+          JSON.stringify([{ name: "Save", controlType: "Button", enabled: true, rect: rect(10, 10, 80, 24) }]),
+      });
+      assert.strictEqual(btn.ok, false);
+      assert.strictEqual(btn.reason, "not toggleable");
+      const miss = await uia.toggleControl("Remember me", {
+        run: async () =>
+          JSON.stringify([{ name: "Print", controlType: "CheckBox", enabled: true, rect: rect(0, 0, 10, 10) }]),
+      });
+      assert.strictEqual(miss.ok, false);
+      assert.match(String(miss.reason || ""), /no matching/);
+      const boom = await uia.toggleControl("Remember me", {
+        run: async () => {
+          throw new Error("powershell timed out");
+        },
+      });
+      assert.strictEqual(boom.ok, false);
+      assert.strictEqual(await uia.toggleControl("", { run: async () => "[]" }).then((x) => x.ok), false);
+      const radioOff = uia.parseToggleOutput(JSON.stringify({ ok: false, reason: "cannot uncheck radio" }));
+      assert.strictEqual(radioOff.ok, false);
+      assert.strictEqual(radioOff.reason, "cannot uncheck radio");
+      const src = fs.readFileSync(path.join(ROOT, "electron/netie/uia.js"), "utf8");
+      assert.ok(/TogglePattern/.test(src), "UIA toggle must live in uia.js");
+      const main = fs.readFileSync(path.join(ROOT, "electron/main.js"), "utf8");
+      assert.ok(main.includes("toggleControl"), "toggle: must run UIA Toggle from the executor");
+      assert.ok(/cannot uncheck radio/.test(src), "radio uncheck must refuse");
+    }),
   ];
 
   const ok = await suite.run(tests);
