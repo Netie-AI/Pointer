@@ -10,7 +10,12 @@ const RECIPES = Object.freeze({
   copy: Object.freeze({
     id: "copy",
     label: "Copy",
-    actions: Object.freeze([{ type: "press", value: "ctrl+c" }]),
+    actions: Object.freeze([
+      { type: "clipboard_baseline" },
+      { type: "press", value: "ctrl+c" },
+      { type: "wait", ms: 120 },
+      { type: "clipboard_verify" },
+    ]),
   }),
   paste: Object.freeze({
     id: "paste",
@@ -21,8 +26,12 @@ const RECIPES = Object.freeze({
     id: "copy_all",
     label: "Copy all",
     actions: Object.freeze([
+      { type: "clipboard_baseline" },
       { type: "press", value: "ctrl+a" },
+      { type: "wait", ms: 80 },
       { type: "press", value: "ctrl+c" },
+      { type: "wait", ms: 120 },
+      { type: "clipboard_verify" },
     ]),
   }),
   duplicate_down: Object.freeze({

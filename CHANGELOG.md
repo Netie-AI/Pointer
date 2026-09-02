@@ -2,6 +2,13 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - Copy proves the clipboard changed
+
+Copy and copy-all record a clipboard baseline, copy, then verify so a
+failed Ctrl+C cannot feed stale paste. Same integrity gate as Word
+from-clipboard. Cortex then reviewPlan still gate. No GPLv3 dump. No
+third-party MCP.
+
 ## 2026-08-28 - Token-aware Claude 5-hour then Cursor
 
 Prefer Claude Code while the 5-hour window is open; instruction or

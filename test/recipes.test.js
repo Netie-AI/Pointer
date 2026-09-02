@@ -16,7 +16,14 @@ function test(name, fn) {
 }
 
 test("copy matches obvious request", () => {
-  assert.deepStrictEqual(matchRecipe("copy this").actions, [{ type: "press", value: "ctrl+c" }]);
+  const r = matchRecipe("copy this");
+  assert.strictEqual(r.id, "copy");
+  assert.ok(r.actions.some((a) => a.type === "clipboard_baseline"));
+  assert.ok(r.actions.some((a) => a.type === "press" && a.value === "ctrl+c"));
+  assert.ok(r.actions.some((a) => a.type === "clipboard_verify"));
+  const b = r.actions.findIndex((a) => a.type === "clipboard_baseline");
+  const v = r.actions.findIndex((a) => a.type === "clipboard_verify");
+  assert.ok(b >= 0 && v > b, "verify must follow baseline");
 });
 
 test("paste matches obvious request", () => {
@@ -24,10 +31,12 @@ test("paste matches obvious request", () => {
 });
 
 test("copy all selects then copies", () => {
-  assert.deepStrictEqual(matchRecipe("copy all").actions, [
-    { type: "press", value: "ctrl+a" },
-    { type: "press", value: "ctrl+c" },
-  ]);
+  const r = matchRecipe("copy all");
+  assert.strictEqual(r.id, "copy_all");
+  assert.deepStrictEqual(
+    r.actions.map((a) => a.value || a.type),
+    ["clipboard_baseline", "ctrl+a", "wait", "ctrl+c", "wait", "clipboard_verify"]
+  );
 });
 
 test("paste text extracts payload", () => {
@@ -197,7 +206,8 @@ test("copy can expand with click coordinates", () => {
   const recipe = matchRecipe("copy that");
   const expanded = expandRecipe(recipe, { coords: { x: 12, y: 34 } });
   assert.deepStrictEqual(expanded.actions[0], { type: "click", x: 12, y: 34 });
-  assert.strictEqual(recipe.actions.length, 1);
+  assert.ok(recipe.actions.some((a) => a.type === "clipboard_verify"));
+  assert.ok(expanded.actions.some((a) => a.type === "clipboard_verify"));
 });
 
 // ── WP-P1-RECIPES-EXPAND ────────────────────────────────────────────────────
