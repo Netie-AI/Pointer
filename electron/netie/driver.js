@@ -328,6 +328,7 @@ class InputDriver {
   constructor(opts = {}) {
     this.dryRun = Boolean(opts.dryRun);
     this.toPhysical = opts.toPhysical || null;
+    this.uiaWait = opts.uiaWait || null;
     this._spawn = opts.spawnImpl || spawn;
     this._opTimeoutMs = opts.opTimeoutMs || 8000;
     this._startTimeoutMs = opts.startTimeoutMs || 15000;
@@ -762,6 +763,38 @@ class InputDriver {
       case "wait":
         await sleep(Number(action.ms) || 150);
         return { ok: true, noop: true, type };
+
+      case "uia_wait": {
+        const target = String(action.target || action.value || "").trim();
+        const ms = Number(action.ms);
+        this.last = { op: "uia_wait", target, ms };
+        if (!target) return { ok: false, type, error: "missing wait-for target" };
+        if (this.dryRun) {
+          return { ok: true, type, target, via: "uia-wait", dryRun: true, waitedMs: 0 };
+        }
+        if (typeof this.uiaWait !== "function") {
+          return { ok: false, type, error: "UIA wait not available", target };
+        }
+        const r = await this.uiaWait(target, ms);
+        if (!r || !r.ok) {
+          return {
+            ok: false,
+            type,
+            error: (r && r.reason) || "timeout",
+            target,
+            waitedMs: r && r.waitedMs,
+          };
+        }
+        return {
+          ok: true,
+          type,
+          target,
+          via: "uia-wait",
+          name: r.name,
+          waitedMs: r.waitedMs,
+          probes: r.probes,
+        };
+      }
 
       case "movecursor":
       case "hover":

@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-08-28 - UIA wait for a named control
+
+UACC wait_for_element as a first-party Act verb: `wait for: Save` polls
+the foreground automation tree until that control exists (default 5s,
+cap 15s). Timeout is a visible no so the next click does not aim at a
+screen that is not ready. Read-only. Cortex gate unchanged. No GPLv3
+dump. No third-party MCP.
+
 ## 2026-08-28 - Token-aware Claude 5-hour then Cursor
 
 Prefer Claude Code while the 5-hour window is open; instruction or

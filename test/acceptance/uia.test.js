@@ -290,6 +290,36 @@ const runWith = (candidates) => async () => JSON.stringify(candidates);
       assert.ok(/IsPassword/.test(uia.buildSelectionScript()), "probe must refuse password boxes");
       assert.ok(/TextPattern/.test(uia.buildSelectionScript()), "probe must use TextPattern");
     }),
+
+    T("waitForControl returns as soon as the named control exists", async () => {
+      let probes = 0;
+      const hit = await uia.waitForControl("Save", {
+        run: async () => {
+          probes += 1;
+          return JSON.stringify([{ name: "Save", controlType: "Button", enabled: true, rect: rect(0, 0, 80, 30) }]);
+        },
+      });
+      assert.strictEqual(hit.ok, true);
+      assert.strictEqual(hit.via, "uia-wait");
+      assert.strictEqual(hit.name, "Save");
+      assert.strictEqual(probes, 1);
+      const miss = await uia.waitForControl("Save", {
+        ms: 30,
+        stepMs: 20,
+        sleep: async () => {},
+        run: async () => "[]",
+      });
+      assert.strictEqual(miss.ok, false);
+      assert.strictEqual(miss.reason, "timeout");
+      const boom = await uia.waitForControl("Save", {
+        run: async () => {
+          throw new Error("powershell timed out");
+        },
+      });
+      assert.strictEqual(boom.ok, false);
+      const main = fs.readFileSync(path.join(ROOT, "electron/main.js"), "utf8");
+      assert.ok(main.includes("waitForControl"), "wait for: must poll UIA from the executor");
+    }),
   ];
 
   const ok = await suite.run(tests);

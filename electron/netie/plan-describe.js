@@ -168,6 +168,10 @@ function describeAction(action) {
       verb = "Wait";
       text = `Wait ${clip(a.ms || a.value || "a moment", 20)}`;
       break;
+    case "uia_wait":
+      verb = "Wait";
+      text = `Wait for${where || " a named control"}`;
+      break;
 
     case "clipboard_verify":
       verb = "Check";

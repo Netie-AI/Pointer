@@ -106,6 +106,7 @@ function test(name, fn) {
     assert.ok(shown.api.includes("/api/computer"));
     assert.strictEqual(shown.act.available, true);
     assert.strictEqual(shown.act.gated, true);
+    assert.strictEqual(shown.act.uiaWait, true);
     assert.strictEqual(shown.delivery.present, false);
     assert.strictEqual(shown.mode, "agent");
     assert.strictEqual(shown.hotkeys.recording, "Control+Alt+Space");
@@ -155,6 +156,7 @@ function test(name, fn) {
     assert.ok(shown.drive.instructions.includes("click: Save"));
     assert.ok(shown.drive.instructions.includes("click window: notepad"));
     assert.ok(shown.drive.instructions.includes("wait 400"));
+    assert.ok(shown.drive.instructions.includes("wait for: Save"));
     assert.ok(shown.drive.instructions.includes("replace: hello"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?screenshot=1"));
     assert.ok(shown.drive.instructions.includes("GET /api/observe?clipboard=1"));

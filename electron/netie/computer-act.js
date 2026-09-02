@@ -136,6 +136,16 @@ function planOneInstruction(instruction, opts = {}) {
     const ms = Math.min(10000, Math.max(0, Number(waited[1])));
     return { ok: true, source: "wait", actions: [{ type: "wait", ms }] };
   }
+  const waitFor = text.match(/^(?:please\s+)?wait\s+for\s*:\s*(.+)$/i);
+  if (waitFor && waitFor[1].trim()) {
+    const rest = waitFor[1].trim();
+    const timed = rest.match(/^(.+?)\s+(\d+)\s*(?:ms)?$/i);
+    const target = timed ? timed[1].trim() : rest;
+    const ms = timed ? Math.min(15000, Math.max(200, Number(timed[2]))) : 5000;
+    if (target && !/^\d+$/.test(target)) {
+      return { ok: true, source: "wait-for", actions: [{ type: "uia_wait", target, ms }] };
+    }
+  }
   const scrolled = text.match(
     /^(?:please\s+)?scroll(?:\s+(?:at|on))?(?:\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?))?\s+(up|down)$/i
   );

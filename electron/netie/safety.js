@@ -93,6 +93,7 @@ function classifyAction(action) {
     case "screenshot":
     case "read":
     case "wait":
+    case "uia_wait":
     case "movecursor":
     case "hover":
     case "scroll":

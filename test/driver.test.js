@@ -279,6 +279,36 @@ test("dry-run supports drag/open/clipboard without spawning", async () => {
   assert.strictEqual((await d.perform({ type: "open", path: "C:\\Windows\\notepad.exe" })).ok, true);
 });
 
+test("dry-run uia_wait is a no-op success; live miss is a visible no", async () => {
+  const dry = new InputDriver({ dryRun: true });
+  const ok = await dry.perform({ type: "uia_wait", target: "Save", ms: 8000 });
+  assert.strictEqual(ok.ok, true);
+  assert.strictEqual(ok.via, "uia-wait");
+  assert.strictEqual(ok.dryRun, true);
+  const missing = await dry.perform({ type: "uia_wait" });
+  assert.strictEqual(missing.ok, false);
+  let called = "";
+  const live = new InputDriver({
+    uiaWait: async (target, ms) => {
+      called = `${target}:${ms}`;
+      return { ok: true, name: target, via: "uia-wait", waitedMs: 12, probes: 1 };
+    },
+  });
+  const hit = await live.perform({ type: "uia_wait", target: "Save", ms: 4000 });
+  assert.strictEqual(hit.ok, true);
+  assert.strictEqual(called, "Save:4000");
+  assert.strictEqual(hit.name, "Save");
+  const none = new InputDriver({});
+  const noFn = await none.perform({ type: "uia_wait", target: "Save" });
+  assert.strictEqual(noFn.ok, false);
+  const failed = new InputDriver({
+    uiaWait: async () => ({ ok: false, reason: "timeout", waitedMs: 40 }),
+  });
+  const miss = await failed.perform({ type: "uia_wait", target: "Save" });
+  assert.strictEqual(miss.ok, false);
+  assert.match(String(miss.error || ""), /timeout/);
+});
+
 test("keysHeld reports the worker down flag", async () => {
   const state = {};
   const d = new InputDriver({

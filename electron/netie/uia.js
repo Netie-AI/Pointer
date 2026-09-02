@@ -206,6 +206,49 @@ function parseProbeOutput(stdout) {
   }
 }
 
+const DEFAULT_WAIT_FOR_MS = 5000;
+const MAX_WAIT_FOR_MS = 15000;
+
+/**
+ * UACC wait_for_element: poll the foreground tree until a named control
+ * exists. Read-only. Timeout is a visible no so the next click does not
+ * aim at a screen that is not ready.
+ */
+async function waitForControl(label, opts = {}) {
+  const clean = String(label || "").trim();
+  if (!clean || typeof opts.run !== "function") return { ok: false, reason: "no runner" };
+  const budget = Math.min(MAX_WAIT_FOR_MS, Math.max(1, Number(opts.ms) || DEFAULT_WAIT_FOR_MS));
+  const step = Math.min(1000, Math.max(1, Number(opts.stepMs) || 200));
+  const now = typeof opts.now === "function" ? opts.now : Date.now;
+  const pause =
+    typeof opts.sleep === "function" ? opts.sleep : (ms) => new Promise((r) => setTimeout(r, ms));
+  const t0 = now();
+  let probes = 0;
+  while (now() - t0 <= budget) {
+    probes += 1;
+    let stdout;
+    try {
+      stdout = await opts.run(buildProbeScript(clean, opts));
+    } catch {
+      return { ok: false, reason: "uia unavailable", waitedMs: Math.max(0, now() - t0), probes };
+    }
+    const best = chooseCandidate(clean, parseProbeOutput(stdout), opts);
+    if (best) {
+      return {
+        ok: true,
+        via: "uia-wait",
+        name: best.candidate.name,
+        controlType: String(best.candidate.controlType || "").slice(0, 40),
+        waitedMs: Math.max(0, now() - t0),
+        probes,
+      };
+    }
+    if (now() - t0 + step > budget) break;
+    await pause(step);
+  }
+  return { ok: false, reason: "timeout", waitedMs: Math.max(0, now() - t0), probes };
+}
+
 /**
  * Locate a control through UIA.
  *
@@ -509,6 +552,9 @@ module.exports = {
   formatBoxToken,
   buildProbeScript,
   parseProbeOutput,
+  waitForControl,
+  DEFAULT_WAIT_FOR_MS,
+  MAX_WAIT_FOR_MS,
   findControl,
   listControls,
   listForegroundControls,
