@@ -2079,6 +2079,7 @@ const enquireFields = $("enquire-fields");
 
 function renderEnquire(event) {
   if (!enquirePanel || !enquireFields) return;
+  closeBugReport();
   const prompts = (event && event.prompts) || [];
   if (!prompts.length) return;
 
@@ -2116,6 +2117,104 @@ function closeEnquire() {
   if (!enquirePanel) return;
   enquirePanel.hidden = true;
   if (enquireFields) enquireFields.replaceChildren();
+}
+
+/**
+ * #29 - Report a problem. Persistent top-chrome control opens a local form.
+ * Copy is human-confirm only. startBugReport is the AirGPT-named entry; it
+ * does not send anything off-box.
+ */
+function startBugReport() {
+  const api = window.NetieBugReport;
+  if (api && typeof api.startBugReport === "function") api.startBugReport();
+  closeEnquire();
+  const panel = $("bug-report-panel");
+  if (!panel) return;
+  setMenu(false);
+  setMorphHidden(false);
+  setChatOpen(true);
+  syncClickThrough(true);
+  panel.hidden = false;
+  refreshBugReportPreview();
+  const note = $("bug-report-note");
+  if (note) note.focus();
+}
+
+function closeBugReport() {
+  const panel = $("bug-report-panel");
+  if (panel) panel.hidden = true;
+}
+
+function refreshBugReportPreview() {
+  const api = window.NetieBugReport;
+  const preview = $("bug-report-preview");
+  if (!api || !preview) return;
+  preview.textContent = api.buildDiagnostics({
+    when: new Date().toISOString(),
+    version: "0.1.0",
+    mode: appMode,
+    platform: navigator.platform || "unknown",
+    note: ($("bug-report-note") || {}).value || "",
+  });
+}
+
+async function confirmCopyBugReport() {
+  const api = window.NetieBugReport;
+  if (!api) {
+    answerMeta.textContent = "Report flow unavailable";
+    return;
+  }
+  refreshBugReportPreview();
+  const preview = $("bug-report-preview");
+  const payload = api.copyDiagnostics(preview ? preview.textContent : "", { confirmed: true });
+  if (!payload.ok) {
+    answerMeta.textContent = payload.blocked === "unconfirmed"
+      ? "Copy refused until you confirm"
+      : "Nothing to copy";
+    return;
+  }
+  let copied = false;
+  try {
+    const result = await invoke("hud:copyText", { text: payload.text });
+    copied = Boolean(result && result.copied);
+  } catch {
+    copied = false;
+  }
+  if (!copied) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(payload.text);
+        copied = true;
+      }
+    } catch {
+      copied = false;
+    }
+  }
+  answerMeta.textContent = copied
+    ? "Diagnostics copied - nothing was sent"
+    : "Select the preview and copy it - nothing was sent";
+}
+
+const bugReportBtn = $("bugReportBtn");
+if (bugReportBtn) {
+  bugReportBtn.addEventListener("click", () => startBugReport());
+}
+const bugReportPanel = $("bug-report-panel");
+if (bugReportPanel) {
+  bugReportPanel.addEventListener("submit", (event) => {
+    event.preventDefault();
+    confirmCopyBugReport();
+  });
+  const copyBtn = $("btn-bug-copy");
+  if (copyBtn) copyBtn.addEventListener("click", () => confirmCopyBugReport());
+  const cancelBtn = $("btn-bug-cancel");
+  if (cancelBtn) cancelBtn.addEventListener("click", () => closeBugReport());
+  const note = $("bug-report-note");
+  if (note) note.addEventListener("input", refreshBugReportPreview);
+  bugReportPanel.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    closeBugReport();
+  });
 }
 
 if (enquirePanel) {

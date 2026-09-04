@@ -2,6 +2,14 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-09-04 - HUD Report a problem control (#29)
+
+Fixed top chrome has Report a problem (`#bugReportBtn` / `startBugReport`).
+The panel copies local diagnostics after human confirm. No fetch, no mailto,
+no cloud relay. `test/invariants/hud-bug-report.test.js` fails if the control
+disappears, is buried in Settings, ships hidden, or the flow grows a send.
+Region-mark + email recorder stays parked (P-07). Ticket #29 stays open.
+
 ## 2026-08-28 - Token-aware Claude 5-hour then Cursor
 
 Prefer Claude Code while the 5-hour window is open; instruction or
