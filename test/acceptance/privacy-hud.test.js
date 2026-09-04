@@ -126,6 +126,8 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
       assert.ok(html.includes('id="btn-copy-actions"'), "Copy actions stays in fixed top chrome");
       assert.ok(html.includes('id="privacy-chip"'), "privacy chip stays in fixed top chrome");
       assert.ok(html.includes('id="session-chip"'), "session chip stays in fixed top chrome");
+      assert.ok(html.includes('id="bugReportBtn"'), "Report a problem stays in fixed top chrome");
+      assert.ok(html.includes("Report a problem"), "founder-facing Report a problem label missing");
       assert.ok(html.includes('id="btn-scribe-retry"'), "Scribe Retry stays in fixed top chrome");
       assert.ok(html.includes('id="btn-scribe-paste"'), "Scribe Paste as-is stays in fixed top chrome");
       const langSel = html.slice(

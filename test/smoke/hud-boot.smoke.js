@@ -65,6 +65,7 @@ record("every element hud.js reaches for actually exists", async ({ page }) => {
       "enquire-panel", "enquire-fields", "autosend", "autosend-count",
       "insight-panel", "chat-dock", "point-layer", "bg-status", "nod-toast",
       "set-autosend", "set-follow", "set-capture-visible",
+      "bugReportBtn", "bug-report-panel", "btn-bug-copy",
     ];
     return ids.filter((id) => !document.getElementById(id));
   });
