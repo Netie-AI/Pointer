@@ -4,13 +4,12 @@
 
 ## Now
 
-0. **Unattended clicks have a record and a mandate.** `netie/ledger.js` is an
-   append-only hash-chained local log; `eco.audit` writes it BEFORE Cortex, so
-   a Cortex outage costs sync, not the record (it used to lose the event and
-   say nothing). `netie/mandate.js` is a narrow expiring grant a human makes
-   before the job; authority never rides on the action, so A-0005 stays shut.
-   Payment and account-destruction are never coverable. 39 tests in the gate.
-   Asks for phone-OTP and mail connectors are routed in `DR-0004`, not built.
+0. **Unattended clicks have a record, a mandate, and a visible stop.**
+   `netie/ledger.js` is an append-only hash-chained local log written BEFORE
+   Cortex, so an outage costs sync, not the record. `netie/mandate.js` is a
+   narrow expiring grant; authority never rides on the action (A-0005 stays
+   shut), payment is never coverable, and the HUD shows a live "Acting in X"
+   chip with one-click Stop and no grant channel. Gated in `npm test`.
 1. **Punctuated write-in-Word hits the recipe, not the clipboard stub.**
    Failed steps surface; Plan finished never overwrites a coworker
    refusal. Closed #3 #10 #11 #14 #17 stay closed. (CHANGELOG 2026-08-23.)
@@ -55,6 +54,7 @@
 
 ## Later
 
-- OpenVault custody endpoint for `clicks.custody.requested` (TBD per `docs/CONTRACTS.md`).
+- OpenVault custody: the surface exists; only the inject route Pointer calls is
+  missing, so every OTP field 404s. `DR-0004` Amd 1: pairing lands BEFORE inject.
 - Skill harvest stays blocked on Cortex authoring + EPIC-P08 disclosure.
 - P-05 stays parked.

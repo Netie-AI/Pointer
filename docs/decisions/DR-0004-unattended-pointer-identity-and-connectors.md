@@ -161,3 +161,104 @@ app, which R-0015 forbids without the founder opening it.
   the log.
 - `test/ecosystem.test.js` - a Cortex outage costs synchronisation, not the record.
 - Re-run `npm test && npm run test:contracts && npm run test:acceptance` before accepting.
+
+---
+
+## Amendment 1 - what an estate-wide map corrected, 2026-09-06
+
+Everything above was written from Pointer's side of the wire. A ten-agent read
+across all nine repos corrected four factual claims and found one ordering trap
+that would have shipped a hole. Recorded rather than silently edited, because
+the wrong version was acted on.
+
+### Correction 1 - OpenVault already has credential custody. The gap is one endpoint.
+
+Ask 3 above assumed the custody path was mostly unbuilt. It is not. OpenVault
+serves a full secrets surface from `OpenMW/openmw/openvault/app.py`:
+`POST /api/secrets/passwords` (1696), `POST /api/secrets/cards` (1715),
+`GET /api/secrets/{id}/reveal` (1801), plus WebAuthn seal/unseal (2818-2880)
+and an app-grant pairing flow (`/api/local/grants`, 1116-1163). Reveal already
+gates on loopback AND `X-OpenVault-Reveal: intentional` AND unsealed AND an
+audit line.
+
+What is missing is narrow and specific: the endpoint Pointer actually calls.
+`eco.requestCustody()` POSTs `http://127.0.0.1:5000/v1/custody/...` and OpenVault
+serves nothing there, so **today every OTP and password field in Pointer 404s and
+tells the customer to type it themselves.** The custody path is not a design
+question. It is one missing route.
+
+Same class, found alongside: `electron/netie/transcriber.js:34` posts to
+`127.0.0.1:5000/v1/audio/transcriptions`, which OpenVault also does not serve.
+Two independent Pointer clients assume `:5000` surfaces that were never built,
+which makes this drift rather than an oversight. Any new Pointer-to-OpenVault
+call should be added to a contract test that fails when the server lacks the route.
+
+### Correction 2 - the ordering trap. Pairing lands BEFORE inject.
+
+The obvious build is "ship `POST /v1/custody/inject`, gate it on loopback plus
+the `intentional` header, done". That is unsafe, and it is unsafe in this
+codebase's own vocabulary.
+
+`docs/SECRETS_CUSTODY.md:281-284` in OpenVault says plainly that loopback does
+not separate processes: any process running as the user reaches it. The header
+is a client-supplied string. So the endpoint's authority would rest entirely on
+the request that asks for it - which is precisely the shape `mandate.js`
+classifies as `TAMPERED` on the Pointer side, and precisely KB `A-0005`. Shipping
+inject alone gives the vault an endpoint that types secrets on demand for
+anything running as the user.
+
+The fix already exists half-built. `vault/app_grants.py` renders a pairing code
+that nothing currently checks. Making `decide_grant()` compare it with
+`hmac.compare_digest` binds an approval to the process that asked. **Pairing is
+therefore a prerequisite of inject, not a follow-up.** Inject alone is refused.
+
+### Correction 3 - the Gmail connector exists, in Cortex, blocked on one action.
+
+Ask 4 proposed building a read-only Gmail connector. One already exists:
+`CortexOS/crew/inbox.py`, IMAP read, explicitly "Crew never sends mail". AirGPT's
+own CHANGELOG records the decision that it is IMAP/SMTP via Crew keys rather than
+Google OAuth. It is waiting on a 16-character Google App Password and nothing
+else. Building a second connector in AirGPT would contradict a decision already
+taken and implemented.
+
+Also load-bearing for Ask 4: Cortex bans `twilio`, `pywhatkit`, `baileys`,
+`whatsapp-web.js` and `selenium` by name in `_BANNED_SEND`
+(`auto_caller.py:84`), with a test pinning it. The SMS half of the ask is not
+merely parked anywhere in the estate - it is refused in code.
+
+### Correction 4 - the marketplace is an unparking decision, not a build.
+
+Cortex already ships an 800-server offline MCP catalog, 153 subagents, and a
+real stdio JSON-RPC MCP client with per-server arming and idle suspend. The
+pieces are deliberately unjoined under Cortex P16. So "plugins marketplace" is
+not a green field; it is a request to unpark, and Pointer P-05 ("not a cloud
+connector marketplace", "no arbitrary third-party MCP servers") is the fence it
+runs into. Founder call, not an engineering one.
+
+### Correction 5 - Cortex is not currently an audit ledger of record.
+
+The body above treats the Cortex ledger as the durable record Pointer syncs to.
+On this box it is not. The append-only REVOKE and the update/delete trigger exist
+only in the Postgres migration; `append()` falls back to a plain SQLite file when
+`DMS_LEDGER_DSN` is unset, and nothing in the launch path sets it. `signature` is
+always NULL, the actor is not in the hash preimage, and
+`POST /v1/contract/ledger/append` has no auth dependency at all.
+
+This does not change Pointer's design - local-first was already right - but it
+does change the claim. Until those are fixed, **Pointer's local ledger is the
+stronger record of the two**, and the estate should stop describing Cortex as the
+ledger of record in prose while the default backend is a rewritable file.
+
+### New decision surfaced - OpenVault is two servers
+
+`OpenMW/rust/openvault-console` already has `accounts(username, netie_email,
+gmail, phone, email_verified, phone_verified)`, a `verify_codes` table with
+hashed six-digit codes and a 15-minute expiry, passkeys and sessions - in its own
+`rust-auth.db`. That is a second identity store inside the one repo that is
+supposed to be the single vault, and it is the natural home for exactly the
+phone-verification flow Ask 3 asks for.
+
+**Retire it or promote it, before anything is built on either.** Building custody
+inject against the Python app while the Rust console owns phone verification
+creates a third store rather than resolving the second. This is now the first
+question, ahead of everything in the body above.
