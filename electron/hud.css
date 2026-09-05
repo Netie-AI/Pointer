@@ -311,6 +311,35 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 }
 .ask-pill:hover, .ask-pill.active { background: var(--surface-hover); }
 .ask-pill.ghost { background: transparent; color: var(--muted); }
+
+/* Mandate chip - Pointer is acting on its own.
+   Deliberately NOT a ghost pill: this is the one piece of chrome that must
+   never read as decoration. It carries its own stop, so ending unattended
+   work is one click on the thing that told you it was happening. */
+.mandate-chip {
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; flex: 0 0 auto;
+  padding: 4px 6px 4px 10px; border-radius: 999px;
+  border: 1px solid var(--mandate-line, #b45309);
+  background: var(--mandate-bg, rgba(180, 83, 9, 0.12));
+  color: var(--text); font-size: 12px; font-weight: 650;
+}
+.mandate-copy { display: inline-flex; flex-direction: column; line-height: 1.15; }
+.mandate-copy small { font-size: 10px; font-weight: 500; color: var(--muted); }
+.mandate-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto;
+  background: var(--mandate-line, #b45309);
+  animation: mandate-pulse 1.6s ease-in-out infinite;
+}
+.mandate-chip.urgent { border-color: #dc2626; background: rgba(220, 38, 38, 0.14); }
+.mandate-chip.urgent .mandate-dot { background: #dc2626; animation-duration: 0.7s; }
+#mandateStopBtn {
+  border: 1px solid var(--line-soft); border-radius: 999px; cursor: pointer;
+  background: var(--surface); color: var(--text);
+  font-size: 11px; font-weight: 700; padding: 4px 10px;
+}
+#mandateStopBtn:hover { background: var(--surface-hover); }
+@keyframes mandate-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .mandate-dot { animation: none; } }
 .ask-pill kbd {
   display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px;
   border-radius: 5px; border: 1px solid var(--line-soft); background: var(--field);
@@ -319,6 +348,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 .rec-button {
   display: inline-flex; align-items: center; gap: 7px; min-width: 92px; justify-content: center;
+  white-space: nowrap; flex: 0 0 auto;
   padding: 7px 12px; border: 1px solid var(--line-soft); border-radius: 999px;
   background: color-mix(in srgb, var(--surface), var(--rec) 10%); color: var(--text);
   font-size: 11px; font-weight: 700;
@@ -348,7 +378,6 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .hud.mode-general .act-button { display: none; }
 
 /* The Shot button had no rule at all, so it was the one non-positioned child of
-  white-space: nowrap; flex: 0 0 auto;
    .hud — a UA-default button parked at (0,0), eating clicks and outliving Hide. */
 .shot-btn {
   position: absolute; right: 18px; bottom: 22px; z-index: var(--z-shot);

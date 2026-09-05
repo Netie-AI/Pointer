@@ -499,10 +499,52 @@
     };
   }
 
+  // ── Mandate chip · unattended work must be visible and stoppable ──────────
+  /**
+   * Pointer can now act with nobody watching (netie/mandate.js). A grant the
+   * user cannot see is not consent, and one they cannot end is worse — so this
+   * chip is not decoration. It is the only place the HUD admits the agent is
+   * moving on its own, and the only way to stop it short of killing the app.
+   *
+   * Pure, and the clock is passed in: a test should never have to sleep to
+   * watch a countdown run out.
+   */
+  const MANDATE_URGENT_MS = 60000;
+
+  function mandateIsLive(m, nowMs) {
+    return Boolean(m) && m.revokedAt == null && nowMs < m.expiresAt && m.usedSteps < m.maxSteps;
+  }
+
+  function describeMandateChip(mandates, nowMs) {
+    const live = (Array.isArray(mandates) ? mandates : []).filter((m) => mandateIsLive(m, nowMs));
+    if (!live.length) return { visible: false, label: "", detail: "", urgent: false, ids: [] };
+
+    const msLeft = Math.max(0, Math.min(...live.map((m) => m.expiresAt - nowMs)));
+    const steps = live.reduce((n, m) => n + Math.max(0, m.maxSteps - m.usedSteps), 0);
+    const apps = [];
+    for (const m of live) for (const a of m.apps || []) if (!apps.includes(a)) apps.push(a);
+
+    const where = apps.length === 1 ? apps[0] : `${apps.length} apps`;
+    // Seconds inside the last minute, minutes ROUNDED UP above it: a chip
+    // reading "0m left" beside a mandate that can still click reads as off.
+    const urgent = msLeft < MANDATE_URGENT_MS;
+    const time = urgent ? `${Math.ceil(msLeft / 1000)}s` : `${Math.ceil(msLeft / 60000)}m`;
+
+    return {
+      visible: true,
+      label: `Acting in ${where}`,
+      detail: `${time} left · ${steps} step${steps === 1 ? "" : "s"}`,
+      urgent,
+      ids: live.map((m) => m.id),
+    };
+  }
+
   return {
     AUTO_SEND_MS,
     INSIGHT_WINDOW_MS,
     SOURCE_LABELS,
+    MANDATE_URGENT_MS,
+    describeMandateChip,
     createHoldToTalk,
     createDragController,
     createAutoSend,

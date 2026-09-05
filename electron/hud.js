@@ -1674,6 +1674,51 @@ async function confirmCopyBugReport() {
     : "Select the preview and copy it - nothing was sent";
 }
 
+// -- Mandate chip - the only disclosure that Pointer is acting unattended ----
+// The chip polls rather than waiting to be pushed: a missed push would leave
+// the HUD claiming Pointer is idle while it is still clicking, and "idle" is
+// the one thing this control must never say by accident.
+const mandateChip = $("mandateChip");
+const mandateChipLabel = $("mandateChipLabel");
+const mandateChipDetail = $("mandateChipDetail");
+const mandateStopBtn = $("mandateStopBtn");
+
+function renderMandateChip(mandates) {
+  if (!mandateChip) return;
+  const view = window.NetieHudLive.describeMandateChip(mandates, Date.now());
+  mandateChip.hidden = !view.visible;
+  mandateChip.classList.toggle("urgent", Boolean(view.urgent));
+  if (!view.visible) return;
+  if (mandateChipLabel) mandateChipLabel.textContent = view.label;
+  if (mandateChipDetail) mandateChipDetail.textContent = view.detail;
+}
+
+async function refreshMandateChip() {
+  if (!mandateChip) return;
+  try {
+    const res = await invoke("hud:mandates");
+    renderMandateChip((res && res.mandates) || []);
+  } catch {
+    // Failing to read the store is not evidence that nothing is running, so
+    // the chip keeps whatever it was showing and says the status is stale
+    // rather than quietly disappearing (R-0011).
+    if (!mandateChip.hidden && mandateChipDetail) mandateChipDetail.textContent = "status unknown";
+  }
+}
+
+if (mandateStopBtn) {
+  mandateStopBtn.addEventListener("click", async () => {
+    mandateStopBtn.disabled = true;
+    try {
+      await invoke("hud:revokeMandates");
+    } finally {
+      mandateStopBtn.disabled = false;
+      refreshMandateChip();
+    }
+  });
+}
+setInterval(refreshMandateChip, 1000);
+refreshMandateChip();
 
 const bugReportBtn = $("bugReportBtn");
 if (bugReportBtn) {

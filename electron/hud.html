@@ -79,6 +79,20 @@
               </div>
             </div>
           </div>
+          <!--
+            Unattended work is the one state a customer cannot infer from the
+            screen: the pointer moves and nothing says who asked for it. This
+            chip is the disclosure and the stop, together, on the painted
+            chrome rather than behind Settings.
+          -->
+          <div class="mandate-chip" id="mandateChip" hidden aria-live="polite">
+            <span class="mandate-dot" aria-hidden="true"></span>
+            <span class="mandate-copy">
+              <span id="mandateChipLabel">Acting</span>
+              <small id="mandateChipDetail"></small>
+            </span>
+            <button type="button" id="mandateStopBtn" title="Stop Pointer acting on its own" aria-label="Stop Pointer acting on its own">Stop</button>
+          </div>
           <button type="button" class="ask-pill ghost" id="bugReportBtn" title="Report a problem" aria-label="Report a problem">
             <span>Report a problem</span>
           </button>
@@ -159,10 +173,12 @@
         <div class="composer">
           <div class="command-bar-tools" id="command-bar-tools">
             <button type="button" class="text-btn" data-cmd="attach" title="Attach files">Attach</button>
+            <button type="button" class="text-btn" data-cmd="folders" title="Attach a folder">Folders</button>
             <button type="button" class="text-btn" data-cmd="apps" title="Active apps">Apps</button>
             <button type="button" class="text-btn" data-cmd="shots" title="Screenshots">Shots</button>
             <button type="button" class="text-btn" data-cmd="clipboard" title="Clipboard history">Clipboard</button>
             <input type="file" id="file-attach" hidden multiple />
+            <input type="file" id="folder-attach" hidden webkitdirectory />
             <div class="file-chips" id="file-chips"></div>
           </div>
           <textarea id="ask-input" rows="2" placeholder="Ask anything… recognize an app name, then confirm" aria-label="Ask AI"></textarea>
@@ -173,12 +189,10 @@
         </div>
       </section>
 
-            <button type="button" class="text-btn" data-cmd="folders" title="Attach a folder">Folders</button>
       <div class="onboard glass chrome" id="onboard" hidden>
         <p class="onboard-title">Start sessions from <em>anywhere</em></p>
         <p class="onboard-sub">Hold Clicky (or Ctrl+Shift+Space) to activate — Windows map of Perplexity fn/⌘.</p>
         <button type="button" class="act-button" id="btn-onboard-done">Got it</button>
-            <input type="file" id="folder-attach" hidden webkitdirectory />
       </div>
 
       <button type="button" class="shot-btn chrome" id="btn-shot" title="Save a screenshot to the demo folder" aria-label="Screenshot">Shot</button>

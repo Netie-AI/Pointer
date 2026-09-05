@@ -25,6 +25,7 @@ const { execFile } = require("child_process");
 const { HotMemory } = require("./hotMemory");
 const { NetieEcosystem } = require("./netie/ecosystem");
 const { createLedger } = require("./netie/ledger");
+const { createMandateStore } = require("./netie/mandate");
 const { defaultDataDir } = require("./netie/crypto/vault");
 const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
@@ -169,6 +170,17 @@ const actionLedger = createLedger({
   onError: (err) => console.error("action ledger:", (err && err.message) || err),
 });
 const eco = new NetieEcosystem({ deviceId: `netie-clicks:${hot.deviceId}`, ledger: actionLedger });
+/**
+ * Standing grants for unattended work (netie/mandate.js). Every grant, refusal
+ * and revocation is audited, so the ledger answers "why was it allowed to click
+ * that" and not merely "it clicked that". Grants are created here in main, never
+ * from the renderer and never from a plan.
+ */
+const mandates = createMandateStore({
+  onEvent: (event, payload) => {
+    void eco.audit(`clicks.${event}`, payload || {});
+  },
+});
 const brain = new PersonalBrain({
   deviceId: `netie-clicks:${hot.deviceId}`,
   cortexUrl: process.env.NETIE_CORTEX_URL || `http://${API_HOST}:${CORTEX_PORT}`,
@@ -3233,6 +3245,15 @@ ipcMain.handle("hud:setMode", async (_e, payload) => {
   return applyAppMode(mode, { reason: (payload && payload.reason) || "ui" });
 });
 
+// The chip reads live grants and can end them. Deliberately no "create"
+// channel: a mandate is minted by a human approval path in main, so a
+// compromised renderer cannot grant itself the right to act unattended.
+ipcMain.handle("hud:mandates", async () => ({ ok: true, mandates: mandates.active() }));
+ipcMain.handle("hud:revokeMandates", async () => {
+  const revoked = mandates.revokeAll();
+  if (revoked) sendHud({ type: "insight", text: "Stopped. Pointer is no longer acting on its own." });
+  return { ok: true, revoked };
+});
 ipcMain.handle("hud:getSettings", async () => ({ ok: true, settings: settings.snapshot() }));
 
 ipcMain.handle("hud:setSettings", async (_e, payload) => {

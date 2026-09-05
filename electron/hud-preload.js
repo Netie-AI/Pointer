@@ -22,6 +22,10 @@ const INVOKE = [
   // renderer call but no allowlist entry, so every click was rejected as a
   // blocked channel and the button did nothing. Containment for what it may
   // open lives in main.js (#19); this list only decides which channels exist.
+  // The mandate chip: read the live grants, and end them. Both are renderer
+  // -> main only; a grant can never be CREATED from the renderer.
+  "hud:mandates",
+  "hud:revokeMandates",
   "hud:openPath",
   "hud:openInSpace",
   "hud:affirm",
