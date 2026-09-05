@@ -6,7 +6,11 @@
  */
 
 const assert = require("assert");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const { NetieEcosystem } = require("../electron/netie/ecosystem");
+const { createLedger } = require("../electron/netie/ledger");
 const safety = require("../electron/netie/safety");
 
 let pass = 0;
@@ -128,11 +132,76 @@ test("secure fail-OPEN (passive) degrades but does not block", async () => {
   assert.strictEqual(g.safeText, "what is this");
 });
 
-// ── audit is best-effort ─────────────────────────────────────────────────────
-test("audit never throws, returns false on outage", async () => {
+// ── audit: local record first, Cortex sync second ────────────────────────────
+test("audit never throws, and returns false when Cortex did not take it", async () => {
   const eco = new NetieEcosystem({ fetchImpl: mockFetch([["/dms/audit/append", { __throw: "down" }]]) });
   const ok = await eco.audit("clicks.test", { a: 1 });
   assert.strictEqual(ok, false);
+});
+
+test("a Cortex outage costs synchronisation, not the record", async () => {
+  // The whole point of the local ledger: with Cortex down — its normal state on
+  // a laptop — "what did it click" must still have an answer.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "netie-eco-audit-"));
+  try {
+    const ledger = createLedger({ dir });
+    const eco = new NetieEcosystem({
+      ledger,
+      fetchImpl: mockFetch([["/dms/audit/append", { __throw: "down" }]]),
+    });
+
+    assert.strictEqual(await eco.audit("clicks.action.executed", { target: "Send" }), false);
+
+    const rows = ledger.read();
+    assert.strictEqual(rows.length, 1, "the step is recorded locally even though Cortex refused it");
+    assert.strictEqual(rows[0].payload.target, "Send");
+    assert.strictEqual(ledger.verify().ok, true);
+
+    const health = eco.auditHealth();
+    assert.strictEqual(health.local, true);
+    assert.strictEqual(health.pending, 1, "and the app can say it is out of sync");
+    assert.strictEqual(health.chainOk, true);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("an event Cortex accepted stops being pending", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "netie-eco-audit-"));
+  try {
+    const ledger = createLedger({ dir });
+    const eco = new NetieEcosystem({
+      ledger,
+      fetchImpl: mockFetch([["/dms/audit/append", { json: { ok: true } }]]),
+    });
+    assert.strictEqual(await eco.audit("clicks.action.executed", { target: "Archive" }), true);
+    assert.strictEqual(eco.auditHealth().pending, 0);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("with no ledger attached, auditHealth says so rather than reporting healthy", async () => {
+  // "nothing pending" must never be how the app renders "nothing is recorded".
+  const health = new NetieEcosystem({ fetchImpl: mockFetch([]) }).auditHealth();
+  assert.strictEqual(health.local, false);
+  assert.strictEqual(health.chainOk, null);
+  assert.match(health.reason, /no local ledger/);
+});
+
+test("audit still records the step when the local write itself fails", async () => {
+  // A broken ledger must not become a broken agent — but it must be visible.
+  const errs = [];
+  const ledger = createLedger({ dir: path.join(os.tmpdir(), "netie-eco-nope", "x"), onError: (e) => errs.push(e) });
+  const original = ledger.append;
+  ledger.append = () => {
+    errs.push(new Error("disk full"));
+    return null;
+  };
+  const eco = new NetieEcosystem({ ledger, fetchImpl: mockFetch([["/dms/audit/append", { json: { ok: true } }]]) });
+  assert.strictEqual(await eco.audit("clicks.test", {}), true, "Cortex still gets it");
+  assert.strictEqual(errs.length, 1);
+  ledger.append = original;
 });
 
 // ── planActions: fail-closed, then structured plan ───────────────────────────
