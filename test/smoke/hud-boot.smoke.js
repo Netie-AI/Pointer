@@ -72,6 +72,217 @@ record("every element hud.js reaches for actually exists", async ({ page }) => {
   assert.deepStrictEqual(missing, [], `missing elements: ${missing}`);
 });
 
+record("every theme paints the system-audio icon", async ({ page }) => {
+  // Adding a fourth theme found this: both <img> icons ship display:none and
+  // each theme opted one in BY NAME, so `computer` matched neither list and the
+  // System audio button rendered as an empty circle. Enumerate the themes the
+  // stylesheet actually defines rather than a list kept here, so the next theme
+  // is covered by this test on the day it is added, not the day it is noticed.
+  const blank = await page.evaluate(() => {
+    const hud = document.getElementById("hud");
+    const themes = new Set();
+    for (const sheet of document.styleSheets) {
+      let rules;
+      try { rules = sheet.cssRules; } catch { continue; }
+      for (const rule of rules) {
+        for (const m of String(rule.selectorText || "").matchAll(/\.hud\.theme-([a-z]+)/g)) {
+          themes.add(m[1]);
+        }
+      }
+    }
+    themes.delete("onboarded"); // a state class, not a theme
+
+    const had = [...hud.classList].filter((c) => c.startsWith("theme-"));
+    const empty = [];
+    for (const theme of themes) {
+      hud.classList.remove(...[...hud.classList].filter((c) => c.startsWith("theme-")));
+      hud.classList.add("theme-" + theme);
+      const shown = [...document.querySelectorAll("#btn-system .sys-icon")].filter(
+        (el) => getComputedStyle(el).display !== "none"
+      );
+      if (shown.length !== 1) {
+        empty.push(`${theme} shows ${shown.length} icons`);
+        continue;
+      }
+      // `display: block` on a broken <img> still passes a display check while
+      // painting nothing, which is the same empty button by another route.
+      // naturalWidth is 0 until the bitmap has actually decoded.
+      if (!shown[0].naturalWidth) {
+        empty.push(`${theme} shows ${shown[0].getAttribute("src")} but it did not load`);
+      }
+    }
+    hud.classList.remove(...[...hud.classList].filter((c) => c.startsWith("theme-")));
+    hud.classList.add(...had);
+    return { empty, themes: [...themes] };
+  });
+
+  // Assert the enumeration worked, not a count - the number of themes differs
+  // per branch, and hardcoding it makes this gate fail for the wrong reason.
+  for (const known of ["dark", "light"]) {
+    assert.ok(
+      blank.themes.includes(known),
+      `theme-${known} was not discovered from the stylesheet - the enumeration is broken, ` +
+        `found: ${blank.themes.join(", ")}`
+    );
+  }
+  assert.deepStrictEqual(
+    blank.empty,
+    [],
+    `System audio button is wrong in: ${blank.empty.join("; ")}`
+  );
+});
+
+
+record("the settings menu can reach every control it paints", async ({ page }) => {
+  // Measured on main before this gate existed: the menu was 1255px tall on a
+  // 912px viewport, `max-height: none`, `overflow-y: visible`, and six rows -
+  // including "Visible to screen capture" - were painted below the bottom of
+  // the display with no way to scroll to them.
+  //
+  // The property is not "every row is on screen". A scrollable menu is allowed
+  // to keep rows below the fold. The property is that the menu fits the screen
+  // AND scrolls when its content does not fit, because those two together are
+  // what make every row reachable.
+  const menu = await page.evaluate(() => {
+    // `#btn-more` toggles, and more than one record opens this menu. Clicking
+    // blind leaves the second one measuring a CLOSED menu, and that failure
+    // reads as a layout bug rather than as test order. Assert the state.
+    const el = document.getElementById("settings-menu");
+    if (!el.classList.contains("open")) document.getElementById("btn-more").click();
+    const box = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    return {
+      top: Math.round(box.top),
+      bottom: Math.round(box.bottom),
+      viewportH: window.innerHeight,
+      scrollH: el.scrollHeight,
+      clientH: el.clientHeight,
+      overflowY: cs.overflowY,
+      rows: el.querySelectorAll("label").length,
+    };
+  });
+
+  assert.ok(menu.rows > 0, "the settings menu paints no rows");
+  assert.ok(
+    menu.bottom <= menu.viewportH + 1,
+    `the settings menu runs to ${menu.bottom}px on a ${menu.viewportH}px screen - ` +
+      "everything past the bottom edge is painted where nobody can click it"
+  );
+  if (menu.scrollH > menu.clientH + 1) {
+    assert.ok(
+      /auto|scroll/.test(menu.overflowY),
+      `the menu's content is ${menu.scrollH}px inside a ${menu.clientH}px box but ` +
+        `overflow-y is "${menu.overflowY}" - the rows past the fold cannot be reached`
+    );
+  }
+});
+
+record("the top bar fits its own controls", async ({ page }) => {
+  // The bar carries Record, transport, four modes, Ask AI, two icons, the menu,
+  // Report a problem and Show/Hide. It used to cap at 980px while `.top-cluster`
+  // allowed shrinking below content, so the overflow was paid in wrapped labels
+  // and a clipped kbd - visible in a screenshot, invisible to every assertion
+  // in this repo. Measure the rendered boxes: a control that sticks out of the
+  // bar, or grows to two lines, is the defect either way.
+  const report = await page.evaluate(() => {
+    const bar = document.getElementById("top-bar");
+    const barBox = bar.getBoundingClientRect();
+    const overflowing = [];
+    const wrapped = [];
+    for (const el of bar.querySelectorAll("button")) {
+      const box = el.getBoundingClientRect();
+      if (box.width === 0) continue; // hidden by mode, not a layout fault
+      const name = (el.id || el.textContent.trim() || el.title).slice(0, 30);
+      // 0.5px of tolerance: sub-pixel layout, not a real overhang.
+      if (box.left < barBox.left - 0.5 || box.right > barBox.right + 0.5) {
+        overflowing.push(`${name} [${Math.round(box.left)}..${Math.round(box.right)}]`);
+      }
+      // Every control in this bar is a single-line pill. Two lines of 13px type
+      // plus padding clears 44px; one line does not.
+      if (box.height > 44) wrapped.push(`${name} (${Math.round(box.height)}px tall)`);
+    }
+    return {
+      overflowing,
+      wrapped,
+      barWidth: Math.round(barBox.width),
+      viewport: window.innerWidth,
+      fitsViewport: barBox.left >= -0.5 && barBox.right <= window.innerWidth + 0.5,
+    };
+  });
+
+  assert.deepStrictEqual(
+    report.overflowing,
+    [],
+    `controls hang outside the top bar (bar ${report.barWidth}px): ${report.overflowing.join(", ")}`
+  );
+  assert.deepStrictEqual(
+    report.wrapped,
+    [],
+    `controls wrapped to a second line: ${report.wrapped.join(", ")}`
+  );
+  assert.strictEqual(
+    report.fitsViewport,
+    true,
+    `the top bar (${report.barWidth}px) runs off a ${report.viewport}px screen`
+  );
+});
+
+
+record("the onboard card never covers the settings menu", async ({ page }) => {
+  // A screenshot found this one, and a source assertion had already blessed it.
+  // `.onboard` and `.menu` both declared z-index: 40, so DOM order decided, and
+  // on a fresh profile the first-run card painted over the bottom of Settings -
+  // hiding Verify steps, Auto-send, Cloud STT, Subtitle-follows-cursor and
+  // "Visible to screen capture". Comparing the two z-index values in CSS is not
+  // enough: `.menu` sits inside `.top-bar`, which opens its own stacking
+  // context, so the number that decides is the bar's.
+  //
+  // Only the rendered stack can answer this, so ask the renderer what is
+  // actually on top at the pixel the customer would click (R-0001).
+  const hit = await page.evaluate(() => {
+    const hud = document.getElementById("hud");
+    // Put the HUD back in its first-run state the way a fresh install is in it.
+    hud.classList.remove("onboarded", "theme-onboarded");
+    const onboard = document.getElementById("onboard");
+    onboard.hidden = false;
+    const openMenu = document.getElementById("settings-menu");
+    if (!openMenu.classList.contains("open")) document.getElementById("btn-more").click();
+
+    const rows = [...document.querySelectorAll("#settings-menu label")];
+    const target = rows.find((el) => el.querySelector("#set-capture-visible")) || rows[rows.length - 1];
+    if (!target) return { error: "no settings rows" };
+    // The menu scrolls. Bring the row into view first, or this measures how
+    // long the menu is instead of what is painted on top of it.
+    target.scrollIntoView({ block: "center" });
+    const box = target.getBoundingClientRect();
+    const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return {
+      label: target.textContent.trim(),
+      inMenu: Boolean(top && top.closest("#settings-menu")),
+      inOnboard: Boolean(top && top.closest("#onboard")),
+      onboardPainted: onboard.getBoundingClientRect().height > 0,
+      hitTag: top ? top.tagName + (top.id ? "#" + top.id : "") : "none",
+    };
+  });
+
+  assert.ok(!hit.error, hit.error);
+  assert.strictEqual(
+    hit.onboardPainted,
+    true,
+    "the onboard card is not painting - this test is not exercising the overlap it exists for"
+  );
+  assert.strictEqual(
+    hit.inOnboard,
+    false,
+    `the onboard card is on top of "${hit.label}" - that control cannot be clicked on a fresh profile`
+  );
+  assert.strictEqual(
+    hit.inMenu,
+    true,
+    `clicking "${hit.label}" would hit ${hit.hitTag}, not the settings menu`
+  );
+});
+
 record("the General mode pill shipped", async ({ page }) => {
   const modes = await page.$$eval("#mode-pill button", (els) => els.map((e) => e.dataset.mode));
   assert.ok(modes.includes("general"), `HUD-03 pill missing — got ${modes}`);
