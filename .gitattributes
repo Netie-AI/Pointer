@@ -1,0 +1,49 @@
+# Merge behaviour for the governed documents.
+#
+# Twelve open PRs on this repo were all CONFLICTING at once, and not one of them
+# conflicted on code. Every collision was in the narrative files: two branches
+# each added an entry at the top of CHANGELOG.md, or a row to the findings
+# INDEX, and git correctly reported that it could not know which came first.
+#
+# That is not a merge problem, it is a missing merge strategy. `union` keeps
+# BOTH sides of an overlapping hunk instead of raising a conflict, which is
+# exactly right for a file whose only edit is "add my entry".
+#
+# The rule for putting a file on this list: it must be APPEND-ONLY in practice.
+# Union never deletes, so a file that legitimately has content removed must NOT
+# be here - union would silently resurrect whatever the other branch deleted.
+# That is not hypothetical: a stale branch in this repo deletes the P-06 compute
+# box from PARKING_LOT.md, and union-merging that file would quietly bring it
+# back on one side while another branch was retiring it.
+#
+#   CHANGELOG.md   append-only by law, newest first        -> union
+#   INDEX.md       findings table, rows are only added     -> union
+#
+# Deliberately NOT union, and why:
+#
+#   STATUS.md      state, not history. Capped at 60 lines, and items are
+#                  REPLACED as they stop being true. Union would keep both
+#                  versions of a superseded line and blow the cap.
+#   PARKING_LOT.md entries are REMOVED when their unlock condition is met.
+#   docs/ACTIVE.md a map of what is where; stale entries get deleted.
+#
+# Those three still conflict, on purpose: resolving them is a judgement about
+# what is currently true, and a machine guessing at that is how a roadmap ends
+# up asserting two contradictory things at once.
+
+CHANGELOG.md                      merge=union
+docs/subagents_findings/INDEX.md  merge=union
+
+# Keep the repo's line endings stable across the Windows checkouts this estate
+# runs on. Every `git add` here currently warns "LF will be replaced by CRLF",
+# which means the index and the working tree disagree about every text file -
+# and that disagreement is why `git apply --cached` refuses patches that are
+# otherwise clean.
+*.js    text eol=lf
+*.json  text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+*.md    text eol=lf
+*.ps1   text eol=crlf
+*.woff2 binary
+*.png   binary
