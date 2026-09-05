@@ -63,6 +63,26 @@ Nothing below was visible in source review. All of it was visible in one PNG.
   Ctrl+backtick kbd on Show/Hide is cut off at the right edge. Reported, not
   fixed - founder deferred it this session.
 
+## Two gate failures worth keeping
+
+**A gate can pass on half a cause.** The top bar's wrapped labels needed BOTH a
+980px cap and pills that were allowed to wrap. Reverting either one alone left
+the rendered gate green; only reverting both turned it red. When mutation-
+testing a layout fix, revert the whole change, not one line of it - otherwise
+"the gate can fail" is unproven and you have measured nothing.
+
+**A rule keyed to an enumeration breaks when the enumeration grows.** Both
+system-audio icons ship `display: none` and each theme opted one in by name.
+That rule was correct for a year and stopped being correct the moment a fourth
+theme existed - the new theme matched no branch and the button painted nothing.
+The repair is to make one branch the default and let the others opt out, so an
+unlisted member degrades to wrong rather than to absent. The gate then
+enumerates from the stylesheet itself, not from a list kept in the test.
+
+Corollary: `display: block` on a broken `<img>` passes a display check while
+painting nothing. Assert `naturalWidth` when the claim is "the customer sees an
+icon".
+
 ## DR-0006 routing
 
 `prd-agent` found the UI ask was not net-new: `DR-0006` (proposed 2026-08-28)
