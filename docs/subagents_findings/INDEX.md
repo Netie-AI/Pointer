@@ -2,6 +2,7 @@
 
 | Date | Topic | Keywords | Main idea | Path |
 |------|-------|----------|-----------|------|
+| 2026-09-05 | hud-shot-content-protection | setContentProtection, DWM affinity, CDP capture, DR-0006, z-index | Content protection never reaches the compositor, so Playwright CDP shoots the HUD with protection ON; first rendered look found the onboard card covering Settings | `2026-09-05_hud-shot-content-protection.md` |
 | 2026-08-22 | merge-gate-unquoted-word | merge-gate, word_write_text, lastWordDocx | #30+#31 conflict STATUS/CHANGELOG; unquoted write-in-Word missed the write verb; pin lastWordDocx assignment | `2026-08-22_merge-gate-unquoted-word.md` |
 | 2026-08-22 | recall-retention-bound | recall, retentionMs, purgeExpired, DR-0003 | Eviction persisted aged-out frames; drop + sweep recall-*.enc.json to the 60s ring. New branch, not #26 | `2026-08-22_recall-retention-bound.md` |
 | 2026-08-22 | word-coworker-fixture-sink | recovered selection, NETIE_WORD_OUT_DIR, R-0001 | clipboard-integrity wrote the retry fixture into Documents\\NetiePointer; uncontained test writes must refuse | `2026-08-22_word-coworker-fixture-sink.md` |

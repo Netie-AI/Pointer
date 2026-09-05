@@ -7,7 +7,9 @@
   "scripts": {
     "start": "electron electron/main.js",
     "dev": "electron electron/main.js",
-    "test": "node test/ecosystem.test.js && node test/vault.test.js && node test/intent.test.js && node test/zen.test.js && node test/followup.test.js && node test/driver.test.js && node test/geometry.test.js && node test/conversations.test.js && node test/stt.test.js && node test/audio.test.js && node test/transcriber.test.js && node test/agentic.test.js && node test/recipes.test.js && node test/presence.test.js && node test/clicky.test.js && node test/clicky-cursor.test.js && node test/plan-guard.test.js && node test/ledger.test.js && node test/mandate.test.js && node test/invariants/claude-contract.test.js && node test/invariants/governed-docs.test.js && node test/invariants/ipc-bridge.test.js && node test/invariants/word-sink.test.js && node test/invariants/hud-bug-report.test.js && node test/word-coworker.test.js && node test/safe-path.test.js && node test/plan-describe.test.js && node test/app-target.test.js && node test/attachments.test.js && node test/clipboard-integrity.test.js",
+    "test": "node test/ecosystem.test.js && node test/vault.test.js && node test/intent.test.js && node test/zen.test.js && node test/followup.test.js && node test/driver.test.js && node test/geometry.test.js && node test/conversations.test.js && node test/stt.test.js && node test/audio.test.js && node test/transcriber.test.js && node test/agentic.test.js && node test/recipes.test.js && node test/presence.test.js && node test/clicky.test.js && node test/clicky-cursor.test.js && node test/plan-guard.test.js && node test/ledger.test.js && node test/mandate.test.js && node test/invariants/claude-contract.test.js && node test/invariants/governed-docs.test.js && node test/invariants/ipc-bridge.test.js && node test/invariants/word-sink.test.js && node test/invariants/hud-bug-report.test.js && node test/invariants/hud-shot.test.js && node test/invariants/hud-surface.test.js && node test/word-coworker.test.js && node test/safe-path.test.js && node test/plan-describe.test.js && node test/app-target.test.js && node test/attachments.test.js && node test/clipboard-integrity.test.js",
+    "shots": "node scripts/hud-shot.js",
+    "test:shots": "node test/smoke/hud-shot.smoke.js",
     "test:e2e": "node test/e2e/golden-act.test.js",
     "test:stress": "node test/stress/agent-loop.stress.js",
     "test:contracts": "node test/contracts/computer-use.contract.js",
@@ -30,7 +32,7 @@
     "test:geometry": "node test/geometry.test.js",
     "test:cursor": "node test/clicky-cursor.test.js",
     "test:guard": "node test/plan-guard.test.js",
-    "test:smoke": "node test/smoke/hud-boot.smoke.js && node test/smoke/ipc-live.smoke.js",
+    "test:smoke": "node test/smoke/hud-boot.smoke.js && node test/smoke/ipc-live.smoke.js && node test/smoke/hud-shot.smoke.js",
     "test:smoke:ipc": "node test/smoke/ipc-live.smoke.js"
   },
   "devDependencies": {

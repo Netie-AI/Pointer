@@ -278,9 +278,18 @@ function setAgentBusy(busy) {
   });
 }
 
+/**
+ * DR-0006 §2 added `computer` - mint/white, solid fills - as a FOURTH theme,
+ * beside dark/light/gra rather than in place of them. Both lists below have to
+ * learn the name together: a theme missing from the allowlist silently falls
+ * back to dark, and one missing from the remove() leaves two theme classes on
+ * the root, where the loser is decided by stylesheet order instead of choice.
+ */
+const THEMES = ["dark", "light", "gra", "computer"];
+
 function applyTheme(theme) {
-  const next = ["dark", "light", "gra"].includes(theme) ? theme : "dark";
-  hudRoot.classList.remove("theme-dark", "theme-light", "theme-gra");
+  const next = THEMES.includes(theme) ? theme : "dark";
+  hudRoot.classList.remove(...THEMES.map((t) => `theme-${t}`));
   hudRoot.classList.add(`theme-${next}`);
   localStorage.setItem("netie-hud-theme", next);
   document.querySelectorAll("#theme-row button").forEach((button) => {

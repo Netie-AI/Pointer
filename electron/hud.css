@@ -1,5 +1,55 @@
+/* DR-0006 §2 — IBM Plex, self-hosted.
+ *
+ * hud.html ships `default-src 'self'` with no font-src of its own, so a webfont
+ * has to come off disk or it does not come at all: a Google Fonts <link> is
+ * refused by the page's own policy and falls back silently to Segoe, which is
+ * how a font decision quietly stops being true. These five files are the
+ * founder's own vendored cut (SIL OFL, see assets/fonts/NOTICE).
+ *
+ * Named "Pointer UI" / "Pointer Display" rather than "IBM Plex Sans" on
+ * purpose: the family is a choice this HUD makes, and every rule below asks
+ * for the role, not the vendor. Swapping the face later is one @font-face
+ * edit instead of a stylesheet-wide find and replace.
+ */
+@font-face {
+  font-family: "Pointer UI";
+  src: url("assets/fonts/IBMPlexSans-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pointer UI";
+  src: url("assets/fonts/IBMPlexSans-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pointer UI";
+  src: url("assets/fonts/IBMPlexSans-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pointer Display";
+  src: url("assets/fonts/IBMPlexSerif-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pointer Display";
+  src: url("assets/fonts/IBMPlexSerif-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --font: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font: "Pointer UI", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Pointer Display", "Sitka Display", Georgia, "Times New Roman", serif;
   --glass-blur: blur(22px) saturate(160%);
 }
 * { box-sizing: border-box; }
@@ -36,6 +86,41 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   --accent-solid: #8eaff5;
   --good: #6ed9a8;
   --rec: #ff4d5e;
+  /* One stacking scale, so a new overlay picks a layer instead of guessing a
+     number. Two independent panels both declared `z-index: 40` - the settings
+     menu and the first-run onboard card - which left the winner to DOM order.
+     The card is later in hud.html, so on a fresh profile it painted over the
+     bottom half of Settings and swallowed Verify steps, Auto-send, Cloud STT,
+     Subtitle-follows-cursor and "Visible to screen capture". Raising one
+     selector would have fixed that pair and left the next collision to be
+     discovered the same way, in a screenshot (R-0004).
+
+     Order is intent, not decoration: teach marks sit above everything because
+     they point AT the UI; an open menu outranks the onboard card because
+     opening it is something the customer just did.
+
+     One trap, learned by screenshot after this scale was first written wrong:
+     `.menu` lives inside `.top-bar`, and `.top-bar` is positioned with a
+     z-index, so it opens a stacking context. `--z-menu` therefore only orders
+     the menu against its siblings INSIDE the bar - against anything outside it,
+     the number that counts is `--z-chrome`. That is why --z-onboard sits below
+     --z-chrome rather than merely below --z-menu; raising --z-menu alone left
+     the card on top and the gate green. Anything nested in the chrome inherits
+     the chrome's layer, whatever it asks for. */
+  --z-orb: 12;
+  --z-insight: 14;
+  --z-dock: 15;
+  --z-subtitle: 22;
+  --z-shot: 24;
+  --z-roulette: 25;
+  --z-bg: 26;
+  --z-status: 28;
+  --z-onboard: 29;
+  --z-chrome: 30;
+  --z-form: 34;
+  --z-peek: 40;
+  --z-menu: 42;
+  --z-teach: 46;
   position: relative; width: 100%; height: 100%; color: var(--text); pointer-events: none;
 }
 .hud.theme-light {
@@ -53,6 +138,73 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   --good: #0b7354;
   --rec: #d62839;
 }
+/* DR-0006 §2 — the Computer theme, mint/white, joining dark/light/gra.
+ *
+ * Derived from the founder's captures in `docs/ui-refs/perplexity-computer`
+ * (see that folder's INDEX before touching these values).
+ *
+ * The one rule that is not a preference: **solid fills, no backdrop-filter**.
+ * DR-0006 pins that to Windows Electron corruption, so in this theme the glass
+ * is switched off rather than tinted — `--glass-blur: none` and opaque panels.
+ * The other three themes keep their glass; this record was ratified as a fourth
+ * theme, not as a replacement, and gutting `backdrop-filter` estate-wide would
+ * be a different decision than the one that was made.
+ */
+.hud.theme-computer {
+  --glass-blur: none;
+  --panel: #e7f3ee;
+  --panel-strong: #f4fbf8;
+  --surface: rgba(16, 48, 40, 0.07);
+  --surface-hover: rgba(16, 48, 40, 0.12);
+  --field: #ffffff;
+  --line: rgba(20, 64, 52, 0.14);
+  --line-soft: rgba(20, 64, 52, 0.08);
+  --text: #16332c;
+  --muted: rgba(22, 51, 44, 0.62);
+  --accent: #1f6b5c;
+  --accent-solid: #1a7a68;
+  --good: #0b7354;
+  --rec: #c45b2d;
+}
+
+/* The glass recipe layers a specular gradient over a translucent panel. With
+   the blur off that reads as a grey film, so this theme paints the panel flat
+   and carries the depth in the shadow instead — which is what the refs do. */
+.hud.theme-computer .glass,
+.hud.theme-computer .top-bar,
+.hud.theme-computer .menu,
+.hud.theme-computer .peek-drop,
+.hud.theme-computer .nod-toast {
+  background: var(--panel);
+  background-image: none;
+  border-color: var(--line);
+  box-shadow:
+    0 1px 2px rgba(16, 48, 40, 0.06),
+    0 12px 32px rgba(16, 48, 40, 0.10),
+    0 32px 64px rgba(16, 48, 40, 0.06);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Chrome sits on white in the refs, not on the panel tint, so the field colour
+   is what separates an input from the card it lives in. */
+.hud.theme-computer .top-bar { background: var(--panel-strong); }
+.hud.theme-computer .mode-pill { background: var(--field); }
+.hud.theme-computer .mode-pill button.active { background: var(--surface-hover); color: var(--text); }
+.hud.theme-computer .msg { background: var(--field); }
+.hud.theme-computer .quick-actions button:hover { background: var(--surface-hover); }
+.hud.theme-computer .rec-button { background: var(--field); }
+.hud.theme-computer .rec-button.active { background: color-mix(in srgb, var(--field), var(--rec) 12%); }
+
+/* The refs' action buttons are outlined pills on the card, not filled blocks. */
+.hud.theme-computer .act-button {
+  background: var(--accent-solid); color: #f4fbf8; border-color: transparent;
+}
+.hud.theme-computer .status-actions .act-button,
+.hud.theme-computer .status-actions .text-btn {
+  background: var(--field); color: var(--text); border: 1px solid var(--line);
+}
+
 .hud.theme-gra {
   --panel: rgba(36, 24, 52, 0.55);
   --panel-strong: rgba(24, 16, 36, 0.66);
@@ -95,7 +247,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .hud.morph-hidden .menu { display: none !important; }
 
 .peek-drop {
-  display: none; position: absolute; top: 10px; left: 12px; z-index: 40;
+  display: none; position: absolute; top: 10px; left: 12px; z-index: var(--z-peek);
   width: 36px; height: 36px; border-radius: 14px; place-items: center; padding: 0;
   opacity: 0; transform: translateY(-8px) scale(0.92);
   transition: opacity 200ms ease, transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -112,7 +264,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
    already live. */
 .top-bar {
   position: absolute; top: 14px; left: 50%; right: auto; transform: translateX(-50%);
-  z-index: 30; display: flex; align-items: center; gap: 10px;
+  z-index: var(--z-chrome); display: flex; align-items: center; gap: 10px;
   max-width: min(980px, 94vw); padding: 6px 8px; border-radius: 999px;
 }
 .top-cluster { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -181,7 +333,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 /* The Shot button had no rule at all, so it was the one non-positioned child of
    .hud — a UA-default button parked at (0,0), eating clicks and outliving Hide. */
 .shot-btn {
-  position: absolute; right: 18px; bottom: 22px; z-index: 24;
+  position: absolute; right: 18px; bottom: 22px; z-index: var(--z-shot);
   padding: 7px 12px; border: 1px solid var(--line-soft); border-radius: 999px;
   background: var(--surface); color: var(--muted); font-size: 11px; font-weight: 650;
 }
@@ -192,7 +344,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
    user has to answer before anything else continues. */
 .enquire {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  z-index: 34; width: min(420px, 82vw); padding: 16px; border-radius: 20px;
+  z-index: var(--z-form); width: min(420px, 82vw); padding: 16px; border-radius: 20px;
 }
 .enquire[hidden] { display: none; }
 .enquire-why { margin: 6px 2px 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
@@ -228,7 +380,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 /* P3-POINT-OVERLAY — a thin teach layer. pointer-events stays none so the
    crosshair can never intercept the click it is pointing at. */
-.point-layer { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+.point-layer { position: absolute; inset: 0; z-index: var(--z-teach); pointer-events: none; }
 .point-mark {
   position: absolute; transform: translate(-50%, -50%);
   display: grid; place-items: center; pointer-events: none;
@@ -254,7 +406,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 /* P4-BG-AGENTS — background work is a status line, not a stage orb. */
 .bg-status {
-  position: absolute; left: 22px; bottom: 22px; z-index: 26;
+  position: absolute; left: 22px; bottom: 22px; z-index: var(--z-bg);
   display: none; align-items: center; gap: 8px;
   padding: 7px 12px; border-radius: 999px;
   background: var(--surface); border: 1px solid var(--line-soft);
@@ -265,7 +417,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 /* EPIC-P05 — fixed status pill (Perplexity Computer style); not cursor-following. */
 .status-pill {
   position: absolute; left: 50%; top: 72px; transform: translateX(-50%);
-  z-index: 28; display: none; align-items: center; gap: 12px;
+  z-index: var(--z-status); display: none; align-items: center; gap: 12px;
   min-width: min(420px, 86vw); max-width: 520px;
   padding: 12px 14px; border-radius: 999px;
 }
@@ -328,7 +480,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 .onboard {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  z-index: 40; width: min(420px, 88vw); padding: 28px 24px; border-radius: 22px;
+  z-index: var(--z-onboard); width: min(420px, 88vw); padding: 28px 24px; border-radius: 22px;
   text-align: center;
 }
 .hud.onboarded .onboard { display: none !important; }
@@ -337,7 +489,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   --accent-solid: #3d8f78;
   --good: #4caf8a;
 }
-.onboard-title { font-family: Georgia, "Times New Roman", serif; font-size: 22px; margin: 0 0 10px; }
+.onboard-title { font-family: var(--font-display); font-size: 22px; margin: 0 0 10px; }
 .onboard-title em { font-style: italic; color: var(--accent); }
 .onboard-sub { color: var(--muted); margin: 0 0 18px; line-height: 1.45; }
 
@@ -362,7 +514,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 .menu-anchor { position: relative; }
 .menu {
-  display: none; position: absolute; top: calc(100% + 10px); right: 0; width: 280px; z-index: 40;
+  display: none; position: absolute; top: calc(100% + 10px); right: 0; width: 280px; z-index: var(--z-menu);
   padding: 12px; border-radius: 18px;
 }
 .menu.open { display: block; }
@@ -373,7 +525,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 }
 .menu input { accent-color: var(--accent-solid); }
 .theme-row, .menu-actions { display: grid; gap: 5px; }
-.theme-row { grid-template-columns: repeat(3, 1fr); margin-bottom: 10px; }
+.theme-row { grid-template-columns: repeat(2, 1fr); margin-bottom: 10px; }
 .menu-actions { grid-template-columns: repeat(2, 1fr); margin-top: 10px; }
 .menu button, .quick-actions button, .composer-actions button, .subtitle-live button,
 .nod-toast button, .roulette-items button, .retrieve-actions button, .text-btn {
@@ -389,7 +541,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
    (translate carries the drag offset, so the -50% centring has to live in it). */
 .subtitle-live {
   position: absolute; top: 66px; left: 50%; right: auto; transform: translateX(-50%);
-  z-index: 22; display: flex; align-items: center; gap: 10px;
+  z-index: var(--z-subtitle); display: flex; align-items: center; gap: 10px;
   width: min(560px, 62vw); min-height: 38px; padding: 8px 12px; border-radius: 16px;
 }
 .subtitle-grip {
@@ -437,7 +589,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 /* Live insights — left glass panel */
 .insight-panel {
-  position: absolute; top: 118px; left: 22px; width: min(320px, 34vw); z-index: 14;
+  position: absolute; top: 118px; left: 22px; width: min(320px, 34vw); z-index: var(--z-insight);
   padding: 14px; border-radius: 20px;
   opacity: 0; transform: translateX(-14px) scale(0.98); pointer-events: none;
   transition: opacity 240ms ease, transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -462,7 +614,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .chat-dock {
   position: absolute; top: 118px; left: 50%;
   width: min(460px, 48vw); height: min(420px, 58vh);
-  display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; z-index: 15;
+  display: flex; flex-direction: column; border-radius: 22px; overflow: hidden; z-index: var(--z-dock);
   opacity: 0; pointer-events: none; transform: translateX(-20%) scale(0.98);
   transition: opacity 240ms ease, transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -513,7 +665,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 .clicky-orb {
   position: absolute; top: 52%; right: 24px; left: auto; transform: translateY(-50%);
-  z-index: 12; width: 46px; height: 46px; border-radius: 50%;
+  z-index: var(--z-orb); width: 46px; height: 46px; border-radius: 50%;
   display: grid; place-items: center; padding: 0;
   opacity: 0; pointer-events: none;
 }
@@ -535,7 +687,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 /* Retrieve Roulette — circular dial */
 .roulette {
   position: absolute; top: 74px; left: 50%; width: min(560px, 94vw);
-  display: grid; grid-template-columns: 240px 1fr; gap: 12px; z-index: 25;
+  display: grid; grid-template-columns: 240px 1fr; gap: 12px; z-index: var(--z-roulette);
   opacity: 0; transform: translate(-50%, -10px) scale(0.98); pointer-events: none;
   transition: opacity 220ms ease, transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
   padding: 14px; border-radius: 24px;
@@ -632,7 +784,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 .nod-toast {
   display: none; position: absolute; top: 74px; left: 50%; transform: translateX(-50%);
-  align-items: center; gap: 10px; padding: 9px 12px; z-index: 28; border-radius: 14px;
+  align-items: center; gap: 10px; padding: 9px 12px; z-index: var(--z-status); border-radius: 14px;
 }
 .nod-toast.show { display: flex; }
 .hidden-stub { display: none !important; }

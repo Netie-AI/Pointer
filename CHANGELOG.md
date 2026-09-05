@@ -2,6 +2,61 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-09-05 - Seeing the HUD, and the Computer theme
+
+The HUD has never been screenshottable. `setContentProtection(true)` is on every
+window on purpose - it is why Pointer does not leak into a Teams share, and why
+the vision planner never plans against a picture of itself - and the cost was
+that nobody building it could look at it either. The two escape hatches
+(`NETIE_CAPTURE_VISIBLE=1`, the settings toggle) both work by turning the
+protection off, which answers a different question than "what does this look
+like in front of a customer".
+
+It turns out none of that was necessary. Content protection is a DWM affinity
+flag on the OS window; it never reaches the compositor, and a CDP capture
+renders from there. main.js had already said so in a comment nobody had run.
+`scripts/hud-shot.js` (`npm run shots`) boots Electron under Playwright, drives
+eight scenes through the HUD's own controls rather than by setting classes, and
+writes PNGs plus a `manifest.json` recording whether protection was on while
+they were taken. It reads `ON`.
+
+The tempting shortcut - wiring `NETIE_CAPTURE_VISIBLE` into `netie-launch.ps1` -
+is a shipped behaviour change, not a debug affordance: every screen share from
+that session would carry the HUD. `test/invariants/hud-shot.test.js` refuses it,
+refuses the harness setting the env for itself, and refuses it writing
+`captureVisible`. `npm run test:shots` asserts the artifact: a PNG at display
+size, painted rather than blank, off a still-protected window.
+
+**What the first look found.** `.onboard` and `.menu` both declared
+`z-index: 40`, so DOM order decided, and on a fresh profile the first-run card
+painted over the bottom half of Settings - hiding Verify steps, Auto-send, Cloud
+STT, Subtitle-follows-cursor, and "Visible to screen capture", the very toggle
+for capture. Fixed at the class (R-0004) with a named `--z-*` scale on `.hud`.
+
+The first fix did not work, and the first gate passed anyway. `.menu` lives
+inside `.top-bar`, which is positioned with a z-index and therefore opens a
+stacking context, so `--z-menu` only orders the menu against its siblings inside
+that bar; against the onboard card the number that counts is `--z-chrome`.
+Comparing the two tokens in CSS certified the bug it was written for. The gate
+now compares the layer that actually decides, and `test/smoke/hud-boot.smoke.js`
+asks the renderer what is on top at the pixel the customer would click - which
+is the only assertion that could have caught it.
+
+**DR-0006 section 2, ratified 2026-09-05.** Mint/white Computer joins dark/light/gra as
+a fourth theme rather than replacing them. Solid fills inside that theme only
+(`--glass-blur: none`; DR-0006 pins `backdrop-filter` to Windows Electron
+corruption) while the other three keep their glass - and
+`test/invariants/hud-surface.test.js` fails if a later tidy-up strips blur
+estate-wide, which would quietly convert a ratified "joins" into the option that
+was not chosen. IBM Plex is vendored under OFL and self-hosted, because
+hud.html's own `default-src 'self'` refuses a webfont off the network and falls
+back to Segoe without saying a word.
+
+Routed through `prd-agent` first, which found the UI ask was not net-new: DR-0006
+already specified it and lives only on `cursor/pointer-willow-rust-core-8217`,
+never merged. The harness was written before that routing came back - a hard
+rule 1 breach, recorded rather than repaired.
+
 ## 2026-09-05 - A local action ledger, and mandates for unattended work
 
 `eco.audit()` posted to Cortex `/dms/audit/append` inside a bare `catch` that

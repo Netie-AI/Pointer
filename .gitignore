@@ -5,6 +5,9 @@ out/
 models/
 # Local transcripts and demo screenshots — user data, not source.
 demo-shots/
+# HUD screenshots from `npm run shots` - regenerated output, not source.
+# The scenes that produce them ARE source (scripts/hud-shot.js).
+docs/shots/
 *.log
 .DS_Store
 .env

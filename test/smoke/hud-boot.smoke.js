@@ -88,6 +88,57 @@ record("capture is disarmed at boot — nothing is listening", async ({ page }) 
   assert.strictEqual(state.recActive, false, "the mic must not be armed by starting the app");
 });
 
+record("the onboard card never covers the settings menu", async ({ page }) => {
+  // A screenshot found this one, and a source assertion had already blessed it.
+  // `.onboard` and `.menu` both declared z-index: 40, so DOM order decided, and
+  // on a fresh profile the first-run card painted over the bottom of Settings -
+  // hiding Verify steps, Auto-send, Cloud STT, Subtitle-follows-cursor and
+  // "Visible to screen capture". Comparing the two z-index values in CSS is not
+  // enough: `.menu` sits inside `.top-bar`, which opens its own stacking
+  // context, so the number that decides is the bar's.
+  //
+  // Only the rendered stack can answer this, so ask the renderer what is
+  // actually on top at the pixel the customer would click (R-0001).
+  const hit = await page.evaluate(() => {
+    const hud = document.getElementById("hud");
+    // Put the HUD back in its first-run state the way a fresh install is in it.
+    hud.classList.remove("onboarded", "theme-onboarded");
+    const onboard = document.getElementById("onboard");
+    onboard.hidden = false;
+    document.getElementById("btn-more").click();
+
+    const rows = [...document.querySelectorAll("#settings-menu label")];
+    const target = rows.find((el) => el.querySelector("#set-capture-visible")) || rows[rows.length - 1];
+    if (!target) return { error: "no settings rows" };
+    const box = target.getBoundingClientRect();
+    const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return {
+      label: target.textContent.trim(),
+      inMenu: Boolean(top && top.closest("#settings-menu")),
+      inOnboard: Boolean(top && top.closest("#onboard")),
+      onboardPainted: onboard.getBoundingClientRect().height > 0,
+      hitTag: top ? top.tagName + (top.id ? "#" + top.id : "") : "none",
+    };
+  });
+
+  assert.ok(!hit.error, hit.error);
+  assert.strictEqual(
+    hit.onboardPainted,
+    true,
+    "the onboard card is not painting - this test is not exercising the overlap it exists for"
+  );
+  assert.strictEqual(
+    hit.inOnboard,
+    false,
+    `the onboard card is on top of "${hit.label}" - that control cannot be clicked on a fresh profile`
+  );
+  assert.strictEqual(
+    hit.inMenu,
+    true,
+    `clicking "${hit.label}" would hit ${hit.hitTag}, not the settings menu`
+  );
+});
+
 record("the enquire panel is a real form and starts hidden", async ({ page }) => {
   const form = await page.evaluate(() => {
     const el = document.getElementById("enquire-panel");

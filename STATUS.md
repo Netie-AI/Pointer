@@ -23,6 +23,16 @@
    and EPIC-P07 remain open.
 4. **HUD Report a problem** (#29) - persistent top-chrome `#bugReportBtn`;
    local copy-only form. Gate: `test/invariants/hud-bug-report.test.js`.
+5. **The HUD can be screenshotted without unprotecting it.** `npm run shots`
+   boots Electron under Playwright; CDP capture renders off the compositor,
+   which the DWM affinity flag never reaches, so `setContentProtection(true)`
+   stays ON during a shot. No launcher flag, no setting flip - both refused by
+   `test/invariants/hud-shot.test.js`. Artifact gate: `npm run test:shots`.
+6. **DR-0006 ratified 2026-09-05: mint/white Computer JOINS dark/light/gra.**
+   Solid fills in that theme only; the other three keep their glass. IBM Plex
+   vendored (OFL). Gate: `test/invariants/hud-surface.test.js`. The record is
+   still only on `cursor/pointer-willow-rust-core-8217`, and the PRD ledger has
+   no F29-F31 rows yet.
 
 ## Next
 
@@ -30,6 +40,10 @@
   `prd-agent` questions.
 - Do not merge PR #1. Do not attach work to PR #26. Do not close #29 here.
 - Measure STT: `node scripts/stt_baseline.js`.
+- Top pill clips its own controls: "Ask AI" and "Report a problem" wrap to two
+  lines, Show/Hide's kbd is cut off. Seen in a shot, deferred by the founder.
+- `DR-0005` is used twice on main (coworker-desks, uacc-detectable-loopback).
+  R-0013 forbids ID reuse; one needs renumbering.
 
 ## Later
 
