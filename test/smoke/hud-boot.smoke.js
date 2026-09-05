@@ -177,6 +177,39 @@ record("the settings menu can reach every control it paints", async ({ page }) =
   }
 });
 
+record("every control in the top bar can be clicked at its own centre", async ({ page }) => {
+  // The box-inside-box check this replaces asserted that controls sit within
+  // the bar and are one line tall. Both can hold while a control is dead: an
+  // adjacent element that overlaps it wins the pixel, and the customer's click
+  // goes somewhere else entirely. That is what the customer receives (R-0001),
+  // so hit-test it - do not measure a proxy for it.
+  const dead = await page.evaluate(() => {
+    const bar = document.getElementById("top-bar");
+    const out = [];
+    for (const el of bar.querySelectorAll("button")) {
+      // The settings menu is nested in the bar but is a scrolling popover with
+      // its own reachability gate. Rows below its fold legitimately own no
+      // pixel, and counting them here reports the menu as broken chrome.
+      if (el.closest("#settings-menu")) continue;
+      const b = el.getBoundingClientRect();
+      if (!b.width || !b.height) continue; // hidden by mode, not a layout fault
+      if (getComputedStyle(el).pointerEvents === "none") continue;
+      const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+      const mine = hit && (hit === el || el.contains(hit));
+      if (!mine) {
+        const owner = hit ? (hit.id || hit.className || hit.tagName) : "nothing";
+        out.push(`${el.id || el.textContent.trim().slice(0, 18)} -> ${String(owner).slice(0, 30)}`);
+      }
+    }
+    return out;
+  });
+  assert.deepStrictEqual(
+    dead,
+    [],
+    `top-bar controls whose own centre belongs to something else: ${dead.join("; ")}`
+  );
+});
+
 record("the top bar fits its own controls", async ({ page }) => {
   // The bar carries Record, transport, four modes, Ask AI, two icons, the menu,
   // Report a problem and Show/Hide. It used to cap at 980px while `.top-cluster`
@@ -197,9 +230,11 @@ record("the top bar fits its own controls", async ({ page }) => {
       if (box.left < barBox.left - 0.5 || box.right > barBox.right + 0.5) {
         overflowing.push(`${name} [${Math.round(box.left)}..${Math.round(box.right)}]`);
       }
-      // Every control in this bar is a single-line pill. Two lines of 13px type
-      // plus padding clears 44px; one line does not.
-      if (box.height > 44) wrapped.push(`${name} (${Math.round(box.height)}px tall)`);
+      // Every control in this bar is a single-line pill. Measured: a wrapped
+      // pill is exactly 44.0px and an unwrapped one is under 32px, so the old
+      // `> 44` threshold sat ON the value it was meant to catch and could
+      // never fire. 38px sits in the gap.
+      if (box.height > 38) wrapped.push(`${name} (${Math.round(box.height)}px tall)`);
     }
     return {
       overflowing,
@@ -229,57 +264,68 @@ record("the top bar fits its own controls", async ({ page }) => {
 
 
 record("the onboard card never covers the settings menu", async ({ page }) => {
-  // A screenshot found this one, and a source assertion had already blessed it.
-  // `.onboard` and `.menu` both declared z-index: 40, so DOM order decided, and
-  // on a fresh profile the first-run card painted over the bottom of Settings -
-  // hiding Verify steps, Auto-send, Cloud STT, Subtitle-follows-cursor and
-  // "Visible to screen capture". Comparing the two z-index values in CSS is not
-  // enough: `.menu` sits inside `.top-bar`, which opens its own stacking
-  // context, so the number that decides is the bar's.
+  // A screenshot found this one, and a source assertion had already blessed it:
+  // .onboard and .menu both declared z-index: 40, so DOM order decided and on a
+  // fresh profile the first-run card painted over five rows of Settings.
   //
-  // Only the rendered stack can answer this, so ask the renderer what is
-  // actually on top at the pixel the customer would click (R-0001).
+  // The first version of this gate scrolled the target row into view before
+  // hit-testing. scrollIntoView walks up to a COMMON ancestor of the menu and
+  // the card, so it dragged the card off the top of the screen and then
+  // certified that nothing was covered - passing with the defect fully
+  // restored. Move nothing. Ask where the two panels actually overlap, at rest,
+  // and find out who owns that pixel.
   const hit = await page.evaluate(() => {
     const hud = document.getElementById("hud");
-    // Put the HUD back in its first-run state the way a fresh install is in it.
-    hud.classList.remove("onboarded", "theme-onboarded");
+    hud.classList.remove("onboarded", "theme-onboarded"); // first-run state
     const onboard = document.getElementById("onboard");
     onboard.hidden = false;
-    const openMenu = document.getElementById("settings-menu");
-    if (!openMenu.classList.contains("open")) document.getElementById("btn-more").click();
+    const menu = document.getElementById("settings-menu");
+    if (!menu.classList.contains("open")) document.getElementById("btn-more").click();
 
-    const rows = [...document.querySelectorAll("#settings-menu label")];
-    const target = rows.find((el) => el.querySelector("#set-capture-visible")) || rows[rows.length - 1];
-    if (!target) return { error: "no settings rows" };
-    // The menu scrolls. Bring the row into view first, or this measures how
-    // long the menu is instead of what is painted on top of it.
-    target.scrollIntoView({ block: "center" });
-    const box = target.getBoundingClientRect();
-    const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    const a = onboard.getBoundingClientRect();
+    const b = menu.getBoundingClientRect();
+    const x1 = Math.max(a.left, b.left);
+    const x2 = Math.min(a.right, b.right);
+    const y1 = Math.max(a.top, b.top);
+    const y2 = Math.min(a.bottom, b.bottom);
+    if (x2 <= x1 || y2 <= y1) return { overlap: false };
+
+    const top = document.elementFromPoint((x1 + x2) / 2, (y1 + y2) / 2);
+    const covered = [...menu.querySelectorAll("label")]
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.bottom > a.top && r.top < a.bottom && r.right > a.left && r.left < a.right;
+      })
+      .map((el) => el.textContent.trim().replace(/\s+/g, " ").slice(0, 30));
+
     return {
-      label: target.textContent.trim(),
+      overlap: true,
+      area: Math.round((x2 - x1) * (y2 - y1)),
       inMenu: Boolean(top && top.closest("#settings-menu")),
       inOnboard: Boolean(top && top.closest("#onboard")),
-      onboardPainted: onboard.getBoundingClientRect().height > 0,
-      hitTag: top ? top.tagName + (top.id ? "#" + top.id : "") : "none",
+      hitTag: top ? top.tagName + (top.id ? "#" + top.id : "") : "nothing",
+      covered,
     };
   });
 
-  assert.ok(!hit.error, hit.error);
+  // No overlap means this gate proves nothing. Say so rather than pass quietly:
+  // a layout change that separates the two panels should send someone to
+  // re-point this test, not silently retire it (R-0002).
   assert.strictEqual(
-    hit.onboardPainted,
+    hit.overlap,
     true,
-    "the onboard card is not painting - this test is not exercising the overlap it exists for"
+    "the onboard card and the settings menu no longer share any pixels - this gate " +
+      "is vacuous now and needs re-pointing at whatever overlaps today"
   );
   assert.strictEqual(
     hit.inOnboard,
     false,
-    `the onboard card is on top of "${hit.label}" - that control cannot be clicked on a fresh profile`
+    `the onboard card owns ${hit.area}px of the open settings menu, covering: ${hit.covered.join(", ")}`
   );
   assert.strictEqual(
     hit.inMenu,
     true,
-    `clicking "${hit.label}" would hit ${hit.hitTag}, not the settings menu`
+    `the contested pixel belongs to ${hit.hitTag}, not the settings menu`
   );
 });
 

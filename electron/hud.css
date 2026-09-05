@@ -74,13 +74,19 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   --good: #7dba9a;
   --rec: #d45b5b;
   /* One stacking scale, so a new overlay picks a layer instead of guessing a
-     number. FOUR selectors currently declare `z-index: 40` - .peek-drop,
-     .point-layer, .onboard and .menu - which leaves the winner to DOM order.
+     number. Four selectors declared `z-index: 40` - .peek-drop, .point-layer,
+     .onboard and .menu - which left the winner to DOM order. Two of those four
+     are dead rules: `.peek-drop` and `.clicky-orb` have no element anywhere in
+     hud.html or hud.js (hud.js still carries `const clickyOrb = null`), so the
+     LIVE collision was three-way. The dead rules are left alone here rather
+     than swept up in a defect fix, but they are worth deleting.
      The onboard card is later in hud.html than the settings menu, so on a fresh
-     profile it paints over the bottom half of Settings and swallows Verify
-     steps, Auto-send, Cloud STT, Subtitle-follows-cursor and "Visible to screen
-     capture". Raising one selector fixes that pair and leaves the next
-     collision to be discovered the same way, in a screenshot (R-0004).
+     profile it paints over five rows in the middle of the list and takes their
+     clicks. Measured at 1536x912 those five are Verify steps, Auto-send, Cloud
+     STT, STT URL and LLM URL - but which five depends on the layout, which is
+     why the rendered gate reports them and this comment does not assert them.
+     Raising one selector fixes that pair and leaves the next collision to be
+     discovered the same way, in a screenshot (R-0004).
 
      Order is intent, not decoration: teach marks sit above everything because
      they point AT the UI; an open menu outranks the onboard card because
@@ -176,18 +182,24 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .top-bar {
   position: absolute; top: 14px; left: 50%; right: auto; transform: translateX(-50%);
   z-index: var(--z-chrome); display: flex; align-items: center; gap: 10px;
-  /* At 980px the controls "fit" only because `.top-cluster` is allowed to
-     shrink below its content: the cost comes out of the labels, so "Ask AI"
-     and "Report a problem" each break to two lines and the transport cluster -
-     wave and timer - is crushed to a few pixels. The pills below refuse to
-     wrap, which is the fix; the cap clears the measured content width so the
-     squeeze does not simply move onto the wave instead. */
+  /* The bar's natural content measures about 1497px at a 1536px viewport -
+     more than any single-line cap can hold. Every attempt to make it "fit" only
+     chose which control got destroyed: at 980px the labels wrapped and the
+     Scribe and Meeting pills went dead behind the desk buttons; pinning the
+     clusters instead crushed the transport cluster from 199px to 59px and put
+     #btn-pause on top of the Agent pill, which is worse, because Agent is the
+     default mode.
+
+     There is no width at which all of it fits on one line, so it wraps to a
+     second row. Chrome one row taller is a cosmetic cost; chrome with a dead
+     button in it is a broken product (R-0005). */
   max-width: min(1280px, 96vw); padding: 5px 8px; border-radius: 14px;
+  flex-wrap: wrap; row-gap: 6px; justify-content: center;
 }
-/* min-width: 0 is what lets a flex child shrink past its content. Keep it for
-   the clusters that genuinely can compress, and pin the ones that cannot. */
-.top-cluster { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.top-actions, .mode-pill { flex: 0 0 auto; }
+/* Uniform, and no exceptions: no cluster shrinks below its content, and any
+   that does not fit moves to the next row. Shrinking is what produced
+   overlapping controls, and a pin list is what produced an uneven squeeze. */
+.top-cluster { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .top-actions { margin-left: 4px; }
 
 /* Live coworker cue in fixed top chrome. Visible with chat closed and when
@@ -650,7 +662,13 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
      capture" - rendered below the bottom of the display with no way to reach
      them. A panel that paints a control it cannot deliver is worse than one
      that omits it, because the customer is told the setting exists. */
-  max-height: calc(100vh - 88px); overflow-y: auto; overscroll-behavior: contain;
+  /* The bar wraps, so its height is not fixed and neither is where this menu
+     starts: measured, a one-row bar puts the menu top at 68px and a two-row bar
+     at 144px. CSS cannot read its own offset, so this constant has to clear the
+     tallest bar we support, and the rendered gate - not this number - is what
+     guarantees the property. If the bar ever grows another row, the gate fails
+     and names the overflow rather than the menu quietly losing rows again. */
+  max-height: calc(100vh - 168px); overflow-y: auto; overscroll-behavior: contain;
   padding: 12px; border-radius: 18px;
 }
 .menu.open { display: block; }

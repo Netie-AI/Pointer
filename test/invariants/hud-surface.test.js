@@ -4,9 +4,12 @@
  *
  * Four selectors in hud.css declared `z-index: 40` at once - .peek-drop,
  * .point-layer, .onboard and .menu - so the winner was decided by DOM order.
+ * Two of them are dead rules with no element in the HUD, so the live collision
+ * was three-way; the scale covers all of them either way.
  * The onboard card is later in hud.html than the settings menu, which meant
- * that on a fresh profile the first-run card painted over the bottom half of
- * Settings and hid five controls, "Visible to screen capture" among them.
+ * that on a fresh profile the first-run card painted over five rows in the
+ * middle of Settings and took their clicks. (Which five depends on the layout,
+ * so the rendered gate names them; this header does not.)
  *
  * Fixing the one pair would have left the next collision to be found the same
  * way it was found this time: by looking at a screenshot. So the scale is the
@@ -58,7 +61,12 @@ function layers() {
 }
 
 check("overlay layers are named, not literal numbers", () => {
-  const declarations = css.match(/^\s*z-index:\s*\d+;/gm) || [];
+  // Anchoring this to the start of a line missed most of the stylesheet, which
+  // writes several declarations per line: a mid-line `z-index: 999` sailed
+  // through while the gate stayed green. Strip comments - the header quotes
+  // `z-index: 40` in prose - and then scan anywhere.
+  const code = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const declarations = code.match(/z-index:\s*\d+/g) || [];
   assert.deepStrictEqual(
     declarations.map((d) => d.trim()),
     [],
