@@ -265,13 +265,24 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .top-bar {
   position: absolute; top: 14px; left: 50%; right: auto; transform: translateX(-50%);
   z-index: var(--z-chrome); display: flex; align-items: center; gap: 10px;
-  max-width: min(980px, 94vw); padding: 6px 8px; border-radius: 999px;
+  /* The bar carries Record, transport, four modes, Ask AI, two icons, the
+     menu, Report a problem and Show/Hide. At 980px those "fit" only because
+     `.top-cluster` is allowed to shrink below its content: the cost came out
+     of the labels, so "Ask AI" and "Report a problem" each broke to two lines,
+     and the transport cluster - wave and timer - was crushed to a few pixels.
+     The pills below refuse to wrap, which is the fix; the cap is raised past
+     the measured content width (1075px at 1920) so the squeeze does not simply
+     move to the wave instead. */
+  max-width: min(1280px, 96vw); padding: 6px 8px; border-radius: 999px;
 }
+/* min-width: 0 is what lets a flex child shrink past its content. Keep it for
+   the clusters that genuinely can compress, and pin the ones that cannot. */
 .top-cluster { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.top-actions, .mode-pill { flex: 0 0 auto; }
 .top-actions { margin-left: 4px; }
 
 .icon-btn {
-  width: 34px; height: 34px; display: grid; place-items: center; padding: 0;
+  width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; padding: 0;
   border: 1px solid var(--line-soft); border-radius: 999px; background: var(--surface); color: var(--muted);
 }
 .icon-btn:hover, .icon-btn.active { background: var(--surface-hover); color: var(--text); }
@@ -284,11 +295,17 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 .sys-btn { overflow: hidden; }
 .sys-icon { width: 17px; height: 17px; object-fit: contain; display: none; }
+/* Both icons start hidden and each theme used to opt one in by name, so adding
+   a fourth theme painted an empty button - the Computer theme matched neither
+   list and shipped a blank circle in the top chrome. Default to the light-ground
+   icon instead and let dark grounds swap it out: a theme nobody remembered to
+   list now renders the wrong-ish icon at worst, never nothing (R-0004). */
+.sys-light { display: block; }
+.hud.theme-dark .sys-light, .hud.theme-gra .sys-light { display: none; }
 .hud.theme-dark .sys-dark, .hud.theme-gra .sys-dark { display: block; }
-.hud.theme-light .sys-light { display: block; }
 
 .ask-pill {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex: 0 0 auto;
   padding: 7px 12px; border: 1px solid var(--line-soft); border-radius: 999px;
   background: var(--surface); color: var(--text); font-size: 12px; font-weight: 650;
 }
@@ -322,7 +339,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   padding: 3px; border-radius: 999px; border: 1px solid var(--line-soft); background: var(--field);
 }
 .mode-pill button {
-  border: 0; border-radius: 999px; padding: 6px 10px; background: transparent;
+  border: 0; border-radius: 999px; padding: 6px 10px; background: transparent; white-space: nowrap;
   color: var(--muted); font-weight: 700; font-size: 11px;
 }
 .mode-pill button.active { background: rgba(255,255,255,0.16); color: var(--text); }
@@ -331,6 +348,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .hud.mode-general .act-button { display: none; }
 
 /* The Shot button had no rule at all, so it was the one non-positioned child of
+  white-space: nowrap; flex: 0 0 auto;
    .hud — a UA-default button parked at (0,0), eating clicks and outliving Hide. */
 .shot-btn {
   position: absolute; right: 18px; bottom: 22px; z-index: var(--z-shot);

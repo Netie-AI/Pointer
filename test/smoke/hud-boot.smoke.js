@@ -88,6 +88,99 @@ record("capture is disarmed at boot — nothing is listening", async ({ page }) 
   assert.strictEqual(state.recActive, false, "the mic must not be armed by starting the app");
 });
 
+record("every theme paints the system-audio icon", async ({ page }) => {
+  // Adding a fourth theme found this: both <img> icons ship display:none and
+  // each theme opted one in BY NAME, so `computer` matched neither list and the
+  // System audio button rendered as an empty circle. Enumerate the themes the
+  // stylesheet actually defines rather than a list kept here, so the next theme
+  // is covered by this test on the day it is added, not the day it is noticed.
+  const blank = await page.evaluate(() => {
+    const hud = document.getElementById("hud");
+    const themes = new Set();
+    for (const sheet of document.styleSheets) {
+      let rules;
+      try { rules = sheet.cssRules; } catch { continue; }
+      for (const rule of rules) {
+        for (const m of String(rule.selectorText || "").matchAll(/\.hud\.theme-([a-z]+)/g)) {
+          themes.add(m[1]);
+        }
+      }
+    }
+    themes.delete("onboarded"); // a state class, not a theme
+
+    const had = [...hud.classList].filter((c) => c.startsWith("theme-"));
+    const empty = [];
+    for (const theme of themes) {
+      hud.classList.remove(...[...hud.classList].filter((c) => c.startsWith("theme-")));
+      hud.classList.add("theme-" + theme);
+      const shown = [...document.querySelectorAll("#btn-system .sys-icon")].filter(
+        (el) => getComputedStyle(el).display !== "none"
+      );
+      if (shown.length !== 1) empty.push(`${theme} shows ${shown.length} icons`);
+    }
+    hud.classList.remove(...[...hud.classList].filter((c) => c.startsWith("theme-")));
+    hud.classList.add(...had);
+    return { empty, themes: [...themes] };
+  });
+
+  assert.ok(blank.themes.length >= 4, `only found themes: ${blank.themes.join(", ")}`);
+  assert.deepStrictEqual(
+    blank.empty,
+    [],
+    `System audio button is wrong in: ${blank.empty.join("; ")}`
+  );
+});
+
+record("the top bar fits its own controls", async ({ page }) => {
+  // The bar carries Record, transport, four modes, Ask AI, two icons, the menu,
+  // Report a problem and Show/Hide. It used to cap at 980px while `.top-cluster`
+  // allowed shrinking below content, so the overflow was paid in wrapped labels
+  // and a clipped kbd - visible in a screenshot, invisible to every assertion
+  // in this repo. Measure the rendered boxes: a control that sticks out of the
+  // bar, or grows to two lines, is the defect either way.
+  const report = await page.evaluate(() => {
+    const bar = document.getElementById("top-bar");
+    const barBox = bar.getBoundingClientRect();
+    const overflowing = [];
+    const wrapped = [];
+    for (const el of bar.querySelectorAll("button")) {
+      const box = el.getBoundingClientRect();
+      if (box.width === 0) continue; // hidden by mode, not a layout fault
+      const name = (el.id || el.textContent.trim() || el.title).slice(0, 30);
+      // 0.5px of tolerance: sub-pixel layout, not a real overhang.
+      if (box.left < barBox.left - 0.5 || box.right > barBox.right + 0.5) {
+        overflowing.push(`${name} [${Math.round(box.left)}..${Math.round(box.right)}]`);
+      }
+      // Every control in this bar is a single-line pill. Two lines of 13px type
+      // plus padding clears 44px; one line does not.
+      if (box.height > 44) wrapped.push(`${name} (${Math.round(box.height)}px tall)`);
+    }
+    return {
+      overflowing,
+      wrapped,
+      barWidth: Math.round(barBox.width),
+      viewport: window.innerWidth,
+      fitsViewport: barBox.left >= -0.5 && barBox.right <= window.innerWidth + 0.5,
+    };
+  });
+
+  assert.deepStrictEqual(
+    report.overflowing,
+    [],
+    `controls hang outside the top bar (bar ${report.barWidth}px): ${report.overflowing.join(", ")}`
+  );
+  assert.deepStrictEqual(
+    report.wrapped,
+    [],
+    `controls wrapped to a second line: ${report.wrapped.join(", ")}`
+  );
+  assert.strictEqual(
+    report.fitsViewport,
+    true,
+    `the top bar (${report.barWidth}px) runs off a ${report.viewport}px screen`
+  );
+});
+
 record("the onboard card never covers the settings menu", async ({ page }) => {
   // A screenshot found this one, and a source assertion had already blessed it.
   // `.onboard` and `.menu` both declared z-index: 40, so DOM order decided, and

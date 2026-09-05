@@ -126,6 +126,56 @@ check("the webfont is self-hosted, and the files are actually there", () => {
   );
 });
 
+// ── DR-0006 section 2 — the command bar affordances ─────────────────────────
+
+check("the command bar offers every affordance DR-0006 names", () => {
+  // Attach Files, Folders, Active Apps, Screenshots, Clipboard History. Folders
+  // was the only one missing; the rest already did real work.
+  for (const cmd of ["attach", "folders", "apps", "shots", "clipboard"]) {
+    assert.ok(
+      new RegExp(`data-cmd="${cmd}"`).test(html),
+      `the command bar has no ${cmd} control - DR-0006 section 2 lists it`
+    );
+    assert.ok(
+      new RegExp(`cmd === "${cmd}"`).test(hudJs),
+      `#command-bar-tools renders ${cmd} but nothing handles it - a live-looking dead button`
+    );
+  }
+});
+
+check("Folders picks a directory and stages it like any other selection", () => {
+  assert.ok(
+    /id="folder-attach"[^>]*webkitdirectory/.test(html),
+    "#folder-attach is not a directory picker"
+  );
+  // Two staging paths would drift, and the one that drifts is the one that
+  // stops enforcing the ceilings (R-0004). Both inputs call the same function.
+  const calls = hudJs.match(/await stageFiles\(picked\)/g) || [];
+  assert.strictEqual(
+    calls.length,
+    2,
+    `expected file-attach and folder-attach to share stageFiles, found ${calls.length} call sites`
+  );
+  assert.ok(
+    !/classifySelection/.test(hudJs.split("function stageFiles")[0]),
+    "something classifies a selection outside stageFiles - the ceilings must be asked once"
+  );
+});
+
+check("a folder full of refusals cannot bury the files that landed", () => {
+  // A directory hands us everything in it, against a 5-file ceiling. One chip
+  // per refusal is hundreds of chips; refusals must stay visible without
+  // drowning the accepted ones, so the tail collapses into a counted chip.
+  assert.ok(
+    /MAX_REFUSAL_CHIPS/.test(hudJs),
+    "no cap on refusal chips - picking a folder floods the composer"
+  );
+  assert.ok(
+    /hiddenRefusals/.test(hudJs) && /\$\{hiddenRefusals\} more/.test(hudJs),
+    "collapsed refusals are not counted anywhere - that is a silent drop (R-0011)"
+  );
+});
+
 // ── the stacking scale ──────────────────────────────────────────────────────
 
 /** Every --z-* token declared on .hud, as a name -> number map. */

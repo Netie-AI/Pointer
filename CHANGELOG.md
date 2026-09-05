@@ -2,6 +2,58 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-09-05 - Chrome that fits, and Folders
+
+Two things the screenshot harness paid for on its first day.
+
+**The top bar wrapped its own labels.** "Ask AI" and "Report a problem" each
+broke to two lines. The tempting read was that the bar had outgrown its 980px
+cap, and the first fix and its comment both said so. Measuring said otherwise:
+at 980px the buttons fit, and what was actually happening is that
+`.top-cluster` may shrink below its content, so the squeeze came out of the
+labels and out of the transport cluster - the wave and timer crushed to a few
+pixels. The pills now refuse to wrap, and the cap clears the measured 1075px so
+the squeeze does not simply move onto the wave. The comment was corrected to
+say the measured thing rather than the assumed one.
+
+`hud-boot.smoke.js` now measures the rendered boxes: any control whose box
+leaves the bar, or grows past one line, fails. Reverting the three CSS changes
+turns it red naming `btn-chat-toggle` and `bugReportBtn` at 46px tall, which is
+exactly what the screenshot showed. Reverting any ONE of them does not - the
+defect needed the narrow cap and the wrappable pills together, and a gate that
+only catches half a cause is worth knowing about.
+
+**Folders.** DR-0006 section 2 lists Attach Files, Folders, Active Apps,
+Screenshots and Clipboard History. Four of the five already did real work;
+Folders did not exist. It is now the same staging path with a directory dialog:
+both inputs call one `stageFiles`, so `netie/attachments.js` decides the
+ceilings once and a folder cannot smuggle a type or a size past them (R-0004).
+
+A directory hands over everything in it, against a 5-file ceiling, so the
+refusal chips are capped: past three, the rest collapse into a single chip that
+still states the count and the reason. Refusals stay visible without burying
+the files that landed.
+
+**A fourth theme found a fall-through.** Both system-audio icons ship
+`display: none` and each theme opted one in by name, so `computer` matched
+neither list and the top chrome painted an empty circle. Yesterday that rule
+was correct; it stopped being correct the moment a theme was added, which is
+the tell for a rule keyed to an enumeration. The light icon is now the default
+and dark grounds swap it out, so an unlisted theme renders the wrong-ish icon
+at worst rather than nothing. The gate enumerates the themes the stylesheet
+actually defines instead of a list kept in the test, so theme five is covered
+on the day it is added rather than the day someone notices.
+
+**F18 is already fixed.** The routing said attachments render name chips and
+discard the files, citing `hud.js:594-610`. The code reads and sends content,
+marks unreadable files at the chip, and never sends a refused one. The ledger
+row predates #23 - it stops at F28, dated 2026-08-22. Recorded rather than
+"fixed" twice.
+
+**STATUS.md was stale.** It claimed PRs #30-#33 were on contracts; those are
+long closed. `gh` says 12 open PRs (#41-#57) and every one is CONFLICTING. That
+is the actual distance to a deliverable app, and it now says so.
+
 ## 2026-09-05 - Seeing the HUD, and the Computer theme
 
 The HUD has never been screenshottable. `setContentProtection(true)` is on every

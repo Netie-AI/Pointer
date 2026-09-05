@@ -609,6 +609,7 @@ $("command-bar-tools")?.addEventListener("click", (event) => {
   if (!btn) return;
   const cmd = btn.dataset.cmd;
   if (cmd === "attach") $("file-attach")?.click();
+  else if (cmd === "folders") $("folder-attach")?.click();
   else if (cmd === "apps") {
     askInput.value = "List active apps and suggest what I can do next";
     doAsk();
@@ -696,17 +697,34 @@ function readFileText(file) {
   });
 }
 
-$("file-attach")?.addEventListener("change", async () => {
+/**
+ * How many individual refusal chips are worth painting.
+ *
+ * Picking a folder hands us everything in it. Against a 5-file ceiling that can
+ * be hundreds of refusals, and a chip each would bury the files that DID land
+ * under a wall of red. Past this many, the rest collapse into one chip that
+ * still states the count and the reason — refusals stay visible (R-0011),
+ * they just stop shouting.
+ */
+const MAX_REFUSAL_CHIPS = 3;
+
+/**
+ * Stage a selection, whatever picked it.
+ *
+ * Attach and Folders are the same operation with a different file dialog, so
+ * they share this rather than growing a second copy that drifts (R-0004). The
+ * ceilings, the fenced content block and the per-file verdicts are all
+ * `netie/attachments.js`; nothing here decides what is allowed.
+ */
+async function stageFiles(picked) {
   const chips = $("file-chips");
-  const input = $("file-attach");
-  if (!chips || !input?.files?.length) return;
-  const picked = Array.from(input.files);
-  // Clear the input immediately — but only after copying the FileList out, which
-  // is the step the old code was missing.
-  input.value = "";
+  if (!chips || !picked.length) return;
 
   const accepted = attachments.filter((a) => a.ok);
   const verdicts = ATTACH.classifySelection(picked, accepted);
+  let refusalChips = 0;
+  let hiddenRefusals = 0;
+  let hiddenReason = "";
 
   for (let i = 0; i < picked.length; i += 1) {
     const file = picked[i];
@@ -720,6 +738,15 @@ $("file-attach")?.addEventListener("change", async () => {
       chip: null,
     };
     attachments.push(entry);
+
+    if (!verdict.ok && refusalChips >= MAX_REFUSAL_CHIPS) {
+      // Still tracked, still refused, still counted - just not painted one by
+      // one. It contributes nothing to the payload either way.
+      hiddenRefusals += 1;
+      hiddenReason = hiddenReason || entry.reason;
+      continue;
+    }
+    if (!verdict.ok) refusalChips += 1;
     chips.appendChild(renderAttachmentChip(entry));
 
     if (verdict.ok) {
@@ -735,6 +762,44 @@ $("file-attach")?.addEventListener("change", async () => {
       }
     }
   }
+
+  if (hiddenRefusals) {
+    chips.appendChild(
+      renderAttachmentChip({
+        name: `${hiddenRefusals} more`,
+        size: 0,
+        content: null,
+        ok: false,
+        reason: hiddenReason,
+        chip: null,
+      })
+    );
+  }
+}
+
+$("file-attach")?.addEventListener("change", async () => {
+  const input = $("file-attach");
+  if (!input?.files?.length) return;
+  const picked = Array.from(input.files);
+  // Clear the input immediately — but only after copying the FileList out, which
+  // is the step the old code was missing.
+  input.value = "";
+  await stageFiles(picked);
+});
+
+/**
+ * DR-0006 section 2 lists Folders beside Attach Files. It is the same staging
+ * path with a directory dialog: `webkitdirectory` hands us the folder's files,
+ * and `netie/attachments.js` decides which of them are allowed, exactly as it
+ * does for a hand-picked selection. A folder cannot smuggle a file type or a
+ * size past the ceilings, because nothing about the ceilings is asked twice.
+ */
+$("folder-attach")?.addEventListener("change", async () => {
+  const input = $("folder-attach");
+  if (!input?.files?.length) return;
+  const picked = Array.from(input.files);
+  input.value = "";
+  await stageFiles(picked);
 });
 
 // ── #25 · hold-to-talk ──────────────────────────────────────────────────────
@@ -1608,6 +1673,7 @@ async function confirmCopyBugReport() {
     ? "Diagnostics copied - nothing was sent"
     : "Select the preview and copy it - nothing was sent";
 }
+
 
 const bugReportBtn = $("bugReportBtn");
 if (bugReportBtn) {
