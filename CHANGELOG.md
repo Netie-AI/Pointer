@@ -2,6 +2,40 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-09-05 - A local action ledger, and mandates for unattended work
+
+`eco.audit()` posted to Cortex `/dms/audit/append` inside a bare `catch` that
+returned false. With Cortex down - its normal state on this laptop - the event
+was written nowhere and the app could not say so, so "what did it click" had no
+answer and no way to report that it had none (R-0011).
+
+`electron/netie/ledger.js` is the record that survives that: append-only NDJSON,
+hash-chained so an edit or a deletion is detectable, rotated daily, sync state in
+a sidecar so the log is never rewritten. Secret VALUES never enter it - which
+field was filled is the evidence. `audit()` now writes locally first and syncs
+second, so every existing call site became durable at once. `auditHealth()`
+reports pending count and chain integrity, and says "no local ledger" rather
+than reporting healthy when nothing is being recorded.
+
+`electron/netie/mandate.js` is how a step runs with nobody watching. The executor
+gate (`disposition "approve" && !action._approved`) is correct, and is exactly
+why unattended work did not exist: with no human at the HUD every consequential
+step stalls. A mandate is a narrow, expiring, revocable grant a human creates
+before the job. Authority travels with the runner, never on the action - an
+action carrying `_approved` or `_mandateId` is refused as tampering, so A-0005
+stays closed instead of being reopened for convenience. A mandate only narrows:
+`safety.js` classifies first, custody stays custody, and payment and
+account-destruction are refused unconditionally whatever the grant says.
+Launching apps and dragging are not grantable at all.
+
+Found while testing: `liveness()` and `describeMandate()` tested `revokedAt` for
+truthiness, so a mandate revoked at timestamp 0 read as live and kept
+authorising. Fixed at every site (R-0004) and pinned.
+
+39 tests added to the `npm test` gate. Founder asks for phone-OTP retrieval and
+Gmail/WhatsApp/SMS connectors are routed in `docs/decisions/DR-0004`, not built:
+OTP is the second factor, and P-02/P-06 unlock conditions are unmet.
+
 ## 2026-08-27 - HUD Report a problem control (#29)
 
 `electron/hud.html` on the contracts branch had zero matches for `bugReport` /
