@@ -116,7 +116,16 @@ record("every theme paints the system-audio icon", async ({ page }) => {
       const shown = [...document.querySelectorAll("#btn-system .sys-icon")].filter(
         (el) => getComputedStyle(el).display !== "none"
       );
-      if (shown.length !== 1) empty.push(`${theme} shows ${shown.length} icons`);
+      if (shown.length !== 1) {
+        empty.push(`${theme} shows ${shown.length} icons`);
+        continue;
+      }
+      // `display: block` on a broken <img> still passes a display check while
+      // painting nothing, which is the same empty button by another route.
+      // naturalWidth is 0 until the bitmap has actually decoded.
+      if (!shown[0].naturalWidth) {
+        empty.push(`${theme} shows ${shown[0].getAttribute("src")} but it did not load`);
+      }
     }
     hud.classList.remove(...[...hud.classList].filter((c) => c.startsWith("theme-")));
     hud.classList.add(...had);
