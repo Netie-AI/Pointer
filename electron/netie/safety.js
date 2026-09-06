@@ -168,6 +168,8 @@ function targetsSecret(action) {
  * @param {object} [policy]
  *   autoRunBenign?: bool
  *   autoRunSensible?: bool  — auto-run non-irreversible consequential (copy/click/type normal fields)
+ *   allowAutoLaunch?: bool  — NETIE_LAPTOP_CONTROL=1 only; open/navigate may auto-run.
+ *     Secrets, irreversible pay/delete, and custody still cannot.
  * @returns {{ tier:number, tierName:string, disposition:'auto'|'approve'|'custody'|'refuse',
  *            irreversible:boolean, secret:boolean }}
  */
@@ -210,10 +212,14 @@ function decide(action, policy = {}) {
   } else if (declaresDestination) {
     disposition = "approve";
   } else if (action && action._requireConfirm) {
-    // Set by plan-guard for launches (open/navigate). Start-Process hands the
-    // machine to another application and is not undone by a second click, so it
-    // never auto-runs regardless of autoRunSensible.
-    disposition = "approve";
+    // Set by plan-guard for launches (open/navigate). Default: human beat.
+    // Founder laptop-control (allowAutoLaunch) may auto-run launches that are
+    // not secret and not irreversible. Pay/send/delete still approve.
+    if (policy.allowAutoLaunch && !irreversible && !secret) {
+      disposition = "auto";
+    } else {
+      disposition = "approve";
+    }
   } else if (tier === ActionTier.READ) {
     disposition = "auto";
   } else if (tier === ActionTier.BENIGN && (policy.autoRunBenign || policy.autoRunSensible)) {

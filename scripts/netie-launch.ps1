@@ -65,10 +65,11 @@ $Services = @{
     Port    = $null   # Electron app, not a server -- nothing to poll.
     Health  = $null
     Cwd     = "D:\Pointer"
-    Exe     = "npm"
-    Args    = @("start")
+    Exe     = "D:\Pointer\node_modules\electron\dist\electron.exe"
+    Args    = @("electron/main.js")
     Needs   = @("openvault", "cortex")
     WaitSec = 0
+    Visible = $true
   }
 }
 
@@ -118,8 +119,12 @@ function Start-One($key) {
   }
 
   Write-Step "starting $($svc.Name)..."
+  if ($key -eq "pointer") {
+    $env:NETIE_LAPTOP_CONTROL = "1"
+  }
+  $style = if ($svc.Visible) { "Normal" } else { "Minimized" }
   Start-Process -FilePath $svc.Exe -ArgumentList $svc.Args -WorkingDirectory $svc.Cwd `
-                -WindowStyle Minimized | Out-Null
+                -WindowStyle $style | Out-Null
 
   if (-not $svc.WaitSec -or -not $svc.Health) { return $true }
 

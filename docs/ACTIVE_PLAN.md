@@ -56,9 +56,9 @@ npm run test:agentic-pack
 
 | Train | Remaining |
 |-------|-----------|
-| Cortex | C-GEM-01 live provider_order; C-F8-01 screen tools; C-CFSM-01 wire gen-cFSM; C-VOICE-01 scaffold |
-| Cortex 2.6 | OpenVault custody inject live |
-| Pointer | DXGI recall sidecar; richer CU planner than observe-stub |
+| Cortex | **C25-01 live 2026-08-23: `POST /dms/agents/computer-use` is 404** on `:8010` pack=dms (Pointer `planViaCortex` failed). `/dms/secure` works. C-GEM-01 live provider_order; C-F8-01 screen tools; C-CFSM-01 wire gen-cFSM; C-VOICE-01 scaffold |
+| Cortex 2.6 | OpenVault custody inject live (`:5000` was down this tick) |
+| Pointer | DXGI recall sidecar; richer CU planner than observe-stub. Cursor OS mouse is UACC; Pointer `driver.js` stays dry-run beside it (F-0016) |
 
 ## Explicitly deferred
 

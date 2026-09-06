@@ -64,6 +64,22 @@ test("open/navigate always need a human beat, even with auto-run on", () => {
   assert.strictEqual(reviewPlan([{ type: "click", xPct: 5, yPct: 5 }], AUTO).actions[0].safety.disposition, "auto");
 });
 
+test("NETIE laptop-control may auto-run launches but not pay or passwords", () => {
+  const laptop = { ...AUTO, allowAutoLaunch: true };
+  assert.strictEqual(
+    reviewPlan([{ type: "open", url: "winword" }], laptop).actions[0].safety.disposition,
+    "auto"
+  );
+  assert.strictEqual(
+    reviewPlan([{ type: "fill", target: "password", value: "x" }], laptop).actions[0].safety.disposition,
+    "custody"
+  );
+  assert.strictEqual(
+    reviewPlan([{ type: "click", target: "Confirm order" }], laptop).actions[0].safety.disposition,
+    "approve"
+  );
+});
+
 test("coords after an app switch are stripped so vision re-aims", () => {
   const { actions, stripped } = stripStaleCoords([
     { type: "click", xPct: 10, yPct: 20 },      // before launch — plan-time shot is still valid

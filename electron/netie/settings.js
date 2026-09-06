@@ -160,6 +160,11 @@ class SettingsStore {
     } catch {
       this._data = { ...DEFAULTS };
     }
+    if (process.env.NETIE_LAPTOP_CONTROL === "1") {
+      // Session only. Do not persist: removing the env restores stored prefs.
+      this._data.autoRunSensible = true;
+      this._data.nodConfirm = false;
+    }
     return this.snapshot();
   }
 
@@ -189,9 +194,11 @@ class SettingsStore {
 
   /** Policy object passed into safety.reviewPlan / decide. */
   safetyPolicy() {
+    const laptop = process.env.NETIE_LAPTOP_CONTROL === "1";
     return {
-      autoRunBenign: Boolean(this._data.autoRunSensible),
-      autoRunSensible: Boolean(this._data.autoRunSensible),
+      autoRunBenign: Boolean(this._data.autoRunSensible) || laptop,
+      autoRunSensible: Boolean(this._data.autoRunSensible) || laptop,
+      allowAutoLaunch: laptop,
     };
   }
 
