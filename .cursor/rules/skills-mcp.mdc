@@ -1,0 +1,15 @@
+---
+description: Skills and MCP live at user scope plus Netie-KB - do not fork copies in this repo
+alwaysApply: true
+---
+
+# Skills / MCP (Pointer)
+
+Do not add a private `.cursor/skills` tree here (R-0016, S-0004).
+
+- Registry: `E:\Netie-KB` via `python E:\Netie-KB\scripts\kb.py search "<kw>"`
+- Cursor loaders: `%USERPROFILE%\.cursor\skills\` (`uacc-playwright`, `netie-prd`, `netie-kb`)
+- Map: `E:\Netie\Internal\Agents\SKILLS_AND_MCP.md`
+- Laptop law: `E:\Netie\Internal\Agents\UACC_PLAYWRIGHT.md`
+
+Pointer is HUD + Cortex `/dms/secure`. UACC is the only OS mouse. Playwright is the only Chrome DOM driver. Do not run `electron/netie/driver.js` beside UACC. Do not rewrite Playwright in this repo.
