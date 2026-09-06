@@ -25,6 +25,8 @@ const path = require("path");
 const { execFile } = require("child_process");
 const { HotMemory } = require("./hotMemory");
 const { NetieEcosystem, sanitizeLlmUrl, sanitizeLlmModel, isLoopbackLlmUrl } = require("./netie/ecosystem");
+const { createLedger } = require("./netie/ledger");
+const { defaultDataDir } = require("./netie/crypto/vault");
 const { PersonalBrain } = require("./netie/brain");
 const { classifyIntent } = require("./netie/intent");
 const { InputDriver } = require("./netie/driver");
@@ -264,8 +266,20 @@ const HOTKEY = process.env.NETIE_CLICK_HOTKEY || "Control+`";
 
 const TEMP_DIR = path.join(os.tmpdir(), "netie-clicks");
 const hot = new HotMemory();
+/**
+ * The local record of what Pointer did. Attached to `eco` so every existing
+ * `eco.audit(...)` call site becomes durable at once: the event is written here
+ * first and posted to Cortex second, rather than being lost whenever Cortex is
+ * down - which, on this laptop, is its normal state (see netie/ledger.js).
+ */
+const actionLedger = createLedger({
+  dataDir: defaultDataDir(),
+  actor: `netie-clicks:${hot.deviceId}`,
+  onError: (err) => console.error("action ledger:", (err && err.message) || err),
+});
 const eco = new NetieEcosystem({
   deviceId: `netie-clicks:${hot.deviceId}`,
+  ledger: actionLedger,
   // Functions, not captured strings: `settings` is declared later. The arrows
   // run on each chat/plan call, so HUD llmUrl/llmModel take effect live.
   chatUrl: () => settings.get("llmUrl"),
