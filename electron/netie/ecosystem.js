@@ -142,6 +142,13 @@ class NetieEcosystem {
     this._onUsage = typeof opts.onUsage === "function" ? opts.onUsage : null;
     /** null = unknown, true/false after first Cortex round-trip. */
     this.cortexOnline = null;
+    /**
+     * Local action ledger (./ledger.js), injected by main.js; null in unit
+     * tests that have no filesystem to write to. When present, every audit
+     * event is written here BEFORE Cortex is attempted, so a Cortex outage
+     * costs synchronisation rather than the record itself.
+     */
+    this.ledger = opts.ledger || null;
   }
 
   _noteUsage(raw) {
@@ -315,19 +322,64 @@ class NetieEcosystem {
   }
 
   // ── Cortex: tamper-evident audit ledger (best-effort, never blocks) ───────
+  /**
+   * Record one event. Local ledger first, Cortex second.
+   *
+   * The order is the whole point. This used to be Cortex-only inside a bare
+   * `catch { return false }`, which meant that with Cortex down — its normal
+   * state on a laptop — nothing was written anywhere and the app could not tell
+   * you so. "What did it click?" had no answer and no way to say it had none.
+   * That is a silent fallback, and a silent fallback is a lie (KB R-0011).
+   *
+   * The return value keeps its old meaning — did CORTEX take it — because
+   * callers and `test/ecosystem.test.js` read it that way. What changed is that
+   * `false` now means "recorded locally, not yet synced" rather than "gone".
+   * `auditHealth()` is how the HUD says which.
+   *
+   * @returns {Promise<boolean>} whether Cortex accepted the event
+   */
   async audit(eventType, payload = {}) {
+    const rec = this.ledger ? this.ledger.append(eventType, payload) : null;
     try {
-      await this._post(
+      const res = await this._post(
         `${this.cfg.cortexUrl}/dms/audit/append`,
         { actor: this.cfg.deviceId, event_type: eventType, payload },
         this._cortexHeaders()
       );
+      // `_post` resolves for every HTTP status - only a transport failure
+      // throws - so a 404, a 401 from a stale key, or a 500 all arrive here
+      // looking exactly like success. Without this check the event is reported
+      // as recorded when it was refused, and worse, its ledger row is marked
+      // synced and drops out of the pending tail a later drain would re-send.
+      // Not hypothetical: reproduced 2026-09-06 against the live Cortex on this
+      // laptop, which serves 101 routes and none of them is /dms/audit/append.
+      // Every audit call returned true and nothing was recorded anywhere.
+      if (!res || res.ok !== true) return false;
+      // Only advance the sync watermark for an event that actually reached
+      // Cortex; the pending tail is what a later drain re-sends.
+      if (rec && this.ledger) this.ledger.markSynced(rec.seq);
       return true;
     } catch {
-      // The ledger is a safety net, not a gate — an audit outage must not stop
-      // (or silently enable) the user's action. Losses are visible via /verify.
+      // An audit outage must not stop (or silently enable) the user's action.
+      // The local record already exists, so nothing is lost by carrying on.
       return false;
     }
+  }
+
+  /**
+   * What the record actually looks like right now, for the HUD to show.
+   * `local:false` is the honest answer when no ledger is attached — the caller
+   * must be able to tell "nothing to sync" from "nothing is being recorded".
+   */
+  auditHealth() {
+    if (!this.ledger) return { local: false, pending: 0, chainOk: null, reason: "no local ledger attached" };
+    const chain = this.ledger.verify();
+    return {
+      local: true,
+      pending: this.ledger.pending().length,
+      chainOk: chain.ok,
+      reason: chain.ok ? null : `${chain.reason} (record ${chain.brokenAt})`,
+    };
   }
 
   // ── OpenVault: passive vision / help ──────────────────────────────────────
