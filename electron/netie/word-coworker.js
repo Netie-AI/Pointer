@@ -546,6 +546,11 @@ function clipboardMatchesSource(source, clip) {
 module.exports = {
   writeDocx,
   buildDocx,
+  // Exported for slides-coworker.js. The XML 1.0 forbidden-character
+  // rule is a property of OOXML, not of Word, so a second copy in the
+  // slides module would be a second thing to fix (R-0004).
+  stripXmlForbidden,
+  xmlEscape,
   appendDocx,
   zipStore,
   zipRead,
