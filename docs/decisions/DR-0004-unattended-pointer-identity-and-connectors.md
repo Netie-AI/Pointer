@@ -262,3 +262,11 @@ phone-verification flow Ask 3 asks for.
 inject against the Python app while the Rust console owns phone verification
 creates a third store rather than resolving the second. This is now the first
 question, ahead of everything in the body above.
+
+### Amendment 2 - OpenVault DR-0015 accepted 2026-09-07
+
+The retire-or-promote question is answered: **keep the crate optional.** Do not
+move Python `accounts` into it. Do not add phone-verification against either
+store. Pointer Ask 3 (phone OTP / SMS retrieve) stays **blocked**. Pairing-before-
+inject (Correction 2) still holds for any future `/v1/custody/inject`. This
+record stays `proposed` until Ask 3/4 are reopened by a later founder call.
