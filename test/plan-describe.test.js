@@ -31,6 +31,20 @@ check("a write with no destination does not invent one", () => {
   assert.ok(/documents folder/i.test(d.text));
 });
 
+check("a chart write names its destination", () => {
+  const d = describeAction({ type: "excel_xlsx_chart", path: "C:\\Users\\x\\Documents\\NetiePointer\\a.xlsx" });
+  assert.strictEqual(d.verb, "Chart");
+  assert.ok(d.text.includes("a.xlsx"), `destination missing from: ${d.text}`);
+  assert.ok(d.destination.includes("a.xlsx"));
+});
+
+check("a chart write with no destination does not invent one", () => {
+  const d = describeAction({ type: "excel_xlsx_chart", value: "Q1 10, Q2 20" });
+  assert.strictEqual(d.destination, "");
+  assert.ok(!d.text.includes("C:\\"), "must not fabricate a path");
+  assert.ok(/documents folder/i.test(d.text));
+});
+
 check("a click names the control", () => {
   const d = describeAction({ type: "click", targetText: "Send" });
   assert.ok(d.text.includes("Send"));

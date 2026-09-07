@@ -80,6 +80,7 @@ function plannerGrounding(instruction, opts = {}) {
       "5. Expand hidden panels like a human - Window menu, enable, expand.",
       "6. Word documents: word_docx_write (or word_from_clipboard for a selection). Do not click the Word UI.",
       "7. Online host is an artifact catalog. workspace.exec is refused (P-06).",
+      "8. Excel charts: excel_xlsx_chart writes a chart-bearing .xlsx. Do not drive the Excel ribbon.",
     ].join("\n")
   );
   return parts.join("\n\n");

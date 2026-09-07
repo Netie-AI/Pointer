@@ -56,6 +56,7 @@ const has = (action, opts) => shouldVerifyStep(action, { hasRegion: true, ...opt
         // and earns the exemption the same way - see the artifact-evidence test
         // below, which asserts its digest describes the bytes after the append.
         "word_docx_write", "word_docx_append", "word_from_clipboard", "clipboard_verify",
+        "excel_xlsx_chart",
       ]);
       const missing = DRIVER_ACTIONS.filter(
         (verb) => !NON_VISUAL.has(verb) && !shouldVerifyStep({ type: verb, target: "Send" }, { hasRegion: true, verifyAll: true }).verify
@@ -96,6 +97,23 @@ const has = (action, opts) => shouldVerifyStep(action, { hasRegion: true, ...opt
       const afterAppend = crypto.createHash("sha256").update(fs.readFileSync(app.path)).digest("hex");
       assert.strictEqual(app.sha256, afterAppend, "the append digest must describe the bytes on disk");
       assert.notStrictEqual(app.sha256, out.sha256, "the digest did not change when the document did");
+
+      process.env.NETIE_EXCEL_OUT_DIR = dir;
+      delete require.cache[require.resolve("../../electron/netie/excel-coworker")];
+      const { writeXlsxChart } = require("../../electron/netie/excel-coworker");
+      const { zipRead } = require("../../electron/netie/word-coworker");
+      const xlsx = writeXlsxChart({ value: "Q1 10, Q2 20", stem: "verify-chart" });
+      assert.strictEqual(xlsx.ok, true, xlsx.reason || "chart write failed");
+      assert.ok(xlsx.sha256, "a non-visual chart write must return a digest");
+      assert.strictEqual(xlsx.bytes, fs.statSync(xlsx.path).size, "chart byte count must match disk");
+      const onXlsx = crypto.createHash("sha256").update(fs.readFileSync(xlsx.path)).digest("hex");
+      assert.strictEqual(xlsx.sha256, onXlsx, "the chart digest must describe the bytes on disk");
+      const pkg = zipRead(fs.readFileSync(xlsx.path));
+      assert.strictEqual(pkg.ok, true, pkg.reason);
+      assert.ok(
+        pkg.entries.some((e) => e.name === "xl/charts/chart1.xml"),
+        "verify exemption requires the customer chart part"
+      );
     }),
 
     T("routine work does not pay for two captures a step", async () => {

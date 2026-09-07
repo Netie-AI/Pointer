@@ -924,6 +924,24 @@ class InputDriver {
         return coworkerOutcome(type, result);
       }
 
+      case "excel_xlsx_chart": {
+        // API-first coworker: OOXML chart workbook (no Excel focus steal, no Windows-MCP).
+        const { writeXlsxChart } = require("./excel-coworker");
+        const result = writeXlsxChart({
+          value: action.value ?? action.text ?? "",
+          categories: action.categories,
+          values: action.values,
+          title: action.title,
+          seriesName: action.seriesName,
+          chartType: action.chartType || action.kind,
+          path: action.path || undefined,
+          dryRun: this.dryRun,
+          stem: action.stem || "pointer-chart",
+        });
+        this.last = { op: "excel_xlsx_chart", ...result };
+        return coworkerOutcome(type, result);
+      }
+
       case "clipboard_baseline": {
         // #16: the integrity gate had no source to compare against, because at
         // recipe-definition time the text does not exist yet - it only exists

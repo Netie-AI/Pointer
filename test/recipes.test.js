@@ -212,6 +212,47 @@ test("Excel SOPs match", () => {
   assert.strictEqual(matchRecipe("select row").actions[0].value, "shift+space");
 });
 
+test("Excel chart coworker is API-first OOXML, not ribbon hotkeys", () => {
+  const r = matchRecipe("chart in excel: Q1 10, Q2 20");
+  assert.ok(r, "chart in excel: matched nothing");
+  assert.strictEqual(r.id, "excel_chart_xlsx");
+  assert.strictEqual(r.actions.length, 1);
+  assert.strictEqual(r.actions[0].type, "excel_xlsx_chart");
+  assert.deepStrictEqual(r.actions[0].categories, ["Q1", "Q2"]);
+  assert.deepStrictEqual(r.actions[0].values, [10, 20]);
+  assert.ok(!r.actions.some((a) => a.type === "press" || a.type === "open"), "chart recipe stole focus");
+
+  const of = matchRecipe("make a chart in excel of apples: 3, oranges: 5");
+  assert.strictEqual(of.id, "excel_chart_xlsx");
+  assert.deepStrictEqual(of.actions[0].categories, ["apples", "oranges"]);
+
+  const named = matchRecipe("create an excel chart of North=12 South=8");
+  assert.strictEqual(named.id, "excel_chart_xlsx");
+  assert.deepStrictEqual(named.actions[0].values, [12, 8]);
+
+  const line = matchRecipe("line chart in excel: Jan 4, Feb 8");
+  assert.strictEqual(line.id, "excel_chart_xlsx");
+  assert.strictEqual(line.actions[0].chartType, "line");
+
+  for (const live of [
+    "chart in excel: Q1 10, Q2 20",
+    "chart in excel: Q1 10, Q2 20.",
+    "make a chart in Excel of Q1 10, Q2 20, please",
+    "please create an excel chart of Q1 10, Q2 20",
+    "write a graph in excel: A 1, B 2",
+  ]) {
+    const hit = matchRecipe(live);
+    assert.ok(hit, `${JSON.stringify(live)} matched nothing`);
+    assert.strictEqual(hit.id, "excel_chart_xlsx", `${JSON.stringify(live)} took ${hit.id}`);
+    assert.strictEqual(hit.actions[0].type, "excel_xlsx_chart");
+  }
+
+  assert.strictEqual(matchRecipe("make a chart in excel"), null, "chart with no series must not invent data");
+  assert.strictEqual(matchRecipe("pie chart in excel: A 1, B 2"), null, "unsupported pie must not silent-fallback");
+  assert.strictEqual(matchRecipe("autosum").id, "excel_autosum");
+  assert.strictEqual(matchRecipe("sum this column").id, "excel_autosum");
+});
+
 test("OpenWillow scribe phrases copy the selection, they do not type a URL", () => {
   assert.strictEqual(matchRecipe("rewrite this").id, "rewrite_selection");
   assert.strictEqual(matchRecipe("shorten this").id, "rewrite_selection");

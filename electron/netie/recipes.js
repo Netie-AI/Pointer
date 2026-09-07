@@ -463,6 +463,41 @@ function matchRecipe(text) {
     if (r) return r;
   }
 
+  function excelChartWriteRecipe(payload, extra = {}) {
+    const { parseChartSeries } = require("./excel-coworker");
+    const parsed = parseChartSeries(payload);
+    if (!parsed.ok) return null;
+    const action = {
+      type: "excel_xlsx_chart",
+      value: String(payload || "").trim(),
+      categories: parsed.categories,
+      values: parsed.values,
+    };
+    if (extra.chartType) action.chartType = extra.chartType;
+    if (extra.title) action.title = extra.title;
+    return {
+      id: "excel_chart_xlsx",
+      label: "Write an Excel chart workbook",
+      actions: [action],
+    };
+  }
+
+  // API-first Excel chart (POINTER-EXCEL-SAFE). Requires excel/xlsx plus
+  // chart/graph plus a numeric series. Ribbon autosum/new-sheet stay below.
+  if (/\b(?:excel|xlsx)\b/i.test(spoken) && /\b(?:chart|graph)\b/i.test(spoken) && !/\bpie\b/i.test(spoken)) {
+    const chartType = /\bline\b/i.test(spoken) ? "line" : "col";
+    const colon = spoken.match(/\b(?:excel|xlsx|chart|graph)\s*:\s*([\s\S]+)$/i);
+    if (colon && colon[1].trim()) {
+      const r = excelChartWriteRecipe(colon[1], { chartType });
+      if (r) return r;
+    }
+    const of = spoken.match(/\b(?:chart|graph)\b[\s\S]*?\b(?:of|for|with|from)\s+(.+)$/i);
+    if (of && of[1].trim()) {
+      const r = excelChartWriteRecipe(of[1], { chartType });
+      if (r) return r;
+    }
+  }
+
   // Multi-word coworker SOPs first (more specific).
   if (
     /(?:word\s+ui|hotkey\s+word|paste\s+into\s+word\s+window)/.test(normalized)

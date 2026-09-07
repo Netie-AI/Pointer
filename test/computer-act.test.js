@@ -94,6 +94,38 @@ function test(name, fn) {
     assert.strictEqual(r.blocked, true);
   });
 
+  await test("excel chart Act still requires Cortex and Affirm for a path", async () => {
+    const blocked = await runComputerAct(
+      { actions: [{ type: "excel_xlsx_chart", value: "Q1 10, Q2 20" }] },
+      {}
+    );
+    assert.strictEqual(blocked.ok, false);
+    assert.strictEqual(blocked.blocked, true);
+
+    const gated = await prepareComputerAct(
+      { actions: [{ type: "excel_xlsx_chart", value: "Q1 10, Q2 20" }] },
+      { secure: async () => ({ ok: true }), policy: { autoRunSensible: true, autoRunBenign: true } }
+    );
+    assert.strictEqual(gated.ok, true);
+    assert.strictEqual(gated.gated, true);
+    assert.strictEqual(gated.needsApproval, false, "contained chart write is benign like Word");
+
+    const pathful = await prepareComputerAct(
+      { actions: [{ type: "excel_xlsx_chart", value: "Q1 10, Q2 20", path: "C:\\out\\a.xlsx" }] },
+      { secure: async () => ({ ok: true }), policy: { autoRunSensible: true, autoRunBenign: true } }
+    );
+    assert.strictEqual(pathful.needsApproval, true, "pathful excel write must Affirm");
+    const ran = await runComputerAct(
+      { actions: [{ type: "excel_xlsx_chart", value: "Q1 10, Q2 20", path: "C:\\out\\a.xlsx" }] },
+      {
+        secure: async () => ({ ok: true }),
+        policy: { autoRunSensible: true, autoRunBenign: true },
+        execute: async () => [{ ok: true }],
+      }
+    );
+    assert.strictEqual(ran.ran, false, "pathful chart must not execute without approved:true");
+  });
+
   await test("observe-only computer.act runs after a green gate", async () => {
     const executed = [];
     const r = await runComputerAct(
@@ -201,6 +233,9 @@ function test(name, fn) {
     const word = planFromInstruction("write hello in Word");
     assert.ok(word.ok);
     assert.ok(word.actions.some((a) => a.type === "word_docx_write"));
+    const chart = planFromInstruction("chart in excel: Q1 10, Q2 20");
+    assert.ok(chart.ok);
+    assert.ok(chart.actions.some((a) => a.type === "excel_xlsx_chart"));
     const opened = planFromInstruction("open: notepad");
     assert.strictEqual(opened.source, "open");
     assert.strictEqual(opened.actions[0].type, "open");
