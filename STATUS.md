@@ -29,7 +29,9 @@
    Meeting stack is Say this / Also / Don't say (never invent, never send).
    `/teach` is BOX walk + Got it Ask. `/workspace` This computer; Run
    refuses (P-06). Notes / Unsent mail / Needs you never Act. P-05 parked.
-3. **EPIC-P04 and EPIC-P07 remain open.** No GPLv3 dump.
+3. **EPIC-P04 and EPIC-P07 remain open.** Excel chart coworker is
+   `excel_xlsx_chart` OOXML (#64). Windows-MCP stays P-08 frozen.
+   No GPLv3 dump.
 
 ## Next
 

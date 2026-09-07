@@ -111,15 +111,16 @@ function classifyAction(action) {
     case "word_docx_write":
     case "word_docx_append":
     case "word_from_clipboard":
+    case "excel_xlsx_chart":
       // With no destination the write is contained by construction — it can
       // only land in the sanctioned output folder — so it stays BENIGN and the
       // ordinary coworker flow keeps running unattended (KB R-0005).
       //
       // With an explicit destination the path came from the planner, i.e. from
-      // outside the trust boundary. word-coworker.js refuses anything outside
-      // the sanctioned root, but "where does this file land" is exactly the
-      // thing a customer must be shown before approving, so a pathful write is
-      // never auto-runnable (#15).
+      // outside the trust boundary. word-coworker.js / excel-coworker.js refuse
+      // anything outside the sanctioned root, but "where does this file land"
+      // is exactly the thing a customer must be shown before approving, so a
+      // pathful write is never auto-runnable (#15).
       return action.path || action.target
         ? ActionTier.CONSEQUENTIAL
         : ActionTier.BENIGN;
@@ -200,7 +201,8 @@ function decide(action, policy = {}) {
   const declaresDestination =
     (verb === "word_docx_write" ||
       verb === "word_docx_append" ||
-      verb === "word_from_clipboard") &&
+      verb === "word_from_clipboard" ||
+      verb === "excel_xlsx_chart") &&
     Boolean(action && (action.path || action.target));
 
   let disposition;

@@ -2,6 +2,15 @@
 
 Append-only. Never edited, only added to. Newest first.
 
+## 2026-09-07 - POINTER-EXCEL-SAFE Excel chart API-first (#64)
+
+`excel_xlsx_chart` writes a chart-bearing `.xlsx` via OOXML/zip under the
+sanctioned out dir (same containment as Word). No Excel COM, no ribbon
+focus steal, no Windows-MCP (P-08 stays frozen). Empty series refuse.
+Act still fail-closes without Cortex `/dms/secure`; a pathful write still
+needs Affirm. Tests unzip `xl/charts/chart1.xml` and the sheet values
+(R-0001). Skipped test = fail (R-0002).
+
 ## 2026-09-04 - HUD Report a problem control (#29)
 
 Fixed top chrome has Report a problem (`#bugReportBtn` / `startBugReport`).

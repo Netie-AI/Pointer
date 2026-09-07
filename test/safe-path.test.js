@@ -144,7 +144,7 @@ check("dry-run refusal still does not touch disk", () => {
 // ------------------------------------------------- #15 classification -------
 
 check("an explicit destination path is never auto-runnable", () => {
-  for (const type of ["word_docx_write", "word_from_clipboard"]) {
+  for (const type of ["word_docx_write", "word_from_clipboard", "excel_xlsx_chart"]) {
     const d = decide({ type, path: path.join(SANCTIONED, "x.docx") }, { autoRunSensible: true });
     assert.notStrictEqual(d.disposition, "auto", `${type} with a path must not auto-run`);
   }
@@ -153,6 +153,8 @@ check("an explicit destination path is never auto-runnable", () => {
 check("R-0005: no explicit path stays auto-runnable (contained by construction)", () => {
   const d = decide({ type: "word_docx_write", value: "hi" }, { autoRunSensible: true });
   assert.strictEqual(d.disposition, "auto");
+  const chart = decide({ type: "excel_xlsx_chart", value: "Q1 10, Q2 20" }, { autoRunSensible: true });
+  assert.strictEqual(chart.disposition, "auto");
 });
 
 // ----------------------------------------------------------- #19 opening ----

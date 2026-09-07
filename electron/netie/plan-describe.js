@@ -71,6 +71,15 @@ function describeAction(action) {
       break;
     }
 
+    case "excel_xlsx_chart": {
+      verb = "Chart";
+      destination = destinationOf(a);
+      text = destination
+        ? `Write an Excel chart workbook to ${destination}`
+        : "Write an Excel chart workbook to the Pointer documents folder";
+      break;
+    }
+
     case "word_docx_write":
     case "word_from_clipboard": {
       verb = "Write";

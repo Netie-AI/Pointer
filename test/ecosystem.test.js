@@ -195,6 +195,7 @@ test("the OpenVault planner is told about the Word coworker verbs", () => {
   assert.ok(/word_docx_write/.test(prompt), "_llmPlan never names word_docx_write");
   assert.ok(/word_docx_append/.test(prompt), "_llmPlan never names word_docx_append");
   assert.ok(/word_from_clipboard/.test(prompt), "_llmPlan never names word_from_clipboard");
+  assert.ok(/excel_xlsx_chart/.test(prompt), "_llmPlan never names excel_xlsx_chart");
   assert.ok(/Omit path/.test(prompt), "_llmPlan must not invite a model-supplied path");
 });
 
